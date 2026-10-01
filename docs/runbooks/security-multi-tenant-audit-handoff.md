@@ -3,13 +3,15 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state: §0k is authoritative (2026-10-01).** Production, staging and
-`main` are at `ecb05d5940d49f604e9f7ca8abea120eed8a236c`; later commits are
-documentation. Not closed: the human-only checklist in §0k (repository
-visibility, three staging demo accounts, two more origin denies, the signed-in
-browser check, device checks on real hardware). §0j stays as the catch-up from
-`c68114e`; §0k supersedes its state table and its edge-cache paragraph.
-Sections before §0g describe local evidence from before anything was pushed.
+**Current state: §0l is authoritative (2026-10-01).** Production and staging
+are at `31282713bafdd072732839e69f0e846fc739c2f4`, and `main` follows; later
+commits are documentation. Not closed: the human-only checklist in §0l (three
+origin denies as a second layer, the signed-in browser check, device checks on
+real staging and real hardware, the mobile release to users, iOS, repository
+visibility). §0k stays as the review of packet `04e36e1`; §0l supersedes its
+state table, its checklist and its follow-up list. §0j stays as the catch-up
+from `c68114e`. Sections before §0g describe local evidence from before
+anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
 on production on 2026-09-20 and again, unchanged, before the deployment
@@ -71,6 +73,365 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0l. Closure pass: the public PDFs, the staging demo accounts, repair photos, the mobile release path (2026-10-01, 05:10–09:25Z)
+
+Started from `b8e5465fec3026054995187c2d20cf0a421d2d6c`, the packet the reviewer
+read. The deployments, the password rotation, the backups, the restore and
+verifier repairs and the two origin denies recorded before stay as recorded;
+none was repeated. **This section supersedes §0k's state table, its human
+checklist and its follow-up list.** Times are UTC.
+
+### Remaining items, one row each
+
+| # | Item | State | Evidence | Left for a human |
+|---|---|---|---|---|
+| 1 | The three PDFs under `karigar-invoices/` and `purchases/` | **CONTAINED.** Out of the web root since 05:22:34Z, byte for byte in a private quarantine; nothing deleted | `quarantine-public-orphans.sh verify`, exit 0, right after the move and again at 08:49:11Z: 404 on the three hosts for the plain URL and a query-string form, at the origin and through the edge; controls hold (`/login` 200, a catalogue file 200, `kyc/` and `signatures/` 403). Edge: detail 1 | The nginx deny for the two (now empty) directories: checklist 1 |
+| 2 | The three staging demo accounts | **SECURED** at 05:16:27Z | `secure_demo_accounts.php apply`: before, the published password signed in on the web and on the mobile API; after, the same session is sent to `/login` and the same token gets 401. `verify` exit 0 at 05:20:23Z and at 08:51:19Z. Detail 2 | none |
+| 3 | Repair photos | **FIXED, DEPLOYED, VERIFIED.** Private attachments: private disk, authorized delivery; production's seven files moved at 08:13:47Z | `69a68ee`; 14 feature tests; staging verifier; real-HTTP checks on both environments. Detail 3 | The nginx deny for the (now empty) directory: checklist 1 |
+| 4a | Build 22's backend | **VERIFIED in the artifact and in a request** | APK sha256 `a10c25de…cd1d`: its bundle holds `https://staging.jewelflows.com`; the installed app's sign-in attempt arrived at staging's origin. Detail 4 | none |
+| 4b | Print, share, signature warning, signatures off, lost-reply retry on the release artifact | **RUN on build 22**, on the emulator, against a local stand-in for staging (synthetic data). **One defect found, fixed, re-run on build 24.** | Detail 4, table | The same on real staging, signed in, on a physical device: checklist 3 |
+| 4c | Signed-in browser isolation | **NOT RUN** | No signed-in browser session was available to this session (the browser extension reported no connected browser), and it may not sign in. What was run instead: the guest cookie probe (exit 0 after the release) and the staging verifier's cookie checks | checklist 2 |
+| 4d | A release path that pins the production backend | **FIXED and VERIFIED.** The OTA publisher pins and checks the backend per channel; every release build profile names its EAS environment | mobile `1ba7c85`, `b266c2c`, `1554521`, `0e6fe3e`; dry runs for both channels; production builds of versionCode 25 hold the production backend and not staging's. Detail 4 | Publishing to users: checklist 4 |
+| 4e | iOS | **NOT RUN, not waived.** EAS lists 31 Android builds and no iOS build | `eas build:list` | checklist 5 |
+| 5 | `STAGING_DEPLOY.md` recovery | **FIXED** (`58dddc7`): one rule — move the code forward, keep the schema and the data; no `migrate:rollback` of a migration that holds data; a backup restore only if the site stayed in maintenance since that backup | the file, §15 | none |
+
+The batch's two conditions for closure hold: no known private file is publicly
+reachable (rows 1 and 3; `kyc/` and `signatures/` denied at the origin since
+2026-09-25), and the published staging password opens nothing (row 2). What
+stays open is listed in the checklist: origin denies as a second layer, and
+checks that need a person's sign-in or hardware.
+
+### State at the end of this pass
+
+| Item | State | Evidence |
+|---|---|---|
+| Web release | `31282713bafdd072732839e69f0e846fc739c2f4` on staging and production; no tracked change on either tree. Forward releases in this pass: staging `921e42aa1b196449ece4f289cf6204679184999a` (05:15:11–05:15:14Z); `58dddc7ac2fd2485f2fc0391b21af72a35e8dd17` (staging 08:11:40–08:11:46Z, production 08:13:03–08:13:07Z); `3128271…` (staging 08:48:52–08:48:55Z, production 08:48:58–08:49:01Z; the operator script and its tests only) | `deploy-forward.sh`: "FORWARD RELEASE PASSED" each time; `git rev-parse HEAD` on the server |
+| `main` | fast-forwarded `b8e5465..` to this section's commit; commits after `3128271` are documentation | `git ls-remote` |
+| Mobile, GitHub | `rebrand/jewelflows-mobile` = `b266c2c11ab6718d88987dd37cad804c26fd212a` (fast-forward from `838c658`) | `git ls-remote` |
+| Mobile builds | table in detail 4 | `eas build:list` |
+| Owner's mobile checkout | untouched: `4f10a3b` with its uncommitted `src/utils/storage.ts` | `git status` |
+| Health after the releases | `/health` and `/login` 200 on the four hosts; no ERROR line on either environment since 08:11Z (read at 08:49Z and again at 09:23Z); both workers, php-fpm and nginx active; cookie probe exit 0; staging verifier all checks passed at `58dddc7` and at `3128271` | curl; the daily logs; `cookie_isolation_probe.sh`; `verify_security_batch.php` |
+| `verify` on production | **exit 1, correctly**: the origin denies for `karigar-invoices`, `purchases`, `repairs` are missing; rotation and backup steps pass (newest archive `2026-10-01-00-00-02.zip`) | the deployed script, 08:49:32Z |
+
+### 1. The PDFs, and why the edge holds no copy
+
+A deny on one spelling of a path, or a purge of one cache key, does not cover
+every variant; taking the file out of the web root does, because the origin
+then has nothing to serve for any host, query string or encoding.
+`docs/runbooks/quarantine-public-orphans.sh` (`6c39e40`, `4efe563`; 13 checks
+in `tests/Runbooks/quarantine_public_orphans_test.sh`) moves every file under
+the two directories that no database row names to
+`storage/app/private/quarantine/public-orphans/` — a rename on one file
+system, sha256 before and after, a manifest beside them, nothing deleted — and
+leaves a file a row still names for the relocation command. On production it
+moved three files at 05:22:34–35Z (sha256 `1cd6210d60da…`, `fcf3d30b6027…`,
+`9ef59797966a…`).
+
+The edge, by expiry, with the three things that requires:
+
+* **Last possible public response.** The origin could serve them until
+  05:22:34Z. The access logs (kept from 2026-09-16) hold no request for either
+  directory that was answered 200 from outside the server at any time: the
+  only 200s are this audit's own HEAD requests, sent straight to nginx.
+* **Effective TTL.** Nothing in the zone overrides the default (§0k). Measured
+  at one colo: of 216 public objects cached at 05:49–05:50Z, 214 had expired
+  by 07:52–07:54Z, and one cached at 05:59:40Z was still served from cache at
+  an age of 6,900 s. The TTL is therefore above 6,900 s and at most about
+  7,400 s, which fits the documented default of two hours. (The timed samples
+  at 05:47Z and 05:58Z announced in §0k were spoiled by a change of colo, SIN
+  to MRS, whose cache was empty; this later sample replaces them.)
+* **Verification after expiry.** 05:22:34Z + 7,400 s = 07:25:54Z. `verify` at
+  08:49:11Z: 404 for every former path, plain and with a query string, on the
+  three hosts, at the origin and through the edge.
+
+Limit: a copy someone fetched while a file was public is theirs; no log shows
+such a fetch in the days kept.
+
+### 2. The staging demo accounts
+
+`tests/Staging/secure_demo_accounts.php` (`921e42a`; 19 checks on the local
+test database, with a control account in another shop that must stay
+untouched) replaces §0k's wildcard one-liner. It runs only where the
+environment is `staging`, the database `jewelflow_staging` and the host
+`staging.jewelflows.com`; it acts on three pinned user ids in one pinned shop
+and aborts before changing anything on any difference (another shop or account
+name, a fourth account, a demo-range mobile elsewhere, the seeder's platform
+admin, a session driver other than `database`). Staging's session driver was
+read first: `database`, so deleting session rows does revoke sessions.
+
+`apply` (05:16:27Z) showed the exposure through the application, then used the
+application's own staff-removal state — `EnsureAccountIsActive` refuses the
+account on every authenticated web, API and mobile route — deleted the
+accounts' tokens and session rows, rotated the remember token, set a random
+password, and showed the same session and the same token refused. Its own
+check that no other account changed passed; production is not touched by the
+script and has none of these accounts. `verify` passed at 05:20:23Z and again
+at 08:51:19Z: disabled, the published password does not authenticate, no token
+and no session row, a web sign-in gets no session, a mobile sign-in gets 401.
+
+Repository visibility is a separate owner decision (checklist 6), not a
+condition of this containment.
+
+### 3. Repair photos
+
+**Contract.** Every repair route needs a signed-in member of the shop with a
+`repairs.*` permission. The photo appears only on the staff repair screens
+(web detail page; mobile list and detail). No public page, receipt, share link
+or customer-facing view uses it, and nothing in the product documents
+publication. It is a picture of a customer's own jewellery: a private
+tenant attachment. The public disk was a storage shortcut.
+
+**Change (`69a68ee`).** New photos go to the private disk. Web:
+`GET /repairs/{repair}/image` inside the staff group (session,
+`repairs.view`, tenant-scoped binding). Mobile: `image_url` is a link to
+`GET /api/mobile/repairs/{repair}/image`, signed for that one repair and valid
+for fifteen minutes — the released app loads images with a plain request and
+no `Authorization` header, so a bearer-only route would have blanked its
+repair screens; the link is only handed out by the authenticated, shop-scoped
+API. Responses are `private, no-store`. `repairs:relocate-images` moves every
+file under the public disk's `repairs/` to the same path on the private disk
+(a rename, sha256 checked, never over an existing file, nothing deleted), so no
+row changes and the original files are kept.
+
+**Verified.**
+
+* Tests: `RepairImagePrivacyTest`, 14 (13 failed before the change): the
+  shop's own user gets the photo, another shop 404, a colleague without
+  `repairs.view` 403, nobody signed in gets no bytes; the mobile link works
+  without headers, expires, and is refused without its signature or for
+  another repair; the relocation and its conflict case.
+* Staging, deployed code (`verify_security_batch.php`, synthetic tenants,
+  rolled back): its shop 200, another shop 404, not signed in 302 to `/login`;
+  the signed link 200, the same URL without its signature 403; not served
+  under `/storage`.
+* Real HTTP through nginx, both environments, with an id no repair has (so no
+  photo is read): a valid signature reaches the controller (404), a changed or
+  missing one is stopped (403).
+* Production, 08:13:47Z: 7 files moved (3 named by a repair, 4 not), sha256
+  equal before and after, owned by the web user, none left under the public
+  disk; `--verify` exit 0. All 7 former URLs, plain and with a query string,
+  on the three hosts, at the origin and through the edge: 404. One photo a
+  repair names, requested once by HEAD through the edge with its signed link:
+  200, `image/webp`, `no-store, private`, not cached by the edge. The web
+  route without a session: 302 to `/login`.
+* Edge: the logs hold two outside 200s for this directory, both on
+  2026-09-17; nothing since, so no copy can be fresh. Staging had no repair
+  photo and has no edge in front.
+
+Not run on production: the cross-shop refusal with real accounts (it would
+mean acting as real users); the same code passed it on staging. The real-HTTP
+checks used small one-off scripts on the server (kept with the run's evidence
+under `/root/security-batch/`, not in the repository); the relocation itself
+is the committed command.
+
+`3128271` adds `repairs` to the operator script's deny list, so `run origin`
+adds three denies and `verify` reports three missing until then.
+
+### 4. Mobile
+
+**Builds (EAS, Android; no iOS build exists).**
+
+| versionCode | Profile | Commit | Backend in the artifact | Use |
+|---|---|---|---|---|
+| 22 | `preview` (APK) | `838c658` | `https://staging.jewelflows.com` | tested below |
+| 23 | `production` (AAB), `production-apk` (APK) | `0e6fe3e` | not inspected | **superseded — do not distribute**: built before the fix below |
+| 24 | `preview` (APK) | `5e85628` | `https://staging.jewelflows.com` | tested below |
+| 25 | `production` (AAB) | `b266c2c` | `https://jewelflows.com`; the staging name is absent | for the store; not submitted |
+| 25 | `production-apk` (APK) | `b266c2c` | `https://jewelflows.com`; the staging name is absent | for direct install; not handed out |
+
+Build ids: 22 `23e2bb39-14a3-49f2-aa42-d5fca21fb00f`; 24
+`5caceada-4f5a-46a4-8265-7c6855e21a7f`; 25 AAB
+`99bf783b-9af9-4264-a6d3-6e8a2cd396d1` (80,378,857 bytes, sha256
+`6dea53894f92782b9d23e1fe7b4f3474e066230b00702ca0b0e7406eb9b49963`); 25 APK
+`df961cb8-052d-4a44-bdb5-b1cdbf5e3d3f` (119,364,282 bytes, sha256
+`1079077c0ff62dbfb4e9e1e985a5917cf92e74ae97f17c9b4c7537605a7048c8`). "Backend
+in the artifact" is read from the compiled bundle inside the downloaded file,
+not from the build log. Between `5e85628` and `b266c2c` only the publisher
+script and its tests changed. The versionCode 25 APK installs over the
+`preview` build (same signing key) and starts to its sign-in screen; that was
+checked with the emulator offline, so it sent nothing to production, and it
+was then uninstalled.
+
+**Build 22's backend.** The APK (119,364,042 bytes, sha256
+`a10c25de81503e1af4b80246b697282520798fa80d2f8694e44a801043efcd1d`) was taken
+apart: its compiled bundle holds `https://staging.jewelflows.com`, and the
+source holds that string nowhere, so it came from the EAS `preview`
+environment at build time. Installed on the emulator, a sign-in attempt with
+made-up credentials was answered "Login Failed" and arrived at staging's
+origin (staging is not behind the edge; the production names are).
+
+**The flows, on the release artifact.** Signing in to staging is reserved for
+a person (checklist 3). So build 22 ran on the emulator (API 34) with the name
+`staging.jewelflows.com` resolved to the test machine: a hosts entry, a
+throwaway CA in the emulator's in-memory trust store, airplane mode, and a
+local TLS stand-in in front of the local backend at the deployed web commit,
+with seeded synthetic data. Before any sign-in: the device could reach nothing
+else (`8.8.8.8` unreachable, `jewelflows.com` unknown), a wrong-password
+attempt appeared in the local log, and staging's access log recorded no login
+request. This is the installed release bundle and its real network stack; it
+is not real staging and not a physical device.
+
+| Check, build 22 | Result |
+|---|---|
+| Invoice, Share | PASS — one-page PDF with the invoice number, the customer and one 360×120 image whose pixels are the uploaded signature; no warning |
+| Invoice, Print → Save as PDF | PASS — print dialog, "Page 1 of 1"; the saved PDF carries the signature image; no warning |
+| Quick bill, Share Original / Print Original | PASS — one page each, number, customer, item, signature image; no warning |
+| Signature file missing (moved aside on the local disk) | PASS — both documents: no image, the "Signature unavailable" marker, and the app's "Signature unavailable" alert after the share sheet closes. The quick-bill screen keeps the template it fetched when opened, so a change made while the screen is open shows after it is reopened |
+| Signatures switched off, a bill issued afterwards | PASS — no image, no marker, no alert |
+| Reply lost after the server committed (cash-book entry) | PASS — the app retried with the same key, the server replayed (`X-Idempotent-Replay`), the screen showed success; one cash row, one key |
+| Server stopped after staking its claim, nothing committed | **Safe, wrongly worded.** The retry with the same key got the server's 409 `idempotency_in_flight`; a second tap on Save sent the same key and got 409 again; no cash row. But the alert's title was "Something went wrong", not "Outcome unknown" |
+
+**The defect (fixed in mobile `5e85628`).** The transport throws its own
+error type, and the screens pass it to the function that maps server codes to
+operator messages; that function did not recognise it and fell back to
+"unknown". On the two cash-book screens every refusal therefore lost its
+title, and a validation refusal lost its inline field errors. The server's
+sentence was still shown, and the key was still held, so no duplicate was
+possible; the operator was not told what the refusal meant. The earlier tests
+of the mapping fed it a different error type than any screen receives; the new
+ones go through the real transport with the server's body as captured.
+
+**Build 24** (`preview`, from `5e85628`; APK 119,364,222 bytes, sha256
+`178000c20bc586f7fa4bf343349dcf897ea0ebeccfd0dc390cff789814500931`, staging
+backend in its bundle), same emulator, same stand-in:
+
+| Check, build 24 | Result |
+|---|---|
+| Server stopped after staking its claim | PASS — alert "Outcome unknown" with the server's sentence; same key on the retry; no cash row |
+| The operator tool then reconciles the claim as not committed (`mobile:idempotency-claims`) | PASS — Save again sent the same key, 201, exactly one cash row |
+| Another entry, its claim reconciled as committed | PASS — alert "Already recorded"; the key stays refused; no second row |
+| Invoice, Share | PASS — same PDF as build 22 (one page, signature image), no warning |
+
+During both runs the real servers' access log recorded no mobile API request
+from outside at all. Afterwards the app's data was cleared, the emulator
+restored and stopped, and the throwaway CA and keys deleted.
+
+**The release path.** `scripts/ota-safe-publish.mjs` bundled with whatever the
+local environment named and never passed `--environment` (§0k follow-up); two
+package scripts called `eas update` directly. Now (`1ba7c85`, `b266c2c`) a
+publish to `preview` or `production` bundles only inside the channel's EAS
+environment and requires the value it sees to be the pinned one; exports with
+local env files off and a cleared bundler cache; reads the exported bundle and
+refuses it unless it carries the pinned backend (a production bundle must not
+carry staging's); and publishes exactly those bytes. `--dry-run` does all of
+it except publish.
+
+Measured (SDK 54), which is why env files are switched off rather than
+forbidden (`b266c2c`): with the variable missing from the process, a local
+`.env` naming staging ends up in the export — the original defect, reproduced;
+with the variable set, the process wins; with `EXPO_NO_DOTENV=1` the file
+takes no part. A developer's checkout normally has such a file, and a rule
+that refused it would have invited moving it aside, after which a development
+run falls back to the production backend.
+
+Both channels were dry-run for real, each with a conflicting `.env` present:
+the production export holds `https://jewelflows.com` once and the staging name
+not at all; the preview export holds the staging name. Every release build
+profile names its EAS environment (`0e6fe3e`), including the direct-install
+profile brought in from the owner's local branch (`1554521`). Mobile tests:
+303 of 303 at `b266c2c`, typecheck clean (the guard and the publisher run
+against a stub `npx`: no network, nothing published).
+
+**Not published by this session.** No update was sent to any channel and no
+build was handed to users, for two reasons that need the owner. An update goes
+to every build on the channel with the same runtime version, and all builds
+share one (`1.0.0`): the production build of 2026-05-01 (versionCode 16)
+predates six native modules that today's code uses, and which builds are still
+installed is not visible from here. And the check of a release build on real
+staging, signed in, has not been done by anyone. Builds from versionCode 21
+have today's native layer (no native dependency changed since). Checklist 4.
+
+### Measured results
+
+| Run | Where | Result |
+|---|---|---|
+| Full suite | `58dddc7`, PHP 8.4 | 3450 passed, 7 skipped (the known seven), 0 failed |
+| Full suite | `58dddc7`, PHP 8.2 | 3450 passed, 7 skipped, 0 failed |
+| Shell harnesses | `3128271` | operator 76 of 76 (one lint check had been red since `921e42a`: three checks in the demo-account harness piped into `grep -q`; fixed); restore box 23 of 23; quarantine 13 of 13; demo accounts 19 of 19; cookie-probe test 3 of 3 |
+| Staging verifier | staging at `58dddc7`, again at `3128271` | all checks passed |
+| Mobile | `b266c2c` | typecheck clean; jest 303 of 303 (41 suites) |
+
+### Human-only checklist
+
+Each needs a credential, hardware, or a system setting this session may not
+change (it does not edit web-server or CDN rules, and does not sign in to
+anything outside the test machine).
+
+1. **Add the three origin denies** (VPS, root, an interactive terminal; type
+   YES). A second layer: the directories are empty and the application no
+   longer writes to them.
+
+   ```bash
+   bash /var/www/jewelflow/docs/runbooks/operator-steps-security-batch.sh run origin
+   ```
+
+   Expect `ORIGIN: /storage/{kyc,signatures,karigar-invoices,purchases,repairs}/ denied …`,
+   then `… verify` must exit 0. Optional, Cloudflare (zone jewelflows.com):
+   the custom rule whose expression that run prints (action Block); then
+   `… verify-edge` exits 0 with "blocked at the edge" on every line (exit 3
+   with "the origin's deny rule" means origin only).
+2. **Signed-in browser isolation.** In one browser profile: sign in to
+   `https://jewelflows.com`; in a second tab sign in to
+   `https://staging.jewelflows.com` with a staging account; reload the
+   production tab (still the production user); sign out of staging; reload
+   production again (still signed in). Repeat in the other order, and once for
+   `/admin/login` on both.
+3. **Android, a real device, real staging.** Install `preview` build 24, sign
+   in, share and print one invoice and one quick bill, and save one cash-book
+   entry with the network cut during the request (one entry recorded; if the
+   server refuses, the alert says "Outcome unknown"). The three demo accounts
+   are disabled: use another staging account, or give the demo owner a private
+   password (VPS, root; it asks for the password, refuses anywhere but staging
+   and any account but the pinned one):
+
+   ```bash
+   cd /var/www/jewelflow-staging && read -rs -p "New password (12+ characters): " P && echo && sudo -u www-data php artisan tinker --execute='$pw = trim((string) fgets(STDIN)); abort_unless(app()->environment("staging") && config("database.connections.pgsql.database") === "jewelflow_staging", 500, "REFUSED: not staging"); $u = \App\Models\User::withoutGlobalScopes()->findOrFail(1); abort_unless($u->mobile_number === "9000000111" && strlen($pw) >= 12, 500, "REFUSED: not the pinned account, or a password under 12 characters"); $u->forceFill(["password" => \Illuminate\Support\Facades\Hash::make($pw), "employment_status" => "active", "is_active" => true])->save(); echo "enabled user ", $u->id, PHP_EOL;' <<< "$P"; unset P
+   ```
+
+   Run on the local test database with its guard pointed there: the account
+   came back active, the new password opened it, the published one did not.
+4. **Ship the mobile fixes**, after 3. Either hand out the `production-apk`
+   build of versionCode 25 (table above), or publish an update to the
+   production channel from a checkout of `rebrand/jewelflows-mobile` at
+   `b266c2c` or later (step 7 first, in the main checkout):
+
+   ```bash
+   npm run ota:production -- --dry-run
+   ```
+
+   ```bash
+   npm run ota:production -- "security audit fixes"
+   ```
+
+   The first must end with "dry run: verified, nothing published". Before the
+   second, decide about devices still on versionCode 16.
+5. **iOS.** No iOS build exists. Either build one and repeat step 3's share
+   and print checks on an iPhone, or record that iOS is not a release target.
+6. **Decide the repository's visibility** (GitHub → Settings → General). While
+   it is public, this handoff, the runbooks and the history are too.
+7. **Local checkouts.** Mobile: `git pull --rebase --autostash` in the main
+   checkout (its three local commits are upstream under new SHAs; the
+   uncommitted `storage.ts` is kept). Web: `git pull --ff-only` on `main`.
+
+### Tracked separately (not this batch)
+
+* Quick-bill creation on the mobile API does not use the idempotency key the
+  app sends: the same request sent twice makes two bills (seen on the local
+  test database). The POS sale and the v1 cash-book routes do de-duplicate.
+* The mobile `runtimeVersion` policy (`appVersion`) gives every build the same
+  runtime, so one update reaches builds with different native layers.
+* Relocate the three files still on the public disk behind the denies
+  (`kyc/` 2, `signatures/` 1); they are the only copies and were not moved.
+* Off-site backups (local only today); `SESSION_SECURE_COOKIE=true` on both
+  environments; `pageinspect` on production.
+* Review lows left open: SEC-005, SEC-006, SEC-009 (the command), SEC-011
+  remainder. Product decisions: §11.
+* Functional, unrelated: `platform:archive-audit-logs` fails monthly; a
+  Razorpay rate limit in `subscription:reconcile-payments`; POS 500 when an
+  item has no price or metal type.
 
 ---
 
@@ -184,8 +545,9 @@ TTL.**
   but already expired), 111 MISS.
 * Second pass, 03:55Z: 215 HIT with ages of 107–152 s, so the first pass had
   refilled the cache (colo SIN). A timed re-sample of the same 216 objects at
-  05:47Z and 05:58Z measures when they expire. **Result: pending when this
-  section was committed; it is appended at the end of this section.** The
+  05:47Z and 05:58Z measures when they expire. **Result: it was pending when
+  this section was committed, and those two samples turned out unusable (the
+  colo changed); a later sample measured the TTL — §0l, detail 1.** The
   conclusion below does not rest on it: with no rule in the zone, nothing can
   lengthen the default TTL, and the origin has served no 200 for these paths in
   the 15 days of logs kept.
@@ -216,7 +578,7 @@ an operator step (human checklist, 3).
 
 Seven repair photos also sit on the public disk and are served by URL. That is
 how the application works today, and the audit never classified `repairs/`: a
-follow-up outside this batch.
+follow-up outside this batch. **(Classified, fixed and moved in §0l, 3.)**
 
 ### 4. Mobile
 
@@ -5105,10 +5467,10 @@ Local work that remains, none of it blocking the conditions in §11:
 | R1 | **DONE** (independent agent) | 12 findings; mediums fixed, lows mostly fixed (§0i) |
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
-| R4, R5 | **CORRECTED in §0k: not done** | the dry runs count database rows (0 and 0, still true); three PDFs with no row remain in `karigar-invoices/` and `purchases/` on the public disk and the origin answers 200 for them. `b1adc1a` adds both directories to the operator's origin step; applying it is on the human checklist |
+| R4, R5 | **DONE in §0l** (it was "not done" in §0k) | the dry runs count database rows (0 and 0, still true); the three PDFs no row names were moved out of the web root on 2026-10-01 05:22:34Z into a private quarantine, byte for byte, and answer 404 everywhere (§0l, 1). The origin denies for the two directories are a second layer, on the human checklist |
 | R6 | **DONE** (origin + purge) | the 1 superseded signature: refused by nginx on all three hosts since 2026-09-25 22:24Z; its cached copies purged ≈22:45Z, 403 through Cloudflare; optional WAF rule not added |
 | R7 | **DONE** (origin + purge) | 2 KYC files: refused by nginx on all three hosts since 2026-09-25 22:24Z; cached copies purged ≈22:45Z, 403 through Cloudflare (`BYPASS`); optional WAF rule not added |
-| R8 | **Android DONE**; iOS NOT RUN | emulator: share/print PDFs carry the signature, 2 copies, the unavailable warning, the S3-09c lost-reply retry (one row); iOS needs a Mac and an iPhone (§0i) |
+| R8 | **Android DONE on the emulator** (Expo Go in §0i; the release build in §0l, which found and fixed one defect); a physical device on real staging and iOS NOT RUN | emulator: share/print PDFs carry the signature, 2 copies, the unavailable warning, the S3-09c lost-reply retry (one row); iOS needs a Mac and an iPhone (§0i, §0l 4) |
 | R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; scheduled nightly runs succeeded 09-27 → 10-01, every archive re-read in full (§0j) |
 | R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns verified by type in §0i, 0 crossing; exports clean; logs in §0g |
 | S3-22 | **DONE** | rotated 2026-09-25 22:21Z (SCRAM verifier on stdin); 0 failed logins since; `phpunit.xml` no longer carries the old value (`f6424af`); git history does, now harmless |
