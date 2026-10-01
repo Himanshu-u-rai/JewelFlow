@@ -30,9 +30,9 @@
 #                      instance (a transient unit: throwaway user, no network,
 #                      production out of sight) and compared with production.
 #                      No dump is ever given to a psql that can reach production.
-#   4 origin    R7/R6  nginx denies /storage/kyc/ and /storage/signatures/ on
-#                      production's vhost; verified in the running config and
-#                      with harmless probes on all three hosts. Origin only.
+#   4 origin    R7/R6  nginx denies /storage/{kyc,signatures,karigar-invoices,
+#               R4/R5  purchases}/ on production's vhost; verified in the running
+#                      config and with harmless probes on all three hosts. Origin only.
 #   Then it prints the Cloudflare package (edge rule, purge list, check). The
 #   edge stays PARTIAL until that package is applied.
 #
@@ -56,7 +56,10 @@ WORKER=jewelflow-production-ops-alerts
 ROLE=jewelflow
 WEB=www-data        # the user of the scheduler, PHP-FPM and the worker
 HOSTS="jewelflows.com www.jewelflows.com dhiran.jewelflows.com"
-PREFIXES="kyc signatures"
+# Public-disk directories nothing may serve: KYC, signatures, and the two the
+# app stopped using when attachments moved to the private disk (S3-02, S3-03).
+# Files without a database row still sit in them (2026-10-01: 3 PDFs answered 200).
+PREFIXES="kyc signatures karigar-invoices purchases"
 COUNTED="shops users customers invoices invoice_items invoice_payments cash_transactions karigar_invoices stock_purchases shop_billing_settings loyalty_transactions report_exports idempotency_keys platform_admins"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 WORK=/root/security-batch/operator-$STAMP
@@ -401,28 +404,32 @@ step_origin() {
   say "   probes (nothing real is fetched; every path is a random name):"
   probe_origin || stop "a probe or control did not answer as expected (above)" \
     "the denies are in place and stay in place; nothing was rolled back" \
-    "read the probe lines; do not remove the denies to recover — they match only /storage/kyc/ and /storage/signatures/"
+    "read the probe lines; do not remove the denies to recover — they match only /storage/{${PREFIXES// /,}}/"
   n=$(tail -c +"$((mark + 1))" "$NGINX_ERRLOG" 2>/dev/null | grep -c "access forbidden by rule.*probe-$STAMP")
   [ "$n" -ge "$(( $(wc -w <<< "$HOSTS") * $(wc -w <<< "$PREFIXES") ))" ] || stop "nginx logged $n denied probe(s) in $NGINX_ERRLOG" \
     "the denies answer 403 but the log does not show nginx refusing them" "grep 'access forbidden' $NGINX_ERRLOG"
   keep "$VHOST" "$protected"
-  ok "ORIGIN: /storage/kyc/ and /storage/signatures/ denied on $HOSTS (loaded config; the running workers answer 403 from nginx, $n refusals logged; /login 200; unmatched /storage/ still reaches the application)"
+  ok "ORIGIN: /storage/{${PREFIXES// /,}}/ denied on $HOSTS (loaded config; the running workers answer 403 from nginx, $n refusals logged; /login 200; unmatched /storage/ still reaches the application)"
   say "      rollback point that KEEPS the denies: cat $protected > $VHOST && nginx -t && systemctl reload nginx"
   say "      never restore ${before##*/} or an older copy: it serves those prefixes again"
 }
 
 # ── the Cloudflare package (the edge is not reachable from here) ─────────────
 edge_package() {
-  local list=$WORK/edge-purge-urls.txt h f
+  local list=$WORK/edge-purge-urls.txt h f p expr="" plain=""
   : > "$list"
-  for f in $(cd "$PROD/storage/app/public" && find kyc signatures -type f 2>/dev/null | sort); do
+  for p in $PREFIXES; do
+    expr="$expr${expr:+ or }lower(url_decode(http.request.uri.path)) contains \"/storage/$p/\""
+    plain="$plain${plain:+ or }http.request.uri.path contains \"/storage/$p/\""
+  done
+  for f in $(cd "$PROD/storage/app/public" && find $PREFIXES -type f 2>/dev/null | sort); do
     for h in $HOSTS; do printf 'https://%s/storage/%s\n' "$h" "$f" >> "$list"; done
   done
   say ""
   say "CLOUDFLARE (zone jewelflows.com). The edge is PARTIAL until 1 and 2 are done."
   say " 1. Security > WAF > Custom rules > Create rule. Name: private storage. Edit expression:"
-  say '      (http.host in {"jewelflows.com" "www.jewelflows.com" "dhiran.jewelflows.com"} and (lower(url_decode(http.request.uri.path)) contains "/storage/kyc/" or lower(url_decode(http.request.uri.path)) contains "/storage/signatures/"))'
-  say "    (If the editor rejects lower()/url_decode(): http.request.uri.path contains \"/storage/kyc/\" or ... contains \"/storage/signatures/\""
+  say "      (http.host in {\"${HOSTS// /\" \"}\"} and ($expr))"
+  say "    (If the editor rejects lower()/url_decode(): $plain"
   say "     is enough — with the origin deny in place an encoded variant reaches nginx and is refused there.)"
   say "    Action: Block. Deploy. (It runs before the cache, so cached copies stop being served at once.)"
   say " 2. Caching > Configuration > Purge cache > Custom purge > URL: the $(wc -l < "$list") URLs in $list"

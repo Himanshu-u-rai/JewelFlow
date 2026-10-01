@@ -121,13 +121,13 @@ NG
     stale() { [ -n "${RACE:-}" ] && [ "$(command cat "$S/race" 2>/dev/null || echo 0)" -lt "$RACE" ]; }   # old workers still answering
     code() { rec code "$@"
       case "$2" in
-        /storage/kyc/*|/storage/signatures/*) if [ -n "${PROBE_OPEN:-}" ] || stale; then echo 404; else
+        /storage/kyc/*|/storage/signatures/*|/storage/karigar-invoices/*|/storage/purchases/*) if [ -n "${PROBE_OPEN:-}" ] || stale; then echo 404; else
             printf 'access forbidden by rule, request: "GET %s"\n' "$2" >> "$NGINX_ERRLOG"; echo 403; fi ;;
         /storage/*) echo 404 ;;
         /login) [ -n "${LOGIN_FAIL:-}" ] && grep -q "ART up" "$S/events.log" && echo 500 || echo 200 ;;
         /health) [ "$1" = staging.jewelflows.com ] && [ -n "${STAGING_FAIL:-}" ] && echo 502 || echo 200 ;;
       esac; }
-    who() { case "$2" in /storage/kyc/*|/storage/signatures/*)
+    who() { case "$2" in /storage/kyc/*|/storage/signatures/*|/storage/karigar-invoices/*|/storage/purchases/*)
         if stale; then echo $(( $(command cat "$S/race" 2>/dev/null || echo 0) + 1 )) > "$S/race"; echo app
         elif [ -n "${PROBE_OPEN:-}" ]; then echo app; else echo nginx; fi ;; *) echo app ;; esac; }
     [ -n "${PGLOG_FAILS:-}" ] && ART() { rec ART "$@"; ev "ART $1"; [ "$1" = up ] && printf 'FATAL:  password authentication failed for user "jewelflow"\n' >> "$PGLOG"; return 0; }
@@ -374,6 +374,17 @@ setup "$EDGE; ES=403 ENOHDR=1 EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
 check "verify-edge: no response headers -> 1" 'out_has "edge-rc=1" && out_has "no HTTP status line"'
 setup "$EDGE; ES=403 ERC=7 EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
 check "verify-edge: connection failure -> 1" 'out_has "edge-rc=1" && out_has "curl exit 7"'
+
+# ── the two prefixes added 2026-10-01 (orphan attachments still served) ─────
+setup 'PREFIXES="kyc signatures" step_origin >/dev/null 2>&1; effective_ok; echo "eff-rc=$?"'
+check "origin: a vhost with only the first two denies (production on 2026-10-01) is reported as missing the other two" \
+  'out_has "missing: karigar-invoices purchases" && out_has "eff-rc=1"'
+setup 'PREFIXES="kyc signatures" step_origin >/dev/null 2>&1; step_origin'
+check "origin: the missing two denies are added next to the existing ones, each exactly once; all four probed" \
+  '[ "$RC" = 0 ] && [ "$(grep -c "location ^~ /storage/" "$S/vhost")" = 4 ] && for p in kyc signatures karigar-invoices purchases; do [ "$(grep -c "location ^~ /storage/$p/ {" "$S/vhost")" = 1 ] || exit 1; done && out_has "ORIGIN: /storage/{kyc,signatures,karigar-invoices,purchases}/ denied"'
+setup 'for d in kyc/1 signatures karigar-invoices/1 purchases; do mkdir -p "$PROD/storage/app/public/$d"; : > "$PROD/storage/app/public/$d/f.pdf"; done; edge_package'
+check "edge: the purge list and the rule cover all four prefixes (4 files x 3 hosts)" \
+  '[ "$(wc -l < "$S/work/edge-purge-urls.txt")" = 12 ] && grep -qx "https://www.jewelflows.com/storage/purchases/f.pdf" "$S/work/edge-purge-urls.txt" && out_has "contains \"/storage/karigar-invoices/\"" && out_has "contains \"/storage/purchases/\"" && out_has "http.host in {\"jewelflows.com\" \"www.jewelflows.com\" \"dhiran.jewelflows.com\"}"'
 
 echo "== $PASS passed, $FAILN failed"
 [ "$FAILN" = 0 ]
