@@ -85,6 +85,14 @@ Keep the archive off-server (download or sync to object storage) before migratin
 ```bash
 cd "$APP_DIR"
 git fetch --all
+# RELEASE FLOOR. Never check out a ref that does not contain the security batch
+# release. Older code takes mobile payments with a cache-only idempotency check
+# and records a second payment for a key the newer code already served
+# (measured: RB-1 and RB-4 in docs/runbooks/payment-idempotency-rollback-constraints.md),
+# and it drops the tenant-isolation fixes. `main` contains the release since
+# 2026-10-01; branches cut before it do not.
+git merge-base --is-ancestor 250950fa7739085fb1240f1c321711df336bc31c <release-commit-or-tag> \
+  || { echo "REFUSED: this ref predates the security batch release"; exit 1; }
 git checkout <release-commit-or-tag>            # immutable history; deploy a pinned ref
 ```
 
@@ -218,7 +226,12 @@ accounting triggers). Walk them live on the demo shop — this is also the demo:
 
 ## 15. Rollback
 
-- **Deploy failed (assets/app):** `git checkout <previous-tag>` → `composer install --no-dev -o` → `npm ci && npm run build:verify` → re-cache (Section 8) → `queue:restart`.
+- **Never roll back below the release floor (Section 5):** recover by reverting the
+  faulty commit on top of the deployed release ("revert forward"), not by checking
+  out an older ref. A ref without `250950f` fails the floor check, and
+  `payment-idempotency-rollback-constraints.md` §4 forbids it while payment retries
+  can still arrive.
+- **Deploy failed (assets/app):** `git checkout <previous-tag>` (it must pass the floor check) → `composer install --no-dev -o` → `npm ci && npm run build:verify` → re-cache (Section 8) → `queue:restart`.
 - **Migration failed:** restore the Section-4 backup, then `migrate:rollback` the last batch if partially applied. Never edit ledger rows by hand.
 - **Deploy ok but UI broken:** `php artisan optimize:clear`, rebuild assets; if still broken, revert the branch to the last known-good commit and redeploy.
 
