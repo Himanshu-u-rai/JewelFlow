@@ -224,16 +224,37 @@ accounting triggers). Walk them live on the demo shop — this is also the demo:
 
 ---
 
-## 15. Rollback
+## 15. Recovery — keep the schema and the data, move the code forward
 
-- **Never roll back below the release floor (Section 5):** recover by reverting the
-  faulty commit on top of the deployed release ("revert forward"), not by checking
-  out an older ref. A ref without `250950f` fails the floor check, and
-  `payment-idempotency-rollback-constraints.md` §4 forbids it while payment retries
-  can still arrive.
-- **Deploy failed (assets/app):** `git checkout <previous-tag>` (it must pass the floor check) → `composer install --no-dev -o` → `npm ci && npm run build:verify` → re-cache (Section 8) → `queue:restart`.
-- **Migration failed:** restore the Section-4 backup, then `migrate:rollback` the last batch if partially applied. Never edit ledger rows by hand.
-- **Deploy ok but UI broken:** `php artisan optimize:clear`, rebuild assets; if still broken, revert the branch to the last known-good commit and redeploy.
+Two things must survive any recovery: **payment-claim compatibility** (only code
+that honours `invoice_payment_claims` may take payment traffic, and never two
+versions at once) and **every record written since the deploy**. The rules and
+the measurements behind them are in
+`docs/runbooks/signature-migration-release-order.md` ("Recovery") and
+`docs/runbooks/payment-idempotency-rollback-constraints.md` §4. There is no
+"roll back to the previous tag" step here: an older ref fails the release floor
+(Section 5), and older code double-charges a retried mobile payment.
+
+- **A fault in the new code (app, assets or UI).** Put the site in maintenance
+  if it is harming users, then **revert forward**: revert the faulty commit(s) on
+  top of the deployed release, or deploy the fix. The ref must pass the floor
+  check. Then `composer install --no-dev -o` → `npm ci && npm run build:verify`
+  → re-cache (Section 8) → `queue:restart`.
+- **Only a cache or an asset is wrong.** Rebuild the assets and re-cache
+  (Section 8). Nothing else changes.
+- **A migration failed.** Stay in maintenance and fix forward: PostgreSQL rolls a
+  failed migration back by itself, so correct it and run it again. Do not
+  `migrate:rollback` migrations that hold recorded data: the payment-claims,
+  response-header and signature-snapshot migrations are one-way, and their
+  `down()` destroys the only record of which payment keys were served and how
+  documents were issued.
+- **The Section-4 backup is for losing the server or the database, not for
+  undoing a deploy.** Restoring it discards everything recorded after it was
+  taken: invoices, payments, and the claims that stop a retried payment from
+  being charged twice. After a failed deploy it may be restored only if the site
+  has been in maintenance without a break since that backup was taken, so that
+  nothing was recorded in between.
+- Never edit ledger rows by hand.
 
 ---
 
