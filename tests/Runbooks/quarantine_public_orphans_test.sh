@@ -22,7 +22,6 @@ setup() {
     QUARANTINE_LIB=1 source "$SCRIPT"
     PROD=$S/prod WEB=$(id -un) STAMP=TEST
     chown() { :; }                      # the sandbox is not owned by www-data
-    install() { command mkdir -p "${@: -1}"; }
     refs() { command grep -cxF -- "$2" "$S/referenced" || true; }
     serve() { local path=${1%%\?*}   # what nginx does with the sandbox web root
       case "$path" in
@@ -51,6 +50,8 @@ check "move: they are gone from the web root; the file a row names and the publi
   '[ ! -e "$P/purchases/bbb.pdf" ] && [ ! -e "$P/karigar-invoices/7/aaa.pdf" ] && [ -f "$P/purchases/live.pdf" ] && [ -f "$P/shop-logos/logo.png" ] && out_has "left in place (named by 1 row(s))"'
 check "move: nothing was deleted (5 files before, 5 after, plus the manifest with 3 entries)" \
   '[ "$(find "$S/prod" -type f ! -name MANIFEST.tsv | wc -l)" = 5 ] && [ "$(wc -l < "$(Q)/MANIFEST.tsv")" = 4 ]'
+check "move: every directory in the quarantine is private (0700), the manifest 0600" \
+  '[ -z "$(find "$(Q)" -type d ! -perm 700)" ] && [ "$(stat -c %a "$(Q)/MANIFEST.tsv")" = 600 ]'
 setup 'move; verify'
 check "verify after a move: copies intact, 404 on every host for the plain and the query-string URL, controls hold (exit 0)" \
   '[ "$RC" = 0 ] && out_has "3 quarantined file(s): copy intact" && [ "$(grep -c "controls: /login 200, a public catalogue file 200" "$S/out")" = 3 ]'

@@ -101,14 +101,17 @@ move() {
     [ "$n" = 0 ] || { say "      left in place (named by $n row(s)): ${f%%/*}/…"; continue; }
     [ ! -e "$(dest)/$f" ] || stop "the quarantine already holds a file at that path" "$moved file(s) moved so far; this one untouched"
     a=$(sha "$(pub)/$f")
-    install -d -o "$WEB" -g "$WEB" -m 700 "$(dirname "$(dest)/$f")" && mv -n "$(pub)/$f" "$(dest)/$f" \
+    mkdir -p "$(dirname "$(dest)/$f")" && mv -n "$(pub)/$f" "$(dest)/$f" \
       || stop "could not move a file" "$moved file(s) moved so far; this one is where it was or in the quarantine, never deleted"
     b=$(sha "$(dest)/$f")
     [ "$a" = "$b" ] && [ ! -e "$(pub)/$f" ] || stop "a moved file does not match its original" "it is at $(dest)/$f; nothing was deleted"
     printf '%s\t%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "$f" "$b" "$(stat -c %s "$(dest)/$f")" >> "$manifest"
     moved=$((moved + 1)); ok "moved ${f%%/*}/… (sha256 $(printf %s "$b" | cut -c1-12), same before and after)"
   done < <(files)
-  chown "$WEB:$WEB" "$manifest"; chmod 600 "$manifest"
+  # Every directory and file in the quarantine: the web user's, and nobody else's
+  # (mkdir -p made the intermediate ones root's, 755, on the first run of 2026-10-01).
+  chown -R "$WEB:$WEB" "$(dest)" && find "$(dest)" -type d -exec chmod 700 {} + && chmod 600 "$manifest" \
+    || stop "could not set the quarantine's ownership" "$moved file(s) moved; nothing deleted"
   ok "MOVED $moved file(s) to $(dest); manifest $manifest"
 }
 
