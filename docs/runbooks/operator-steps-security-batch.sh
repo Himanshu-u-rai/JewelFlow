@@ -116,7 +116,8 @@ fail() { echo "sandbox: $*" >&2; exit 97; }
 [ "$(id -u)" != 0 ] || fail "running as root"
 for p in $MUST_NOT_SEE; do if [ -r "$p" ] || ls "$p" >/dev/null 2>&1; then fail "can read $p"; fi; done
 if (exec 3<>"/dev/tcp/127.0.0.1/$PROD_PORT") 2>/dev/null; then fail "can reach 127.0.0.1:$PROD_PORT"; fi
-[ "$(ls /sys/class/net | tr '\n' ' ')" = "lo " ] || fail "has a network interface besides lo"
+# /proc/net/dev is this network namespace's view (/sys/class/net can still be the host's)
+[ "$(awk 'NR > 2 { sub(/:.*/, ""); gsub(/[[:space:]]/, ""); printf "%s ", $0 }' /proc/net/dev)" = "lo " ] || fail "has a network interface besides lo"
 echo "sandbox: uid $(id -u), network lo only, production paths and port unreachable" >&2
 B=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)
 W=$(mktemp -d /mnt/pg.XXXXXX)
@@ -167,6 +168,7 @@ restore_dump() {
     rm -rf "$WORK/restore"
     stop "the dump does not restore in the isolated instance" "the archive exists; production untouched; the box is gone" "inspect the dump"
   fi
+  say "      $(grep -m1 '^sandbox: uid [0-9]*, ' "$WORK/restore/sandbox.err" | tr -cd '[:print:]' | cut -c1-120)"   # the box's own check
   rm -rf "$WORK/restore"
 }
 restored() { sed -n "s/^$1 \([0-9][0-9]*\)$/\1/p" <<< "$RESTORED" | tail -1; }   # digits only: the box's output is data

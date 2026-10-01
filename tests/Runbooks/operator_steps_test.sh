@@ -103,7 +103,7 @@ NG
         *"from pg_roles"*) echo jewelflow_staging ;;
       esac; return 0; }
     # The box: records what it was given (argv and the dump on stdin), answers like the real one.
-    systemd-run() { rec systemd-run "$@"; command cat > "$S/sandbox.stdin"; ev sandbox; [ -z "${SANDBOX_FAIL:-}" ] || { echo "psql:<stdin>:3: ERROR:  boom" >&2; return 3; }
+    systemd-run() { rec systemd-run "$@"; command cat > "$S/sandbox.stdin"; ev sandbox; echo "sandbox: uid 61535, network lo only, production paths and port unreachable" >&2; [ -z "${SANDBOX_FAIL:-}" ] || { echo "psql:<stdin>:3: ERROR:  boom" >&2; return 3; }
       local t; for t in $COUNTED; do echo "count $t ${SANDBOX_COUNT:-5}"; done; echo "triggers 17"; }
     db_connects() { rec db_connects "$@"; local pw; pw=$(command cat)
       [ -n "${CONNECT_FAIL:-}" ] && [ "$pw" = "$NEWPW" ] && return 1
@@ -249,6 +249,7 @@ export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env"
 setup step_backup
 check "backup: a complete archive passes: restored in the box, compared, extracted dump removed" \
   '[ "$RC" = 0 ] && out_has "row counts of 14 tables match production" && grep -q sandbox "$S/events.log" && grep -q "select 1;" "$S/sandbox.stdin" && [ ! -e "$S/work/restore" ]'
+check "backup: the run shows the box's own check (uid, network, reach)" 'out_has "sandbox: uid 61535, network lo only, production paths and port unreachable"'
 check "backup: the dump goes to the box only: no psql against production sees it, no scratch database, no extension is created" \
   '! grep -q "select 1;" "$S/pgsu.stdin" && ! grep -qE "createdb|dropdb" "$S/events.log" "$S/argv.log" && ! grep -qiE "create extension|SET ROLE" "$S/pgsu.stdin"'
 check "backup: the box is a transient unit with no network, private IPC, read-only system, hidden homes and production paths, a capped tmpfs" \
