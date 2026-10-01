@@ -270,6 +270,17 @@ if [ -n "$REDACTED" ]; then
     } >> "$OUT/MANIFEST.md"
 fi
 
+# The demo seeder's built-in password is published with the repository and, on
+# 2026-10-01, still opened three accounts on staging. It is an ordinary word, so
+# it cannot be redacted by value: the two shapes that carry it as a credential
+# are redacted instead (the constant, and the old "mobile / password" doc lines).
+grep -rlE "const DEMO_PASSWORD +=|9000000[0-9]{3} / [a-z]" "$OUT" 2>/dev/null | while IFS= read -r f; do
+    perl -pi -e "s/(const DEMO_PASSWORD\\s*=\\s*')[^']*'/\$1<redacted: seeder default>'/; s{(9000000\\d{3} / )[a-z]+}{\$1<redacted>}g" "$f"
+done
+if grep -rqE "const DEMO_PASSWORD +=[[:space:]]*'[^<]|9000000[0-9]{3} / [a-z]" "$OUT" 2>/dev/null; then
+    echo "FATAL: the seeder's default password is still in the packet." >&2; exit 2
+fi
+
 echo "Scanning packet for secrets and customer data..."
 SCAN_HITS=0
 # Known-public documentation literals, excluded by EXACT value.
