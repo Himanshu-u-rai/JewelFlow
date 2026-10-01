@@ -23,6 +23,7 @@ class RepairWebImageUploadFlowTest extends TestCase
 
     public function test_web_repair_create_flow_uploads_photo_and_shows_it_on_detail_page(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);
@@ -47,15 +48,18 @@ class RepairWebImageUploadFlowTest extends TestCase
 
         $this->assertNotNull($repair->image_path);
         $this->assertSame($repair->image_path, $repair->image);
-        Storage::disk('public')->assertExists($repair->image_path);
+        // A repair photo is a customer's attachment: private disk, never the public one.
+        Storage::disk('local')->assertExists($repair->image_path);
+        Storage::disk('public')->assertMissing($repair->image_path);
 
         $detail = TenantContext::runFor($shop->id, function () use ($user, $repair) {
             return $this->actingAs($user)->get(route('repairs.show', $repair));
         });
         $detail->assertOk();
         $detail->assertSee('Item photo');
-        // The <img> src is the resolved public URL, which embeds the stored path.
-        $detail->assertSee($repair->image_path);
+        // The <img> src is the authorized route, not a /storage/ URL.
+        $detail->assertSee(route('repairs.image', $repair), false);
+        $detail->assertDontSee('/storage/repairs/', false);
         $detail->assertDontSee('No photo uploaded');
     }
 }

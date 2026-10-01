@@ -20,7 +20,7 @@
     ];
     $statusIndex = collect($workflow)->search(fn ($step) => $step['key'] === $status);
     $statusIndex = $statusIndex === false ? 0 : $statusIndex;
-    $repairImageUrl = $repair->resolveImageUrl('public');
+    $repairImageUrl = $repair->resolveImageUrl();
 @endphp
 
 <x-app-layout>

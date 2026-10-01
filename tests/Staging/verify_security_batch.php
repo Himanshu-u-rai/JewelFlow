@@ -321,6 +321,31 @@ try {
     check($billId > 0 && str_contains($print, $sigA) && ! str_contains($print, $sigB), 'signatures: a bill issued under A still prints A after B replaced it and signatures were switched off');
     check(Storage::disk('public')->exists((string) end($files)[1]) === false, 'signatures: stored on the private disk, not the public one', (string) end($files)[0]);
 
+    // ── a repair photo: private disk, authorized route, expiring mobile link ─
+    http('POST', route('repairs.store'), ['customer_id' => $a['customer']->id, 'item_description' => 'Synth ring', 'description' => 'Resize',
+        'gross_weight' => 4.2, 'purity' => 22, 'estimated_cost' => 300], ['web', $a['owner']], $jarA, [], ['image' => UploadedFile::fake()->image('repair.png', 40, 40)]);
+    $repair = App\Models\Repair::withoutTenant()->where('shop_id', $a['shop']->id)->latest('id')->first();
+    $photo = (string) $repair?->image_path;
+    $files[] = [App\Models\Repair::IMAGE_DISK, $photo];
+    $dirs[] = [App\Models\Repair::IMAGE_DISK, "repairs/{$a['shop']->id}"];
+    $mine = http('GET', route('repairs.image', $repair), [], ['web', $a['owner']], $jarA);
+    $theirs = http('GET', route('repairs.image', $repair), [], ['web', $b['owner']], $jarB);
+    $anon = http('GET', route('repairs.image', $repair));
+    check($photo !== '' && Storage::disk(App\Models\Repair::IMAGE_DISK)->exists($photo) && ! Storage::disk('public')->exists($photo)
+        && $mine->getStatusCode() === 200 && $theirs->getStatusCode() === 404 && location($anon) === '/login',
+        'repairs: a photo is stored privately; its shop gets it, another shop gets 404, nobody signed in is sent to /login',
+        $mine->getStatusCode().'/'.$theirs->getStatusCode().'/'.$anon->getStatusCode());
+    $link = (string) (json_decode((string) http('GET', "/api/mobile/repairs/{$repair->id}", [], ['token', $a['owner'], $tokenA])->getContent(), true)['image_url'] ?? '');
+    $signed = http('GET', (string) parse_url($link, PHP_URL_PATH).'?'.parse_url($link, PHP_URL_QUERY));
+    $bare = http('GET', "/api/mobile/repairs/{$repair->id}/image");
+    check(str_contains($link, 'signature=') && ! str_contains($link, '/storage/') && $signed->getStatusCode() === 200 && $bare->getStatusCode() === 403,
+        'repairs: the mobile API hands out a signed link that works without headers; the same URL without its signature is refused',
+        $signed->getStatusCode().'/'.$bare->getStatusCode());
+    if ($onStaging) {
+        $served = probe('/storage/'.$photo);
+        check(in_array($served, ['403', '404'], true), 'repairs: the photo is not served under /storage', $served);
+    }
+
     // ── tenant context, queue worker cleanup, loyalty ────────────────────────
     check(TenantContext::get() === null, 'tenant context is clear after the requests');
     check(app('events')->hasListeners(Illuminate\Queue\Events\Looping::class), 'the worker clears tenant context between jobs (Looping listener registered)');
@@ -346,6 +371,6 @@ try {
         }
     }
 }
-echo "\n(transaction rolled back; ".count($files).' signature file(s) and '.count($dirs)." export directory removed)\n";
+echo "\n(transaction rolled back; ".count($files).' file(s) and '.count($dirs)." director(ies) the checks wrote were removed)\n";
 echo $failures === 0 ? "STAGING VERIFICATION: all checks passed\n" : "STAGING VERIFICATION: {$failures} check(s) FAILED\n";
 exit($failures === 0 ? 0 : 1);

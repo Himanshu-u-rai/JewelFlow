@@ -25,6 +25,7 @@ class MobileRepairImageUploadTest extends TestCase
 
     public function test_mobile_repair_store_accepts_valid_jpeg_png_and_webp_base64_and_persists_image_path(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);
@@ -52,9 +53,12 @@ class MobileRepairImageUploadTest extends TestCase
             $this->assertStringStartsWith("repairs/{$shop->id}/", $path);
             $this->assertTrue(Str::endsWith($path, '.' . $expectedExt));
             $this->assertSame($path, $response->json('image'));
-            $this->assertSame(asset('storage/' . $path), $response->json('image_url'));
+            // An expiring signed link to this repair's photo, not a /storage/ URL.
+            $this->assertStringContainsString("/api/mobile/repairs/{$repairId}/image?", (string) $response->json('image_url'));
+            $this->assertStringContainsString('signature=', (string) $response->json('image_url'));
 
-            Storage::disk('public')->assertExists($path);
+            Storage::disk('local')->assertExists($path);
+            Storage::disk('public')->assertMissing($path);
             $this->assertDatabaseHas('repairs', [
                 'id' => $repairId,
                 'shop_id' => $shop->id,
@@ -75,17 +79,19 @@ class MobileRepairImageUploadTest extends TestCase
         $listedRepair = collect($listResponse->json('data'))->firstWhere('id', $lastRepairId);
         $this->assertNotNull($listedRepair);
         $this->assertSame($lastPath, data_get($listedRepair, 'image_path'));
-        $this->assertSame(asset('storage/' . $lastPath), data_get($listedRepair, 'image_url'));
+        $this->assertStringContainsString("/api/mobile/repairs/{$lastRepairId}/image?", (string) data_get($listedRepair, 'image_url'));
 
         $detailResponse = $this->getJson("/api/mobile/repairs/{$lastRepairId}");
         $detailResponse->assertOk();
         $detailResponse->assertJsonPath('id', $lastRepairId);
         $detailResponse->assertJsonPath('image_path', $lastPath);
-        $detailResponse->assertJsonPath('image_url', asset('storage/' . $lastPath));
+        $this->assertStringContainsString("/api/mobile/repairs/{$lastRepairId}/image?", (string) $detailResponse->json('image_url'));
+        $this->assertStringNotContainsString('/storage/', (string) $detailResponse->json('image_url'));
     }
 
     public function test_mobile_repair_store_rejects_invalid_base64(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);
@@ -106,6 +112,7 @@ class MobileRepairImageUploadTest extends TestCase
 
     public function test_mobile_repair_store_rejects_invalid_image_mime(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);
@@ -126,6 +133,7 @@ class MobileRepairImageUploadTest extends TestCase
 
     public function test_mobile_repair_store_rejects_oversized_image_payload(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);
@@ -150,6 +158,7 @@ class MobileRepairImageUploadTest extends TestCase
 
     public function test_mobile_repair_store_without_image_keeps_image_fields_null(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         [$user, $shop] = $this->createManufacturerTenant();
         $customer = $this->createCustomer($shop->id);

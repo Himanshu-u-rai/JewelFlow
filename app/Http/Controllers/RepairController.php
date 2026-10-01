@@ -181,20 +181,20 @@ class RepairController extends Controller
         $existingImagePath = $repair->resolveImagePath();
         if ($request->hasFile('image')) {
             if ($existingImagePath) {
-                Storage::disk($this->repairImageDisk())->delete($existingImagePath);
+                $repair->deleteImageFile();
             }
             $newPath = $this->storeUploadedRepairImage($request, $shopId);
             $validated['image_path'] = $newPath;
             $validated['image'] = $newPath;
         } elseif (!empty($validated['image_base64'])) {
             if ($existingImagePath) {
-                Storage::disk($this->repairImageDisk())->delete($existingImagePath);
+                $repair->deleteImageFile();
             }
             $newPath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
             $validated['image_path'] = $newPath;
             $validated['image'] = $newPath;
         } elseif ($request->boolean('remove_image') && $existingImagePath) {
-            Storage::disk($this->repairImageDisk())->delete($existingImagePath);
+            $repair->deleteImageFile();
             $validated['image_path'] = null;
             $validated['image'] = null;
         }
@@ -345,21 +345,22 @@ class RepairController extends Controller
             return redirect()->route('repairs.index')->with('error', 'Delivered repairs cannot be deleted.');
         }
 
-        $imagePath = $repair->resolveImagePath();
-        if ($imagePath) {
-            Storage::disk($this->repairImageDisk())->delete($imagePath);
-        }
+        $repair->deleteImageFile();
 
         $repair->delete();
 
         return redirect()->route('repairs.index')->with('success', 'Repair deleted successfully.');
     }
 
+    /** The photo of one repair, for a member of its shop with repairs.view (route middleware; {repair} is tenant-scoped). */
+    public function image(Repair $repair)
+    {
+        return $repair->imageResponse();
+    }
+
     private function repairImageDisk(): string
     {
-        $defaultDisk = (string) config('filesystems.default', 'public');
-
-        return in_array($defaultDisk, ['public', 's3'], true) ? $defaultDisk : 'public';
+        return Repair::imageWriteDisk();
     }
 
     private function storeUploadedRepairImage(Request $request, int $shopId): ?string
@@ -412,7 +413,7 @@ class RepairController extends Controller
         $payload = $repair->toArray();
         $payload['image'] = $repair->resolveImagePath();
         $payload['image_path'] = $repair->resolveImagePath();
-        $payload['image_url'] = $repair->resolveImageUrl($this->repairImageDisk());
+        $payload['image_url'] = $repair->resolveImageUrl();
 
         return $payload;
     }

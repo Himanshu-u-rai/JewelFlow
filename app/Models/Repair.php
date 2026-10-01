@@ -186,22 +186,79 @@ class Repair extends Model
         return is_string($path) && $path !== '' ? $path : null;
     }
 
-    public function resolveImageUrl(?string $disk = null): ?string
+    /**
+     * A repair photo is a customer's attachment: it lives on the private disk
+     * and is only ever handed out through a route that checks who is asking.
+     */
+    public const IMAGE_DISK = 'local';
+
+    /** Where new photos are written. */
+    public static function imageWriteDisk(): string
+    {
+        return config('filesystems.default') === 's3' ? 's3' : self::IMAGE_DISK;
+    }
+
+    /** Where photos may be found: the private disk, and the public one until `repairs:relocate-images` has run. */
+    public static function imageReadDisks(): array
+    {
+        return array_values(array_unique([self::imageWriteDisk(), self::IMAGE_DISK, 'public']));
+    }
+
+    /** The disk that holds this repair's photo, or null. */
+    public function imageDisk(): ?string
     {
         $path = $this->resolveImagePath();
-        if ($path === null) {
+        if ($path === null || preg_match('/^https?:\/\//i', $path) === 1) {
             return null;
         }
-
-        if (preg_match('/^https?:\/\//i', $path) === 1) {
-            return $path;
+        foreach (self::imageReadDisks() as $disk) {
+            if (Storage::disk($disk)->exists($path)) {
+                return $disk;
+            }
         }
 
-        $resolvedDisk = $disk ?: 'public';
-        $url = Storage::disk($resolvedDisk)->url($path);
+        return null;
+    }
 
-        return str_starts_with($url, 'http://') || str_starts_with($url, 'https://')
-            ? $url
-            : url($url);
+    /** For a signed-in browser: the staff route (session, repairs.view, this shop). */
+    public function resolveImageUrl(): ?string
+    {
+        return $this->resolveImagePath() === null ? null : route('repairs.image', $this);
+    }
+
+    /**
+     * For the mobile app, which loads an image with a plain request and no
+     * Authorization header: a link to this one photo that stops working after
+     * fifteen minutes. It is only ever returned by the authenticated,
+     * shop-scoped repairs API.
+     */
+    public function signedImageUrl(): ?string
+    {
+        return $this->resolveImagePath() === null ? null
+            : \Illuminate\Support\Facades\URL::temporarySignedRoute('mobile.repairs.image', now()->addMinutes(15), ['repair' => $this->id]);
+    }
+
+    /** The photo as a response, from whichever disk holds it. Never cached by anything in between. */
+    public function imageResponse()
+    {
+        $disk = $this->imageDisk();
+        abort_if($disk === null, 404);
+
+        return Storage::disk($disk)->response($this->resolveImagePath(), null, [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /** Remove the photo from every disk it may be on. */
+    public function deleteImageFile(): void
+    {
+        $path = $this->resolveImagePath();
+        if ($path === null || preg_match('/^https?:\/\//i', $path) === 1) {
+            return;
+        }
+        foreach (self::imageReadDisks() as $disk) {
+            Storage::disk($disk)->delete($path);
+        }
     }
 }

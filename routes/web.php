@@ -644,6 +644,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Delete = owner + manager only.
     Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->middleware('can:repairs.view')->name('repairs.index');
     Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->middleware('can:repairs.create')->name('repairs.store');
+    Route::get('/repairs/{repair}/image', [\App\Http\Controllers\RepairController::class, 'image'])->middleware('can:repairs.view')->name('repairs.image');
     Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->middleware('can:repairs.view')->name('repairs.show');
     Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->middleware('can:repairs.edit')->name('repairs.edit');
     Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->middleware('can:repairs.edit')->name('repairs.update');

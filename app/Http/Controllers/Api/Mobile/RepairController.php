@@ -60,6 +60,17 @@ class RepairController extends Controller
         ]);
     }
 
+    /**
+     * One repair's photo, by a signed link (`signed` middleware: the link names
+     * this repair, cannot be altered, and expires). No session or token: the
+     * released app loads images without headers. The link itself is only ever
+     * given out by the authenticated, shop-scoped endpoints of this controller.
+     */
+    public function image(int $repair)
+    {
+        return Repair::withoutGlobalScopes()->findOrFail($repair)->imageResponse();
+    }
+
     public function show(int $repair, Request $request): JsonResponse
     {
         $repairModel = Repair::with('customer:id,first_name,last_name,mobile')
@@ -150,7 +161,7 @@ class RepairController extends Controller
             'status' => $repair->status,
             'image' => $resolvedImagePath,
             'image_path' => $resolvedImagePath,
-            'image_url' => $this->repairImageUrl($resolvedImagePath),
+            'image_url' => $repair->signedImageUrl(),
             'message' => 'Repair created successfully.',
             'repair' => $this->serializeRepair($repair),
         ], 201);
@@ -396,34 +407,19 @@ class RepairController extends Controller
         );
     }
 
-    private function repairImageUrl(?string $imagePath): ?string
-    {
-        if (empty($imagePath)) {
-            return null;
-        }
-
-        $url = Storage::disk($this->repairImageDisk())->url(ltrim($imagePath, '/'));
-
-        return str_starts_with($url, 'http://') || str_starts_with($url, 'https://')
-            ? $url
-            : url($url);
-    }
-
     private function serializeRepair(Repair $repair): array
     {
         $resolvedImagePath = $repair->resolveImagePath();
         $payload = $repair->toArray();
         $payload['image'] = $resolvedImagePath;
         $payload['image_path'] = $resolvedImagePath;
-        $payload['image_url'] = $this->repairImageUrl($resolvedImagePath);
+        $payload['image_url'] = $repair->signedImageUrl();
 
         return $payload;
     }
 
     private function repairImageDisk(): string
     {
-        $defaultDisk = (string) config('filesystems.default', 'public');
-
-        return in_array($defaultDisk, ['public', 's3'], true) ? $defaultDisk : 'public';
+        return Repair::imageWriteDisk();
     }
 }
