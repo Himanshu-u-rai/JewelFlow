@@ -42,8 +42,24 @@
         }
     @endphp
 
-    <x-page-header class="invoices-page-header" title="Invoices" subtitle="View and manage all sales invoices">
+    @php
+        // Historical Sales (a retailer module with its own permission) opens
+        // from here since it left the sidebar. With Open POS beside it the
+        // phone header needs a second row: see --two-actions in app.css.
+        $showHistoricalSales = (bool) auth()->user()->shop?->isRetailer() && auth()->user()->can('historical.view');
+        $invoiceHeaderTwoActions = $showHistoricalSales && auth()->user()->can('sales.pos');
+    @endphp
+    <x-page-header class="invoices-page-header{{ $invoiceHeaderTwoActions ? ' invoices-page-header--two-actions' : '' }}" title="Invoices" subtitle="View and manage all sales invoices">
         <x-slot:actions>
+            @if($showHistoricalSales)
+            <a href="{{ route('historical.index') }}"
+               class="btn btn-sm invoices-historical-btn">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>
+                </svg>
+                Historical Sales
+            </a>
+            @endif
             @can('sales.pos')
             <a href="{{ route('pos.index') }}"
                class="btn btn-success btn-sm invoices-open-pos-btn">

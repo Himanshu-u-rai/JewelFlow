@@ -16924,6 +16924,14 @@ input::-webkit-calendar-picker-indicator {
     transform: scale(0.98);
 }
 
+/* Historical Sales: the secondary action beside Open POS. A plain .btn, given
+   the same height and corners so the pair reads as one group. */
+.invoices-page-header .invoices-historical-btn {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+}
+
 .invoices-index-page .invoices-kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -18651,6 +18659,38 @@ input::-webkit-calendar-picker-indicator {
         width: 14px;
         height: 14px;
         margin-right: 4px;
+    }
+
+    .invoices-page-header .invoices-historical-btn {
+        min-height: 34px;
+        padding: 0 10px;
+        gap: 4px;
+        font-size: 12px;
+    }
+
+    .invoices-page-header .invoices-historical-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* On a phone the title and two actions do not fit one row (388px of
+       content): the actions take a row of their own and share it equally. */
+    @media (max-width: 480px) {
+        .invoices-page-header--two-actions {
+            flex-wrap: wrap;
+        }
+
+        .invoices-page-header--two-actions .page-actions {
+            flex: 1 0 100%;
+            flex-wrap: nowrap;
+        }
+
+        .invoices-page-header--two-actions .page-actions > .btn {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 40px;
+            justify-content: center;
+        }
     }
 
     .invoice-show-header {

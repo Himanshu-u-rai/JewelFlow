@@ -331,48 +331,62 @@ function persistSidebarScroll() {
     sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(nav.scrollTop));
 }
 
+// Does this sidebar link answer for the current address? Returns the length of
+// the path that matched (0 for none), so the most specific link can win.
+function navLinkMatchLength(link, currentPath, currentQuery) {
+    let url;
+    try {
+        url = new URL(link.href);
+    } catch (_) {
+        return 0;
+    }
+
+    const covers = path => currentPath === path || currentPath.startsWith(path + '/');
+    let length = 0;
+
+    // The link's own address. Dashboard must be exact match only; a link that
+    // names a query (Profile is /settings?tab=profile) is that page only.
+    const ownPath = url.pathname;
+    const queryMatches = Array.from(url.searchParams).every(([key, value]) => currentQuery.get(key) === value);
+    if (queryMatches && (ownPath === '/dashboard' ? currentPath === ownPath : covers(ownPath))) {
+        length = ownPath.length;
+    }
+
+    // Pages that open from this link's page but live at another path:
+    // data-nav-match="/report,/reporting" on the reports hub link.
+    (link.dataset.navMatch || '').split(',').filter(Boolean).forEach(path => {
+        if (covers(path) && path.length > length) length = path.length;
+    });
+
+    return length;
+}
+
 function syncActiveNavLink() {
     const currentPath = window.location.pathname;
-    const links = Array.from(
-        document.querySelectorAll('.sidebar .nav-link[href]')
-    );
+    const currentQuery = new URLSearchParams(window.location.search);
 
     let bestMatch = null;
     let bestLength = 0;
 
-    links.forEach(link => {
+    document.querySelectorAll('.sidebar .nav-link[href]').forEach(link => {
         link.classList.remove('active');
 
-        let linkPath;
-        try {
-            linkPath = new URL(link.href).pathname;
-        } catch (_) {
-            return;
-        }
-
-        // Dashboard must be exact match only
-        if (linkPath === '/dashboard') {
-            if (currentPath === '/dashboard') {
-                if (linkPath.length > bestLength) {
-                    bestMatch = link;
-                    bestLength = linkPath.length;
-                }
-            }
-            return;
-        }
-
-        // All other links: current path must start with link path
-        if (currentPath === linkPath || currentPath.startsWith(linkPath + '/')) {
-            if (linkPath.length > bestLength) {
-                bestMatch = link;
-                bestLength = linkPath.length;
-            }
+        const length = navLinkMatchLength(link, currentPath, currentQuery);
+        if (length > bestLength) {
+            bestMatch = link;
+            bestLength = length;
         }
     });
 
     if (bestMatch) {
         bestMatch.classList.add('active');
     }
+
+    // The footer's Profile and Settings links each answer for themselves. The
+    // sidebar is turbo-permanent, so the class the server rendered goes stale.
+    document.querySelectorAll('.sidebar .sidebar-footer-link[href]').forEach(link => {
+        link.classList.toggle('is-active', navLinkMatchLength(link, currentPath, currentQuery) > 0);
+    });
 }
 
 function closeMobileMenu() {

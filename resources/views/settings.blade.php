@@ -2249,6 +2249,19 @@
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> {{ __('Devices') }}
             </a>
             @endcan
+            {{-- Download Reports / Import Data — moved here from the main sidebar. Each is gated by
+                 its own permission (reports.export / imports.manage), not by a Settings one, and
+                 is a page of its own: no data-turbo-frame, so the link leaves this frame. --}}
+            @can('reports.export')
+            <a href="{{ route('export.index') }}" class="nav-item">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> {{ __('Download Reports') }}
+            </a>
+            @endcan
+            @if(($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage'))
+            <a href="{{ route('imports.index') }}" class="nav-item">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> {{ __('Import Data') }}
+            </a>
+            @endif
         </nav>
 
         <!-- Content Area -->

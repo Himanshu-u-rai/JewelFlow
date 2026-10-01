@@ -17,6 +17,7 @@
                 ['Metal Liability', 'Customer-advance gold owed vs gold on hand', 'report.metal-liability', null],
             ],
             'Ledger & Reconciliation' => [
+                ['Cash Book', 'Transaction-by-transaction cash history, with the drawer check', 'cashbook.index', null],
                 ['Sales Register', 'Complete list of all sales for the period with line-item detail', 'report.sales-register', null],
                 ['Daily Summary', 'Day-level summary of sales, returns, and cash movements', 'report.daily', null],
                 ['Payment Reconciliation', 'Invoice totals vs collected payments; flags mismatches', 'report.payment-reconciliation', null],
