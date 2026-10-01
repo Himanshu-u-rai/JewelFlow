@@ -112,6 +112,7 @@ counts() { local t; for t in $COUNTED; do printf '%s=%s ' "$t" "$(PGSU -d "$1" -
 # with the unit. The unit checks those properties itself and refuses to restore
 # if one does not hold. Without root (the local tests) the same unit runs under
 # the user manager, where the caller's own uid is the unprivileged user.
+SANDBOX_FSIZE=2G    # the largest file the box may write, its output files on the caller's disk included
 SANDBOX_HIDE="-/var/www -/var/lib/postgresql -/etc/postgresql -/run/postgresql -/var/backups -/var/log -/etc/nginx -/etc/letsencrypt -/etc/ssh -/root"
 SANDBOX_SH=$(cat <<'SH'
 set -eu
@@ -140,7 +141,7 @@ restore_isolated() {   # $1 = role names to pre-create; stdin = the dump; stdout
   systemd-run "${mode[@]}" --quiet --wait --pipe --collect \
     -p PrivateNetwork=yes -p PrivateIPC=yes -p ProtectProc=invisible -p ProtectSystem=strict -p ProtectHome=yes \
     -p NoNewPrivileges=yes -p CapabilityBoundingSet= -p "InaccessiblePaths=$SANDBOX_HIDE" \
-    -p "TemporaryFileSystem=/mnt:mode=1777,size=2G" -p MemoryMax=3G -p TasksMax=512 -p RuntimeMaxSec=900 \
+    -p "TemporaryFileSystem=/mnt:mode=1777,size=2G" -p MemoryMax=3G -p TasksMax=512 -p RuntimeMaxSec=900 -p "LimitFSIZE=$SANDBOX_FSIZE" \
     -E "ROLES=$1" -E "OWNER=$ROLE" -E "COUNTED=$COUNTED" -E "PROD_PORT=$PROD_PORT" \
     -E "MUST_NOT_SEE=${SANDBOX_MUST_NOT_SEE:-$PROD/.env /var/lib/postgresql /run/postgresql}" \
     -- /bin/bash -c "$SANDBOX_SH"
@@ -166,12 +167,16 @@ restore_dump() {
   for r in $(PGSU -c "select rolname from pg_roles where rolname !~ '^pg_' and rolname <> 'postgres'"); do
     [[ $r =~ ^[a-z_][a-z0-9_]*$ ]] && [ "$r" != "$ROLE" ] && roles="$roles $r"
   done
-  if ! RESTORED=$(restore_isolated "$roles" < "$WORK/restore/dump.sql" 2> "$WORK/restore/sandbox.err"); then
-    say "      the box said: $(tail -3 "$WORK/restore/sandbox.err" | tr -cd '[:print:]\n' | sed -E 's/[0-9]{6,}/<n>/g' | cut -c1-200 | tr '\n' '|')"
+  # Its output goes to files, which the unit's file-size limit caps, never
+  # into this shell's memory; only the first 64 KB are read back.
+  RESTORED=
+  if ! restore_isolated "$roles" < "$WORK/restore/dump.sql" > "$WORK/restore/sandbox.out" 2> "$WORK/restore/sandbox.err"; then
+    say "      the box said: $(tail -c 2000 "$WORK/restore/sandbox.err" | tail -3 | tr -cd '[:print:]\n' | sed -E 's/[0-9]{6,}/<n>/g' | cut -c1-200 | tr '\n' '|')"
     rm -rf "$WORK/restore"
     stop "the dump does not restore in the isolated instance" "the archive exists; production untouched; the box is gone" "inspect the dump"
   fi
-  say "      $(grep -m1 '^sandbox: uid [0-9]*, ' "$WORK/restore/sandbox.err" | tr -cd '[:print:]' | cut -c1-120)"   # the box's own check
+  RESTORED=$(head -c 65536 "$WORK/restore/sandbox.out" | tr -cd '[:print:]\n')
+  say "      $(head -c 65536 "$WORK/restore/sandbox.err" | grep -m1 '^sandbox: uid [0-9]*, ' | tr -cd '[:print:]' | cut -c1-120)"   # the box's own check
   rm -rf "$WORK/restore"
 }
 restored() { sed -n "s/^$1 \([0-9][0-9]*\)$/\1/p" <<< "$RESTORED" | tail -1; }   # digits only: the box's output is data

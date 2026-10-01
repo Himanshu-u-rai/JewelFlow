@@ -92,6 +92,13 @@ OUT=$(PROD_PORT=$PORT systemd-run --user --quiet --wait --pipe --collect -E ROLE
 check "self-check: the same script without the unit's isolation refuses to restore (it can reach the port)" \
   '[ "$RC" = 97 ] && grep -q "^sandbox: can reach 127.0.0.1:$PORT$" "$T/err" && [ -z "$OUT" ]'
 
+# ── the box cannot flood the host through its output ────────────────────────
+# stderr is a file on the caller's disk: the unit's file-size limit caps it.
+printf '\\! head -c 200000000 /dev/zero >&2\nselect 1;\n' > "$T/flood.sql"
+SANDBOX_FSIZE=64M restore_isolated jewelflow < "$T/flood.sql" > "$T/out" 2> "$T/flood.err"; RC=$?
+check "flood: 200 MB written to stderr inside the box leaves at most the unit's file-size limit (64 MB here) on disk" \
+  '[ "$(stat -c %s "$T/flood.err")" -le 67108864 ]'
+
 # ── control: what the box is for ────────────────────────────────────────────
 # The same payload through a psql that can reach the stand-in, which is how the
 # old procedure ran a dump (psql as postgres on the production host). Last,

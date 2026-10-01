@@ -103,7 +103,9 @@ NG
         *"from pg_roles"*) echo jewelflow_staging ;;
       esac; return 0; }
     # The box: records what it was given (argv and the dump on stdin), answers like the real one.
-    systemd-run() { rec systemd-run "$@"; command cat > "$S/sandbox.stdin"; ev sandbox; echo "sandbox: uid 61535, network lo only, production paths and port unreachable" >&2; [ -z "${SANDBOX_FAIL:-}" ] || { echo "psql:<stdin>:3: ERROR:  boom" >&2; return 3; }
+    systemd-run() { rec systemd-run "$@"; command cat > "$S/sandbox.stdin"; ev sandbox; echo "sandbox: uid 61535, network lo only, production paths and port unreachable" >&2
+      [ -z "${SANDBOX_FLOOD:-}" ] || { command head -c 300000 /dev/zero | command tr '\0' 'x'; echo; }   # then the counts, on lines of their own
+      [ -z "${SANDBOX_FAIL:-}" ] || { echo "psql:<stdin>:3: ERROR:  boom" >&2; return 3; }
       local t; for t in $COUNTED; do echo "count $t ${SANDBOX_COUNT:-5}"; done; echo "triggers 17"; }
     db_connects() { rec db_connects "$@"; local pw; pw=$(command cat)
       [ -n "${CONNECT_FAIL:-}" ] && [ "$pw" = "$NEWPW" ] && return 1
@@ -257,6 +259,8 @@ check "backup: the box is a transient unit with no network, private IPC, read-on
 export SANDBOX_FAIL=1; setup step_backup; unset SANDBOX_FAIL
 check "backup: a dump the box cannot restore is a failure; its last lines are shown; nothing is left" \
   '[ "$RC" = 1 ] && out_has "does not restore in the isolated instance" && out_has "ERROR:  boom" && [ ! -e "$S/work/restore" ]'
+export SANDBOX_FLOOD=1; setup step_backup; unset SANDBOX_FLOOD
+check "backup: only the first 64 KB of the box's output are read: counts printed after a flood are not counts" '[ "$RC" = 1 ] && out_has "shops: no rows restored"'
 export SANDBOX_COUNT='5; drop table x'; setup step_backup; unset SANDBOX_COUNT
 check "backup: the box's output is data: a count that is not digits is no count" '[ "$RC" = 1 ] && out_has "shops: no rows restored"'
 unset MAKE_ZIP
