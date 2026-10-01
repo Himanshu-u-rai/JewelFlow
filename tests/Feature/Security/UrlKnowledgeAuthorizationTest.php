@@ -397,7 +397,8 @@ class UrlKnowledgeAuthorizationTest extends TestCase
         $export = $this->makeExport($shop->id);
 
         $url = URL::temporarySignedRoute('reporting.exports.download', now()->addHour(), ['export' => $export->id]);
-        $tampered = preg_replace('/signature=([0-9a-f])/', 'signature='.'0', $url, 1);
+        // Change the first digit to a DIFFERENT one: writing a fixed "0" left one signature in 16 untouched.
+        $tampered = preg_replace_callback('/signature=([0-9a-f])/', fn ($m) => 'signature='.($m[1] === '0' ? '1' : '0'), $url, 1);
         $this->assertNotSame($url, $tampered, 'the fixture must actually alter the signature');
 
         $this->assertDeniedWithoutBytes(
