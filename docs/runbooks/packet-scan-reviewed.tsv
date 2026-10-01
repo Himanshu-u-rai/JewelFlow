@@ -11,3 +11,4 @@ test assertion: compares the sandbox .env with the harness's variable	  '[ "$RC"
 test fixture: a deliberately different sandbox .env ('other')	export MAKE_ZIP='printf "DB_PASSWORD=other\n" > "$S/other.env"; mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$S/other.env" "${PROD#/}/"'
 test code: a cache-key format constant named *_KEY, not a credential	    private const LEGACY_KEY = 'invoice_payment_idempotency:%d:%s';
 a synthetic value PilotDemoSeederPasswordTest passes to the seeder; never set on any server	        putenv('PILOT_DEMO_PASSWORD=a-password-chosen-for-this-run');
+a ternary in the seeder's console message: the text after the colon is its else-branch, not a value assigned to anything	            $this->command?->info("Demo shop '" . self::SHOP_NAME . "' created (#{$shop->id}). Owner login: " . self::OWNER_MOBILE . " / " . ($this->password === self::DEMO_PASSWORD ? self::DEMO_PASSWORD : 'the PILOT_DEMO_PASSWORD you set'));
