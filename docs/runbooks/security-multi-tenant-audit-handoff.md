@@ -3,10 +3,11 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state: §0m is authoritative (2026-10-01). The batch is CLOSED for
-its agreed scope.** Production and staging are at
-`31282713bafdd072732839e69f0e846fc739c2f4`, and `main` follows; later commits
-are documentation. The origin denies, the signed-in browser check, an
+**Current state: §0m is authoritative for the batch (2026-10-01): CLOSED for
+its agreed scope. §0n records two layout fixes made afterwards.** Production
+and staging are at `aa3a62a93630751058c38b31f2b49c604450ec68` (the print
+layout fix on top of `3128271`), and `main` follows; later commits are
+documentation. The origin denies, the signed-in browser check, an
 emulator verification of build 24 against real staging and the hand-over of
 build 25 are done (§0m). One release gate is left with the owner: no physical
 Android device has been used (NOT RUN). iOS is not run and not part of this
@@ -75,6 +76,58 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0n. After closure: what the phone found (2026-10-01 19:30 – 21:15Z)
+
+The owner installed production build 25 on a phone, which is the physical
+device check §0m left open. It found two things, neither part of the security
+batch and neither introduced by it. Times are UTC.
+
+| Found on the phone | Cause | State |
+|---|---|---|
+| A bill printed on two pages | The print templates padded the items table with a fixed 25 blank rows, leaving 18–43px of slack on an A4 page; Android's print engine scales a bill's text by the phone's font-size setting | **FIXED, deployed, verified** — web `aa3a62a` |
+| On bills with a balance due, the Print / Share / Refresh row sits half under the bill preview | The "Record Payment" button reused a row button's `flex: 1` inside a column, so the panel came out shorter than its content | **FIXED in code** — mobile `8656970`; **not built**: the owner has more app changes to make first |
+
+**The print layout.** Reproduced on the emulator with masked copies of the
+shop's own bills (every letter replaced, so layout survives and no customer
+data leaves the server): one page at the default font size, two pages at
+1.15× and 1.3×. The items table now ends with one elastic row and takes
+whatever height the page has left, so every bill has the same structure
+height (250mm on A4) and items, payments, terms and larger text come out of
+the blank space. Measured after the release, on masked copies of five of that
+shop's bills: each prints on one A4 page, each exactly 250mm tall, with 272px
+of blank space left for a one-item bill and 234px for two items. On Android's
+print engine (emulator, US Letter): invoices with 1, 2 and 5 items and a
+two-item quick bill print on one page at font sizes 1.0×, 1.15× and 1.3×. A
+bill longer than a page still continues on the next (13 items: two pages; 41:
+three; every row present, the footer once at the end). About ten items fit
+one A4 page with that shop's settings at the default font size. The
+on-screen preview in the app loses its long block of empty rows.
+
+A first desktop "reproduction" was wrong and is withdrawn: the masking had
+broken the blank cells' non-breaking spaces, which doubled the filler rows'
+height. With that fixed, the old template fits one A4 page on a desktop
+browser, with the thin slack above; it is the phone's font size that tips it.
+
+Release: staging 21:09:27–21:09:31Z, production 21:10:07–21:10:11Z, both
+"FORWARD RELEASE PASSED"; full suite before it on PHP 8.4 and 8.2, 3456 passed
+and 7 skipped each; staging verifier all checks passed; `/health` and `/login`
+200 on the four hosts.
+
+**The invoice screen.** Reproduced on the emulator with the release build: 33px
+of the action row under the preview when the bill has a balance due, none when
+it is paid. With the fix (run in a development client): none in both cases.
+Mobile jest 307 of 307, typecheck clean.
+
+**Still to do on a phone, by the owner:** print one bill again (expect one
+page). Build 25 is on hold by the owner's decision until the remaining app
+changes are in; no build was made from `8656970`.
+
+Seen in passing, for the owner's app list (not changed): the bill preview's
+text follows the phone's font size and its items table is wider than the
+screen; cancelling the print dialog appears to be reported as "Print Failed".
 
 ---
 
