@@ -15,6 +15,7 @@
 #   operator-steps-security-batch.sh run [from-step]   steps 1-4 in order, gated
 #   operator-steps-security-batch.sh verify            read-only re-check of all of them
 #   operator-steps-security-batch.sh verify-edge       read-only: the Cloudflare side (0 edge rule, 3 origin only, 1 NOT blocked)
+#   operator-steps-security-batch.sh restore-check [zip]  read-only: restore an archive's dump in an isolated instance
 #
 #   1 env-read  R9     .env dev:dev 640 -> dev:www-data 640: the scheduler's user
 #                      (www-data) may read it, not write it; others still nothing.
@@ -25,8 +26,10 @@
 #                      staging too (checked).
 #   3 backup    R9     backup:run as www-data; the archive this run produced is
 #                      checked (entries, exclusions, .env equal to the live one)
-#                      and its database dump restored into a scratch database
-#                      and compared with production; the scratch copy is removed.
+#                      and its database dump restored in an isolated PostgreSQL
+#                      instance (a transient unit: throwaway user, no network,
+#                      production out of sight) and compared with production.
+#                      No dump is ever given to a psql that can reach production.
 #   4 origin    R7/R6  nginx denies /storage/kyc/ and /storage/signatures/ on
 #                      production's vhost; verified in the running config and
 #                      with harmless probes on all three hosts. Origin only.
@@ -46,6 +49,8 @@ PROD=/var/www/jewelflow
 VHOST=/etc/nginx/sites-available/jewelflow
 PGLOG=/var/log/postgresql/postgresql-14-main.log
 NGINX_ERRLOG=/var/log/nginx/error.log
+NGINX_ACCESS=/var/log/nginx/access.log
+PROD_PORT=5432      # production PostgreSQL, 127.0.0.1
 CRON=/etc/cron.d
 WORKER=jewelflow-production-ops-alerts
 ROLE=jewelflow
@@ -92,6 +97,79 @@ db_connects() { php -r '$p = stream_get_contents(STDIN);
   "$(env_value DB_HOST "$PROD/.env")" "$(env_value DB_PORT "$PROD/.env")" "$(env_value DB_DATABASE "$PROD/.env")" "$(env_value DB_USERNAME "$PROD/.env")"; }
 set_role() { printf "ALTER ROLE %s PASSWORD '%s';\n" "$ROLE" "$1" | PGSU >/dev/null; }   # $1 = a verifier
 counts() { local t; for t in $COUNTED; do printf '%s=%s ' "$t" "$(PGSU -d "$1" -c "select count(*) from $t")"; done; }
+
+# ── the box an untrusted dump is restored in ────────────────────────────────
+# www-data writes the archive, so its dump is untrusted input, and psql does
+# whatever a dump says (\! is a shell; SQL role changes do not constrain it).
+# The dump is therefore never given to a psql that can reach production. It is
+# restored inside a transient systemd unit: a throwaway user (DynamicUser), no
+# network but its own loopback, its own IPC, the file system read-only, the
+# production trees, logs, keys and PostgreSQL socket out of sight, and a
+# PostgreSQL instance of its own (initdb) on a size-capped tmpfs that vanishes
+# with the unit. The unit checks those properties itself and refuses to restore
+# if one does not hold. Without root (the local tests) the same unit runs under
+# the user manager, where the caller's own uid is the unprivileged user.
+SANDBOX_HIDE="-/var/www -/var/lib/postgresql -/etc/postgresql -/run/postgresql -/var/backups -/var/log -/etc/nginx -/etc/letsencrypt -/etc/ssh -/root"
+SANDBOX_SH=$(cat <<'SH'
+set -eu
+fail() { echo "sandbox: $*" >&2; exit 97; }
+[ "$(id -u)" != 0 ] || fail "running as root"
+for p in $MUST_NOT_SEE; do if [ -r "$p" ] || ls "$p" >/dev/null 2>&1; then fail "can read $p"; fi; done
+if (exec 3<>"/dev/tcp/127.0.0.1/$PROD_PORT") 2>/dev/null; then fail "can reach 127.0.0.1:$PROD_PORT"; fi
+[ "$(ls /sys/class/net | tr '\n' ' ')" = "lo " ] || fail "has a network interface besides lo"
+echo "sandbox: uid $(id -u), network lo only, production paths and port unreachable" >&2
+B=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)
+W=$(mktemp -d /mnt/pg.XXXXXX)
+"$B/initdb" -D "$W/data" -U postgres -A trust -E UTF8 --locale=C.UTF-8 </dev/null >/dev/null
+"$B/pg_ctl" -D "$W/data" -s -w -l "$W/log" -o "-c listen_addresses='' -c unix_socket_directories=$W -c fsync=off -c synchronous_commit=off -c full_page_writes=off -c shared_buffers=64MB" start </dev/null >/dev/null
+P() { "$B/psql" -X -q -A -t -v ON_ERROR_STOP=1 -h "$W" -U postgres "$@"; }
+for r in $ROLES; do P -d postgres -c "create role \"$r\"" </dev/null; done
+P -d postgres -c "create database restore owner \"$OWNER\"" </dev/null
+P -d restore -f - >/dev/null          # the untrusted dump: this unit's stdin
+for t in $COUNTED; do printf 'count %s %s\n' "$t" "$(P -d restore -c "select count(*) from public.\"$t\"" </dev/null)"; done
+printf 'triggers %s\n' "$(P -d restore -c 'select count(*) from pg_trigger where not tgisinternal' </dev/null)"
+"$B/pg_ctl" -D "$W/data" -s -m immediate stop </dev/null >/dev/null || true
+SH
+)
+restore_isolated() {   # $1 = role names to pre-create; stdin = the dump; stdout = "count <table> <n>" lines and "triggers <n>"
+  local mode=(-p DynamicUser=yes); [ "$(id -u)" = 0 ] || mode=(--user)
+  systemd-run "${mode[@]}" --quiet --wait --pipe --collect \
+    -p PrivateNetwork=yes -p PrivateIPC=yes -p ProtectProc=invisible -p ProtectSystem=strict -p ProtectHome=yes \
+    -p NoNewPrivileges=yes -p CapabilityBoundingSet= -p "InaccessiblePaths=$SANDBOX_HIDE" \
+    -p "TemporaryFileSystem=/mnt:mode=1777,size=2G" -p MemoryMax=3G -p TasksMax=512 -p RuntimeMaxSec=900 \
+    -E "ROLES=$1" -E "OWNER=$ROLE" -E "COUNTED=$COUNTED" -E "PROD_PORT=$PROD_PORT" \
+    -E "MUST_NOT_SEE=${SANDBOX_MUST_NOT_SEE:-$PROD/.env /var/lib/postgresql /run/postgresql}" \
+    -- /bin/bash -c "$SANDBOX_SH"
+}
+# Advisory only: shapes a genuine pg_dump never writes. A hit means "treat the
+# archive as tampered". Containment does not depend on it; the box does that.
+tampered() {
+  [ -n "$(grep -nE '^[[:space:]]*\\' "$1" | grep -vE '^[0-9]+:\\(\.|restrict [A-Za-z0-9]+|unrestrict [A-Za-z0-9]+)$')" ] \
+    || grep -qiE '^\s*COPY\b.*\b(TO|FROM)\s+PROGRAM\b|^\s*(SET|RESET)\s+((SESSION|LOCAL)\s+)?ROLE\b|^\s*SET\s+((SESSION|LOCAL)\s+)?SESSION\s+AUTHORIZATION|^\s*(ALTER|CREATE|DROP)\s+(ROLE|USER)\b' "$1"
+}
+# restore_dump <archive>: sets RESTORED to the box's output. Leaves nothing behind.
+restore_dump() {
+  local zip=$1 dump roles r
+  dump=$(unzip -Z1 "$zip" | grep -E '^db-dumps/[^/]+\.sql$' | head -1)
+  [ -n "$dump" ] || stop "the archive has no database dump" "nothing was restored" "check the backup output"
+  trap 'rm -rf "$WORK/restore"' EXIT INT TERM    # the extracted dump goes, whatever happens next
+  mkdir -m 700 "$WORK/restore" && unzip -p "$zip" "$dump" > "$WORK/restore/dump.sql" \
+    || stop "could not extract the dump" "the archive exists; the partial dump is removed on exit" "check disk space"
+  if tampered "$WORK/restore/dump.sql"; then
+    stop "the dump contains psql meta-commands or role statements a genuine pg_dump never writes" "the archive exists; nothing was restored" "treat the archive as tampered; investigate www-data"
+  fi
+  roles=$ROLE
+  for r in $(PGSU -c "select rolname from pg_roles where rolname !~ '^pg_' and rolname <> 'postgres'"); do
+    [[ $r =~ ^[a-z_][a-z0-9_]*$ ]] && [ "$r" != "$ROLE" ] && roles="$roles $r"
+  done
+  if ! RESTORED=$(restore_isolated "$roles" < "$WORK/restore/dump.sql" 2> "$WORK/restore/sandbox.err"); then
+    say "      the box said: $(tail -3 "$WORK/restore/sandbox.err" | tr -cd '[:print:]\n' | sed -E 's/[0-9]{6,}/<n>/g' | cut -c1-200 | tr '\n' '|')"
+    rm -rf "$WORK/restore"
+    stop "the dump does not restore in the isolated instance" "the archive exists; production untouched; the box is gone" "inspect the dump"
+  fi
+  rm -rf "$WORK/restore"
+}
+restored() { sed -n "s/^$1 \([0-9][0-9]*\)$/\1/p" <<< "$RESTORED" | tail -1; }   # digits only: the box's output is data
 
 # ── 1  .env readable by the scheduler's user ────────────────────────────────
 step_env_read() {
@@ -185,7 +263,7 @@ step_rotate() {
 # ── 3  a backup by the scheduler's user, verified ───────────────────────────
 step_backup() {
   STEP=backup
-  local dir=$PROD/storage/app/private/JewelFlows start zip rel entries before after scratch dump t c b a want bad
+  local dir=$PROD/storage/app/private/JewelFlows start zip rel entries before after t c b a want bad
   sudo -u www-data test -r "$PROD/.env" || stop "www-data cannot read .env" "no backup taken" "run step env-read"
   start=$(date +%s); before=$(counts jewelflow)
   ART backup:run || stop "backup:run failed as www-data (the scheduler's user)" "no new archive; production unchanged" "read the output above"
@@ -213,41 +291,35 @@ step_backup() {
   [ "$(unzip -p "$zip" "$rel.env" | sha)" = "$(sha < "$PROD/.env")" ] || stop "the archived .env differs from the live one" "the archive exists" "run backup:run again after step rotate"
   ok "entries: required paths present; excluded paths absent; the archived .env equals the live one (APP_KEY and the new DB password)"
 
-  scratch="jf_backup_verify_$(date -u +%Y%m%d%H%M%S)"
-  case "$scratch" in jf_backup_verify_[0-9]*) ;; *) stop "bad scratch name" "the archive exists" "-" ;; esac
-  dump=$(printf '%s\n' "$entries" | grep -E '^db-dumps/[^/]+\.sql$' | head -1)
-  # Whatever happens next, the scratch copy goes (a partial dump included).
-  trap 'sudo -u postgres dropdb --if-exists "$scratch" >/dev/null 2>&1; rm -rf "$WORK/restore"' EXIT INT TERM
-  mkdir -m 700 "$WORK/restore" && unzip -p "$zip" "$dump" > "$WORK/restore/dump.sql" \
-    || stop "could not extract the dump" "the archive exists; the partial dump is removed on exit" "check disk space"
-  # www-data wrote this file, so it is untrusted input to psql. Refuse psql
-  # meta-commands (\! runs a shell as postgres) other than pg_dump's own
-  # \. and \restrict markers, and anything that could regain privilege; then
-  # run it as the app role (SET ROLE), never as superuser. Extensions are
-  # pre-created from production's catalog, not from the dump.
-  if [ -n "$(grep -nE '^\\' "$WORK/restore/dump.sql" | grep -vE '^[0-9]+:\\(\.|restrict |unrestrict )')" ] \
-     || grep -qiE '^\s*COPY\b.*\b(TO|FROM)\s+PROGRAM\b|^\s*(SET|RESET)\s+ROLE|SESSION\s+AUTHORIZATION|^\s*(ALTER|CREATE|DROP)\s+(ROLE|USER)\b' "$WORK/restore/dump.sql"; then
-    stop "the dump contains psql meta-commands or privilege statements a genuine pg_dump never writes" "the archive exists; nothing was restored" "treat the archive as tampered; investigate www-data"
-  fi
-  sudo -u postgres createdb -O "$ROLE" "$scratch" || stop "createdb $scratch failed" "the archive exists" "-"
-  for x in $(PGSU -d jewelflow -c "select extname from pg_extension where extname <> 'plpgsql'"); do
-    PGSU -d "$scratch" -c "create extension if not exists \"$x\" with schema public" >/dev/null || stop "could not create extension $x in the scratch database" "the archive exists" "-"
-  done
-  if ! { echo "SET ROLE $ROLE;"; grep -vE '^(CREATE EXTENSION|COMMENT ON EXTENSION) ' "$WORK/restore/dump.sql"; } | PGSU -d "$scratch" >/dev/null; then
-    sudo -u postgres dropdb "$scratch"; rm -f "$WORK/restore/dump.sql"
-    stop "the dump does not restore into a scratch database" "the archive exists; scratch database dropped" "inspect the dump"
-  fi
+  restore_dump "$zip"
   for t in $COUNTED; do
-    c=$(PGSU -d "$scratch" -c "select count(*) from $t"); b=$(printf '%s' "$before" | grep -oE "(^| )$t=[0-9]+" | cut -d= -f2); a=$(printf '%s' "$after" | grep -oE "(^| )$t=[0-9]+" | cut -d= -f2)
-    { [ "$c" -ge "$(( b < a ? b : a ))" ] && [ "$c" -le "$(( b > a ? b : a ))" ]; } \
-      || { sudo -u postgres dropdb "$scratch"; rm -f "$WORK/restore/dump.sql"; stop "$t: $c rows restored, production had $b..$a" "the archive exists; scratch dropped" "inspect the dump"; }
+    c=$(restored "count $t"); b=$(printf '%s' "$before" | grep -oE "(^| )$t=[0-9]+" | cut -d= -f2); a=$(printf '%s' "$after" | grep -oE "(^| )$t=[0-9]+" | cut -d= -f2)
+    { [ -n "$c" ] && [ "$c" -ge "$(( b < a ? b : a ))" ] && [ "$c" -le "$(( b > a ? b : a ))" ]; } \
+      || stop "$t: ${c:-no} rows restored, production had $b..$a" "the archive exists; production untouched" "inspect the dump"
   done
-  c=$(PGSU -d "$scratch" -c "select count(*) from pg_trigger where not tgisinternal"); b=$(PGSU -d jewelflow -c "select count(*) from pg_trigger where not tgisinternal")
-  sudo -u postgres dropdb "$scratch"; rm -f "$WORK/restore/dump.sql"; rmdir "$WORK/restore"
-  [ "$c" = "$b" ] || stop "restored $c triggers, production has $b" "the archive exists; scratch dropped" "inspect the dump"
-  ! grep -q 1 <<< "$(PGSU -c "select 1 from pg_database where datname = '$scratch'")" && [ ! -e "$WORK/restore" ] \
-    || stop "the scratch copy was not removed" "the archive exists" "sudo -u postgres dropdb $scratch; rm -rf $WORK/restore"
-  ok "the dump restored into a scratch database: row counts of $(printf '%s' "$COUNTED" | wc -w) tables match production; $c triggers; scratch database and extracted dump removed"
+  c=$(restored triggers); b=$(PGSU -d jewelflow -c "select count(*) from pg_trigger where not tgisinternal")
+  [ -n "$c" ] && [ "$c" = "$b" ] || stop "restored ${c:-no} triggers, production has $b" "the archive exists; production untouched" "inspect the dump"
+  ok "the dump restored in an isolated instance (its own PostgreSQL, a throwaway user, no network): row counts of $(printf '%s' "$COUNTED" | wc -w) tables match production; $c triggers; nothing ran against the production cluster; the box and the extracted dump are gone"
+}
+
+# restore-check [archive]: the newest (or the named) archive, restored in the
+# box. Read-only for production: it reads the archive and counts rows.
+restore_check() {
+  STEP=restore-check
+  local zip=${1:-} now t c n
+  [ -n "$zip" ] || zip=$(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1)
+  [ -f "$zip" ] || stop "no archive to check" "nothing changed" "pass an archive path"
+  unzip -tq "$zip" >/dev/null || stop "the archive fails its integrity test" "nothing changed" "-"
+  restore_dump "$zip"
+  now=$(counts jewelflow)
+  for t in $COUNTED; do
+    c=$(restored "count $t"); n=$(printf '%s' "$now" | grep -oE "(^| )$t=[0-9]+" | cut -d= -f2)
+    [ -n "$c" ] || stop "$t did not come back from the restore" "production untouched" "inspect the dump"
+    say "      $t: $c restored, $n in production now"
+  done
+  c=$(restored triggers); n=$(PGSU -d jewelflow -c "select count(*) from pg_trigger where not tgisinternal")
+  [ -n "$c" ] && [ "$c" = "$n" ] || stop "restored ${c:-no} triggers, production has $n" "production untouched" "inspect the dump"
+  ok "RESTORE-CHECK: ${zip##*/} restores in an isolated instance: $(printf '%s' "$COUNTED" | wc -w) tables, $c triggers (as production); nothing ran against the production cluster"
 }
 
 # ── 4  origin: nginx denies the two private prefixes ────────────────────────
@@ -353,20 +425,50 @@ edge_package() {
   say "    Action: Block. Deploy. (It runs before the cache, so cached copies stop being served at once.)"
   say " 2. Caching > Configuration > Purge cache > Custom purge > URL: the $(wc -l < "$list") URLs in $list"
   say "    (root-only; they name real files: paste them, do not open them)."
-  say " 3. Check: $0 verify-edge   (random paths only; expects Cloudflare's block page on every host)"
+  say " 3. Check: $0 verify-edge   (random paths only; 'blocked at the edge' = the probe never reaches this origin's log)"
 }
+# One request through the public name. Prints "403cf" when the answer is an
+# HTTP 403 that came through Cloudflare, otherwise "fail: <why>". It says
+# nothing about which layer refused: that is read from the origin's logs below.
+edge_get() {   # $1 host, $2 path
+  local hdr st rc
+  curl -s -m 20 -o /dev/null -D "$WORK/edge.hdr" "https://$1$2" 2>/dev/null; rc=$?
+  hdr=$(tr -d '\r' < "$WORK/edge.hdr" 2>/dev/null); rm -f "$WORK/edge.hdr"
+  [ "$rc" = 0 ] || { echo "fail: no answer (curl exit $rc)"; return; }
+  st=$(sed -n '1s#^HTTP/[0-9.]* \([0-9][0-9][0-9]\)\( .*\)\{0,1\}$#\1#p' <<< "$hdr")
+  [ -n "$st" ] || { echo "fail: no HTTP status line"; return; }
+  [ "$st" = 403 ] || { echo "fail: HTTP $st"; return; }
+  grep -qi '^server: cloudflare' <<< "$hdr" || { echo "fail: HTTP 403, but not through Cloudflare"; return; }
+  echo 403cf
+}
+# Which protection executed is read from this origin's own logs, never from
+# the page that came back:
+#   origin  nginx logged "access forbidden by rule" for that exact random path
+#   edge    the path never reached the access log, while a control request sent
+#           the same way did (so this log does see what comes through the edge)
+# Exit 0 = the edge refused every probe; 3 = none failed and the origin's rule
+# refused at least one (no edge rule in front); 1 = anything else.
 verify_edge() {
-  local h p u hdr body fails=0 origin=0
-  for h in $HOSTS; do for p in $PREFIXES; do
-    u="https://$h/storage/$p/probe-$(date -u +%s)-$RANDOM.jpg"
-    body=$(curl -s -m 20 -D "$WORK/edge.hdr" "$u" 2>/dev/null); hdr=$(tr -d '\r' < "$WORK/edge.hdr" 2>/dev/null); rm -f "$WORK/edge.hdr"
-    if grep -qE '^HTTP/[0-9.]+ 403' <<< "$hdr" && grep -qi '^server: cloudflare' <<< "$hdr" && grep -qiE 'you have been blocked|error code: 1020' <<< "$body" && ! grep -qi '<center>nginx' <<< "$body"; then
-      say "   $h /storage/$p/<random> -> blocked at the edge"
-    elif grep -qi '<center>nginx' <<< "$body"; then say "   $h /storage/$p/<random> -> 403 from the origin through the edge (edge rule not active)"; origin=1
-    else say "   $h /storage/$p/<random> -> $(head -1 <<< "$hdr") (NOT blocked)"; fails=1; fi
-  done; done
-  [ "$fails" = 0 ] && [ "$origin" = 0 ] && { say "EDGE: blocked on every host and prefix (confirm the purge completed in Cloudflare)"; return 0; }
-  [ "$fails" = 0 ] && { say "EDGE: PARTIAL (the origin refuses every probe; no edge rule)"; return 3; }
+  local h p u c v fails=0 origin=0 probes=""
+  for h in $HOSTS; do
+    c="/storage/probe-$STAMP-$RANDOM-ctl.jpg"; edge_get "$h" "$c" >/dev/null
+    for p in $PREFIXES; do u="/storage/$p/probe-$STAMP-$RANDOM.jpg"; probes="$probes$h $u $c $(edge_get "$h" "$u")"$'\n'; done
+  done
+  sleep 3   # nginx writes a request's log lines as the request ends
+  while read -r h u c v; do
+    [ -n "$h" ] || continue
+    p="$h ${u%/*}/<random>"
+    if [ "$v" != 403cf ]; then say "   $p -> NOT blocked (${v#fail: })"; fails=1
+    elif [ "$(grep -F -- "$u" "$NGINX_ERRLOG" 2>/dev/null | grep -c 'access forbidden by rule')" -gt 0 ]; then
+      say "   $p -> 403 from the origin's deny rule, through the edge (no edge rule in front)"; origin=1
+    elif grep -qF -- "$u" "$NGINX_ACCESS" 2>/dev/null; then
+      say "   $p -> NOT blocked by either rule (it reached the origin, which answered 403 some other way)"; fails=1
+    elif grep -qF -- "$c" "$NGINX_ACCESS" 2>/dev/null; then
+      say "   $p -> blocked at the edge (it never reached the origin; the control request did)"
+    else say "   $p -> cannot tell which layer answered (neither the probe nor its control is in $NGINX_ACCESS)"; fails=1; fi
+  done <<< "$probes"
+  [ "$fails" = 0 ] && [ "$origin" = 0 ] && { say "EDGE: blocked on every host and prefix"; return 0; }
+  [ "$fails" = 0 ] && { say "EDGE: PARTIAL (the origin's rule refuses; no edge rule in front of it)"; return 3; }
   say "EDGE: NOT BLOCKED on at least one host and prefix"; return 1
 }
 
@@ -422,5 +524,6 @@ case "${1:-}" in
     exit "${PIPESTATUS[0]}" ;;
   verify)      verify_all ;;
   verify-edge) verify_edge ;;
+  restore-check) restore_check "${2:-}" ;;
   *) sed -n '2,38p' "$0"; exit 64 ;;
 esac

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Failure-path checks for docs/runbooks/operator-steps-security-batch.sh.
 # Local only: sources the script's functions (OPS_LIB=1) into a sandbox and
-# replaces every side effect (sudo, systemctl, nginx, artisan, psql, curl) with
+# replaces every side effect (sudo, systemctl, systemd-run, nginx, artisan, psql,
+# curl) with
 # a stub that records its arguments. Real awk/sed/grep/php/cp/stat run, wrapped
 # so their argv is recorded too. Nothing here touches a server.
 #
@@ -71,10 +72,10 @@ server_name jewelflows.com www.jewelflows.com dhiran.jewelflows.com;
 }
 NG
   cp "$S/vhost" "$S/running.conf"; : > "$S/pg.log"; : > "$S/nginx-error.log"
-  : > "$S/argv.log"; : > "$S/events.log"; : > "$S/pgsu.stdin"
+  : > "$S/argv.log"; : > "$S/events.log"; : > "$S/pgsu.stdin"; : > "$S/sandbox.stdin"; : > "$S/nginx-access.log"
   (
     OPS_LIB=1 source "$SCRIPT"
-    PROD=$S/prod VHOST=$S/vhost PGLOG=$S/pg.log NGINX_ERRLOG=$S/nginx-error.log WORK=$S/work WEB=$(id -gn) STAMP=TESTSTAMP
+    PROD=$S/prod VHOST=$S/vhost PGLOG=$S/pg.log NGINX_ERRLOG=$S/nginx-error.log NGINX_ACCESS=$S/nginx-access.log WORK=$S/work WEB=$(id -gn) STAMP=TESTSTAMP
     rec() { printf '%s\n' "$*" >> "$S/argv.log"; }
     ev()  { printf '%s\n' "$*" >> "$S/events.log"; }
     for c in awk sed grep cut cp cmp stat cat tail php sha256sum chgrp chmod diff find unzip; do
@@ -99,8 +100,11 @@ NG
           printf '%s' "$sql" | command sed -E "s/.*PASSWORD '([^']+)'.*/\1/" > "$S/role.verifier"; ev "ALTER ROLE" ;;
         *"select count(*) from pg_trigger"*) echo 17 ;;
         *"select count(*) from"*) echo 5 ;;
-        *"from pg_database"*) : ;;
+        *"from pg_roles"*) echo jewelflow_staging ;;
       esac; return 0; }
+    # The box: records what it was given (argv and the dump on stdin), answers like the real one.
+    systemd-run() { rec systemd-run "$@"; command cat > "$S/sandbox.stdin"; ev sandbox; [ -z "${SANDBOX_FAIL:-}" ] || { echo "psql:<stdin>:3: ERROR:  boom" >&2; return 3; }
+      local t; for t in $COUNTED; do echo "count $t ${SANDBOX_COUNT:-5}"; done; echo "triggers 17"; }
     db_connects() { rec db_connects "$@"; local pw; pw=$(command cat)
       [ -n "${CONNECT_FAIL:-}" ] && [ "$pw" = "$NEWPW" ] && return 1
       [ -f "$S/role.verifier" ] || { [ "$pw" = "$OLDPW" ]; return; }
@@ -243,18 +247,27 @@ check "backup: an archived .env different from the live one is refused" '[ "$RC"
 unset MAKE_ZIP
 export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
 setup step_backup
-check "backup: a complete archive passes: restored into a scratch database, compared, scratch removed" \
-  '[ "$RC" = 0 ] && out_has "row counts of 14 tables match production" && grep -q createdb "$S/events.log" && grep -q dropdb "$S/events.log" && [ ! -e "$S/work/restore" ]'
+check "backup: a complete archive passes: restored in the box, compared, extracted dump removed" \
+  '[ "$RC" = 0 ] && out_has "row counts of 14 tables match production" && grep -q sandbox "$S/events.log" && grep -q "select 1;" "$S/sandbox.stdin" && [ ! -e "$S/work/restore" ]'
+check "backup: the dump goes to the box only: no psql against production sees it, no scratch database, no extension is created" \
+  '! grep -q "select 1;" "$S/pgsu.stdin" && ! grep -qE "createdb|dropdb" "$S/events.log" "$S/argv.log" && ! grep -qiE "create extension|SET ROLE" "$S/pgsu.stdin"'
+check "backup: the box is a transient unit with no network, private IPC, read-only system, hidden homes and production paths, a capped tmpfs" \
+  'for w in "--wait --pipe --collect" "PrivateNetwork=yes" "PrivateIPC=yes" "ProtectSystem=strict" "ProtectHome=yes" "NoNewPrivileges=yes" "CapabilityBoundingSet=" "InaccessiblePaths=-/var/www -/var/lib/postgresql -/etc/postgresql -/run/postgresql" "TemporaryFileSystem=/mnt:mode=1777,size=2G" "MemoryMax=3G" "RuntimeMaxSec=900" "ROLES=jewelflow jewelflow_staging"; do grep -qF -- "$w" "$S/argv.log" || { echo "   missing: $w"; exit 1; }; done'
+export SANDBOX_FAIL=1; setup step_backup; unset SANDBOX_FAIL
+check "backup: a dump the box cannot restore is a failure; its last lines are shown; nothing is left" \
+  '[ "$RC" = 1 ] && out_has "does not restore in the isolated instance" && out_has "ERROR:  boom" && [ ! -e "$S/work/restore" ]'
+export SANDBOX_COUNT='5; drop table x'; setup step_backup; unset SANDBOX_COUNT
+check "backup: the box's output is data: a count that is not digits is no count" '[ "$RC" = 1 ] && out_has "shops: no rows restored"'
 unset MAKE_ZIP
 export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
 export DUMP=$'select 1;\n\\! id > /tmp/pwned\n'; setup step_backup
 check "backup: a dump carrying a psql shell escape is refused and never restored (SEC-001)" \
-  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q "SET ROLE" "$S/pgsu.stdin" && ! grep -q createdb "$S/events.log"'
+  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q sandbox "$S/events.log" && [ ! -s "$S/sandbox.stdin" ]'
 export DUMP=$'COPY public.t (a) TO PROGRAM \'id\';\n'; setup step_backup
 check "backup: a dump running COPY ... TO PROGRAM is refused (SEC-001)" '[ "$RC" = 1 ] && out_has "psql meta-commands"'
 export DUMP=$'COPY public.notes (body) FROM stdin;\nthe gold savings program\n\\.\n'; setup step_backup
-check "backup: a genuine dump (COPY data mentioning a program, the \\. terminator) restores as the app role" \
-  '[ "$RC" = 0 ] && grep -q "^SET ROLE jewelflow;" "$S/pgsu.stdin" && grep -q "createdb" "$S/events.log"'
+check "backup: a genuine dump (COPY data mentioning a program, the \\. terminator) is not called tampered" \
+  '[ "$RC" = 0 ] && grep -q "the gold savings program" "$S/sandbox.stdin"'
 unset DUMP
 setup 'mkdir -p "$PROD/storage/app/public/kyc/1" "$PROD/storage/app/public/signatures"; : > "$PROD/storage/app/public/kyc/1/a.jpg"; : > "$PROD/storage/app/public/signatures/s.png"; edge_package'
 check "edge: the package lists every public private-prefix file on every host, and the WAF expression" \
@@ -276,7 +289,7 @@ unset LONG
 export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
 export DUMP=$'select 1;\n\\! id > /tmp/pwned\n'"$(printf '\\.\n%.0s' {1..20000})"; setup step_backup
 check "backup: a shell escape followed by 20000 pg_dump terminators is refused, never restored (missed under pipefail)" \
-  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q createdb "$S/events.log"'
+  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q sandbox "$S/events.log"'
 unset DUMP MAKE_ZIP
 check "no runbook or staging script decides a check with 'producer | grep -q' (pipefail + SIGPIPE)" \
   '[ -z "$(grep -nE "(^|[^|])\|[[:space:]]*grep -[a-zA-Z]*q" docs/runbooks/*.sh tests/Staging/*.sh | grep -v -- "-f -")" ]'
@@ -301,13 +314,65 @@ setup "$VOK; : > \"\$PROD/storage/app/private/JewelFlows/b.zip\"; verify_all"
 check "verify: an EMPTY newest archive fails verify" '[ "$RC" = 1 ] && out_has "STALE"'
 setup "$VOK; touch -d \"-27 hours\" \"\$PROD/storage/app/private/JewelFlows/b.zip\"; verify_all"
 check "verify: a newest archive older than 26 h fails verify" '[ "$RC" = 1 ] && out_has "STALE"'
-EDGE='curl() { while [ $# -gt 0 ]; do [ "$1" = -D ] && { printf "HTTP/2 %s\r\nserver: cloudflare\r\n\r\n" "$ES" > "$2"; shift; }; shift; done; printf %s "$EB"; }'
-setup "$EDGE; ES=404 EB=\"<title>Not Found</title>\"; verify_edge; echo \"edge-rc=\$?\""
+# curl as the edge: ES = status, EVIA = server header (default cloudflare), ERC = curl's
+# exit, ENOHDR = no headers at all, EB = body. EREACH = what the origin logs for a probe:
+# deny (nginx's rule refused it), app (it reached the origin), none. ECTL = the control.
+EDGE='curl() { local u= h=; while [ $# -gt 0 ]; do case "$1" in -D) h=$2; shift ;; https://*) u=$1 ;; esac; shift; done
+  local path=/${u#https://*/} st=$ES reach=${EREACH-none}
+  case "$path" in *-ctl.jpg) st=404; reach=${ECTL-app} ;; /storage/signatures/*) reach=${EREACH_SIG-$reach} ;; esac
+  [ "${ERC:-0}" = 0 ] || return "$ERC"
+  if [ -n "${ENOHDR:-}" ]; then : > "$h"; else printf "HTTP/2 %s\r\n%s\r\n\r\n" "$st" "${EVIA-server: cloudflare}" > "$h"; fi
+  case "$reach" in
+    deny) printf "[error] access forbidden by rule, request: \"GET %s HTTP/1.1\"\n" "$path" >> "$NGINX_ERRLOG"; printf "\"GET %s HTTP/1.1\" 403\n" "$path" >> "$NGINX_ACCESS" ;;
+    app)  printf "\"GET %s HTTP/1.1\" %s\n" "$path" "$st" >> "$NGINX_ACCESS" ;;
+  esac
+  printf %s "${EB:-}"; }'
+setup "$EDGE; ES=404 EREACH=app EB=\"<title>Not Found</title>\"; verify_edge; echo \"edge-rc=\$?\""
 check "verify-edge: a probe the application answers (not blocked) returns 1, not PARTIAL" 'out_has "edge-rc=1" && out_has "NOT blocked"'
 setup "$EDGE; ES=502 EB=\"error code: 1020 Cloudflare Ray ID\"; verify_edge; echo \"edge-rc=\$?\""
 check "verify-edge: a Cloudflare-branded 502 is not protection (returns 1)" 'out_has "edge-rc=1"'
-setup "$EDGE; ES=403 EB=\"<center>nginx</center>\"; verify_edge; echo \"edge-rc=\$?\""
-check "verify-edge: 403 from the origin through the edge (no WAF rule) is PARTIAL, 3" 'out_has "edge-rc=3" && out_has "EDGE: PARTIAL"'
+
+# ── review of 04e36e1: reproduced against step_backup and verify_edge ───────
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
+export DUMP=$'select 1;\nSET SESSION ROLE postgres;\n'; setup step_backup
+check "scanner: SET SESSION ROLE is refused; the dump reaches no psql" '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q "SESSION ROLE" "$S/pgsu.stdin" "$S/sandbox.stdin"'
+export DUMP=$'select 1;\n \\! true\n'; setup step_backup
+check "scanner: a shell escape after leading whitespace is refused; the dump reaches no psql" '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -qF "\\! true" "$S/pgsu.stdin" "$S/sandbox.stdin"'
+export DUMP=$'select 1; SET SESSION ROLE postgres; \\! true\n'; setup step_backup
+check "scanner is advisory: a shape it misses (mid-line) still goes nowhere but the box" '[ "$RC" = 0 ] && grep -q "SESSION ROLE" "$S/sandbox.stdin" && ! grep -q "SESSION ROLE" "$S/pgsu.stdin"'
+export DUMP=$'\\restrict abc123\nselect 1;\n\\unrestrict abc123\n'; setup step_backup
+check "scanner: the restrict and unrestrict lines pg_dump writes are not called tampered" '[ "$RC" = 0 ]'
+unset DUMP
+setup 'eval "$MAKE_ZIP"; restore_check'
+check "restore-check: the newest archive is restored in the box and compared; no backup is taken" \
+  '[ "$RC" = 0 ] && out_has "RESTORE-CHECK: b.zip restores in an isolated instance" && out_has "shops: 5 restored, 5 in production now" && ! grep -q "ART backup:run" "$S/events.log" && [ ! -e "$S/work/restore" ]'
+unset MAKE_ZIP
+
+# ── verify-edge: transport, status and the origin's own logs decide ─────────
+setup "$EDGE; ES=403 EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: 403 through Cloudflare, refused by nginx's deny rule (its log says so) -> origin only, 3" 'out_has "edge-rc=3" && out_has "EDGE: PARTIAL"'
+setup "$EDGE; ES=403 EREACH=none; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: 403 through Cloudflare, never reached the origin while the control did -> edge, 0" 'out_has "edge-rc=0" && out_has "blocked at the edge"'
+setup "$EDGE; ES=403 EREACH=none EREACH_SIG=deny; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: edge on one prefix, origin on the other -> 3, each line says which" 'out_has "edge-rc=3" && out_has "blocked at the edge" && out_has "deny rule, through the edge"'
+setup "$EDGE; ES=403 EREACH=none ECTL=none; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: 403 but neither probe nor control in the origin log -> cannot tell, 1" 'out_has "edge-rc=1" && out_has "cannot tell"'
+setup "$EDGE; ES=403 EREACH=app; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: 403 that reached the origin without the deny rule logging it -> 1" 'out_has "edge-rc=1" && out_has "some other way"'
+setup "$EDGE; ES=502 EREACH=deny EB=\"<center>nginx</center>\"; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: a 502 carrying nginx's footer is not an origin refusal (returns 1)" 'out_has "edge-rc=1" && out_has "HTTP 502"'
+for st in 200 404; do
+  setup "$EDGE; ES=$st EREACH=app; verify_edge; echo \"edge-rc=\$?\""
+  check "verify-edge: nginx answering $st -> 1" "out_has 'edge-rc=1' && out_has 'HTTP $st'"
+done
+setup "$EDGE; ES=522 EREACH=none; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: a Cloudflare 522 -> 1" 'out_has "edge-rc=1" && out_has "HTTP 522"'
+setup "$EDGE; ES=403 EVIA= EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: a 403 that did not come through Cloudflare -> 1" 'out_has "edge-rc=1" && out_has "not through Cloudflare"'
+setup "$EDGE; ES=403 ENOHDR=1 EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: no response headers -> 1" 'out_has "edge-rc=1" && out_has "no HTTP status line"'
+setup "$EDGE; ES=403 ERC=7 EREACH=deny; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: connection failure -> 1" 'out_has "edge-rc=1" && out_has "curl exit 7"'
 
 echo "== $PASS passed, $FAILN failed"
 [ "$FAILN" = 0 ]
