@@ -184,12 +184,15 @@ sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 sudo -u www-data php artisan db:seed --class=PermissionSeeder
 sudo -u www-data php artisan db:seed --class=RolesAndPermissionsSeeder
 # Curated demo shop (safe, idempotent, refuses production unless PILOT_DEMO_ALLOW_PROD=true):
-sudo -u www-data php artisan db:seed --class=PilotDemoSeeder
+# Outside local/testing the seeder refuses to run without a password of your
+# choosing (its built-in default is published with this repository):
+sudo -u www-data env PILOT_DEMO_PASSWORD='<choose one; keep it out of the repo>' php artisan db:seed --class=PilotDemoSeeder
 ```
 
-**Demo logins** (mobile / password):
-`9000000111 / password` (owner), `9000000112 / password` (manager),
-`9000000113 / password` (cashier). Change before any non-demo use.
+**Demo logins:** `9000000111` (owner), `9000000112` (manager), `9000000113`
+(cashier), all with the `PILOT_DEMO_PASSWORD` given to the seeder. A site seeded
+before 2026-10-01 has the published default on these three accounts: change
+them before the site is reachable from the internet.
 
 The seeder creates: demo shop, 3 users + roles, retailer edition, payment
 methods, today's gold/silver rates, vendor, karigar, a vault metal lot, ~12

@@ -59,7 +59,28 @@ class PilotDemoSeeder extends Seeder
     private const OWNER_MOBILE   = '9000000111';
     private const MANAGER_MOBILE = '9000000112';
     private const CASHIER_MOBILE = '9000000113';
-    private const DEMO_PASSWORD  = 'password'; // demo only — change before any real use
+    /** Local and testing only: this value is published with the repository. */
+    private const DEMO_PASSWORD  = 'password';
+
+    private string $password;
+
+    /**
+     * The built-in password is public, so it is only ever used where nobody
+     * else can reach the site. Anywhere else the operator supplies one:
+     *   PILOT_DEMO_PASSWORD='...' php artisan db:seed --class=PilotDemoSeeder
+     */
+    private function demoPassword(): string
+    {
+        $given = trim((string) env('PILOT_DEMO_PASSWORD', ''));
+        if ($given !== '' && $given !== self::DEMO_PASSWORD) {
+            return $given;
+        }
+        if (App::environment(['local', 'testing'])) {
+            return self::DEMO_PASSWORD;
+        }
+
+        throw new \RuntimeException('PilotDemoSeeder: outside local and testing, run it with PILOT_DEMO_PASSWORD set to a password you choose. The built-in default is published with the repository.');
+    }
 
     public function run(): void
     {
@@ -67,6 +88,8 @@ class PilotDemoSeeder extends Seeder
             $this->command?->warn('PilotDemoSeeder skipped: production environment. Set PILOT_DEMO_ALLOW_PROD=true to override.');
             return;
         }
+
+        $this->password = $this->demoPassword();
 
         $existing = Shop::where('owner_mobile', self::OWNER_MOBILE)->first();
         if ($existing) {
@@ -79,7 +102,7 @@ class PilotDemoSeeder extends Seeder
                 ['email' => 'pilot-demo-admin@example.com'],
                 [
                     'first_name' => 'Pilot', 'last_name' => 'Admin', 'name' => 'Pilot Demo Admin',
-                    'mobile_number' => '9000000100', 'password' => Hash::make(self::DEMO_PASSWORD),
+                    'mobile_number' => '9000000100', 'password' => Hash::make($this->password),
                     'role' => 'super_admin', 'is_active' => true,
                 ]
             );
@@ -160,7 +183,7 @@ class PilotDemoSeeder extends Seeder
                 $this->repairs($shop->id);
             });
 
-            $this->command?->info("Demo shop '" . self::SHOP_NAME . "' created (#{$shop->id}). Owner login: " . self::OWNER_MOBILE . " / " . self::DEMO_PASSWORD);
+            $this->command?->info("Demo shop '" . self::SHOP_NAME . "' created (#{$shop->id}). Owner login: " . self::OWNER_MOBILE . " / " . ($this->password === self::DEMO_PASSWORD ? self::DEMO_PASSWORD : 'the PILOT_DEMO_PASSWORD you set'));
         });
     }
 
@@ -200,7 +223,7 @@ class PilotDemoSeeder extends Seeder
             'role_id' => $roleId,
             'name' => $name,
             'mobile_number' => $mobile,
-            'password' => Hash::make(self::DEMO_PASSWORD),
+            'password' => Hash::make($this->password),
             'is_active' => true,
             'email_verified_at' => now(),
         ])->save();
