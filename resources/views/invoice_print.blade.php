@@ -73,16 +73,12 @@
     if ($showHuid)  $colCount++;
     if ($showStone) $colCount += 2; // StoneWt + StoneVal
     if ($showPurity) $colCount++;
-    // Items table minimum padded rows per paper size. Tuned so the items
-    // table + new bottom structure (9 payment slots + 3-column footer) all
-    // fit on one printed page even with the browser's default headers/footers
-    // enabled. Anything taller spills onto a second page in print preview.
-    $minimumRowsByPaper = [
-        'a4' => 26,
-        'a5' => 16,
-        'thermal' => 0,
-    ];
-    $minimumPrintableRows = $minimumRowsByPaper[$paperKey] ?? 26;
+    // The items table ends with ONE elastic row, a cell per column so the
+    // column lines carry on down the page. It used to be a fixed count of
+    // blank rows (26 on A4), which left a one-item bill 43px of slack and
+    // sent it to a second page as soon as a phone printed it with a larger
+    // system font. See .items-filler-row below.
+    $fillerRow = '<tr class="items-filler-row">'.str_repeat('<td></td>', $colCount).'</tr>';
 
     // ── Invoice calculations ───────────────────────────────────────────────
     $customer       = $invoice->customer;
@@ -203,7 +199,14 @@
             display: flex;
             flex-direction: column;
         }
-        .invoice-body { flex: 1; }
+        /* The body is a column too: everything in it keeps its own height
+           except the items table, which takes whatever the page has left.
+           So every bill has the same structure height (the shell's
+           min-height), and more items, payments, terms or larger text come
+           out of the table's blank space, not onto a second page. */
+        .invoice-body { flex: 1; display: flex; flex-direction: column; }
+        .invoice-body > * { flex: 0 0 auto; }
+        .invoice-body > .items-table { flex: 1 0 auto; }
         /* Bottom 3-column footer row. Locked at the bottom of the page via
            .invoice-shell's flex layout (.invoice-body grows to fill the gap).
            Each column is a dedicated, always-rendered section. */
@@ -283,16 +286,11 @@
         .items-table th,
         .items-table td { border: 1px solid {{ $accent }}; padding: 4px; vertical-align: top; overflow-wrap: break-word; }
         .items-table th { font-weight: 700; background: #f3f3f3; text-align: center; white-space: nowrap; }
-        .items-spacer-row td {
-            height: 10px;
-            padding-top: 0;
-            padding-bottom: 0;
-            border-top: 0;
-            border-bottom: 0;
-        }
-        .items-spacer-row.is-last td {
-            border-bottom: 1px solid {{ $accent }};
-        }
+        /* The one elastic row: it absorbs the height the table was given
+           beyond its real rows, and collapses to nothing when there is none
+           (a full page, a phone screen, thermal paper). */
+        .items-filler-row { height: 100%; }
+        .items-filler-row td { padding: 0; border-top: 0; }
 
         .text-left   { text-align: left; }
         .text-center { text-align: center; }
@@ -601,26 +599,6 @@
                         <td class="text-right">—</td>
                         <td class="text-right strong">{{ number_format((float) $invoice->subtotal, 2) }}</td>
                     </tr>
-                    @php
-                        $fillerRows = max(0, $minimumPrintableRows - 1);
-                    @endphp
-                    @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
-                    <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
-                        <td class="text-center">&nbsp;</td>
-                        <td class="text-left">&nbsp;</td>
-                        @if($showHuid)<td class="text-center">&nbsp;</td>@endif
-                        <td class="text-center">&nbsp;</td>
-                        <td class="text-right">&nbsp;</td>
-                        @if($showStone)
-                        <td class="text-right">&nbsp;</td>
-                        <td class="text-right">&nbsp;</td>
-                        @endif
-                        <td class="text-right">&nbsp;</td>
-                        @if($showPurity)<td class="text-center">&nbsp;</td>@endif
-                        <td class="text-right">&nbsp;</td>
-                        <td class="text-right">&nbsp;</td>
-                    </tr>
-                    @endfor
                 @else
                     @forelse($invoice->items as $idx => $line)
                         @php
@@ -648,61 +626,11 @@
                             <td class="text-right">{{ number_format((float) $line->rate, 2) }}</td>
                             <td class="text-right strong">{{ number_format((float) $line->line_total, 2) }}</td>
                         </tr>
-                        @php
-                            // When items.count() ≤ $minimumPrintableRows we pad
-                            // with filler rows to keep the table visually full.
-                            // When items.count() > $minimumPrintableRows we add
-                            // ZERO fillers (max(0, ...)) and the items themselves
-                            // overflow naturally onto a 2nd page — the
-                            // .invoice-footer is page-break-inside:avoid, so the
-                            // 3-column footer always stays whole on whichever
-                            // page it lands on.
-                            $isLastItemRow = $idx === ($invoice->items->count() - 1);
-                            $fillerRows = $isLastItemRow ? max(0, $minimumPrintableRows - $invoice->items->count()) : 0;
-                        @endphp
-                        @if($isLastItemRow && $fillerRows > 0)
-                            @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
-                            <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
-                                <td class="text-center">&nbsp;</td>
-                                <td class="text-left">&nbsp;</td>
-                                @if($showHuid)<td class="text-center">&nbsp;</td>@endif
-                                <td class="text-center">&nbsp;</td>
-                                <td class="text-right">&nbsp;</td>
-                                @if($showStone)
-                                <td class="text-right">&nbsp;</td>
-                                <td class="text-right">&nbsp;</td>
-                                @endif
-                                <td class="text-right">&nbsp;</td>
-                                @if($showPurity)<td class="text-center">&nbsp;</td>@endif
-                                <td class="text-right">&nbsp;</td>
-                                <td class="text-right">&nbsp;</td>
-                            </tr>
-                            @endfor
-                        @endif
                     @empty
                         <tr><td colspan="{{ $colCount }}" class="text-center">No items found.</td></tr>
-                        @php
-                            $fillerRows = max(0, $minimumPrintableRows - 1);
-                        @endphp
-                        @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
-                        <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
-                            <td class="text-center">&nbsp;</td>
-                            <td class="text-left">&nbsp;</td>
-                            @if($showHuid)<td class="text-center">&nbsp;</td>@endif
-                            <td class="text-center">&nbsp;</td>
-                            <td class="text-right">&nbsp;</td>
-                            @if($showStone)
-                            <td class="text-right">&nbsp;</td>
-                            <td class="text-right">&nbsp;</td>
-                            @endif
-                            <td class="text-right">&nbsp;</td>
-                            @if($showPurity)<td class="text-center">&nbsp;</td>@endif
-                            <td class="text-right">&nbsp;</td>
-                            <td class="text-right">&nbsp;</td>
-                        </tr>
-                        @endfor
                     @endforelse
                 @endif
+                {!! $fillerRow !!}
             </tbody>
         </table>
 

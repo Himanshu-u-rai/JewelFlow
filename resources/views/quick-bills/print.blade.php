@@ -61,15 +61,10 @@
     if (!$showStone)  $descW += 9;
     if (!$showPurity) $descW += 8;
 
-    // Items table padded to a fixed minimum-row count per paper so the
-    // skeleton doesn't shrink on short bills. Tuned to fit single-page
-    // alongside the 9 payment slots + 3-column footer.
-    $minimumRowsByPaper = [
-        'a4' => 26,
-        'a5' => 16,
-        'thermal' => 0,
-    ];
-    $minimumPrintableRows = $minimumRowsByPaper[$paperKey] ?? 26;
+    // One elastic row ends the items table (see invoice_print.blade.php):
+    // a cell per column, so the column lines carry on down the page.
+    // (eight columns are always there: S.No, description, HSN, pieces, gross, net, rate, amount)
+    $fillerRow = '<tr class="items-filler-row">'.str_repeat('<td></td>', 8 + ($showStone ? 2 : 0) + ($showPurity ? 1 : 0)).'</tr>';
 
     // ── Totals (mirror the invoice's 8-row fixed-skeleton box) ───────────
     $subtotal      = (float) ($quickBill->subtotal       ?? 0);
@@ -144,7 +139,11 @@
             display: flex;
             flex-direction: column;
         }
-        .invoice-body { flex: 1; }
+        /* As on the invoice: the items table takes whatever height the page
+           has left, everything else in the body keeps its own. */
+        .invoice-body { flex: 1; display: flex; flex-direction: column; }
+        .invoice-body > * { flex: 0 0 auto; }
+        .invoice-body > .items-table { flex: 1 0 auto; }
         .copy-break   { page-break-before: always; margin-top: 0; }
 
         /* Bottom 3-column footer row. */
@@ -213,11 +212,8 @@
         .items-table th,
         .items-table td { border: 1px solid {{ $accent }}; padding: 4px; vertical-align: top; overflow-wrap: break-word; }
         .items-table th { font-weight: 700; background: #f3f3f3; text-align: center; white-space: nowrap; }
-        .items-spacer-row td {
-            height: 10px; padding-top: 0; padding-bottom: 0;
-            border-top: 0; border-bottom: 0;
-        }
-        .items-spacer-row.is-last td { border-bottom: 1px solid {{ $accent }}; }
+        .items-filler-row { height: 100%; }
+        .items-filler-row td { padding: 0; border-top: 0; }
 
         .text-left   { text-align: left; }
         .text-center { text-align: center; }
@@ -411,44 +407,10 @@
                         <td class="text-right">{{ number_format((float) $item->rate, 2) }}</td>
                         <td class="text-right strong">{{ number_format((float) $item->line_total, 2) }}</td>
                     </tr>
-                    @php
-                        $isLastItemRow = $index === ($quickBill->items->count() - 1);
-                        $fillerRows = $isLastItemRow ? max(0, $minimumPrintableRows - $quickBill->items->count()) : 0;
-                    @endphp
-                    @if($isLastItemRow && $fillerRows > 0)
-                        @for($f = 0; $f < $fillerRows; $f++)
-                        <tr class="items-spacer-row{{ $f === ($fillerRows - 1) ? ' is-last' : '' }}">
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            @if($showStone)<td>&nbsp;</td><td>&nbsp;</td>@endif
-                            <td>&nbsp;</td>
-                            @if($showPurity)<td>&nbsp;</td>@endif
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                        </tr>
-                        @endfor
-                    @endif
                 @empty
-                    @php $emptyFiller = max(0, $minimumPrintableRows - 1); @endphp
                     <tr><td colspan="{{ 7 + ($showStone ? 2 : 0) + ($showPurity ? 1 : 0) }}" class="text-center">No items.</td></tr>
-                    @for($f = 0; $f < $emptyFiller; $f++)
-                    <tr class="items-spacer-row{{ $f === ($emptyFiller - 1) ? ' is-last' : '' }}">
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        @if($showStone)<td>&nbsp;</td><td>&nbsp;</td>@endif
-                        <td>&nbsp;</td>
-                        @if($showPurity)<td>&nbsp;</td>@endif
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-                    @endfor
                 @endforelse
+                {!! $fillerRow !!}
             </tbody>
         </table>
 
