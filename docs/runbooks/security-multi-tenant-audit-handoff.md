@@ -3,12 +3,14 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state: §0m is authoritative (2026-10-01, scope frozen).** Production
-and staging are at `31282713bafdd072732839e69f0e846fc739c2f4`, and `main`
-follows; later commits are documentation. **Not closed: one gate is left** —
-the physical Android check on real staging, after which build 25 is handed
-over (§0m). The origin denies and the signed-in browser check in §0l's
-checklist are done (§0m 1, 2). iOS is not run and not part of this batch.
+**Current state: §0m is authoritative (2026-10-01). The batch is CLOSED for
+its agreed scope.** Production and staging are at
+`31282713bafdd072732839e69f0e846fc739c2f4`, and `main` follows; later commits
+are documentation. The origin denies, the signed-in browser check, an
+emulator verification of build 24 against real staging and the hand-over of
+build 25 are done (§0m). One release gate is left with the owner: no physical
+Android device has been used (NOT RUN). iOS is not run and not part of this
+batch; no update was published; the backlog is in §0m.
 §0l stays as the evidence for the closure pass, §0k as the review of packet
 `04e36e1`, §0j as the catch-up from `c68114e`. Sections before §0g describe
 local evidence from before anything was pushed.
@@ -76,7 +78,7 @@ not mine.
 
 ---
 
-## 0m. Scope freeze and the closure gates (2026-10-01, 16:25–18:30Z)
+## 0m. Scope freeze and the closure record (2026-10-01, 16:25–19:10Z)
 
 The owner froze the scope on 2026-10-01: four items, then the batch closes and
 nothing else is started. Constraints that hold through closure: no update is
@@ -86,15 +88,18 @@ quick-bill idempotency defect stays in the backlog, and nothing here claims
 that every financial endpoint is idempotent. Times are UTC. §0l stays as the
 evidence for everything before this point.
 
-**Status: NOT CLOSED — one gate is left** (3: the physical Android check on
-real staging; 4 follows it).
+**Status: CLOSED for the agreed scope, 2026-10-01 19:10Z.** One release gate
+is left and it is the owner's: the app has not been run on a physical Android
+device (**NOT RUN**), so that check comes before build 25 goes to shops. The
+owner chose an emulator verification against real staging for this batch
+(gate 3).
 
 | # | Gate | State | Evidence |
 |---|---|---|---|
 | 1 | Origin denies for all five private prefixes | **DONE and verified** | applied by the owner 18:16:11Z; `verify` exit 0 at 18:19:23Z; controls at 18:20:47Z. Detail 1 |
 | 2 | Signed-in browser isolation | **DONE**, both orders and the admin pair | the owner's own browser, signed in by the owner. Detail 2 |
-| 3 | Physical Android, real staging, `preview` build 24 | **NOT RUN** (the owner's; no phone is attached to the test machine, and staging shows no app activity) | Detail 3 |
-| 4 | Hand-over of build 25 by the direct-install APK path | **READY, held until 3 passes**; upgrade from the installed production build confirmed | Detail 4 |
+| 3 | The remaining checklist on `preview` build 24 against real staging | **DONE as an emulator verification.** A physical device: **NOT RUN** | 18:34–19:02Z, the QA shop on staging, synthetic records. Detail 3 |
+| 4 | Hand-over of build 25 by the direct-install APK path | **DONE**: the file and its link went to the owner at 19:05Z; upgrade from the installed production build confirmed | Detail 4 |
 
 ### 1. The origin denies
 
@@ -157,24 +162,56 @@ Observed and left as is: on a staging page the browser holds two cookies named
 `XSRF-TOKEN`, production's (scoped to the parent domain) and staging's own
 (backlog; staging only).
 
-### 3. The physical Android check (the owner's)
+### 3. Emulator verification against real staging
 
-Install `preview` build 24 (EAS build `5caceada-4f5a-46a4-8265-7c6855e21a7f`;
-its link expires 2026-10-15) on a phone and sign in with a staging account.
-It shares the package id and signing key with the production app, so it
-replaces that app on the phone until build 25 is installed over it.
+**What this is.** `preview` build 24 (sha256 `178000c2…0931`; versionCode 24
+in the APK's own manifest) on the Android emulator (API 34), talking to the
+real staging server over the network with no proxy and no changed
+certificates. **It is not a physical device: that stays NOT RUN.**
 
-| # | Step | Expect | Result |
-|---|---|---|---|
-| a | Staging web, Settings → Billing: upload a signature, switch it on | saved | not run |
-| b | Issue a quick bill; Share Original, then Print Original | the bill with the signature; no alert | not run |
-| c | A finalized invoice: Share, Print | the same | not run |
-| d | Switch the signature off; issue another quick bill; Share | no signature, no alert | not run |
-| e | Optional: the signature file moved aside on staging; Share the first bill | "Signature unavailable" on the PDF and as an alert | not run |
-| f | Cash Book → Add entry → Cash In ₹137; Save and airplane mode on within a second; airplane off; Save again | saved; exactly one ₹137 entry | not run |
+**Backend confirmed before any write.** The build's bundle holds the staging
+host. On launch its first request reached the origin directly from the test
+machine (18:34:11Z); staging is the only name served that way, production
+sits behind the edge. The owner then signed in by typing in the emulator
+window (this session entered no credential), and that sign-in's token
+appeared in the staging database (18:38:17Z) for the owner of a QA shop
+created in July whose only customer is a QA record. Everything below was done
+in that shop, with synthetic records.
 
-What stands in for it until then is §0l detail 4: the same flows on the
-release APKs (builds 22 and 24) on the emulator against a local stand-in.
+| Check, build 24 on real staging | Result |
+|---|---|
+| Quick bill issued in the app with the signature on; Share Original | PASS — one-page PDF: number, customer, item, shop name, one 360×120 image; no alert |
+| The same bill; Print Original → Save as PDF | PASS — print dialog, "Page 1 of 1"; the saved PDF carries the image; no alert |
+| Signature file moved aside on staging; the bill reopened; Share Original | PASS — no image, the "Signature unavailable" marker, and the app's "Signature unavailable" alert; the file was put back |
+| Signatures switched off; a second quick bill issued; Share Original | PASS — no image, no marker, no alert |
+| An existing finalized invoice (issued in July, before the shop had a signature); Share, then Print → Save as PDF | PASS — one-page PDFs with the invoice number and shop; no signature expected and none shown; no alert |
+| A cash-book entry of ₹137 with the server's replies dropped on the device | PASS — below |
+
+**The payment retry, with the server's side of it.** The emulator's own
+firewall was set to drop everything arriving from staging's address, then Save
+was tapped. The server logged the request and answered 201 at 18:58:57Z; the
+app's automatic retry arrived at 18:59:13Z, also 201; neither answer reached
+the app, which showed "No connection". The firewall rule was removed and Save
+tapped again: 201 at 19:00:05Z, and the app showed the entry as saved. In the
+staging database there is exactly **one** cash row of ₹137 (created
+18:58:57Z) and exactly **one** idempotency key row for the three requests;
+the three responses have the same size. Three requests, one key, one entry.
+
+**Reused, not repeated on staging:** an invoice issued with a signature on,
+and the "Outcome unknown" and "Already recorded" wording — §0l detail 4
+(builds 22 and 24 against the local stand-in); two copies — §0i (Expo Go).
+
+**What it wrote, and what was undone.** The app would not open until the
+day's metal rates were saved, so they were (the previous day's values). The
+synthetic signature was stored through the application's own store and its
+settings were put back as found (off, none). Left in the QA shop: the rates
+for 2026-10-02, quick bills QB-1 and QB-2 (₹472.08 each, paid in cash), the
+₹137 entry and its key row. The app was signed out at 19:02:09Z (its token is
+gone), the firewall rule removed and the emulator stopped. The app sent
+nothing to production.
+
+Seen on the way (backlog): the app offers to issue a quick bill with no
+payment row, the server refuses that (422), and the app blocks a part payment.
 
 ### 4. Build 25 and the supported release scope
 
@@ -191,6 +228,13 @@ expire 2026-10-31, so a hand-over means downloading the file.
 versionCode 25, from `b266c2c`, sha256
 `1079077c0ff62dbfb4e9e1e985a5917cf92e74ae97f17c9b4c7537605a7048c8`,
 production backend only — §0l detail 4). No update is published.
+
+**Handed over** to the owner on 2026-10-01 at 19:05Z, as the file and as a
+download link whose content was fetched again and matches that checksum (the
+link is not recorded in this public file; it expires 2026-10-31).
+**Remaining release gate, the owner's:** run it on a physical Android device
+before it goes to shops. Devices still on versionCode 16 get nothing until
+they install an APK, since no update is published.
 
 **Upgrade compatibility**, emulator (API 34), offline, the production host
 name resolved to a local stand-in with synthetic data:
@@ -237,6 +281,8 @@ The owner's mobile checkout is untouched (`4f10a3b`, its uncommitted
   POS sale and the v1 cash-book routes do refuse or replay a repeated key;
   the other financial endpoints were not surveyed for this.
 * The operator script's wait after an nginx reload (detail 1).
+* Quick bills: the app allows issuing with no payment row, the server
+  requires one, and the app blocks a part payment (detail 3).
 * The mobile `runtimeVersion` policy gives every build one runtime, so an
   update reaches builds with different native layers (versionCode 16).
 * Two `XSRF-TOKEN` cookies on staging pages when production's are present.
