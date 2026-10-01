@@ -31,7 +31,7 @@
 #                      production out of sight) and compared with production.
 #                      No dump is ever given to a psql that can reach production.
 #   4 origin    R7/R6  nginx denies /storage/{kyc,signatures,karigar-invoices,
-#               R4/R5  purchases}/ on production's vhost; verified in the running
+#               R4/R5  purchases,repairs}/ on production's vhost; verified in the running
 #                      config and with harmless probes on all three hosts. Origin only.
 #   Then it prints the Cloudflare package (edge rule, purge list, check). The
 #   edge stays PARTIAL until that package is applied.
@@ -59,7 +59,7 @@ HOSTS="jewelflows.com www.jewelflows.com dhiran.jewelflows.com"
 # Public-disk directories nothing may serve: KYC, signatures, and the two the
 # app stopped using when attachments moved to the private disk (S3-02, S3-03).
 # Files without a database row still sit in them (2026-10-01: 3 PDFs answered 200).
-PREFIXES="kyc signatures karigar-invoices purchases"
+PREFIXES="kyc signatures karigar-invoices purchases repairs"
 COUNTED="shops users customers invoices invoice_items invoice_payments cash_transactions karigar_invoices stock_purchases shop_billing_settings loyalty_transactions report_exports idempotency_keys platform_admins"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 WORK=/root/security-batch/operator-$STAMP

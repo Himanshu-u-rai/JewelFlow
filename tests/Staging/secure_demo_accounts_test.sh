@@ -55,15 +55,15 @@ DRIVER=file run apply
 check "a session driver other than database: ABORT, nothing changed" '[ "$RC" = 3 ] && grep -q "session driver is .file." "$T/out" && [ "$(state)" = "$BEFORE" ]'
 tinker '$u = \App\Models\User::withoutGlobalScopes()->where("mobile_number", "9000000113")->first()->replicate(); $u->mobile_number = "9000000114"; $u->name = "Extra"; $u->save(); echo "ok";' > /dev/null
 run apply
-check "a fourth account in the demo shop: ABORT, nothing changed" '[ "$RC" = 3 ] && grep -q "^ABORT" "$T/out" && state | grep -q "9000000113:active:opens"'
+check "a fourth account in the demo shop: ABORT, nothing changed" '[ "$RC" = 3 ] && grep -q "^ABORT" "$T/out" && grep -q "9000000113:active:opens" <<< "$(state)"'
 tinker '\App\Models\User::withoutGlobalScopes()->where("mobile_number", "9000000114")->update(["shop_id" => \App\Models\Shop::where("name", "Control Shop")->value("id"), "role_id" => \App\Models\User::withoutGlobalScopes()->where("mobile_number", "9876500001")->value("role_id")]); echo "ok";' > /dev/null
 run apply
-check "a demo-range mobile in another shop: ABORT, nothing changed" '[ "$RC" = 3 ] && grep -q "demo-range mobile" "$T/out" && state | grep -q "9000000113:active:opens"'
+check "a demo-range mobile in another shop: ABORT, nothing changed" '[ "$RC" = 3 ] && grep -q "demo-range mobile" "$T/out" && grep -q "9000000113:active:opens" <<< "$(state)"'
 
 fresh; no_admin
 LIMITED=1 run apply
 check "the exposure cannot be shown (login rate limited): it stops before changing anything (exit 1)" \
-  '[ "$RC" = 1 ] && grep -q "^STOPPED" "$T/out" && ! grep -q "^applied:" "$T/out" && state | grep -q "9000000111:active:opens 9000000112:active:opens 9000000113:active:opens"'
+  '[ "$RC" = 1 ] && grep -q "^STOPPED" "$T/out" && ! grep -q "^applied:" "$T/out" && grep -q "9000000111:active:opens 9000000112:active:opens 9000000113:active:opens" <<< "$(state)"'
 
 fresh; no_admin
 run apply
