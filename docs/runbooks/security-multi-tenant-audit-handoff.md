@@ -3,11 +3,12 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state: §0j is authoritative (2026-10-01, 04:20 IST).** Production and
-staging run `250950fa7739085fb1240f1c321711df336bc31c`; later commits touch only
-docs, runbook scripts and their tests. Not closed: signed-in browser isolation,
-iOS device checks, and the mobile audit commits (local only, no build). §0j lists
-the optional items and the earlier paragraphs it supersedes.
+**Current state: §0k is authoritative (2026-10-01).** Production, staging and
+`main` are at `ecb05d5940d49f604e9f7ca8abea120eed8a236c`; later commits are
+documentation. Not closed: the human-only checklist in §0k (repository
+visibility, three staging demo accounts, two more origin denies, the signed-in
+browser check, device checks on real hardware). §0j stays as the catch-up from
+`c68114e`; §0k supersedes its state table and its edge-cache paragraph.
 Sections before §0g describe local evidence from before anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
@@ -70,6 +71,303 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0k. Review of packet `04e36e1`: the restore boundary, the edge verifier, the edge cache, mobile, `main` (2026-10-01)
+
+Started from `04e36e193dd638698bf6954264f23e1c603a4cd3`, the packet the reviewer
+read. The deployments, the password rotation, the backups and the origin denies
+recorded before stay as recorded; none was repeated. Everything marked
+*observed* was read on 2026-10-01 between 03:10Z and 06:00Z. **This section
+supersedes §0j's current-state table and its paragraph "Why the WAF rule is
+optional".**
+
+### State at the end of this pass
+
+| Item | State | Evidence |
+|---|---|---|
+| Web release | `ecb05d5940d49f604e9f7ca8abea120eed8a236c` on staging and production, trees clean. Two code-only forward releases today: `56e4217b72c5ea7b71cdabb1650a8d8ccd86978a` (staging 04:04:15–04:04:19Z, production 04:04:34–04:04:38Z), then `ecb05d5` (staging 04:43:07–04:43:10Z, production 04:43:15–04:43:17Z; runbook script and its tests only) | `deploy-forward.sh`: "FORWARD RELEASE PASSED" each time; `git rev-parse HEAD` on the server |
+| `main` | fast-forwarded `bc4323f..56e4217..ecb05d5`, then to this section's commit (docs only) | `git ls-remote`; plain fast-forwards |
+| Web branch | `security/multi-tenant-audit` = `main`; local = GitHub | `git ls-remote` |
+| Mobile, GitHub | `rebrand/jewelflows-mobile` = `838c658a90f95c980ebc2c383a63db506189385f` (fast-forward `a987e99..838c658`) | `git ls-remote` |
+| Mobile build | EAS build `23e2bb39-14a3-49f2-aa42-d5fca21fb00f`: Android, profile `preview`, internal distribution, versionCode 22, from `838c658`, finished 03:59:23Z; backend `https://staging.jewelflows.com` | `eas build:view`; the build log: `EXPO_PUBLIC_API_BASE_URL` loaded from the EAS `preview` environment |
+| Owner's mobile checkout | untouched: `4f10a3b` with its uncommitted `src/utils/storage.ts` and 19 untracked files | `git status` |
+| Health after each release | `/health` and `/login` 200 on the four hosts; no ERROR line on either environment since 04:04Z; cookie probe exit 0; staging verifier all checks passed (twice) | curl; daily logs; `cookie_isolation_probe.sh`; `verify_security_batch.php` |
+| `verify` on production | **exit 1, correctly**: two origin denies are missing (item 3 below) | the server's own copy of the script |
+
+### 1. SEC-001, reopened: the restore boundary
+
+The reviewer's two inputs were reproduced against `step_backup` before any
+change (both harness checks failed): `SET SESSION ROLE postgres;` and a shell
+escape after leading whitespace passed the scanner and reached `psql` running
+as the `postgres` OS user. The reviewer's reading is correct: `SET ROLE` never
+constrained what psql itself executes.
+
+**What changed (`e907b0e`, `3bae6b0`, `ecb05d5`).** A dump is no longer given to any psql
+that can reach production. `restore_isolated` runs it inside a transient
+systemd unit: `DynamicUser` (a throwaway uid), `PrivateNetwork`, `PrivateIPC`,
+`ProtectSystem=strict`, `ProtectHome=yes`, the production trees, logs, TLS and
+ssh keys and PostgreSQL's data, configuration and socket directories
+inaccessible, no capabilities, and its own `initdb` instance on a 2 G tmpfs
+with memory, task and 15-minute limits. Nothing is created in the production
+cluster: no scratch database, no extension, no `SET ROLE`. The unit checks its
+own confinement before restoring (not root, cannot read production's `.env` or
+PostgreSQL directories, cannot reach `127.0.0.1:5432`, only `lo`) and exits 97
+otherwise. Its output is treated as data (`count <table> <digits>`): it goes
+to files that the unit's own file-size limit caps, and only the first 64 KB are
+read back (`ecb05d5`; before that a dump could have made the root script hold
+gigabytes or fill the disk for the unit's lifetime — found re-reading the
+change, not reported by the reviewer).
+
+**Scanner rejection and enforced containment are different things.** The
+scanner (`tampered()`) is kept as an advisory tamper signal; it now refuses
+both reported shapes, and it is still incomplete by construction (a mid-line
+`\!` passes it; the harness asserts that such a dump goes to the box and
+nowhere else). Containment is the unit.
+
+| Evidence | Result |
+|---|---|
+| `tests/Runbooks/restore_sandbox_test.sh` — the real unit, real PostgreSQL binaries, no stubs; a throwaway instance on 127.0.0.1 stands in for production | 23 passed |
+| … genuine | a real `pg_dump` round trip restores; row and trigger counts come back |
+| … scanner | 8 shapes refused, including both of the reviewer's; a genuine dump is not flagged |
+| … containment | the payload is given to the box **unscanned and runs** (`PAYLOAD-RAN`); it cannot read a canary file, cannot write to the home directory, `/tmp` or `/var/tmp`, has no route to the stand-in instance (TCP refused, socket directory hidden), and `COPY … TO PROGRAM` fails as the box's user; the stand-in is unchanged |
+| … control | the same payload through a psql that can reach the stand-in (how the old procedure ran it) reads the canary, writes outside and drops a table |
+| … self-check | a box that can read a path it must not see, or the same script without the unit's isolation, refuses to restore (exit 97) |
+| … flood | 200 MB written to stderr inside the box leaves at most the unit's file-size limit on disk (it reached the disk before `ecb05d5`) |
+| `tests/Runbooks/operator_steps_test.sh` (stubs) | 76 passed; the three reviewer reproductions failed before the change |
+| Production host, read-only `restore-check` of the newest nightly archive, three runs (03:12Z; 04:42Z with the output caps; 04:43Z from the released tree) | `sandbox: uid 61535` / `62029` / `61905` `, network lo only, production paths and port unreachable`; each time 14 tables and 42 triggers equal to production; nothing ran against the production cluster; no unit, process or file left |
+
+The first run on the host **refused**: under the system manager
+`/sys/class/net` still lists the host's interfaces inside `PrivateNetwork`, so
+the self-check failed closed on a false reading. It now reads `/proc/net/dev`.
+
+Not claimed: `DynamicUser` was not exercised with a malicious dump (no failure
+injection on production; the local runs use the user manager, where the uid is
+the tester's own, so there the mount and network isolation carry the test).
+The counts are self-reported by the box: they detect an incomplete genuine
+backup, not a dump written to lie.
+
+### 2. The edge verifier
+
+Reproduced first: an HTTP 502 whose body carries nginx's footer read as "403
+from the origin", returned 3, and `verify` accepted it. Now (`e907b0e`) a probe
+needs a completed transfer, an HTTP 403 and Cloudflare in the path; **which
+layer refused is read from the origin's own logs**, never from the page:
+nginx's "access forbidden by rule" for that random path means the origin's
+rule; a path absent from the access log, while a control request sent the same
+way is present, means the edge. Everything else is 1. Harness: nginx 200, 404
+and 502, a Cloudflare 522, a 403 not through Cloudflare, no headers, a
+connection failure, "neither probe nor control logged", "reached the origin
+without the deny rule" all return 1; origin-only returns 3, edge-only 0, mixed
+3 with each line saying which.
+
+### 3. The edge cache, and two more directories
+
+**Cloudflare's configuration, read in the owner's signed-in dashboard
+(read-only, ≈04:10–04:35Z).** Plan Free. Caching Level Standard. Browser Cache
+TTL 4 hours. Cache Rules 0, Cache Response Rules 0, Page Rules 0 of 3, Workers
+routes none, Cache Reserve not activated, Always Online off, Development Mode
+off. Security rules: custom 0 of 5, rate limiting 0 of 1. URL normalization:
+type Cloudflare, incoming on, to origin off. **Nothing overrides the edge
+TTL.**
+
+**Measured from outside.**
+
+* A fresh query string on a static asset answers MISS, then HIT: the query
+  string is part of the cache key (as Standard says), so the nine purged URLs
+  did not cover query-string variants.
+* The origin sends no `Cache-Control` or `Expires` for static files; the
+  `max-age=14400` clients see is the Browser TTL above.
+* 216 public objects under `/storage/` (catalogue images and shop logos, HEAD
+  only), first pass 03:51–03:53Z: 0 fresh HIT, 105 REVALIDATED (in the cache
+  but already expired), 111 MISS.
+* Second pass, 03:55Z: 215 HIT with ages of 107–152 s, so the first pass had
+  refilled the cache (colo SIN). A timed re-sample of the same 216 objects at
+  05:47Z and 05:58Z measures when they expire. **Result: pending when this
+  section was committed; it is appended at the end of this section.** The
+  conclusion below does not rest on it: with no rule in the zone, nothing can
+  lengthen the default TTL, and the origin has served no 200 for these paths in
+  the 15 days of logs kept.
+
+**Assessment of the variants.** Query strings, the three proxied hosts and
+path encodings all fall under one TTL policy, the default, because no rule
+exists. For `/storage/kyc/` and `/storage/signatures/` the origin has answered
+403 since 2026-09-25 22:24Z and logged no 200 since at least 09-16, so no
+variant of those files can still be fresh at the edge; the canonical URLs were
+also purged. That is the evidence for origin-plus-purge containment of those
+two directories. The WAF rule stays worth adding as a second layer (it keeps
+the edge closed if the nginx rule is ever lost); it is no longer needed to
+close an unknown.
+
+**Two more directories (corrects R4 and R5 in §11).** Production's public disk
+also holds three PDFs under `karigar-invoices/` and `purchases/` (dated
+2026-04-24/25) and the origin answers **200** for them. No database row names
+them (`karigar_invoices` is empty; no `stock_purchases` row has an image), so
+the row-driven dry runs truthfully reported "nothing to move" while the files
+stayed reachable by URL. The application no longer writes or links either
+directory (both attachments use the private disk and an authenticated route).
+The access log since 09-16 shows no request for them other than this check's
+own HEAD requests, which went straight to the origin. `b1adc1a` adds both
+directories to the operator script's list, so `run origin` adds the two denies,
+`verify` reports them missing until then (it does: exit 1), and the Cloudflare
+rule and purge list are built from the same four names. Applying nginx rules is
+an operator step (human checklist, 3).
+
+Seven repair photos also sit on the public disk and are served by URL. That is
+how the application works today, and the audit never classified `repairs/`: a
+follow-up outside this batch.
+
+### 4. Mobile
+
+* **Integration.** A clean worktree at the remote head `a987e99`; the three
+  audit commits cherry-picked without conflict: `29b7494` (S3-04 warning),
+  `c9e9a41` (S3-09c uncertain outcome), `838c658` (reconciled-request message).
+  The tree differs from the local audit tip only in the four files the two
+  remote commits changed.
+* **Tests of the combination.** At `a987e99`: typecheck clean; jest 255 passed,
+  1 failed (`edit-screen.test.tsx`, a 5 s timeout under full-suite load). At
+  `838c658`: typecheck clean; jest 280 passed, 0 failed (40 suites); that file
+  alone, 3 runs, passed each time.
+* **Published and built.** Pushed as a fast-forward; EAS preview build 22 from
+  `838c658` (table above). The EAS `preview` environment pins the staging
+  backend and `production` pins `https://jewelflows.com`; the build log shows
+  the variable loaded from `preview`. Not verified inside the APK. No
+  production build or update was published: that follows the device checks.
+* **On-device smoke of the integrated commit** (Android emulator API 34, Expo
+  Go, local backend, clean worktree without `storage.ts`): the bundle compiles
+  (2092 modules) and the app boots; a wrong-password attempt appears in the
+  local backend's log before any sign-in; sign-in and the dashboard work; a
+  quick bill opens and Share produces a one-page PDF carrying its number,
+  customer, item and total.
+* **The earlier Android evidence stands as recorded, with its limit:** the
+  signature in share/print output, two copies, the "Signature unavailable"
+  warning and the S3-09c lost-reply retry (§0i) were run in Expo Go on
+  `4f10a3b` **plus the owner's uncommitted `storage.ts`**, not on a release
+  build.
+* **Not done, and not claimed:** a release build on a physical Android device;
+  anything on iOS (EAS lists 26 Android builds and no iOS build); the signed-in
+  browser check.
+
+### 5. `main` cannot roll the batch back
+
+`main` was `bc4323f`: without the batch, and without the durable payment
+claims. `payment-idempotency-rollback-constraints.md` measured what the older,
+cache-only mobile payment controller does against a database that already
+holds claims: a second payment for a key the newer code served (RB-1), and the
+same within 54.8 ms of mixed versions (RB-4); its §4 forbids such a revision
+under payment traffic. A routine deploy (`STAGING_DEPLOY.md`: `git checkout
+<ref>`) checked nothing.
+
+* `main` now contains the release (plain fast-forward; `gh` cannot open a pull
+  request here: its account is not a collaborator).
+* `STAGING_DEPLOY.md` refuses, at the checkout step, any ref that does not
+  contain `250950f`, and its rollback section says to revert forward
+  (`df66618`). Checked: the old `main`, `fix/small-batch-20260914` and
+  `hotfix/free-trial-shopless-signup` are refused; the release passes.
+* Branches cut before the release still lack it and must be rebased onto
+  `main` before any deploy. `deploy-forward.sh` already refuses a target that
+  does not descend from the deployed commit.
+
+### 6. The staging demo accounts, and a public repository
+
+`Himanshu-u-rai/JewelFlow` is **public** (the unauthenticated GitHub API
+answers 200). `PilotDemoSeeder`'s built-in password and `STAGING_DEPLOY.md`'s
+login table were therefore public, and on staging the three demo shop users
+still accept that password (checked on the server, yes/no only). The seeder's
+platform-admin row is not on staging; production has none of these accounts.
+Use of those accounts by anyone else cannot be ruled out from what is kept: 14
+days of one access log for all hosts, without a host field, and no login audit.
+(Of the three mobile sign-ins in it, one is §0i's, one is a production user
+whose token timestamp matches, and one cannot be attributed to a host.)
+
+`7cd7c82`: outside local and testing the seeder requires
+`PILOT_DEMO_PASSWORD` and refuses the built-in value even when passed in;
+`STAGING_DEPLOY.md` prints no password. Existing accounts are unchanged by
+that: human checklist, 2.
+
+### Measured results
+
+| Run | Where | Result |
+|---|---|---|
+| Full suite | `7cd7c82`, PHP 8.2 | 3436 passed, 7 skipped, 0 failed |
+| Full suite | `7cd7c82`, PHP 8.4 | 3435 passed, 7 skipped, **1 failed**: `UrlKnowledgeAuthorizationTest`'s fixture overwrote the first signature digit with `0`, a no-op for one signature in sixteen |
+| Targeted, after the full runs | `56e4217` | that fixture now always changes the digit: 24 of 24 runs; the file 8 of 8 on PHP 8.4 and 8.2 |
+| Targeted | `7cd7c82`, PHP 8.4 | `tests/Feature/Security`: 313 passed; `PilotDemoSeederPasswordTest`: 4 of 4 (3 failed before the fix) |
+| Shell | `ecb05d5` | operator harness 76 of 76; restore box 23 of 23; cookie-probe test 3 of 3 |
+| Staging verifier | staging at `56e4217`, again at `ecb05d5` | all checks passed |
+| Mobile | `838c658` | typecheck clean; jest 280 of 280 |
+
+### Human-only checklist
+
+Each needs credentials, hardware, or a setting this session may not change.
+
+1. **Decide the repository's visibility** (GitHub → Settings → General →
+   Change visibility). While it is public, this handoff, the runbooks and the
+   history are too.
+2. **Lock the three staging demo accounts** (VPS, root). It sets an unknown
+   random password and removes their tokens and sessions:
+
+   ```bash
+   cd /var/www/jewelflow-staging && sudo -u www-data php artisan tinker --execute='foreach (\App\Models\User::withoutGlobalScopes()->where("mobile_number", "like", "90000001%")->get() as $u) { $u->forceFill(["password" => \Illuminate\Support\Facades\Hash::make(bin2hex(random_bytes(32)))])->save(); $u->tokens()->delete(); \Illuminate\Support\Facades\DB::table("sessions")->where("user_id", $u->id)->delete(); echo "locked user ", $u->id, PHP_EOL; }'
+   ```
+
+   Run locally on a seeded database, it locked all three and the default no
+   longer opened them.
+3. **Add the two origin denies** (VPS, root, an interactive terminal; type YES):
+
+   ```bash
+   bash /var/www/jewelflow/docs/runbooks/operator-steps-security-batch.sh run origin
+   ```
+
+   Expect `ORIGIN: /storage/{kyc,signatures,karigar-invoices,purchases}/ denied …`.
+   Then `… verify` must exit 0.
+4. **Cloudflare** (zone jewelflows.com). Custom purge of the URLs the run above
+   writes to `edge-purge-urls.txt` (the three new files on three hosts; the
+   earlier nine are already purged). Optional second layer: Security → Security
+   rules → Custom rule, action Block, expression
+
+   ```
+   (http.host in {"jewelflows.com" "www.jewelflows.com" "dhiran.jewelflows.com"} and (lower(url_decode(http.request.uri.path)) contains "/storage/kyc/" or lower(url_decode(http.request.uri.path)) contains "/storage/signatures/" or lower(url_decode(http.request.uri.path)) contains "/storage/karigar-invoices/" or lower(url_decode(http.request.uri.path)) contains "/storage/purchases/"))
+   ```
+
+   One verification for either state: `… verify-edge` on the VPS. Exit 3 with
+   "the origin's deny rule" on every line means origin only; exit 0 with
+   "blocked at the edge" on every line means the rule is in front.
+5. **Signed-in browser isolation.** In one browser profile: sign in to
+   `https://jewelflows.com`; in a second tab sign in to
+   `https://staging.jewelflows.com` with a staging account; reload the
+   production tab (still the production user); sign out of staging; reload
+   production again (still signed in). Repeat in the other order, and once for
+   `/admin/login` on both.
+6. **Android, a real device.** Install EAS build 22, sign in on staging, share
+   and print one invoice and one quick bill (signature present; the warning
+   when the signature file is missing), and take one payment with the network
+   cut during the request (the S3-09c message; one payment recorded).
+7. **iOS.** No iOS build exists. Either repeat step 6's share and print checks
+   in Expo Go on an iPhone, or record that iOS is not a release target.
+8. **Ship the mobile fixes to users**, after 6: a production build or update
+   made with the production environment (see the OTA follow-up below).
+9. **Local checkouts.** Mobile: `git pull --rebase --autostash` in the main
+   checkout (the three local commits are already upstream under new SHAs; the
+   uncommitted `storage.ts` is kept). Web: `git pull --ff-only` on `main`.
+
+### Follow-up outside this batch
+
+* Repair photos on the public disk (unclassified by the audit; served by URL).
+* `scripts/ota-safe-publish.mjs` bundles with whatever local env file exists
+  and does not pass `--environment`: a production update made from a checkout
+  whose `.env` names staging would point users at staging, and a preview
+  update from a checkout with no `.env` would point at production.
+* Relocate the six files still on the public disk behind the denies (3 from
+  §0h, 3 from this section); they are the only copies and were not moved.
+* Off-site backups (local only today); `SESSION_SECURE_COOKIE=true`;
+  `pageinspect` on production.
+* Review lows left open: SEC-005, SEC-006, SEC-009 (the command), SEC-011
+  remainder. Product decisions: §11.
+* Not the batch: `platform:archive-audit-logs` fails monthly; a Razorpay rate
+  limit in `subscription:reconcile-payments`; POS 500 on a null
+  `selling_price`.
 
 ---
 
@@ -4807,7 +5105,7 @@ Local work that remains, none of it blocking the conditions in §11:
 | R1 | **DONE** (independent agent) | 12 findings; mediums fixed, lows mostly fixed (§0i) |
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
-| R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
+| R4, R5 | **CORRECTED in §0k: not done** | the dry runs count database rows (0 and 0, still true); three PDFs with no row remain in `karigar-invoices/` and `purchases/` on the public disk and the origin answers 200 for them. `b1adc1a` adds both directories to the operator's origin step; applying it is on the human checklist |
 | R6 | **DONE** (origin + purge) | the 1 superseded signature: refused by nginx on all three hosts since 2026-09-25 22:24Z; its cached copies purged ≈22:45Z, 403 through Cloudflare; optional WAF rule not added |
 | R7 | **DONE** (origin + purge) | 2 KYC files: refused by nginx on all three hosts since 2026-09-25 22:24Z; cached copies purged ≈22:45Z, 403 through Cloudflare (`BYPASS`); optional WAF rule not added |
 | R8 | **Android DONE**; iOS NOT RUN | emulator: share/print PDFs carry the signature, 2 copies, the unavailable warning, the S3-09c lost-reply retry (one row); iOS needs a Mac and an iPhone (§0i) |
