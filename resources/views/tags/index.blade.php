@@ -4,6 +4,9 @@
             <h1 class="page-title">Tag / Label Printing</h1>
             <p class="text-sm text-gray-600 mt-1">Select items to generate printable price tags</p>
         </div>
+        <div class="page-actions">
+            @include('partials.back-to-stock')
+        </div>
     </x-page-header>
 
     <div class="content-inner ops-treatment-page">

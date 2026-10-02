@@ -7451,6 +7451,30 @@ body.admin-shell {
     color: #94a3b8;
 }
 
+/* "Back to Stock", in the header of each page the row opens. A phone header has
+   room for "Back" beside the page's own action. */
+.stock-back-label-short {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .stock-back-label-full {
+        display: none;
+    }
+
+    .stock-back-label-short {
+        display: inline;
+    }
+}
+
+/* The narrowest phones: the arrow alone, so the page title keeps one line. (Named this
+   precisely to outrank the operations header's own rule for short labels.) */
+@media (max-width: 359px) {
+    .content-header .page-actions .stock-back-btn .stock-back-label-short {
+        display: none !important;
+    }
+}
+
 /* How many reorder alerts are waiting: the number the sidebar entry carried. */
 .inventory-items-page .items-page-link-count {
     display: inline-flex;
@@ -20489,9 +20513,35 @@ input::-webkit-calendar-picker-indicator {
     }
 }
 
+/* Back to Stock stands beside the page's own Add button: the same height and corners. */
+.categories-page-header .stock-back-btn {
+    min-height: 44px;
+    border-radius: 12px;
+}
+
+/* The header's Add button says "Add" where a phone header also holds Back. */
+.categories-add-label-short {
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .categories-add-label-full {
+        display: none;
+    }
+
+    .categories-add-label-short {
+        display: inline;
+    }
+}
+
 @media (max-width: 768px) {
     .categories-page-header .page-actions {
         display: flex;
+        gap: 6px;
+    }
+
+    .categories-page-header .stock-back-btn {
+        padding: 0 10px;
     }
 
     .categories-page-header .categories-add-btn {

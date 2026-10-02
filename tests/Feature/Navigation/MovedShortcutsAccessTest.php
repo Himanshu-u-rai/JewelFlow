@@ -167,6 +167,26 @@ class MovedShortcutsAccessTest extends TestCase
         }
     }
 
+    /**
+     * The row leads out of the Stock page; each page it opens leads back. The
+     * sidebar still lights Jewellery Stock on them, but on a phone the sidebar
+     * is behind the menu button, so the way back is in the page's own header,
+     * as it already was on other pages that open from Stock.
+     */
+    public function test_each_page_that_opens_from_the_stock_row_leads_back_to_it(): void
+    {
+        [$retailer] = $this->createRetailerTenant();
+        foreach (['categories.index', 'tags.index', 'reorder.index'] as $name) {
+            $this->assertStringContainsString($this->href('inventory.items.index'),
+                $this->pageHeader($this->pageAs($retailer, ['inventory.view'], route($name))), "retailer: {$name} has no way back to Stock");
+        }
+
+        // A manufacturer reaches Categories the same way, and goes back the same way.
+        [$maker] = $this->createManufacturerTenant();
+        $this->assertStringContainsString($this->href('inventory.items.index'),
+            $this->pageHeader($this->pageAs($maker, ['inventory.view'], route('categories.index'))), 'manufacturer: Categories has no way back to Stock');
+    }
+
     public function test_the_reorder_alert_count_moved_with_its_link_and_still_shows_on_every_page(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
@@ -292,6 +312,12 @@ class MovedShortcutsAccessTest extends TestCase
     private function link(string $html, string $route): string
     {
         return $this->between($html, $this->href($route), '</a>');
+    }
+
+    /** The bar across the top of a page: its title and its own actions. */
+    private function pageHeader(string $html): string
+    {
+        return $this->between($this->pageBody($html), 'content-header', 'content-inner');
     }
 
     private function pageBody(string $html): string

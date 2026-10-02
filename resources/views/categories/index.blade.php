@@ -5,13 +5,15 @@
         :subtitle="__('Manage product categories and sub-categories')"
     >
         <x-slot:actions>
+            @include('partials.back-to-stock')
             @can('catalog.manage')
-            <button onclick="openAddCategoryModal()"
+            <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
                 class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-                {{ __('Add Category') }}
+                <span class="categories-add-label-full">{{ __('Add Category') }}</span>
+                <span class="categories-add-label-short">{{ __('Add') }}</span>
             </button>
             @endcan
         </x-slot:actions>
