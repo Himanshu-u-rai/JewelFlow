@@ -8,16 +8,25 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * The main sidebar gave up its report links and five shortcuts: Cash Book and
- * Close Day now sit behind the reports hub, Historical Sales behind Invoices,
- * Download Reports and Import Data behind Settings.
+ * The main sidebar keeps the everyday workspaces and gives the rest a home on
+ * the page it belongs to: reports on the reports hub, Historical Sales on
+ * Invoices, Installments on Customers, Categories on the Stock page, Vendors
+ * and the Product Catalog on the Masters hub, Download Reports and Import Data
+ * on Settings.
  *
- * Each of those new homes has a permission of its own, and it is not the
- * shortcut's: the hub wants reports.view while Cash Book wants cash.view,
- * Settings wants settings.view while Download Reports wants reports.export. A
- * role holding only the second of a pair could open the page before the move
- * and would have had no way to reach it afterwards. So the sidebar keeps a
- * shortcut for exactly that person, and for nobody who can reach its new home.
+ * Two rules keep a move from costing anyone a page they may open.
+ *
+ * 1. A new home can have a permission of its own that is not the page's: the
+ *    hub wants reports.view while Close Day wants reports.daily_closing,
+ *    Settings wants settings.view while Download Reports wants reports.export.
+ *    A role holding only the second of a pair keeps its sidebar shortcut, and
+ *    nobody who can reach the new home sees one.
+ * 2. Where the new home asks for nothing the page does not (Stock and
+ *    Categories share inventory.view; the Masters hub shows a card exactly when
+ *    its page would open), no shortcut is needed and none is kept.
+ *
+ * Cash Book is not a moved page: it is a ledger people write in every day, and
+ * an ordinary sidebar entry for whoever holds cash.view.
  *
  * No route's authorization changed, so none is re-tested here.
  */
@@ -28,9 +37,9 @@ class MovedShortcutsAccessTest extends TestCase
 
     /** route => [the permission its page needs, the permission of the page it moved to] */
     private const MOVED = [
-        'cashbook.index' => ['cash.view', 'reports.view'],
         'report.closing' => ['reports.daily_closing', 'reports.view'],
         'historical.index' => ['historical.view', 'sales.view'],
+        'installments.index' => ['sales.view', 'customers.view'],
         'export.index' => ['reports.export', 'settings.view'],
         'imports.index' => ['imports.manage', 'settings.view'],
     ];
@@ -38,14 +47,14 @@ class MovedShortcutsAccessTest extends TestCase
     /** What the sidebar listed under Reports before it kept only the hub, by edition. */
     private const REPORTS_ONCE_IN_THE_SIDEBAR = [
         'retailer' => [
-            'cashbook.index', 'report.closing', 'report.gst', 'report.gstr1', 'report.gstr3b', 'report.cn-register',
+            'report.closing', 'report.gst', 'report.gstr1', 'report.gstr3b', 'report.cn-register',
             'report.payment-reconciliation', 'report.day-book', 'report.inventory-valuation', 'report.dues-aging',
             'report.emi', 'report.scheme-liability', 'report.metal-liability', 'report.dead-stock',
             'report.karigar-settlement', 'report.purchase-efficiency', 'report.operator-performance',
             'report.suspicious-activity', 'report.shrinkage', 'report.metal-exchange', 'report.daily',
         ],
         'manufacturer' => [
-            'cashbook.index', 'report.cash', 'report.pnl', 'report.gst', 'report.gstr1', 'report.gstr3b',
+            'report.cash', 'report.pnl', 'report.gst', 'report.gstr1', 'report.gstr3b',
             'report.cn-register', 'report.payment-reconciliation', 'report.day-book', 'report.inventory-valuation',
             'report.dead-stock', 'report.karigar-settlement', 'report.purchase-efficiency',
             'report.operator-performance', 'report.suspicious-activity', 'report.daily', 'report.closing', 'report.gold',
@@ -88,18 +97,62 @@ class MovedShortcutsAccessTest extends TestCase
         }
     }
 
+    public function test_cash_book_is_one_ordinary_sidebar_entry_for_whoever_may_open_it(): void
+    {
+        [$user] = $this->createRetailerTenant();
+        $cashBook = $this->href('cashbook.index');
+
+        // With or without the reports hub: once, never twice.
+        $this->assertSame(1, substr_count($this->sidebarFor($user, ['cash.view']), $cashBook));
+        $this->assertSame(1, substr_count($this->sidebarFor($user, ['cash.view', 'reports.view']), $cashBook));
+        $this->assertSame(0, substr_count($this->sidebarFor($user, ['reports.view']), $cashBook), 'offered to a role that may not open it');
+
+        [$maker] = $this->createManufacturerTenant();
+        $this->assertSame(1, substr_count($this->sidebarNav($this->actingAs($maker)->get(route('dashboard'))->assertOk()->getContent()), $cashBook));
+    }
+
+    public function test_master_data_left_the_sidebar_for_pages_whose_own_gate_is_no_stricter(): void
+    {
+        // Retailer: Categories on the Stock page, Vendors on the Masters hub.
+        [$retailer] = $this->createRetailerTenant();
+        $sidebar = $this->sidebarNav($this->actingAs($retailer)->get(route('dashboard'))->assertOk()->getContent());
+        foreach (['categories.index', 'vendors.index'] as $name) {
+            $this->assertStringNotContainsString($this->href($name), $sidebar, "retailer: {$name} is still in the sidebar");
+        }
+        // The least a role needs for each page is enough to find it from its new home.
+        $this->assertStringContainsString($this->href('categories.index'),
+            $this->stockNav($this->pageAs($retailer, ['inventory.view'], route('inventory.items.index'))));
+        $this->assertStringContainsString($this->href('vendors.index'),
+            $this->pageBody($this->pageAs($retailer, ['vendors.view'], route('masters.index'))));
+
+        // Manufacturer: its Stock page has no view tabs, and still offers Categories; Product Catalog is a Masters card.
+        [$maker] = $this->createManufacturerTenant();
+        $sidebar = $this->sidebarNav($this->actingAs($maker)->get(route('dashboard'))->assertOk()->getContent());
+        foreach (['categories.index', 'products.index', 'vendors.index'] as $name) {
+            $this->assertStringNotContainsString($this->href($name), $sidebar, "manufacturer: {$name} is still in the sidebar");
+        }
+        $this->assertStringContainsString($this->href('categories.index'),
+            $this->stockNav($this->pageAs($maker, ['inventory.view'], route('inventory.items.index'))));
+        $this->assertStringContainsString($this->href('products.index'),
+            $this->pageBody($this->pageAs($maker, ['inventory.view'], route('masters.index'))));
+    }
+
     public function test_the_new_home_offers_the_shortcut_to_a_role_that_holds_its_permission(): void
     {
         [$user] = $this->createRetailerTenant();
 
         // Settings: a manager reads settings without editing them, and holds both data permissions.
-        $settings = fn (array $extra) => $this->between(
-            $this->pageAs($user, ['settings.view', ...$extra], route('settings.edit', ['tab' => 'general'])),
-            '<nav class="settings-nav">', '</nav>'
-        );
-        $this->assertStringContainsString($this->href('export.index'), $settings(['reports.export']));
-        $this->assertStringContainsString($this->href('imports.index'), $settings(['imports.manage']));
-        $bare = $settings([]);
+        // The two links sit above the section list, not inside it.
+        $dataLinks = function (array $extra) use ($user) {
+            $page = $this->pageAs($user, ['settings.view', ...$extra], route('settings.edit', ['tab' => 'general']));
+            $this->assertStringNotContainsString($this->href('export.index'), $this->between($page, '<nav class="settings-nav"', '</nav>'));
+            $this->assertStringNotContainsString($this->href('imports.index'), $this->between($page, '<nav class="settings-nav"', '</nav>'));
+
+            return $this->between($page, 'class="settings-layout', '<nav class="settings-nav"');
+        };
+        $this->assertStringContainsString($this->href('export.index'), $dataLinks(['reports.export']));
+        $this->assertStringContainsString($this->href('imports.index'), $dataLinks(['imports.manage']));
+        $bare = $dataLinks([]);
         $this->assertStringNotContainsString($this->href('export.index'), $bare);
         $this->assertStringNotContainsString($this->href('imports.index'), $bare);
 
@@ -115,6 +168,10 @@ class MovedShortcutsAccessTest extends TestCase
         [$maker] = $this->createManufacturerTenant();
         $this->assertStringNotContainsString($this->href('historical.index'),
             $this->actingAs($maker)->get(route('invoices.index'))->assertOk()->getContent());
+
+        // Customers: the sidebar gave up Installments because this tab is here.
+        $this->assertStringContainsString('EMI / Installments',
+            $this->between($this->pageAs($user, ['customers.view'], route('customers.index')), 'customers-view-toggle', '</div>'));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -140,6 +197,12 @@ class MovedShortcutsAccessTest extends TestCase
     private function sidebarNav(string $html): string
     {
         return $this->between($html, 'id="sidebar-nav"', 'class="sidebar-footer"');
+    }
+
+    /** The Stock page's navigation row: its view tabs (retailer) and the pages that open from it. */
+    private function stockNav(string $html): string
+    {
+        return $this->between($html, 'class="items-page-nav', '</nav>');
     }
 
     private function pageBody(string $html): string

@@ -203,9 +203,12 @@
             @include('partials.view-only-banner', ['permission' => 'inventory.edit', 'message' => 'inventory management'])
         @endunless
 
-        {{-- View Toggle for Retailers --}}
-        @if($isRetailer)
-        <div class="mb-6">
+        {{-- The Stock page's navigation row: its view tabs (retailers) and, beside them,
+             the pages that open from here. Categories left the main sidebar for this row;
+             it needs what this page needs (inventory.view), in either edition, so anyone
+             who may open it can find it here. --}}
+        <nav class="items-page-nav" aria-label="Stock navigation">
+            @if($isRetailer)
             <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1" role="tablist" aria-label="Stock views">
             <button type="button" role="tab" @click="view = 'items'" :aria-selected="view === 'items'" :aria-pressed="view === 'items'" :class="{ 'is-active': view === 'items' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -220,8 +223,13 @@
                 Sell Trend
             </button>
             </div>
-        </div>
-        @endif
+            @endif
+            <a href="{{ route('categories.index') }}" class="items-page-link inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                Categories
+                <svg class="items-page-link-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </nav>
 
         {{-- ==================== STOCK ITEMS VIEW ==================== --}}
         <div x-show="view === 'items'" x-cloak class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">

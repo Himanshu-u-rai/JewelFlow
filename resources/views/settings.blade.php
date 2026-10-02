@@ -126,6 +126,115 @@
         flex-shrink: 0;
     }
 
+    /* Download Reports / Import Data: the first thing in the Settings navigation.
+       Desktop: a small card above the section list, in the same column. The list
+       keeps the rest of the column's height and still scrolls on its own. */
+    .settings-data-links {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px;
+        background: #ffffff;
+        border: 1px solid var(--settings-border, #e2e8f0);
+        border-radius: 14px;
+    }
+
+    .settings-data-links .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        text-decoration: none;
+        border-radius: 12px;
+        transition: all 0.15s;
+    }
+
+    .settings-data-links .nav-item:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .settings-data-links .nav-item:focus-visible {
+        outline: 2px solid var(--settings-gold, #b45309);
+        outline-offset: 2px;
+    }
+
+    .settings-data-links .nav-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        flex-shrink: 0;
+    }
+
+    @media (min-width: 901px) {
+        .settings-layout--with-data {
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .settings-layout--with-data > .settings-data-links {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .settings-layout--with-data > .settings-nav {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .settings-layout--with-data > #settings-content {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+        }
+    }
+
+    /* One column: a row of its own above the sticky tab strip, the links side by side. */
+    @media (max-width: 900px) {
+        .settings-data-links {
+            flex-direction: row;
+            gap: 6px;
+            padding: 7px;
+            border-radius: 12px;
+        }
+
+        .settings-data-links .nav-item {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 38px;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 10px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .settings-data-links .nav-icon {
+            width: 22px;
+            height: 22px;
+        }
+    }
+
+    /* Narrow phones: two labels share ~300px, so the icon chips give way and
+       each label stays on one line. */
+    @media (max-width: 400px) {
+        .settings-data-links .nav-icon {
+            display: none;
+        }
+
+        .settings-data-links .nav-item {
+            padding: 8px 6px;
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+    }
+
     /* Content — owns its scrollbar inside the locked column. */
     .settings-content {
         background: #ffffff;
@@ -2163,7 +2272,32 @@
         </div>
     @endif
 
-    <div class="settings-layout">
+    @php
+        // Download Reports and Import Data left the main sidebar for this page. Each is
+        // shown by its own permission (reports.export / imports.manage), not a Settings one.
+        $canDownloadReports = auth()->user()->can('reports.export');
+        $canImportData = ($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage');
+        $hasDataLinks = $canDownloadReports || $canImportData;
+    @endphp
+    <div class="settings-layout{{ $hasDataLinks ? ' settings-layout--with-data' : '' }}">
+        @if($hasDataLinks)
+        {{-- First thing in the Settings navigation, one click from opening the page: above the
+             section list on a desktop, a row of its own above the tab strip on a phone (inside
+             that sideways strip the links would scroll out of sight). They are pages of their
+             own, so they are plain links, not tabs of the settings frame. --}}
+        <nav class="settings-data-links" aria-label="{{ __('Download and import data') }}">
+            @if($canDownloadReports)
+            <a href="{{ route('export.index') }}" class="nav-item">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> {{ __('Download Reports') }}
+            </a>
+            @endif
+            @if($canImportData)
+            <a href="{{ route('imports.index') }}" class="nav-item">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> {{ __('Import Data') }}
+            </a>
+            @endif
+        </nav>
+        @endif
         <!-- Sidebar Navigation -->
         <nav class="settings-nav">
             {{-- General — account info, available to any authenticated user --}}
@@ -2249,19 +2383,6 @@
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> {{ __('Devices') }}
             </a>
             @endcan
-            {{-- Download Reports / Import Data — moved here from the main sidebar. Each is gated by
-                 its own permission (reports.export / imports.manage), not by a Settings one, and
-                 is a page of its own: no data-turbo-frame, so the link leaves this frame. --}}
-            @can('reports.export')
-            <a href="{{ route('export.index') }}" class="nav-item">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> {{ __('Download Reports') }}
-            </a>
-            @endcan
-            @if(($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage'))
-            <a href="{{ route('imports.index') }}" class="nav-item">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> {{ __('Import Data') }}
-            </a>
-            @endif
         </nav>
 
         <!-- Content Area -->

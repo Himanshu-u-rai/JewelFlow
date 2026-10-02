@@ -178,21 +178,27 @@
             $brandSubtitle = __('Enterprise System');
             $settingsRoute = 'settings.edit';
 
-            // Five shortcuts left this sidebar for a page of their own kind:
-            // Cash Book and Close Day open from the reports hub, Historical
-            // Sales from Invoices, Download Reports and Import Data from
-            // Settings. Each of those pages has a permission of its own, so a
-            // shortcut stays here for the one user the move would strand: who
-            // may open its page but not the page it moved to. (Each check is a
-            // query, so the page it moved to is asked first: an owner or
-            // manager stops there.)
+            // Pages that left this sidebar for the page they belong to: reports
+            // (Close Day among them) open from the reports hub, Historical Sales
+            // from Invoices, Installments from the Customers page's own tab,
+            // Download Reports and Import Data from Settings. Each of those
+            // homes has a permission of its own, so a shortcut stays here for
+            // the one user the move would strand: who may open the page but not
+            // the page it moved to. (Each check is a query, so the home is
+            // asked first: an owner or manager stops there.)
+            //
+            // Categories (Stock page), Vendors and Product Catalog (Masters hub)
+            // need no such shortcut: their home asks for nothing they do not.
+            // Cash Book is not a moved page but an everyday ledger, and an
+            // ordinary entry for whoever may open it.
             $navCan = fn (string $ability): bool => (bool) $authUser?->can($ability);
             $canOpenReportsHub = $navCan('reports.view');
             $canOpenSettings = $navCan('settings.view');
             $canOpenInvoices = $navCan('sales.view');
-            $strandedCashBook = ! $canOpenReportsHub && $navCan('cash.view');
+            $canOpenCashBook = $navCan('cash.view');
             $strandedCloseDay = ! $canOpenReportsHub && $navCan('reports.daily_closing');
             $strandedHistorical = $hasRetailer && ! $canOpenInvoices && $navCan('historical.view');
+            $strandedInstallments = $hasRetailer && $canOpenInvoices && ! $navCan('customers.view');
             $strandedExport = ! $canOpenSettings && $navCan('reports.export');
             $strandedImport = ($hasRetailer || $hasManufacturer) && ! $canOpenSettings && $navCan('imports.manage');
         @endphp
@@ -328,7 +334,8 @@
                             {{ __('Dashboard') }}
                         </a>
                         @if($hasRetailer || $hasManufacturer)
-                        <a href="{{ route('masters.index') }}" class="nav-link {{ request()->routeIs('masters.*') ? 'active' : '' }}">
+                        {{-- Vendors and Product Catalog open from their Masters cards, so their pages light this link. --}}
+                        <a href="{{ route('masters.index') }}" class="nav-link {{ request()->routeIs('masters.*', 'vendors.*', 'products.*') ? 'active' : '' }}" data-nav-match="/vendors,/products">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
                             {{ __('Masters') }}
                         </a>
@@ -349,7 +356,8 @@
                     @if($hasRetailer || $hasManufacturer)
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Sales') }}</div>
-                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                        {{-- Installments is the Customers page's "EMI / Installments" tab, so its pages light this link. --}}
+                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') || (! $strandedInstallments && request()->routeIs('installments.*')) ? 'active' : '' }}" @unless($strandedInstallments) data-nav-match="/installments" @endunless>
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                             {{ __('Customers') }}
                         </a>
@@ -376,7 +384,7 @@
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
                             {{ __('Schemes') }}
                         </a>
-                        @if($canOpenInvoices) {{-- sales.view, asked once above --}}
+                        @if($strandedInstallments)
                         <a href="{{ route('installments.index') }}" class="nav-link {{ request()->routeIs('installments.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
                             {{ __('Installments') }}
@@ -406,7 +414,8 @@
                             {{ __('Gold Inventory') }}
                         </a>
                         @endif
-                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*') ? 'active' : '' }}">
+                        {{-- Categories opens from the Stock page's navigation row, so its pages light this link. --}}
+                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'categories.*', 'sub-categories.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
                             {{ __('Jewellery Stock') }}
                         </a>
@@ -416,20 +425,6 @@
                             {{ __('Stock Purchases') }}
                         </a>
                         @endif
-                        <a href="{{ route('categories.index') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
-                            {{ __('Categories') }}
-                        </a>
-                        @if($hasManufacturer)
-                        <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
-                            {{ __('Product Catalog') }}
-                        </a>
-                        @endif
-                        <a href="{{ route('vendors.index') }}" class="nav-link {{ request()->routeIs('vendors.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
-                            {{ __('Vendors') }}
-                        </a>
                         @if($hasRetailer)
                         <a href="{{ route('tags.index') }}" class="nav-link {{ request()->routeIs('tags.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
@@ -482,21 +477,20 @@
 
                     {{-- ─── REPORTS ─── every report opens from the hub; the sidebar keeps the one way in.
                          The hub link answers for the report pages too (data-nav-match: see
-                         syncActiveNavLink in app.js). --}}
+                         syncActiveNavLink in app.js). Cash Book is a ledger, not a report:
+                         its own entry, for whoever may open it. --}}
                     @if($hasRetailer || $hasManufacturer)
                     @php
-                        $onStrandedReportLink = ($strandedCashBook && request()->routeIs('cashbook.*'))
-                            || ($strandedCloseDay && request()->routeIs('report.closing'));
-                        $reportsHubActive = ! $onStrandedReportLink
-                            && request()->routeIs('report.*', 'reporting.*', 'cashbook.*');
+                        $reportsHubActive = request()->routeIs('report.*', 'reporting.*')
+                            && ! ($strandedCloseDay && request()->routeIs('report.closing'));
                     @endphp
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
-                        <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting{{ $strandedCashBook ? '' : ',/cashbook' }}">
+                        <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
                             {{ __('All Reports') }}
                         </a>
-                        @if($strandedCashBook)
+                        @if($canOpenCashBook)
                         <a href="{{ route('cashbook.index') }}" class="nav-link {{ request()->routeIs('cashbook.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
                             {{ __('Cash Book') }}
