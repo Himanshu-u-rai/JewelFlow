@@ -103,30 +103,6 @@ class CategoryPageRevisitTest extends TestCase
         $this->assertDoesNotMatchRegularExpression("/page\.dataset\.intentShown = '1';\s*openAddCategoryModal\(\);/", $html);
     }
 
-    /**
-     * A message sent in a Turbo Stream is shown by a watcher in app.js on the
-     * page's #turbo-stream-toasts element. The element is in the page body,
-     * which Turbo replaces on every render. The watcher was attached once,
-     * when app.js loaded, so it watched the page the session started on (or
-     * nothing, when that was the sign-in page). This pins that the watcher is
-     * attached again after every render, and lets go of the element it watched
-     * before. Add Category was the only sender of such a message and now sends
-     * a flash instead, so nothing uses the watcher today; it and the element
-     * are still in the layout for the next stream that carries a message.
-     */
-    public function test_the_success_message_is_watched_for_on_the_page_now_shown(): void
-    {
-        $js = file_get_contents(resource_path('js/app.js'));
-
-        $this->assertStringContainsString("document.addEventListener('turbo:render', watchStreamToasts);", $js);
-        $this->assertMatchesRegularExpression(
-            "/function watchStreamToasts\(\) \{\s*if \(streamToastObserver\) streamToastObserver\.disconnect\(\);\s*const toastTarget = document\.getElementById\('turbo-stream-toasts'\);/",
-            $js
-        );
-        // Still in the body the watcher is re-attached for, and not kept across pages.
-        $this->assertMatchesRegularExpression('~<div id="turbo-stream-toasts"(?![^>]*data-turbo-permanent)~', $this->actingAs($this->createRetailerTenant()[0])->get(route('categories.index'))->getContent());
-    }
-
     public function test_a_rejected_save_is_never_answered_with_a_stream(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

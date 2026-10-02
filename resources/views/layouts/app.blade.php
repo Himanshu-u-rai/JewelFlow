@@ -207,7 +207,6 @@
         @endphp
 
         <div id="global-toast" class="global-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
-        <div id="turbo-stream-toasts" style="display:none"></div>
 
         @php
             $viewErrors = $errors ?? new \Illuminate\Support\ViewErrorBag();
