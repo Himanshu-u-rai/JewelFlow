@@ -7,6 +7,12 @@ import { registerHistoricalManual } from './historical-manual';
 
 let toastTimer = null;
 
+function hideToast(toast) {
+    toast.classList.remove('is-visible');
+    toast.setAttribute('aria-hidden', 'true');
+    toast.textContent = '';
+}
+
 window.showToast = function(message, durationOrTone = 4000) {
     const toast = document.getElementById('global-toast');
     if (!toast) {
@@ -20,16 +26,25 @@ window.showToast = function(message, durationOrTone = 4000) {
         window.clearTimeout(toastTimer);
     }
 
+    // On phones the toast sits just under the bar across the top of the page (.global-toast
+    // in app.css). That bar is not the same height on every page, so CSS cannot know where
+    // it ends: ordinary pages, the admin console, the POS and its checkout each have their own.
+    const header = document.querySelector('.content-header, .admin-topbar, .pos-topbar, .pos-header');
+    toast.style.setProperty('--toast-header-bottom', `${header ? header.getBoundingClientRect().bottom : 0}px`);
+
     toast.textContent = message;
     toast.classList.add('is-visible');
     toast.setAttribute('aria-hidden', 'false');
 
-    toastTimer = window.setTimeout(() => {
-        toast.classList.remove('is-visible');
-        toast.setAttribute('aria-hidden', 'true');
-        toast.textContent = '';
-    }, duration);
+    toastTimer = window.setTimeout(() => hideToast(toast), duration);
 }
+
+// Turbo keeps a copy of the page for Back/Forward. A toast still showing would be kept
+// in it and come back for good: the timer that hides it belongs to the page that was left.
+document.addEventListener('turbo:before-cache', () => {
+    const toast = document.getElementById('global-toast');
+    if (toast) hideToast(toast);
+});
 
 const originalFetch = window.fetch;
 window.fetch = function(input, init) {

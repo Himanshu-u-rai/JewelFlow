@@ -4098,6 +4098,7 @@ body.drawer-open {
     font-size: 13px;
     font-weight: 600;
     line-height: 1.45;
+    overflow-wrap: anywhere;
     transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
 }
 
@@ -4106,6 +4107,25 @@ body.drawer-open {
     visibility: visible;
     transform: translateY(0);
     pointer-events: auto;
+}
+
+/* Phones: the bottom edge belongs to the Cancel/Save row of bottom-sheet modals and
+   to .jf-header-mobile-fab, and the top edge to the page header with its own action.
+   So the toast goes just under that header, where no action row can be; showToast()
+   says where it ends, because its height differs from page to page. It starts from
+   the left, which keeps a one-line message off the close button a tall sheet has in
+   its top right corner, and it goes above the confirmation dialog (9999, later in
+   the page), whose backdrop would otherwise dim it. */
+@media (max-width: 768px) {
+    .global-toast {
+        top: calc(max(var(--toast-header-bottom, 0px), env(safe-area-inset-top, 0px)) + 8px);
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: auto;
+        left: max(12px, env(safe-area-inset-left, 0px));
+        z-index: 10000;
+        width: fit-content;
+        max-width: none;
+    }
 }
 
 #global-toast[data-tone="success"] {
