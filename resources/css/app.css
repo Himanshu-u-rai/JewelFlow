@@ -2877,6 +2877,10 @@ body.app-shell {
 
 .sidebar-alert-pill {
     margin-left: 4px;
+    /* May run into the link's right padding: on the 220px sidebar "Jewellery
+       Stock" and its pill are 10px wider than the link, and the label would
+       break onto a second line. */
+    margin-right: -16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -7377,14 +7381,22 @@ body.admin-shell {
 }
 
 /* The Stock page's navigation row: the view tabs and, beside them, the pages
-   that open from here (Categories). A page link stands next to the tab strip
-   at the strip's height, with a chevron to say it leaves this page. */
+   that open from here (Categories, Tag Printing, Reorder Alerts). A page link
+   stands next to the tab strip at the strip's height, with a chevron to say it
+   leaves this page. The links are one group: where the row is too narrow for
+   the strip and all of them, they take the next line together. */
 .inventory-items-page .items-page-nav {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-bottom: 24px;
+}
+
+.inventory-items-page .items-page-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .inventory-items-page .items-page-link {
@@ -7417,6 +7429,21 @@ body.admin-shell {
 
 .inventory-items-page .items-page-link-chevron {
     color: #94a3b8;
+}
+
+/* How many reorder alerts are waiting: the number the sidebar entry carried. */
+.inventory-items-page .items-page-link-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .inventory-items-page .items-kpi-grid {
@@ -10103,17 +10130,30 @@ body.admin-shell {
         line-height: 1.15;
     }
 
-    /* The strip fills the row with its three equal tabs, so a page link takes
-       the row below it, full width: never a fourth, clipped tab. */
+    /* The strip fills the row with its three equal tabs, so the page links take
+       the rows below it: never a fourth, clipped tab. They share a row while
+       their labels fit side by side; one that does not fit fills the next. */
     .inventory-items-page .items-page-nav {
         gap: 6px;
         margin-bottom: 12px;
     }
 
-    .inventory-items-page .items-page-link {
+    /* Every control in the row is a 40px touch target. */
+    .inventory-items-page .items-page-nav .items-view-tab {
+        min-height: 40px;
+    }
+
+    .inventory-items-page .items-page-links {
         width: 100%;
+        gap: 6px;
+    }
+
+    .inventory-items-page .items-page-link {
+        flex: 1 1 0;
         min-height: 40px;
         justify-content: center;
+        padding-left: 10px;
+        padding-right: 10px;
         border-radius: 12px;
         font-size: 13px;
     }

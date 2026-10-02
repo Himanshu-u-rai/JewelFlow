@@ -12,6 +12,7 @@ use App\Models\Vendor;
 use App\Models\AuditLog;
 use App\Services\CatalogShareService;
 use App\Services\ItemManufacturingService;
+use App\Services\ReorderAlertService;
 use App\Services\RetailerReportService;
 use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
@@ -129,6 +130,7 @@ class ItemController extends Controller
         $stockAgingData = null;
         $sellersData = null;
         $pricingAlertCount = 0;
+        $reorderAlertCount = 0;
         if ($isRetailer) {
             $reportService = app(RetailerReportService::class);
             $stockAgingData = $reportService->stockAging();
@@ -141,9 +143,13 @@ class ItemController extends Controller
             ];
 
             $pricingAlertCount = $this->pricing->pricingAlerts($shop)['count'];
+
+            // The count on the page's Reorder Alerts link: the sidebar's own
+            // number (the same per-shop cache entry), so the two always agree.
+            $reorderAlertCount = app(ReorderAlertService::class)->alertCount($shopId);
         }
 
-        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount', 'stockValueDisplay'));
+        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount', 'reorderAlertCount', 'stockValueDisplay'));
     }
 
     /**

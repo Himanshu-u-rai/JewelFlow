@@ -187,8 +187,9 @@
             // the page it moved to. (Each check is a query, so the home is
             // asked first: an owner or manager stops there.)
             //
-            // Categories (Stock page), Vendors and Product Catalog (Masters hub)
-            // need no such shortcut: their home asks for nothing they do not.
+            // Categories, Tag Printing and Reorder Alerts (Stock page), Vendors
+            // and Product Catalog (Masters hub) need no such shortcut: their
+            // home asks for nothing they do not.
             // Cash Book is not a moved page but an everyday ledger, and an
             // ordinary entry for whoever may open it.
             $navCan = fn (string $ability): bool => (bool) $authUser?->can($ability);
@@ -414,28 +415,20 @@
                             {{ __('Gold Inventory') }}
                         </a>
                         @endif
-                        {{-- Categories opens from the Stock page's navigation row, so its pages light this link. --}}
-                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'categories.*', 'sub-categories.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories">
+                        {{-- Categories, Tag Printing and Reorder Alerts open from the Stock page's navigation row,
+                             so their pages light this link. The reorder alert count came with them: it stays in
+                             sight from every page here, on the way to the link that carries it. --}}
+                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'categories.*', 'sub-categories.*', 'tags.*', 'reorder.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories,/tags,/reorder">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
                             {{ __('Jewellery Stock') }}
+                            @if(($reorderAlertCount ?? 0) > 0)
+                                <span class="sidebar-alert-pill" title="{{ __('Reorder alerts') }}">{{ $reorderAlertCount }}</span>
+                            @endif
                         </a>
                         @if($hasRetailer)
                         <a href="{{ route('inventory.purchases.index') }}" class="nav-link {{ request()->routeIs('inventory.purchases.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
                             {{ __('Stock Purchases') }}
-                        </a>
-                        @endif
-                        @if($hasRetailer)
-                        <a href="{{ route('tags.index') }}" class="nav-link {{ request()->routeIs('tags.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
-                            {{ __('Tag Printing') }}
-                        </a>
-                        <a href="{{ route('reorder.index') }}" class="nav-link {{ request()->routeIs('reorder.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-                            {{ __('Reorder Alerts') }}
-                            @if(($reorderAlertCount ?? 0) > 0)
-                                <span class="sidebar-alert-pill">{{ $reorderAlertCount }}</span>
-                            @endif
                         </a>
                         @endif
                     </div>
