@@ -50,7 +50,7 @@ class CategoryPageRevisitTest extends TestCase
         $script = $this->pageScript();
 
         // One listener per kind, however many times the page is visited.
-        foreach (['turbo:load', 'keydown'] as $event) {
+        foreach (['turbo:load', 'keydown', 'turbo:submit-end'] as $event) {
             $this->assertSame(1, substr_count($script, "document.addEventListener('{$event}'"), "{$event}: added once per run");
             $this->assertSame(1, substr_count($script, "document.removeEventListener('{$event}'"), "{$event}: the previous run's listener is not removed first");
         }
@@ -74,6 +74,67 @@ class CategoryPageRevisitTest extends TestCase
             "/if \(page\.dataset\.intentShown !== '1'\) \{\s*page\.dataset\.intentShown = '1';\s*openAddCategoryModal\(\);/",
             $this->pageScript($owner)
         );
+    }
+
+    /**
+     * Add Category is answered with a Turbo Stream, not a new page, so nothing
+     * closed its modal: the saved name stayed in an open form. The page's script
+     * now closes and clears the modal when that stream arrives. This pins what
+     * the script waits for: a stream carrying the new card and the success
+     * message. A rejected save is a redirect back to the page, never a stream,
+     * so its modal reopens with what was typed (the test above).
+     */
+    public function test_a_confirmed_save_answers_with_the_new_card_and_the_success_message(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->post(route('categories.store'), ['_intent' => 'add_category', 'name' => 'Chains'], ['Accept' => 'text/vnd.turbo-stream.html']));
+
+        $response->assertOk();
+        $this->assertStringStartsWith('text/vnd.turbo-stream.html', (string) $response->headers->get('Content-Type'));
+        $response->assertSee('<turbo-stream action="append" target="categories-list">', false);
+        $response->assertSee('data-toast-message="Category created successfully!"', false);
+        $response->assertSee('Chains');
+    }
+
+    /**
+     * That success message is shown by a watcher in app.js on the page's
+     * #turbo-stream-toasts element. The element is in the page body, which
+     * Turbo replaces on every render. The watcher was attached once, when
+     * app.js loaded, so it watched the page the session started on (or
+     * nothing, when that was the sign-in page) and the message appeared only
+     * if Categories had just been loaded in full. A browser showed the
+     * failure and the fix; this pins that the watcher is attached again after
+     * every render, and lets go of the element it watched before.
+     */
+    public function test_the_success_message_is_watched_for_on_the_page_now_shown(): void
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString("document.addEventListener('turbo:render', watchStreamToasts);", $js);
+        $this->assertMatchesRegularExpression(
+            "/function watchStreamToasts\(\) \{\s*if \(streamToastObserver\) streamToastObserver\.disconnect\(\);\s*const toastTarget = document\.getElementById\('turbo-stream-toasts'\);/",
+            $js
+        );
+        // Still in the body the watcher is re-attached for, and not kept across pages.
+        $this->assertMatchesRegularExpression('~<div id="turbo-stream-toasts"(?![^>]*data-turbo-permanent)~', $this->actingAs($this->createRetailerTenant()[0])->get(route('categories.index'))->getContent());
+    }
+
+    public function test_a_rejected_save_is_never_answered_with_a_stream(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Category::forceCreate(['shop_id' => $shop->id, 'name' => 'Rings']);
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->from(route('categories.index'))
+            ->post(route('categories.store'), ['_intent' => 'add_category', 'name' => 'rings'], ['Accept' => 'text/vnd.turbo-stream.html'])
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHasErrors('name'));
+
+        // What was typed comes back in the field, with the message beside it.
+        $html = $this->actingAs($owner)->get(route('categories.index'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('~<input type="text" name="name" id="addCategoryName" value="rings"~', $html);
+        $this->assertStringContainsString('data-field-error', $html);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

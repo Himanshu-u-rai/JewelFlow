@@ -1577,10 +1577,20 @@ document.addEventListener('turbo:frame-render', () => {
     initDatePickers();
 });
 
-// Watch for Turbo Stream toast messages
-const toastTarget = document.getElementById('turbo-stream-toasts');
-if (toastTarget) {
-    new MutationObserver((mutations) => {
+// Watch for Turbo Stream toast messages. Their target sits in the page body, which
+// Turbo replaces on every render, so the observer moves to the current body's element
+// each time. (Attached once, it kept watching the element of the page the session
+// started on, or nothing at all when that was the sign-in page: a stream's success
+// message was shown only on a page that had just been loaded in full.)
+let streamToastObserver = null;
+
+function watchStreamToasts() {
+    if (streamToastObserver) streamToastObserver.disconnect();
+
+    const toastTarget = document.getElementById('turbo-stream-toasts');
+    if (!toastTarget) return;
+
+    streamToastObserver = new MutationObserver((mutations) => {
         mutations.forEach(m => {
             m.addedNodes.forEach(node => {
                 if (node.nodeType === 1 && node.dataset.toastMessage) {
@@ -1589,8 +1599,12 @@ if (toastTarget) {
                 }
             });
         });
-    }).observe(toastTarget, { childList: true });
+    });
+    streamToastObserver.observe(toastTarget, { childList: true });
 }
+
+watchStreamToasts();
+document.addEventListener('turbo:render', watchStreamToasts);
 
 if (document.readyState !== 'loading') {
     normalizeLegacyPageHeaders();
