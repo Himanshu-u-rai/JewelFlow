@@ -144,7 +144,7 @@
                     <h3 class="text-lg font-semibold text-slate-900">{{ __('Add New Category') }}</h3>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Create a parent group for jewellery stock.') }}</p>
                 </div>
-                <form method="POST" action="{{ route('categories.store') }}" class="categories-modal-body p-6" data-turbo-stream>
+                <form method="POST" action="{{ route('categories.store') }}" class="categories-modal-body p-6">
                     @csrf
                     <input type="hidden" name="_intent" value="add_category">
                     <div class="mb-4">
@@ -372,36 +372,6 @@
             }
         };
         document.addEventListener('keydown', window.__categoriesPageEscapeHandler);
-
-        // ---- A confirmed save closes and clears its modal ----
-        // Add Category is answered with a Turbo Stream (the new card and the success
-        // message) instead of a new page, so nothing else would close its modal.
-        // "Confirmed" is that stream arriving. A save the server rejects is redirected
-        // back to this page, which reopens the modal with what was typed and the message
-        // (initCategoriesPage below), so it is left alone here.
-        if (window.__categoriesPageSubmitEndHandler) {
-            document.removeEventListener('turbo:submit-end', window.__categoriesPageSubmitEndHandler);
-        }
-        window.__categoriesPageSubmitEndHandler = function(event) {
-            const form = event.target;
-            const modal = form instanceof HTMLFormElement ? form.closest('.categories-modal') : null;
-            if (!modal) return;
-
-            const response = event.detail.fetchResponse;
-            const streamed = event.detail.success && response && !response.redirected
-                && (response.contentType || '').includes('turbo-stream');
-            if (!streamed) return;
-
-            // Emptied by hand: form.reset() would put back what the server last rendered
-            // into the field, which after a rejected attempt is the rejected name.
-            form.querySelectorAll('input[type="text"]').forEach((input) => {
-                input.value = '';
-                input.classList.remove('border-red-500');
-            });
-            form.querySelectorAll('[data-field-error]').forEach((message) => message.remove());
-            hideCategoryModal(modal.id);
-        };
-        document.addEventListener('turbo:submit-end', window.__categoriesPageSubmitEndHandler);
 
         function syncCategoryCollapseMode() {
             const page = document.querySelector('.categories-index-page');

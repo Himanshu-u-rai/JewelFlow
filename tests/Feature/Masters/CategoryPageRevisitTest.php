@@ -50,7 +50,7 @@ class CategoryPageRevisitTest extends TestCase
         $script = $this->pageScript();
 
         // One listener per kind, however many times the page is visited.
-        foreach (['turbo:load', 'keydown', 'turbo:submit-end'] as $event) {
+        foreach (['turbo:load', 'keydown'] as $event) {
             $this->assertSame(1, substr_count($script, "document.addEventListener('{$event}'"), "{$event}: added once per run");
             $this->assertSame(1, substr_count($script, "document.removeEventListener('{$event}'"), "{$event}: the previous run's listener is not removed first");
         }
@@ -77,36 +77,37 @@ class CategoryPageRevisitTest extends TestCase
     }
 
     /**
-     * Add Category is answered with a Turbo Stream, not a new page, so nothing
-     * closed its modal: the saved name stayed in an open form. The page's script
-     * now closes and clears the modal when that stream arrives. This pins what
-     * the script waits for: a stream carrying the new card and the success
-     * message. A rejected save is a redirect back to the page, never a stream,
-     * so its modal reopens with what was typed (the test above).
+     * A confirmed Add Category closes and empties its modal. It used to be
+     * answered with a Turbo Stream, so the page's script did the closing when
+     * the stream arrived. It is now answered like every other save here, with
+     * a redirect to the page (CategoryTotalsAfterChangeTest says why), and a
+     * page drawn afresh has the modal closed, its field empty and nothing in
+     * the script reopening it. The message travels as the flash every page shows.
      */
-    public function test_a_confirmed_save_answers_with_the_new_card_and_the_success_message(): void
+    public function test_a_confirmed_save_comes_back_with_its_modal_closed_and_empty(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
-        $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
-            ->post(route('categories.store'), ['_intent' => 'add_category', 'name' => 'Chains'], ['Accept' => 'text/vnd.turbo-stream.html']));
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->followingRedirects()
+            ->post(route('categories.store'), ['_intent' => 'add_category', 'name' => 'Chains'], ['Accept' => 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml'])
+            ->assertOk()->getContent());
 
-        $response->assertOk();
-        $this->assertStringStartsWith('text/vnd.turbo-stream.html', (string) $response->headers->get('Content-Type'));
-        $response->assertSee('<turbo-stream action="append" target="categories-list">', false);
-        $response->assertSee('data-toast-message="Category created successfully!"', false);
-        $response->assertSee('Chains');
+        $this->assertStringContainsString('<meta name="flash-success" content="Category created successfully!">', $html);
+        $this->assertMatchesRegularExpression('~<div id="addCategoryModal" class="[^"]*\bhidden\b~', $html);
+        $this->assertMatchesRegularExpression('~<input type="text" name="name" id="addCategoryName" value=""~', $html);
+        $this->assertDoesNotMatchRegularExpression("/page\.dataset\.intentShown = '1';\s*openAddCategoryModal\(\);/", $html);
     }
 
     /**
-     * That success message is shown by a watcher in app.js on the page's
-     * #turbo-stream-toasts element. The element is in the page body, which
-     * Turbo replaces on every render. The watcher was attached once, when
-     * app.js loaded, so it watched the page the session started on (or
-     * nothing, when that was the sign-in page) and the message appeared only
-     * if Categories had just been loaded in full. A browser showed the
-     * failure and the fix; this pins that the watcher is attached again after
-     * every render, and lets go of the element it watched before.
+     * A message sent in a Turbo Stream is shown by a watcher in app.js on the
+     * page's #turbo-stream-toasts element. The element is in the page body,
+     * which Turbo replaces on every render. The watcher was attached once,
+     * when app.js loaded, so it watched the page the session started on (or
+     * nothing, when that was the sign-in page). This pins that the watcher is
+     * attached again after every render, and lets go of the element it watched
+     * before. Add Category was the only sender of such a message and now sends
+     * a flash instead, so nothing uses the watcher today; it and the element
+     * are still in the layout for the next stream that carries a message.
      */
     public function test_the_success_message_is_watched_for_on_the_page_now_shown(): void
     {

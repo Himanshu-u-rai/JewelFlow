@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 class CategoryController extends Controller
 {
     use RespondsDynamically;
+
     public function index(Request $request)
     {
         $shopId = auth()->user()->shop_id;
@@ -24,7 +25,7 @@ class CategoryController extends Controller
         $query = Category::where('shop_id', $shopId);
 
         if ($q !== '') {
-            $like = '%' . $q . '%';
+            $like = '%'.$q.'%';
             // Match on the parent name OR any child name — a subcategory hit
             // returns its parent. whereHas is an EXISTS subquery, so each parent
             // appears once (no join fan-out). Bindings only, no raw user SQL.
@@ -69,20 +70,13 @@ class CategoryController extends Controller
             ],
         ]);
 
-        $category = Category::create([
+        Category::create([
             'shop_id' => $shopId,
-            'name'    => $validated['name'],
+            'name' => $validated['name'],
         ]);
 
-        $category->load('subCategories');
-
-        return $this->turboStreamAppend(
-            'categories-list',
-            'categories._category-card',
-            ['category' => $category],
-            'Category created successfully!',
-            'categories.index',
-        );
+        return redirect()->route('categories.index')
+            ->with('success', 'Category created successfully!');
     }
 
     public function update(Request $request, Category $category)
@@ -131,13 +125,13 @@ class CategoryController extends Controller
             if ($productCount > 0 || $subCategoryCount > 0) {
                 $parts = [];
                 if ($productCount > 0) {
-                    $parts[] = $productCount . ' product' . ($productCount === 1 ? '' : 's');
+                    $parts[] = $productCount.' product'.($productCount === 1 ? '' : 's');
                 }
                 if ($subCategoryCount > 0) {
-                    $parts[] = $subCategoryCount . ' subcategor' . ($subCategoryCount === 1 ? 'y' : 'ies');
+                    $parts[] = $subCategoryCount.' subcategor'.($subCategoryCount === 1 ? 'y' : 'ies');
                 }
 
-                $message = 'Cannot delete this category: ' . implode(' and ', $parts) . ' still reference it.';
+                $message = 'Cannot delete this category: '.implode(' and ', $parts).' still reference it.';
 
                 return $this->dynamicRedirect('categories.index', [], $message, 'error');
             }

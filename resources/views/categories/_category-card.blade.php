@@ -1,4 +1,4 @@
-<div class="categories-card is-collapsed overflow-hidden rounded-2xl border border-slate-200 bg-white" data-deletable-row>
+<div class="categories-card is-collapsed overflow-hidden rounded-2xl border border-slate-200 bg-white">
     <!-- Category Header -->
     <div class="categories-card-head flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4" data-category-toggle-surface>
         <div class="categories-card-title-wrap min-w-0">
@@ -50,8 +50,7 @@
                 </svg>
             </button>
             <form method="POST" action="{{ route('categories.destroy', $category) }}"
-                  data-confirm-message="{{ __('Delete this unused category? Categories linked to products or subcategories cannot be deleted.') }}" class="inline"
-                  data-ajax-delete>
+                  data-confirm-message="{{ __('Delete this unused category? Categories linked to products or subcategories cannot be deleted.') }}" class="inline">
                 @csrf
                 @method('DELETE')
                 <button type="submit"
@@ -74,7 +73,7 @@
         @else
             <ul class="space-y-2">
                 @foreach($category->subCategories as $sub)
-                    <li class="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition-colors hover:border-amber-200 hover:bg-amber-50/50" data-deletable-row>
+                    <li class="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition-colors hover:border-amber-200 hover:bg-amber-50/50">
                         <span class="min-w-0 truncate text-sm font-medium text-slate-700">{{ $sub->name }}</span>
                         @can('catalog.manage')
                         <div class="flex shrink-0 items-center gap-1 categories-sub-actions">
@@ -90,8 +89,7 @@
                                 </svg>
                             </button>
                             <form method="POST" action="{{ route('sub-categories.destroy', $sub) }}"
-                                data-confirm-message="{{ __('Delete this sub-category?') }}" class="inline"
-                                data-ajax-delete>
+                                data-confirm-message="{{ __('Delete this sub-category?') }}" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit"
