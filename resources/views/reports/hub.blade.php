@@ -52,26 +52,47 @@
             'Ledger & Reconciliation'        => '<path d="M6.5 3H19a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/>',
             'Operational'                    => '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
         ];
+
+        // What this shop sees, worked out once. The shortcuts at the top and the
+        // sections below read the same list, so a shortcut can never point at a
+        // section this edition does not show.
+        $visibleSections = collect($sections)
+            ->map(fn ($cards) => collect($cards)->filter(fn ($c) =>
+                \Illuminate\Support\Facades\Route::has($c[2])
+                && ($c[3] === null
+                    || ($c[3] === 'retailer' && $isRetailer)
+                    || ($c[3] === 'manufacturer' && $isManufacturer))
+            ))
+            ->filter(fn ($cards) => $cards->isNotEmpty());
+        $sectionId = fn (string $heading) => 'reports-'.Str::slug($heading);
     @endphp
 
     <div class="content-inner rh-page">
         <div class="rh-flow">
-            @foreach($sections as $heading => $cards)
-                @php
-                    $visible = collect($cards)->filter(fn ($c) =>
-                        \Illuminate\Support\Facades\Route::has($c[2])
-                        && ($c[3] === null
-                            || ($c[3] === 'retailer' && $isRetailer)
-                            || ($c[3] === 'manufacturer' && $isManufacturer))
-                    );
-                @endphp
-                @if($visible->isNotEmpty())
-                <section class="rh-section">
+            {{-- Section shortcuts. The hub is the one way into every report and a long page:
+                 on a phone its last section starts several screens down. --}}
+            @if($visibleSections->count() > 1)
+            <nav class="rh-jump" aria-label="Report sections" style="--rh-jump-count: {{ $visibleSections->count() }}">
+                @foreach($visibleSections as $heading => $cards)
+                    <a href="#{{ $sectionId($heading) }}" class="rh-jump-link" aria-label="{{ $heading }}: {{ $cards->count() }} {{ Str::plural('report', $cards->count()) }}">
+                        <span class="rh-jump-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{!! $sectionIcons[$heading] ?? '<circle cx="12" cy="12" r="9"/>' !!}</svg>
+                        </span>
+                        {{-- The section's own title, without its aside: "Tax & Compliance (for your CA)". --}}
+                        <span class="rh-jump-label">{{ trim(Str::before($heading, '(')) }}</span>
+                        <span class="rh-jump-count" aria-hidden="true">{{ $cards->count() }}</span>
+                    </a>
+                @endforeach
+            </nav>
+            @endif
+
+            @foreach($visibleSections as $heading => $visible)
+                <section class="rh-section" id="{{ $sectionId($heading) }}" aria-labelledby="{{ $sectionId($heading) }}-title">
                     <div class="rh-section-head">
                         <span class="rh-section-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{!! $sectionIcons[$heading] ?? '<circle cx="12" cy="12" r="9"/>' !!}</svg>
                         </span>
-                        <h2 class="rh-section-title">{{ $heading }}</h2>
+                        <h2 class="rh-section-title" id="{{ $sectionId($heading) }}-title">{{ $heading }}</h2>
                         <span class="rh-section-count">{{ $visible->count() }} {{ Str::plural('report', $visible->count()) }}</span>
                     </div>
                     <div class="rh-grid">
@@ -86,7 +107,6 @@
                         @endforeach
                     </div>
                 </section>
-                @endif
             @endforeach
         </div>
     </div>
@@ -121,11 +141,75 @@
             color: #475569;
         }
 
+        /* Section shortcuts: one per section shown below, in the same order. */
+        .rh-jump {
+            display: grid;
+            grid-template-columns: repeat(var(--rh-jump-count, 4), minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .rh-jump-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 9px 12px;
+            border: 1px solid var(--rh-border-soft);
+            border-radius: 10px;
+            background: var(--rh-surface);
+            color: var(--rh-ink);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.25;
+            text-decoration: none;
+            transition: background-color .14s ease, border-color .14s ease;
+        }
+
+        .rh-jump-link:hover {
+            border-color: var(--rh-border);
+            background: var(--rh-muted-surface);
+        }
+
+        .rh-jump-link:focus-visible {
+            outline: 2px solid #111827;
+            outline-offset: 2px;
+        }
+
+        .rh-jump-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+            border-radius: 8px;
+            background: var(--rh-gold-soft);
+            color: var(--rh-gold);
+            border: 1px solid #fed7aa;
+        }
+
+        .rh-jump-icon svg { width: 15px; height: 15px; }
+
+        .rh-jump-label {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .rh-jump-count {
+            flex-shrink: 0;
+            color: var(--rh-soft);
+            font-size: 12px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
         .rh-section {
             border: 1px solid var(--rh-border-soft);
             border-radius: 12px;
             background: var(--rh-surface);
             overflow: hidden;
+            /* A shortcut lands the section below the sticky page header, not under it. */
+            scroll-margin-top: 104px;
         }
 
         .rh-section-head {
@@ -241,7 +325,44 @@
             }
         }
 
+        /* Narrower than four one-line shortcuts: two by two. */
+        @media (max-width: 1279px) {
+            .rh-jump {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         @media (max-width: 767px) {
+            .rh-jump {
+                gap: 8px;
+            }
+
+            .rh-jump-link {
+                min-height: 44px;
+                padding: 8px 10px;
+                gap: 8px;
+                font-size: 12.5px;
+            }
+
+            .rh-jump-icon {
+                width: 24px;
+                height: 24px;
+                border-radius: 7px;
+            }
+
+            .rh-jump-icon svg { width: 13px; height: 13px; }
+
+            .rh-section {
+                scroll-margin-top: 84px;
+            }
+
+            /* Narrow phones: a word like "Reconciliation" needs the icon's room. */
+            @media (max-width: 400px) {
+                .rh-jump-icon {
+                    display: none;
+                }
+            }
+
             .reports-hub-header {
                 flex-wrap: nowrap;
                 align-items: center;
