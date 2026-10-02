@@ -11,16 +11,17 @@ use Tests\TestCase;
 
 /**
  * The main sidebar keeps the everyday workspaces and gives the rest a home on
- * the page it belongs to: reports on the reports hub, Historical Sales on
- * Invoices, Installments on Customers, Categories, Tag Printing and Reorder
- * Alerts on the Stock page, Vendors and the Product Catalog on the Masters
- * hub, Download Reports and Import Data on Settings.
+ * the page it belongs to: reports on the reports hub, Historical Sales and
+ * Returns / Exchange on Invoices, Installments on Customers, Categories, Tag
+ * Printing and Reorder Alerts on the Stock page, Vendors and the Product
+ * Catalog on the Masters hub, Download Reports and Import Data on Settings.
  *
  * Two rules keep a move from costing anyone a page they may open.
  *
  * 1. A new home can have a permission of its own that is not the page's: the
  *    hub wants reports.view while Close Day wants reports.daily_closing,
- *    Settings wants settings.view while Download Reports wants reports.export.
+ *    Settings wants settings.view while Download Reports wants reports.export,
+ *    Invoices wants sales.view while Returns / Exchange wants returns.view.
  *    A role holding only the second of a pair keeps its sidebar shortcut, and
  *    nobody who can reach the new home sees one.
  * 2. Where the new home asks for nothing the page does not (Stock, Categories,
@@ -44,6 +45,7 @@ class MovedShortcutsAccessTest extends TestCase
     private const MOVED = [
         'report.closing' => ['reports.daily_closing', 'reports.view'],
         'historical.index' => ['historical.view', 'sales.view'],
+        'returns.index' => ['returns.view', 'sales.view'],
         'installments.index' => ['sales.view', 'customers.view'],
         'export.index' => ['reports.export', 'settings.view'],
         'imports.index' => ['imports.manage', 'settings.view'],
@@ -208,22 +210,45 @@ class MovedShortcutsAccessTest extends TestCase
         $this->assertStringNotContainsString($this->href('export.index'), $bare);
         $this->assertStringNotContainsString($this->href('imports.index'), $bare);
 
-        // Invoices: the page's own action area.
-        $actions = fn (array $extra) => $this->between(
-            $this->pageAs($user, ['sales.view', ...$extra], route('invoices.index')),
-            'invoices-page-header', 'invoices-index-page'
-        );
-        $this->assertStringContainsString($this->href('historical.index'), $actions(['historical.view']));
-        $this->assertStringNotContainsString($this->href('historical.index'), $actions([]));
-
-        // Historical Sales is a retailer module: a manufacturer's Invoices page has no way into it.
-        [$maker] = $this->createManufacturerTenant();
-        $this->assertStringNotContainsString($this->href('historical.index'),
-            $this->actingAs($maker)->get(route('invoices.index'))->assertOk()->getContent());
-
         // Customers: the sidebar gave up Installments because this tab is here.
         $this->assertStringContainsString('EMI / Installments',
             $this->between($this->pageAs($user, ['customers.view'], route('customers.index')), 'customers-view-toggle', '</div>'));
+    }
+
+    public function test_the_invoices_navigation_row_offers_each_page_by_its_own_permission(): void
+    {
+        foreach (['retailer', 'manufacturer'] as $edition) {
+            [$user] = $edition === 'retailer' ? $this->createRetailerTenant() : $this->createManufacturerTenant();
+
+            // Returns / Exchange, either edition: one way in for a role that may open both pages, and it is the row.
+            $page = $this->pageAs($user, ['sales.view', 'returns.view'], route('invoices.index'));
+            $this->assertStringContainsString($this->href('returns.index'), $this->invoicesNav($page), "{$edition}: Returns is not in the Invoices row");
+            $this->assertSame(1, substr_count($page, $this->href('returns.index')), "{$edition}: Returns is offered twice on one page");
+
+            // returns.view without sales.view cannot open Invoices: the sidebar keeps the way in, and it opens.
+            $this->grantOnlyPermissions($user, ['returns.view']);
+            $this->actingAs($user->fresh())->get(route('invoices.index'))->assertForbidden();
+            $this->assertStringContainsString($this->href('returns.index'),
+                $this->sidebarNav($this->actingAs($user->fresh())->get(route('returns.index'))->assertOk()->getContent()),
+                "{$edition}: a role with returns.view alone lost its only way in");
+
+            // sales.view alone has nowhere to go from Invoices: no row of one, and nothing it may not open.
+            $page = $this->pageAs($user, ['sales.view'], route('invoices.index'));
+            $this->assertStringNotContainsString('invoices-page-nav', $page, "{$edition}: a navigation row with only the current page in it");
+            $this->assertStringNotContainsString($this->href('returns.index'), $page, "{$edition}: Returns is offered to a role that may not open it");
+            $this->assertStringNotContainsString($this->href('historical.index'), $page, "{$edition}: Historical Sales is offered to a role that may not open it");
+            $this->actingAs($user->fresh())->get(route('returns.index'))->assertForbidden();
+
+            // Historical Sales is a retailer module with a permission of its own: in the row, and no longer a header button too.
+            $page = $this->pageAs($user, ['sales.view', 'historical.view'], route('invoices.index'));
+            if ($edition === 'retailer') {
+                $this->assertStringContainsString($this->href('historical.index'), $this->invoicesNav($page));
+                $this->assertSame(1, substr_count($page, $this->href('historical.index')), 'Historical Sales is offered twice on one page');
+            } else {
+                $this->assertStringNotContainsString($this->href('historical.index'), $page, 'a manufacturer is offered a retailer module');
+                $this->actingAs($user->fresh())->get(route('historical.index'))->assertForbidden();
+            }
+        }
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -255,6 +280,12 @@ class MovedShortcutsAccessTest extends TestCase
     private function stockNav(string $html): string
     {
         return $this->between($html, 'class="items-page-nav', '</nav>');
+    }
+
+    /** The Invoices page's navigation row: this page and the pages that open from it. */
+    private function invoicesNav(string $html): string
+    {
+        return $this->between($html, 'class="invoices-page-nav', '</nav>');
     }
 
     /** One link's markup, from its address to its closing tag. */

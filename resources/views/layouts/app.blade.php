@@ -180,12 +180,13 @@
 
             // Pages that left this sidebar for the page they belong to: reports
             // (Close Day among them) open from the reports hub, Historical Sales
-            // from Invoices, Installments from the Customers page's own tab,
-            // Download Reports and Import Data from Settings. Each of those
-            // homes has a permission of its own, so a shortcut stays here for
-            // the one user the move would strand: who may open the page but not
-            // the page it moved to. (Each check is a query, so the home is
-            // asked first: an owner or manager stops there.)
+            // and Returns / Exchange from Invoices, Installments from the
+            // Customers page's own tab, Download Reports and Import Data from
+            // Settings. Each of those homes has a permission of its own, so a
+            // shortcut stays here for the one user the move would strand: who
+            // may open the page but not the page it moved to. (Each check is a
+            // query, so the home is asked first: an owner or manager stops
+            // there.)
             //
             // Categories, Tag Printing and Reorder Alerts (Stock page), Vendors
             // and Product Catalog (Masters hub) need no such shortcut: their
@@ -199,6 +200,7 @@
             $canOpenCashBook = $navCan('cash.view');
             $strandedCloseDay = ! $canOpenReportsHub && $navCan('reports.daily_closing');
             $strandedHistorical = $hasRetailer && ! $canOpenInvoices && $navCan('historical.view');
+            $strandedReturns = ! $canOpenInvoices && $navCan('returns.view');
             $strandedInstallments = $hasRetailer && $canOpenInvoices && ! $navCan('customers.view');
             $strandedExport = ! $canOpenSettings && $navCan('reports.export');
             $strandedImport = ($hasRetailer || $hasManufacturer) && ! $canOpenSettings && $navCan('imports.manage');
@@ -362,18 +364,21 @@
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                             {{ __('Customers') }}
                         </a>
-                        {{-- Historical Sales opens from the Invoices page, so its pages light this link too
-                             (data-nav-match: see syncActiveNavLink in app.js). --}}
-                        <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) ? 'active' : '' }}" @unless($strandedHistorical) data-nav-match="/historical" @endunless>
+                        {{-- Historical Sales and Returns / Exchange open from the Invoices page, so their pages
+                             light this link too (data-nav-match: see syncActiveNavLink in app.js). Operations
+                             still lights itself on /returns/control-center: the longer address wins. --}}
+                        <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) || (! $strandedReturns && request()->routeIs('returns.index', 'returns.show', 'exchanges.*')) ? 'active' : '' }}" data-nav-match="{{ implode(',', array_filter([$strandedHistorical ? '' : '/historical', $strandedReturns ? '' : '/returns,/exchanges'])) }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
                             {{ __('Invoices') }}
                         </a>
-                        @can('returns.view')
-                        <a href="{{ route('returns.index') }}" class="nav-link {{ request()->routeIs('returns.index') || request()->routeIs('returns.show') || request()->routeIs('exchanges.*') ? 'active' : '' }}">
+                        {{-- Kept for a role with returns.view but not sales.view, who cannot open Invoices.
+                             The exchange pages are part of it (they live at /exchanges, not under /returns). --}}
+                        @if($strandedReturns)
+                        <a href="{{ route('returns.index') }}" class="nav-link {{ request()->routeIs('returns.index') || request()->routeIs('returns.show') || request()->routeIs('exchanges.*') ? 'active' : '' }}" data-nav-match="/exchanges">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></span>
                             {{ __('Returns / Exchange') }}
                         </a>
-                        @endcan
+                        @endif
                         @can('returns.approve')
                         <a href="{{ route('returns.control-center') }}" class="nav-link {{ request()->routeIs('returns.control-center') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>

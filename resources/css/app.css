@@ -17053,12 +17053,55 @@ input::-webkit-calendar-picker-indicator {
     transform: scale(0.98);
 }
 
-/* Historical Sales: the secondary action beside Open POS. A plain .btn, given
-   the same height and corners so the pair reads as one group. */
-.invoices-page-header .invoices-historical-btn {
-    min-height: 40px;
+/* The Invoices page's navigation row: this page and the pages that open from
+   it (Historical Sales, Returns / Exchange). One strip of links, the current
+   page marked; each of the others is a page of its own. */
+.invoices-index-page .invoices-page-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: fit-content;
+    max-width: 100%;
+    margin-bottom: 18px;
+    padding: 4px;
+    border: 1px solid var(--invoice-border-soft);
+    border-radius: 14px;
+    background: var(--invoice-surface);
+}
+
+.invoices-index-page .invoices-page-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
     padding: 0 16px;
     border-radius: 10px;
+    color: var(--invoice-muted);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.15;
+    text-decoration: none;
+    transition: background-color 140ms ease, color 140ms ease;
+}
+
+.invoices-index-page .invoices-page-nav-link:hover {
+    background: var(--invoice-soft);
+    color: var(--invoice-ink);
+}
+
+.invoices-index-page .invoices-page-nav-link[aria-current="page"] {
+    background: var(--invoice-ink);
+    color: #ffffff;
+}
+
+.invoices-index-page .invoices-page-nav-link:focus-visible {
+    outline: 2px solid var(--invoice-gold);
+    outline-offset: 2px;
+}
+
+.invoices-index-page .invoices-page-nav-link svg {
+    flex: 0 0 auto;
 }
 
 .invoices-index-page .invoices-kpi-grid {
@@ -18790,35 +18833,28 @@ input::-webkit-calendar-picker-indicator {
         margin-right: 4px;
     }
 
-    .invoices-page-header .invoices-historical-btn {
-        min-height: 34px;
-        padding: 0 10px;
-        gap: 4px;
-        font-size: 12px;
+    /* The navigation row fills the width, each link a 40px touch target as
+       wide as its label needs plus an equal share of what is left. Where the
+       labels cannot all fit (320px) the long ones take a second line: nothing
+       is cut and the row never scrolls sideways. */
+    .invoices-index-page .invoices-page-nav {
+        flex-wrap: nowrap;
+        width: 100%;
+        margin-bottom: 12px;
     }
 
-    .invoices-page-header .invoices-historical-btn svg {
-        width: 14px;
-        height: 14px;
+    .invoices-index-page .invoices-page-nav-link {
+        flex: 1 1 auto;
+        min-height: 40px;
+        padding: 6px;
+        font-size: 12.5px;
+        text-align: center;
     }
 
-    /* On a phone the title and two actions do not fit one row (388px of
-       content): the actions take a row of their own and share it equally. */
+    /* On a phone the icons give way so each label keeps one line. */
     @media (max-width: 480px) {
-        .invoices-page-header--two-actions {
-            flex-wrap: wrap;
-        }
-
-        .invoices-page-header--two-actions .page-actions {
-            flex: 1 0 100%;
-            flex-wrap: nowrap;
-        }
-
-        .invoices-page-header--two-actions .page-actions > .btn {
-            flex: 1 1 0;
-            min-width: 0;
-            min-height: 40px;
-            justify-content: center;
+        .invoices-index-page .invoices-page-nav-link svg {
+            display: none;
         }
     }
 

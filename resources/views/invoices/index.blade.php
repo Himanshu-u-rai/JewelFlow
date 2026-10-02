@@ -43,23 +43,15 @@
     @endphp
 
     @php
-        // Historical Sales (a retailer module with its own permission) opens
-        // from here since it left the sidebar. With Open POS beside it the
-        // phone header needs a second row: see --two-actions in app.css.
+        // Pages that open from here since they left the sidebar, each shown by
+        // its own permission: Historical Sales (a retailer module) and Returns /
+        // Exchange. They stand in the navigation row under the header; the
+        // header keeps the invoice actions.
         $showHistoricalSales = (bool) auth()->user()->shop?->isRetailer() && auth()->user()->can('historical.view');
-        $invoiceHeaderTwoActions = $showHistoricalSales && auth()->user()->can('sales.pos');
+        $showReturns = auth()->user()->can('returns.view');
     @endphp
-    <x-page-header class="invoices-page-header{{ $invoiceHeaderTwoActions ? ' invoices-page-header--two-actions' : '' }}" title="Invoices" subtitle="View and manage all sales invoices">
+    <x-page-header class="invoices-page-header" title="Invoices" subtitle="View and manage all sales invoices">
         <x-slot:actions>
-            @if($showHistoricalSales)
-            <a href="{{ route('historical.index') }}"
-               class="btn btn-sm invoices-historical-btn">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>
-                </svg>
-                Historical Sales
-            </a>
-            @endif
             @can('sales.pos')
             <a href="{{ route('pos.index') }}"
                class="btn btn-success btn-sm invoices-open-pos-btn">
@@ -86,6 +78,30 @@
         @unless($canModifyInvoices)
             @include('partials.view-only-banner', ['permission' => 'sales.void', 'message' => 'invoice management'])
         @endunless
+
+        {{-- The Invoices page's navigation row: this page and the pages that open from it.
+             They are pages of their own, so these are links and the current one is marked;
+             a role with nowhere to go from here gets no row. --}}
+        @if($showHistoricalSales || $showReturns)
+        <nav class="invoices-page-nav" aria-label="Invoices navigation">
+            <a href="{{ route('invoices.index') }}" class="invoices-page-nav-link" aria-current="page">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Invoices
+            </a>
+            @if($showHistoricalSales)
+            <a href="{{ route('historical.index') }}" class="invoices-page-nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+                Historical Sales
+            </a>
+            @endif
+            @if($showReturns)
+            <a href="{{ route('returns.index') }}" class="invoices-page-nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                Returns / Exchange
+            </a>
+            @endif
+        </nav>
+        @endif
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 invoices-kpi-grid">
