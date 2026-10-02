@@ -5348,6 +5348,37 @@ body.admin-shell {
     outline-offset: 2px;
 }
 
+/* Pricing-alert bell: an icon button, not a text action. The header's action
+   defaults (10px 16px of padding, forced white and ink) left its 20px icon
+   2px of width and washed its amber out: it looked like an empty white box. */
+.inventory-items-header .page-actions > #pricing-alert-bell {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    gap: 0;
+    border-color: #f59e0b !important;
+    background: #fffbeb !important;
+    color: #b45309 !important;
+}
+
+.inventory-items-header .page-actions > #pricing-alert-bell:hover {
+    border-color: #d97706 !important;
+    background: #fef3c7 !important;
+}
+
+.inventory-items-header .page-actions > #pricing-alert-bell:focus-visible {
+    outline: 3px solid rgba(245, 158, 11, 0.45);
+    outline-offset: 2px;
+}
+
+.inventory-items-header .page-actions > #pricing-alert-bell > svg {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+}
+
 /* Feature headers: inventory create + customers create + schemes + repairs report */
 .inventory-items-create-header,
 .customers-create-header,
@@ -19121,6 +19152,18 @@ input::-webkit-calendar-picker-indicator {
         width: 14px;
         height: 14px;
         margin-right: 4px;
+    }
+
+    /* The bell matches the phone-sized Create Item button beside it. */
+    .inventory-items-header .page-actions > #pricing-alert-bell {
+        width: 34px;
+        height: 34px;
+        min-height: 34px;
+    }
+
+    .inventory-items-header .page-actions > #pricing-alert-bell > svg {
+        width: 18px;
+        height: 18px;
     }
 
     .installments-index-header {

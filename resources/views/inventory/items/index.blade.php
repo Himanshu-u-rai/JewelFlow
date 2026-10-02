@@ -10,8 +10,9 @@
                     id="pricing-alert-bell"
                     onclick="if(window.__pricingAlerts){window.__pricingAlerts.open();}else{document.addEventListener('alpine:initialized',function(){window.__pricingAlerts&&window.__pricingAlerts.open();},{once:true});}"
                     class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
-                    title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention"
+                    aria-label="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
