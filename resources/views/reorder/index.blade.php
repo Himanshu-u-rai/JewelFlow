@@ -418,7 +418,10 @@
             text-align: center;
         }
 
-        .reorder-index-page .reorder-index-add-short {
+        /* The Add Rule button sits in the page header, which is outside
+           .reorder-index-page: its label rules must not be scoped to that
+           container, or both labels show ("Add Rule Add"). */
+        .reorder-index-add-short {
             display: none;
         }
 
@@ -517,17 +520,17 @@
                 font-size: 12px;
             }
 
-            .reorder-index-page .reorder-index-add {
+            .reorder-index-add {
                 min-height: 40px;
                 padding: 0 14px;
                 border-radius: 14px;
             }
 
-            .reorder-index-page .reorder-index-add-full {
+            .reorder-index-add-full {
                 display: none;
             }
 
-            .reorder-index-page .reorder-index-add-short {
+            .reorder-index-add-short {
                 display: inline;
             }
         }
