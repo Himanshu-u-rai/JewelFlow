@@ -288,8 +288,13 @@
     </div>
 
     <script>
-        const categoryBaseUrl  = @js(url('categories'));
-        const subBaseUrl       = @js(url('sub-categories'));
+        // Turbo Drive evaluates this script again on every visit to this page, in the
+        // same global scope. So nothing at its top level may be `const` or `let` (a
+        // second declaration throws and the whole script is skipped, leaving the page
+        // on the first visit's handlers), and each listener it puts on the document
+        // replaces the one its last run added.
+        var categoryBaseUrl  = @js(url('categories'));
+        var subBaseUrl       = @js(url('sub-categories'));
 
         function showCategoryModal(id, focusSelector = 'input[name="name"]') {
             const modal = document.getElementById(id);
@@ -355,14 +360,18 @@
         }
 
         // ---- Escape key closes any open modal ----
-        document.addEventListener('keydown', function(e) {
+        if (window.__categoriesPageEscapeHandler) {
+            document.removeEventListener('keydown', window.__categoriesPageEscapeHandler);
+        }
+        window.__categoriesPageEscapeHandler = function(e) {
             if (e.key === 'Escape') {
                 closeAddCategoryModal();
                 closeAddSubCategoryModal();
                 closeEditCategoryModal();
                 closeEditSubCategoryModal();
             }
-        });
+        };
+        document.addEventListener('keydown', window.__categoriesPageEscapeHandler);
 
         function syncCategoryCollapseMode() {
             const page = document.querySelector('.categories-index-page');
@@ -396,31 +405,39 @@
         function initCategoriesPage() {
             const page = document.querySelector('.categories-index-page');
             if (!page) return;
-            document.body.classList.remove('categories-modal-open');
+            if (!page.querySelector('.categories-modal:not(.hidden)')) {
+                document.body.classList.remove('categories-modal-open');
+            }
 
             @php $intent = old('_intent'); @endphp
 
-            @if($intent === 'add_category')
-                openAddCategoryModal();
+            // A save the server rejected comes back with its modal open and its message
+            // showing. Once per response: Turbo's cached copy of this page keeps the mark,
+            // so going Back to it does not reopen a modal the user has closed.
+            if (page.dataset.intentShown !== '1') {
+                page.dataset.intentShown = '1';
+                @if($intent === 'add_category')
+                    openAddCategoryModal();
 
-            @elseif($intent === 'add_sub_category')
-                @php
-                    $oldCatId   = (int) old('category_id');
-                    $oldCatName = $categories->firstWhere('id', $oldCatId)?->name ?? '';
-                @endphp
-                openAddSubCategoryModal({{ $oldCatId }}, @js($oldCatName));
+                @elseif($intent === 'add_sub_category')
+                    @php
+                        $oldCatId   = (int) old('category_id');
+                        $oldCatName = $categories->firstWhere('id', $oldCatId)?->name ?? '';
+                    @endphp
+                    openAddSubCategoryModal({{ $oldCatId }}, @js($oldCatName));
 
-            @elseif($intent === 'edit_category')
-                @php
-                    $oldEditCatId   = (int) old('_edit_category_id');
-                    $oldEditCatName = old('name', $categories->firstWhere('id', $oldEditCatId)?->name ?? '');
-                @endphp
-                openEditCategoryModal({{ $oldEditCatId }}, @js($oldEditCatName));
+                @elseif($intent === 'edit_category')
+                    @php
+                        $oldEditCatId   = (int) old('_edit_category_id');
+                        $oldEditCatName = old('name', $categories->firstWhere('id', $oldEditCatId)?->name ?? '');
+                    @endphp
+                    openEditCategoryModal({{ $oldEditCatId }}, @js($oldEditCatName));
 
-            @elseif($intent === 'edit_sub_category')
-                @php $oldEditSubId = (int) old('_edit_sub_id'); @endphp
-                openEditSubCategoryModal({{ $oldEditSubId }}, @js(old('name', '')));
-            @endif
+                @elseif($intent === 'edit_sub_category')
+                    @php $oldEditSubId = (int) old('_edit_sub_id'); @endphp
+                    openEditSubCategoryModal({{ $oldEditSubId }}, @js(old('name', '')));
+                @endif
+            }
 
             page.querySelectorAll('.categories-card').forEach((card) => {
                 const toggleBtn = card.querySelector('[data-category-toggle]');
