@@ -405,7 +405,7 @@
         function initCategoriesPage() {
             const page = document.querySelector('.categories-index-page');
             if (!page) return;
-            if (!page.querySelector('.categories-modal:not(.hidden)')) {
+            if (!document.querySelector('.categories-modal:not(.hidden)')) {
                 document.body.classList.remove('categories-modal-open');
             }
 

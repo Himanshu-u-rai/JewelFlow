@@ -72,8 +72,13 @@ class CategoryPageRevisitTest extends TestCase
         // reopen a modal the user closed; before the script could re-run, nothing reopened it.
         $this->assertMatchesRegularExpression(
             "/if \(page\.dataset\.intentShown !== '1'\) \{\s*page\.dataset\.intentShown = '1';\s*openAddCategoryModal\(\);/",
-            $this->pageScript($owner)
+            $script = $this->pageScript($owner)
         );
+
+        // While it is open the page behind it stays locked. The modals are siblings of the
+        // page's container, not inside it: a check made inside the container never found the
+        // open one and took the lock off, each time the script ran after the modal reopened.
+        $this->assertStringNotContainsString("page.querySelector('.categories-modal", $script);
     }
 
     /**
