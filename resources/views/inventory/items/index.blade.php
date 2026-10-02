@@ -39,8 +39,7 @@
     <div
         id="pricing-alert-drawer"
         x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}', '{{ $paStorageKey }}')"
-        x-init="init()"
-        @keydown.escape.window="close()"
+        @keydown.escape.window="isOpen && close()"
     >
         {{-- Backdrop --}}
         <div
@@ -96,19 +95,22 @@
                 These items have <strong>stale prices</strong>. Click an item to edit it and fix the metal type or purity profile, then save today's rates again to reprice.
             </div>
 
-            {{-- Item list --}}
+            {{-- Item list. Whatever these templates draw is data-turbo-temporary: Turbo drops it
+                 before it caches the page. Cached with the page, the drawn rows come back on Back
+                 with no list around them: Alpine throws "item is not defined" for every binding in
+                 every row, then draws the list again beside the dead copies. --}}
             <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
                 <template x-if="loading">
-                    <div class="flex items-center justify-center py-12 text-gray-400 text-sm">Loading…</div>
+                    <div data-turbo-temporary class="flex items-center justify-center py-12 text-gray-400 text-sm">Loading…</div>
                 </template>
                 <template x-if="!loading && items.length === 0">
-                    <div class="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+                    <div data-turbo-temporary class="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         <span>All items repriced successfully!</span>
                     </div>
                 </template>
                 <template x-for="item in items" :key="item.id">
-                    <a :href="item.edit_url" class="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+                    <a data-turbo-temporary :href="item.edit_url" class="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
                         <span class="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         </span>
@@ -141,10 +143,19 @@
             items: [],
             _storageKey: storageKey,
 
+            // Alpine calls init() by itself. (An x-init="init()" beside it ran this twice:
+            // the panel opened twice and asked for the list twice.)
             init() {
                 // Expose open() on window so the bell button (rendered outside this
                 // x-data scope in x-page-header) can call it after Alpine initialises.
                 window.__pricingAlerts = this;
+
+                // Leaving the page ends this panel. Alpine normally destroys a page's
+                // components when Turbo swaps the page, but not on the page a session
+                // started on, where this instance and its Escape handler live on. Closed,
+                // it stays silent ("isOpen && close()") instead of marking today's alerts
+                // dismissed from whatever page Escape is pressed on next.
+                document.addEventListener('turbo:before-cache', () => { this.isOpen = false; }, { once: true });
 
                 // Auto-open once per day — skip if already dismissed this session
                 if (this.count > 0 && !localStorage.getItem(this._storageKey)) {
