@@ -8,6 +8,7 @@
 #   TAKEOVER_RELEASE_APPROVED=<target-sha> [TAKEOVER_PRODUCTION_CHECK=approved] \
 #   deploy-takeover-production.sh release   <same five arguments>
 #   deploy-takeover-production.sh resume    <from-sha> <target-sha> <evidence dir of the stopped release>
+#   deploy-takeover-production.sh baseline  <from-sha> <target-sha> <evidence dir of the stopped release>
 #   deploy-takeover-production.sh restore-check <dump file>
 #
 # Retail (jewelflows.com, www.jewelflows.com), Dhiran (dhiran.jewelflows.com)
@@ -27,6 +28,12 @@
 #                otherwise it is printed as NOT RUN.
 # resume         finishes, forward only, a release a gate stopped at or after
 #                the migration (site in maintenance on the target commit).
+# baseline       returns a stopped release to the commit, assets and configuration it
+#                started from. It REFUSES unless production is still in the maintenance
+#                window of that release and the four promotion tables are absent or
+#                empty: the earlier release must never run over recorded preferences
+#                or consent. Empty tables are left in place, never dropped; a later
+#                `release` recognises them and does not run the migration again.
 # restore-check  restores a dump in the isolated instance and fingerprints it.
 #                It touches nothing live. Use it before trusting any backup.
 #
@@ -47,10 +54,10 @@
 set -uo pipefail
 export LC_ALL=C
 
-MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256 | resume from-sha target-sha stopped-run-dir | restore-check dump}
+MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256 | resume|baseline from-sha target-sha stopped-run-dir | restore-check dump}
 case "$MODE" in
   preflight|release) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; BUNDLE=${4:?bundle}; ASSETS=${5:?assets tarball}; ASSETS_SHA=${6:?assets sha256} ;;
-  resume) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; PREV=${4:?evidence dir of the stopped release} ;;
+  resume|baseline) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; PREV=${4:?evidence dir of the stopped release} ;;
   restore-check) CHECK_DUMP=${2:?dump file} ;;
   *) echo "unknown mode: $MODE"; exit 64 ;;
 esac
@@ -133,7 +140,11 @@ ok() { echo "ok    $*"; }
 code() { local h=$1; shift; curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
 body() { local h=$1; shift; curl -sk -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
 new_rows() { local t n=0; for t in "${NEW_TABLES[@]}"; do n=$((n + $(PSQL "select count(*) from $t"))); done; echo "$n"; }
-untracked() { G status --porcelain | grep '^??' | sort; }
+# Every untracked FILE, one by one. (Git's default folds an untracked directory into one line, and
+# unfolds it as soon as the target tracks any file in it: production's docs/superpowers/ is such a
+# directory. Found in the tooling rehearsal; the folded listing made the gate fail on a tree in
+# which no untracked file had been touched.)
+untracked() { G status --porcelain --untracked-files=all | grep '^??' | sort; }
 
 # Every table of the public schema (row count and a hash of its content), every relation
 # and the trigger count. Session settings are pinned so that the text of a value is the
@@ -154,6 +165,7 @@ fingerprint() { sudo -u postgres env "PGOPTIONS=$FP_OPTS" psql -X -q -A -t -v ON
 fp_tables() { grep '^table ' "$1"; }
 fp_summary() { echo "$(grep -c '^table ' "$1") tables, $(awk '$1 == "table" && $3 > 0' "$1" | wc -l) holding rows, $(grep -c '^rel ' "$1") relations, $(awk '$1 == "triggers" { print $2 }' "$1") triggers"; }
 fp_get() { awk -v t="$2" '$1 == "table" && $2 == t { print $3 }' "$1"; }
+fp_differ() { diff <(fp_tables "$1") <(fp_tables "$2") | awk '/^[<>] table/ { print $3 }' | sort -u | tr '\n' ' '; }
 # The schema as text. Only pg_dump's per-run \restrict token is removed (it is random, so two
 # dumps of one schema never compare equal with it). Comments and blank lines stay: they can be
 # part of a function body.
@@ -251,7 +263,7 @@ fail() {
     smoke) echo "Production is UP on $TARGET (maintenance had ended); nothing was rolled back. Inspect now. Evidence: $WORK." ;;
     *) echo "Production (Retail, Dhiran and the mobile API) is LEFT IN MAINTENANCE, $WORKER stopped, the scheduler cron held at $HELD."
        echo "Evidence and the pre-release copies (.env, config cache, assets, database dump): $WORK."
-       echo "Recovery: docs/runbooks/product-promotion-recognition.md, 'Recovery'. Count the four tables first: empty -> the baseline may return; any row -> forward only ('resume', or a fix)." ;;
+       echo "Recovery: docs/runbooks/product-promotion-recognition.md, 'Recovery'. Forward with 'resume' once the cause is fixed, or back with 'baseline', which refuses unless the four promotion tables are absent or empty." ;;
   esac
   exit 2
 }
@@ -259,19 +271,26 @@ fail() {
 # ── gates shared by release and resume ──────────────────────────────────────
 verify_migrated() {
   PHASE=migrate
+  local added mine
+  # `sessions` aside: this script's own page requests (the proof through the bypass, the smoke test)
+  # open guest sessions, so after a stopped run that table has moved without any user having been let in.
+  mine="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "
   grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is still pending"
   [ "$(new_rows)" = 0 ] || fail "the new tables are not empty"
   fingerprint > "$WORK/live.after.fp" || fail "could not fingerprint the migrated database"
-  [ "$(comm -13 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.after.fp"))" = "$NEW_RELATIONS" ] || fail "the relations added are not exactly the fifteen named in this script: $(comm -13 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.after.fp") | tr '\n' ' ')"
+  added=$(comm -13 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.after.fp"))
+  # MIGRATED=1: an earlier attempt applied the migration and returned to the baseline with the empty tables in place.
+  if [ "$MIGRATED" = 1 ]; then [ -z "$added" ] || fail "relations were added although the migration was already applied: $(tr '\n' ' ' <<< "$added")"
+  else [ "$added" = "$NEW_RELATIONS" ] || fail "the relations added are not exactly the fifteen named in this script: $(tr '\n' ' ' <<< "$added")"; fi
   [ -z "$(comm -23 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.after.fp"))" ] || fail "a relation that existed before is gone"
   [ "$(awk '$1 == "triggers" { print $2 }' "$WORK/live.after.fp")" = "$(awk '$1 == "triggers" { print $2 }' "$BEFORE_FP")" ] || fail "the trigger count changed"
-  [ "$(fp_get "$WORK/live.after.fp" migrations)" = "$(( $(fp_get "$BEFORE_FP" migrations) + 1 ))" ] || fail "the migrations table did not grow by one"
+  [ "$(fp_get "$WORK/live.after.fp" migrations)" = "$(( $(fp_get "$BEFORE_FP" migrations) + 1 - MIGRATED ))" ] || fail "the migrations table did not grow by exactly the one migration"
   # Every table that existed before: same row count, same content. Only `migrations` may differ (one row more).
-  cmp -s <(fp_tables "$BEFORE_FP" | grep -v '^table migrations ') <(fp_tables "$WORK/live.after.fp" | grep -vE "^table (migrations|$(IFS='|'; echo "${NEW_TABLES[*]}")) ") \
-    || fail "a row of an existing table changed: $(diff <(fp_tables "$BEFORE_FP") <(fp_tables "$WORK/live.after.fp") | awk '/^[<>] table/ { print $3 }' | sort -u | tr '\n' ' ')"
+  cmp -s <(fp_tables "$BEFORE_FP" | grep -vE "$mine") <(fp_tables "$WORK/live.after.fp" | grep -vE "$mine") \
+    || fail "a row of an existing table changed: $(fp_differ "$BEFORE_FP" "$WORK/live.after.fp")"
   schema_live "${EXCLUDE[@]}" > "$WORK/schema.after.sql"
   cmp -s "$BEFORE_SCHEMA" "$WORK/schema.after.sql" || fail "the schema outside the six named relations changed: diff $BEFORE_SCHEMA $WORK/schema.after.sql"
-  ok "migration $MIGRATION applied: fifteen named relations added, four empty tables; every existing table has its rows and content; existing schema ($(wc -l < "$WORK/schema.after.sql") lines) identical"
+  ok "migration $MIGRATION $([ "$MIGRATED" = 1 ] && echo 'was already applied (not run again)' || echo 'applied: fifteen named relations added'), four empty tables; every existing table has its rows and content (sessions aside); existing schema ($(wc -l < "$WORK/schema.after.sql") lines) identical"
 }
 configure() {
   PHASE=config
@@ -319,14 +338,15 @@ finish() {
   # ── the synthetic two-product check: only with its own approval ─────────────
   PHASE=check
   if [ "${TAKEOVER_PRODUCTION_CHECK:-}" = approved ]; then
+    fingerprint > "$WORK/live.precheck.fp" || fail "could not fingerprint the database before the synthetic check"
     ( cd "$DIR" && sudo -u www-data env TAKEOVER_PRODUCTION_CHECK=approved php tests/Production/verify_takeover_production.php ) > "$WORK/production-check.txt" 2>&1 \
       || fail "the synthetic check failed (see $WORK/production-check.txt); the four tables hold $(new_rows) rows"
     # The exit code alone is not trusted: the script must have run to its last line, with every check passing.
     grep -q '^TAKEOVER PRODUCTION CHECK PASSED' "$WORK/production-check.txt" && ! grep -q '^FAIL' "$WORK/production-check.txt" && [ "$(grep -c '^PASS' "$WORK/production-check.txt")" -ge 18 ] \
       || fail "the synthetic check did not finish with all of its checks passing (see $WORK/production-check.txt); the four tables hold $(new_rows) rows"
     [ "$(new_rows)" = 0 ] || fail "the synthetic check left rows in the new tables"
-    fingerprint > "$WORK/live.checked.fp" && cmp -s <(fp_tables "$WORK/live.after.fp") <(fp_tables "$WORK/live.checked.fp") || fail "a table differs after the synthetic check"
-    ok "synthetic two-product check passed and left no row (every table re-fingerprinted from outside it): $(grep -c '^PASS' "$WORK/production-check.txt") checks; lasting effects recorded in $WORK/production-check.txt"
+    fingerprint > "$WORK/live.checked.fp" && cmp -s "$WORK/live.precheck.fp" "$WORK/live.checked.fp" || fail "the synthetic check left a table, relation or trigger changed: $(fp_differ "$WORK/live.precheck.fp" "$WORK/live.checked.fp")"
+    ok "synthetic two-product check passed and left no row (every table fingerprinted from outside it, immediately before and after): $(grep -c '^PASS' "$WORK/production-check.txt") checks; lasting effects recorded in $WORK/production-check.txt"
   else
     echo "NOT RUN synthetic two-product check: not approved for this window (TAKEOVER_PRODUCTION_CHECK=approved)"
   fi
@@ -360,7 +380,7 @@ if [ "$MODE" = resume ]; then
   cd "$DIR" || fail "no directory $DIR"
   [ -f "$PREV/state" ] && [ "$(cat "$PREV/code.before" 2>/dev/null)" = "$FROM" ] || fail "$PREV is not the evidence of a release from $FROM"
   # shellcheck disable=SC1091
-  source "$PREV/state"
+  source "$PREV/state"; MIGRATED=${MIGRATED:-0}
   HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; BEFORE_SCHEMA=$PREV/schema.before.sql; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes
   grep -qE '^APP_ENV=production$' "$DIR/.env" || fail "$DIR/.env is not APP_ENV=production"
   [ -f storage/framework/down ] || fail "production is not in maintenance: there is nothing to resume"
@@ -377,6 +397,107 @@ if [ "$MODE" = resume ]; then
   configure
   verify_migrated
   finish
+  exit 0
+fi
+
+# ── baseline: back to the release that was running, only while that is permitted ──
+if [ "$MODE" = baseline ]; then
+  echo "########## takeover production baseline: back to $FROM from an attempt at $TARGET, at $STAMP (UTC); evidence of that attempt: $PREV ##########"
+  cd "$DIR" || fail "no directory $DIR"
+  [ -f "$PREV/state" ] && [ "$(cat "$PREV/code.before" 2>/dev/null)" = "$FROM" ] || fail "$PREV is not the evidence of a release from $FROM"
+  # shellcheck disable=SC1091
+  source "$PREV/state"; MIGRATED=${MIGRATED:-0}
+  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes
+  grep -qE '^APP_ENV=production$' "$DIR/.env" || fail "$DIR/.env is not APP_ENV=production"
+  [ -f storage/framework/down ] || fail "production is not in maintenance. Once it has been up on the new release, owners may have recorded a preference or consent, and the earlier release must not run over those: REFUSED, repair forward"
+  [ -f "$BACKUP" ] && [ "$(sha256sum "$BACKUP" | cut -d' ' -f1)" = "$DUMP_SHA" ] || fail "the stopped run's backup is missing or is not the one it recorded"
+  [ storage/framework/down -ot "$BACKUP" ] || fail "maintenance was switched on again after that run's backup, so production has been up in between: REFUSED, repair forward"
+  HEAD_NOW=$(G rev-parse HEAD)
+  [ "$HEAD_NOW" = "$FROM" ] || [ "$HEAD_NOW" = "$TARGET" ] || fail "HEAD is $HEAD_NOW, neither the baseline nor the target"
+  [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "the tracked tree is dirty (a checkout cut short?): this mode does not repair that"
+  [ -f "$HELD" ] && [ ! -e "$CRON" ] || fail "the scheduler cron is not held at $HELD"
+  [ "$(systemctl is-active "$WORKER")" != active ] && [ "$(artisan_running)" = 0 ] || fail "$WORKER or a scheduled command is running"
+  # The rule. Counted here, in maintenance, with nothing able to write.
+  ROWS=0; PRESENT=0
+  for t in "${NEW_TABLES[@]}"; do
+    if [ "$(PSQL "select count(*) from information_schema.tables where table_schema = 'public' and table_name = '$t'")" = 1 ]; then PRESENT=$((PRESENT + 1)); ROWS=$((ROWS + $(PSQL "select count(*) from $t"))); fi
+  done
+  [ "$ROWS" = 0 ] || fail "$ROWS row(s) of promotion metadata exist (preferences, exposures, requests or recognitions). The earlier release neither reads the preferences nor withdraws consent on a security change: REFUSED. Recovery is forward repair only"
+  [ "$PRESENT" = 0 ] || [ "$PRESENT" = 4 ] || fail "$PRESENT of the four tables exist: a migration cut short, not something this mode repairs"
+  BASE_MANIFEST=$(tar -xzOf "$PREV/build.before.tar.gz" build/manifest.json | sha256sum | cut -d' ' -f1)
+  ok "permitted: in maintenance without a break since that run's backup ($DUMP_SHA); HEAD is $HEAD_NOW; the four promotion tables are $([ "$PRESENT" = 0 ] && echo absent || echo 'present and empty')"
+
+  PHASE=baseline
+  LOG_MARK=$(log_mark); echo "$LOG_MARK" > "$WORK/log.mark"
+  if [ "$HEAD_NOW" != "$FROM" ]; then G checkout --quiet --detach "$FROM" || fail "checkout of the baseline failed"; fi
+  [ "$(G rev-parse HEAD)" = "$FROM" ] && [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "the baseline did not land cleanly"
+  OWNERDO env COMPOSER_ALLOW_SUPERUSER=1 composer -d "$DIR" install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --quiet || fail "composer install failed"
+  ART package:discover >/dev/null || fail "package:discover failed"
+  if [ "$(sha256sum "$DIR/public/build/manifest.json" 2>/dev/null | cut -d' ' -f1)" != "$BASE_MANIFEST" ]; then
+    OWNERDO rm -rf "$DIR/public/build.incoming" && OWNERDO mkdir "$DIR/public/build.incoming" && OWNERDO tar -xzf - -C "$DIR/public/build.incoming" < "$PREV/build.before.tar.gz" || fail "could not unpack the pre-release assets"
+    if [ -e "$DIR/public/build" ]; then mv "$DIR/public/build" "$WORK/build.abandoned" || fail "could not set the attempted assets aside"; fi
+    OWNERDO mv "$DIR/public/build.incoming/build" "$DIR/public/build" && OWNERDO rmdir "$DIR/public/build.incoming" || fail "could not put the pre-release assets back"
+  fi
+  [ "$(stat -c '%U:%G' "$DIR/public/build")" = "$BUILD_STAT" ] && [ "$(sha256sum "$DIR/public/build/manifest.json" | cut -d' ' -f1)" = "$BASE_MANIFEST" ] || fail "the assets are not the pre-release ones, owned as before"
+  if ! cmp -s "$DIR/.env" "$ENV_BEFORE"; then
+    cmp -s <(head -c "$(stat -c %s "$ENV_BEFORE")" "$DIR/.env") "$ENV_BEFORE" && [ "$(tail -c +"$(( $(stat -c %s "$ENV_BEFORE") + 1 ))" "$DIR/.env")" = "$(printf '%s' "$ENV_BLOCK")" ] \
+      || fail ".env differs from its pre-release copy by more than the two product addresses: not restored automatically"
+    cat "$ENV_BEFORE" > "$DIR/.env" || fail "could not restore .env"
+  fi
+  cmp -s "$DIR/.env" "$ENV_BEFORE" && [ "$(stat -c '%U:%G %a' "$DIR/.env")" = "$ENV_STAT" ] || fail ".env is not its pre-release copy with its ownership and mode ($ENV_STAT)"
+  CFG config:cache >/dev/null || fail "config:cache failed"
+  cache_ok || fail "the config cache has no application key or database password"
+  [ "$(cfgid)" = "production|$APPURL|$DB" ] || fail "effective config is '$(cfgid)'"
+  [ -z "$(diff <(config_hashes) "$CONFIG_BEFORE")" ] || fail "the configuration in effect is not what it was before the release, under: $(diff <(config_hashes) "$CONFIG_BEFORE" | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')"
+  [ "$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")" = "$CACHE_STAT" ] || fail "the config cache's ownership or mode changed (was $CACHE_STAT)"
+  ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
+  [ "$(root_owned)" = "$ROOT_OWNED_BEFORE" ] && [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "root-owned or untracked files in the tree changed"
+  ok "code $FROM, its assets (manifest $BASE_MANIFEST), .env and configuration are back as recorded before the release"
+
+  # The database: nothing of what existed may have moved; the four tables absent, or present and empty.
+  fingerprint > "$WORK/live.baseline.fp" || fail "could not fingerprint the database"
+  ADDED=$(comm -13 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.baseline.fp"))
+  [ -z "$ADDED" ] || [ "$ADDED" = "$NEW_RELATIONS" ] || fail "relations other than the release's fifteen were added: $(tr '\n' ' ' <<< "$ADDED")"
+  [ -z "$(comm -23 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.baseline.fp"))" ] || fail "a relation that existed before the release is gone"
+  [ "$(awk '$1 == "triggers" { print $2 }' "$WORK/live.baseline.fp")" = "$(awk '$1 == "triggers" { print $2 }' "$BEFORE_FP")" ] || fail "the trigger count changed"
+  MINE="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "   # sessions: guest sessions of the attempt's own page requests
+  cmp -s <(fp_tables "$BEFORE_FP" | grep -vE "$MINE") <(fp_tables "$WORK/live.baseline.fp" | grep -vE "$MINE") || fail "a row of an existing table changed since before the release: $(fp_differ "$BEFORE_FP" "$WORK/live.baseline.fp")"
+  [ -z "$(fp_tables "$WORK/live.baseline.fp" | grep -E "^table ($(IFS='|'; echo "${NEW_TABLES[*]}")) " | awk '$3 != 0')" ] || fail "a promotion table is not empty"
+  ok "database: every table that existed before the release has its rows and content (sessions aside: $(fp_get "$BEFORE_FP" sessions) rows before, $(fp_get "$WORK/live.baseline.fp" sessions) now); relations $([ -z "$ADDED" ] && echo 'exactly as before' || echo 'as before plus the fifteen of the migration, its four tables empty and left in place')"
+
+  PHASE=freshness
+  sleep 6
+  SECRET=$(php -r 'echo json_decode(file_get_contents($argv[1]), true)["secret"] ?? "";' "$DIR/storage/framework/down")
+  [ -n "$SECRET" ] || fail "the maintenance file holds no bypass secret"
+  JAR=$WORK/bypass.jar
+  for h in "$RETAIL" "$WWW" "$DHIRAN"; do [ "$(code "$h" -b "$JAR" -c "$JAR" "https://$h/$SECRET")" = 302 ] || fail "the maintenance bypass did not answer on $h"; done
+  for h in "$RETAIL" "$WWW"; do
+    [ "$(code "$h" -b "$JAR" "https://$h/")" = 200 ] && ! body "$h" -b "$JAR" "https://$h/" | grep -q 'Start with Retail' || fail "$h does not serve the earlier landing page"
+  done
+  # (Only the Retail path can tell: on the Dhiran host the earlier release redirects every unknown dhiran/ path to its log-in.)
+  [ "$(code "$RETAIL" -b "$JAR" "https://$RETAIL/product-preferences")" = 404 ] || fail "the new release's route still answers"
+  [ "$(code "$DHIRAN" -b "$JAR" "https://$DHIRAN/")" = 302 ] && [ "$(code "$DHIRAN" -b "$JAR" "https://$DHIRAN/login")" = 200 ] || fail "the Dhiran root does not redirect to a working log-in"
+  [ "$(body "$RETAIL" -b "$JAR" "https://$RETAIL/build/manifest.json" | sha256sum | cut -d' ' -f1)" = "$BASE_MANIFEST" ] || fail "the served asset manifest is not the pre-release one"
+  for h in "$RETAIL" "$WWW" "$DHIRAN"; do [ "$(code "$h" "https://$h/")" = 503 ] || fail "maintenance does not hold on $h for a visitor without the bypass"; done
+  [ "$(protections)" = "$PROTECTIONS_EXPECTED" ] || fail "a private storage prefix is not refused: $(protections)"
+  rm -f "$JAR"
+  ok "the earlier release is what is served: its landing page on both Retail hosts, its manifest, no product-preferences route, the Dhiran log-in; visitors still get 503; private storage still refused"
+
+  PHASE=processes
+  mv "$HELD" "$CRON" || fail "could not put the scheduler cron back"
+  [ "$(sha256sum "$CRON" | cut -d' ' -f1)" = "$CRON_SHA" ] && [ "$(stat -c '%U:%G %a' "$CRON")" = "$CRON_STAT" ] || fail "the scheduler cron is not byte-identical with its mode"
+  systemctl start "$WORKER" && sleep 2 && [ "$(systemctl is-failed "$WORKER")" != failed ] || fail "$WORKER did not start"
+  PHASE=up
+  ART up >/dev/null || fail "artisan up failed"
+  ok "scheduler cron back ($CRON_SHA, $CRON_STAT); $WORKER started; maintenance off at $(date -u +%H:%M:%SZ)"
+  PHASE=smoke
+  [ "$(answers)" = "$ANSWERS_EXPECTED" ] || fail "smoke: a public answer changed: $(answers) (expected $ANSWERS_EXPECTED)"
+  [ "$(code "$RETAIL" "https://$RETAIL/")" = 200 ] && [ "$(code "$WWW" "https://$WWW/")" = 200 ] || fail "smoke: the landing page is not 200"
+  [ "$(protections)" = "$PROTECTIONS_EXPECTED" ] || fail "smoke: a private storage prefix is not refused: $(protections)"
+  NEWERR=$(new_errors)
+  [ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since this run began ($WORK/log.mark)"
+  [ "$(shared_state)" = "$SHARED_BEFORE" ] || fail "staging's commit, maintenance state or config cache, a shared service or the web-server site file changed: $(shared_state)"
+  echo "RETURNED TO BASELINE: production is up at $FROM; the four promotion tables are $([ -z "$ADDED" ] && echo absent || echo 'present and empty (a later release will not run the migration again)'); the attempt's backup is $BACKUP ($DUMP_SHA); evidence in $WORK"
   exit 0
 fi
 
@@ -421,6 +542,8 @@ done
 DEVREF=$(C grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
 [ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
 C cat-file -e "$TARGET:tests/Production/verify_takeover_production.php" || fail "the target does not carry the production check script"
+COLLIDE=$(comm -12 <(sed 's/^?? //' <<< "$UNTRACKED_BEFORE" | sort) <(C ls-tree -r --name-only "$TARGET" | sort))
+[ -z "$COLLIDE" ] || fail "the target tracks a path that is an untracked file here (the checkout would refuse or overwrite it): $(tr '\n' ' ' <<< "$COLLIDE")"
 UNWRITABLE=0
 while IFS= read -r p; do d=$DIR/$p; while [ ! -e "$d" ]; do d=$(dirname "$d"); done; OWNERDO test -w "$d" || { echo "      not writable by $OWNER: $p"; UNWRITABLE=$((UNWRITABLE + 1)); }; done < <(C diff --name-only "$FROM" "$TARGET")
 [ "$UNWRITABLE" = 0 ] || fail "$UNWRITABLE changed path(s) not writable by $OWNER"
@@ -434,15 +557,22 @@ tar -tzf "$ASSETS" | grep -qx 'build/manifest.json' || fail "the assets tarball 
 [ "$(df --output=avail -m /var/www | tail -1)" -gt 2048 ] && [ "$(df --output=avail -m /root | tail -1)" -gt 2048 ] || fail "less than 2 GB free"
 grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is already pending on the deployed code"
 fingerprint > "$WORK/live.before.fp" || fail "could not fingerprint the database"
-[ -z "$(comm -12 <(grep '^rel ' "$WORK/live.before.fp") <(echo "$NEW_RELATIONS"))" ] || fail "a relation this release creates already exists"
-schema_live > "$WORK/schema.before.sql"
-[ -s "$WORK/schema.before.sql" ] && schema_live | cmp -s - "$WORK/schema.before.sql" || fail "two reads of the schema differ: the schema gate would be meaningless"
+# Either nothing of the migration exists, or all of it does, applied and empty: the state a permitted
+# return to the baseline leaves behind. Anything in between is refused.
+case "$(comm -12 <(grep '^rel ' "$WORK/live.before.fp") <(echo "$NEW_RELATIONS") | wc -l)" in
+  0) MIGRATED=0 ;;
+  15) [ "$(PSQL "select count(*) from migrations where migration = '$MIGRATION'")" = 1 ] && [ "$(new_rows)" = 0 ] || fail "the release's relations exist, but not as an applied migration with four empty tables"
+      MIGRATED=1 ;;
+  *) fail "some, not all, of the relations this release creates already exist" ;;
+esac
+schema_live > "$WORK/schema.full.sql"
+[ -s "$WORK/schema.full.sql" ] && schema_live | cmp -s - "$WORK/schema.full.sql" || fail "two reads of the schema differ: the schema gate would be meaningless"
 [ "$(answers)" = "$ANSWERS_EXPECTED" ] || fail "a public answer is not what this script expects: $(answers) (expected $ANSWERS_EXPECTED)"
 [ "$(protections)" = "$PROTECTIONS_EXPECTED" ] || fail "a private storage prefix is not refused with 403: $(protections)"
 [ -n "$(find "$NIGHTLY" -maxdepth 1 -name '*.zip' -mmin -1560 -size +1M 2>/dev/null | head -1)" ] || fail "no nightly backup archive from the last 26 hours in $NIGHTLY"
 [ "$(php-fpm8.2 -i 2>/dev/null | awk -F' => ' '/^opcache.validate_timestamps/ { print $2 }')" = On ] || fail "opcache does not validate timestamps: this script's no-reload proof would not hold"
 ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files"
-ok "database $DB: $(fp_summary "$WORK/live.before.fp"), $(fp_get "$WORK/live.before.fp" migrations) migrations; nothing pending; none of the fifteen relations exists; schema $(wc -l < "$WORK/schema.before.sql") lines, stable across two reads"
+ok "database $DB: $(fp_summary "$WORK/live.before.fp"), $(fp_get "$WORK/live.before.fp" migrations) migrations; nothing pending; $([ "$MIGRATED" = 1 ] && echo 'the migration is already applied with four empty tables (an earlier attempt returned to the baseline)' || echo 'none of the fifteen relations exists'); schema $(wc -l < "$WORK/schema.full.sql") lines, stable across two reads"
 ok "public answers as expected on $RETAIL, $WWW, $DHIRAN and the mobile API; ten private-storage probes refused; nightly archive present; opcache validates timestamps"
 
 # The backup, and the proof that it restores. In a release the site is quiesced, so every
@@ -462,7 +592,7 @@ backup_and_prove() {
   cmp -s <(fp_tables "$WORK/live.before.fp" | grep -vE "^table ($skip) ") <(fp_tables "$WORK/restored.fp" | grep -vE "^table ($skip) ") \
     || fail "a restored table differs from the live one: $(diff <(fp_tables "$WORK/live.before.fp") <(fp_tables "$WORK/restored.fp") | awk '/^[<>] table/ { print $3 }' | sort -u | tr '\n' ' ')"
   cmp -s <(grep -E '^(rel|triggers) ' "$WORK/live.before.fp") <(grep -E '^(rel|triggers) ' "$WORK/restored.fp") || fail "the restored relations or triggers differ from the live ones"
-  pg_restore -s -f - "$WORK/$DB.dump" | norm | cmp -s - "$WORK/schema.before.sql" || fail "the schema inside the backup is not the live schema"
+  pg_restore -s -f - "$WORK/$DB.dump" | norm | cmp -s - "$WORK/schema.full.sql" || fail "the schema inside the backup is not the live schema"
   ok "backup: sha256 $DUMP_SHA, $DUMP_DATA table-data entries, read end to end"
   ok "restored in an isolated instance (own PostgreSQL, throwaway user, no network, no application code): $(( $(grep -c '^table ' "$WORK/restored.fp") - $(wc -w <<< "$moved") )) of $(grep -c '^table ' "$WORK/restored.fp") tables identical to live by row count and content hash${moved:+; written while the dump ran and not compared: $moved}; relations, triggers and the full schema text identical"
 }
@@ -492,7 +622,7 @@ sleep 5   # requests already inside PHP finish
 for h in "$RETAIL" "$WWW" "$DHIRAN"; do [ "$(code "$h" "https://$h/")" = 503 ] || fail "$h does not answer 503 in maintenance"; done
 [ "$(code "$RETAIL" -H 'Accept: application/json' "https://$RETAIL/api/mobile/v1/sessions/me")" = 503 ] || fail "the mobile API does not answer 503 in maintenance"
 fingerprint > "$WORK/live.before.fp" || fail "could not fingerprint the quiesced database"
-schema_live > "$WORK/schema.before.sql"
+schema_live > "$WORK/schema.full.sql"; schema_live "${EXCLUDE[@]}" > "$WORK/schema.before.sql"
 ok "maintenance on at $(date -u +%H:%M:%SZ) for $RETAIL, $WWW, $DHIRAN and the mobile API; $WORKER stopped; scheduler cron held ($CRON_SHA, $CRON_STAT), no scheduled command running"
 
 # ── backup: fresh, kept on this server, read end to end, restored in isolation ──
@@ -504,7 +634,7 @@ tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not c
 config_hashes > "$WORK/config.before.hashes" && [ -s "$WORK/config.before.hashes" ] || fail "could not record the configuration in effect"
 echo "$FROM" > "$WORK/code.before"
 BEFORE_FP=$WORK/live.before.fp; BEFORE_SCHEMA=$WORK/schema.before.sql; ENV_BEFORE=$WORK/env.before; CONFIG_BEFORE=$WORK/config.before.hashes
-save LOG_MARK CRON_SHA CRON_STAT DUMP_SHA ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE ROOT_OWNED_BEFORE SHARED_BEFORE OTHER_HEALTH_BEFORE
+save LOG_MARK CRON_SHA CRON_STAT DUMP_SHA ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE ROOT_OWNED_BEFORE SHARED_BEFORE OTHER_HEALTH_BEFORE MIGRATED
 ok "pre-release copies in $WORK (root only): code $FROM, .env, config cache, public/build, database dump"
 
 # ── release: code, assets, configuration, the one migration ─────────────────
@@ -526,10 +656,14 @@ save MANIFEST_SHA
 ok "checked out $TARGET as $OWNER; assets in place (manifest $MANIFEST_SHA)"
 configure
 PHASE=migrate
-P=$(ART migrate --pretend --force --path="database/migrations/$MIGRATION.php" 2>&1); echo "$P" > "$WORK/pretend-$MIGRATION.sql"
-[ "$(grep -ci 'create table' <<< "$P")" = 4 ] || fail "the migration does not create exactly four tables (see $WORK/pretend-$MIGRATION.sql)"
-! grep -qiE 'drop |truncate |delete from|update ' <<< "$P" || fail "the migration holds a destructive statement"
-[ -z "$(grep -oiE 'alter table "[a-z_]+"' <<< "$P" | grep -viE "\"($(IFS='|'; echo "${NEW_TABLES[*]}"))\"" | head -1)" ] || fail "the migration alters an existing table"
-ART migrate --force --path="database/migrations/$MIGRATION.php" > "$WORK/migrate.out" 2>&1 || fail "migration failed (see $WORK/migrate.out)"
+if [ "$MIGRATED" = 1 ]; then
+  ok "the migration was applied by an earlier attempt and its four tables are empty: it is not run again"
+else
+  P=$(ART migrate --pretend --force --path="database/migrations/$MIGRATION.php" 2>&1); echo "$P" > "$WORK/pretend-$MIGRATION.sql"
+  [ "$(grep -ci 'create table' <<< "$P")" = 4 ] || fail "the migration does not create exactly four tables (see $WORK/pretend-$MIGRATION.sql)"
+  ! grep -qiE 'drop |truncate |delete from|update ' <<< "$P" || fail "the migration holds a destructive statement"
+  [ -z "$(grep -oiE 'alter table "[a-z_]+"' <<< "$P" | grep -viE "\"($(IFS='|'; echo "${NEW_TABLES[*]}"))\"" | head -1)" ] || fail "the migration alters an existing table"
+  ART migrate --force --path="database/migrations/$MIGRATION.php" > "$WORK/migrate.out" 2>&1 || fail "migration failed (see $WORK/migrate.out)"
+fi
 verify_migrated
 finish
