@@ -1,191 +1,228 @@
-# JewelFlows takeover — Retail staging release and production plan
+# JewelFlows takeover — Retail staging release and production request
 
-**Version 1, 7 October 2026.** Supersedes the deployment status in
-`jewelflows-takeover-local-review-2026-10-06.md`. The application code is the
-independently reviewed candidate `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`;
-every commit after it is documentation or release tooling.
+**Version 2, 7 October 2026** (version 1 is commit `aae763b`). The application
+code is the independently reviewed candidate
+`5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
+documentation, runbooks or `tests/`.
 
-**Production has not been changed. Section 6 is a plan waiting for approval.**
+**Production has not been changed. Section 7 is a request, not a record.**
 
-## 1. State found at takeover (7 Oct, 21:03 IST)
+Corrected since version 1:
 
-- Worktree `jewelflows-takeover`, branch `integration/jewelflows-takeover`, HEAD
-  `5cbad19…`, clean. The previous agent's last write was at 15:38 IST; no
-  deployment, migration or remote session was running.
-- Staging and production were both at `aa3a62a93630751058c38b31f2b49c604450ec68`,
-  up, 383 migrations each, no promotion tables, no backup taken that day.
-  **Nothing of the staging plan had been executed.**
-- The original worktree `ui-navigation-batch1` (`ui/navigation-batch-3`,
-  `1d01ba4`, its uncommitted files) was not touched.
+- "Writes nothing that survives", said of the proposed production check, was
+  wrong. A rollback leaves sequence values and more behind. See 6.
+- "16 tables matched" was a sample of row counts, not the whole backup. The
+  backup has since been compared table by table. See 3.
+- The schema gate that passed the staging release removed more than dump
+  noise. It was re-run tightly. See 3.
+- Production has five untracked files, not four (`.claude/settings.local.json`
+  as well). The script preserves whatever is there.
+- The mobile API answers 401 without a token to a JSON request; a plain
+  request is redirected.
+- The production target is no longer the commit staging runs but a later one
+  with identical runtime paths, because it carries the production check script.
 
-## 2. Commits added on the integration branch
+## 1. Where things stand
+
+| | Commit | State |
+|---|---|---|
+| Reviewed candidate | `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0` | application code of everything below |
+| Staging | `a87dcd58b8c8e1d1cfff9f24025872b24ab83401` | released 7 Oct, up, re-read 16:19Z, tracked tree clean |
+| Production candidate | `346eb2dd5ea0266f398be926870b25955e2770b7` | read-only preflight passed 16:30Z; not released |
+| Production | `aa3a62a93630751058c38b31f2b49c604450ec68` | unchanged |
+
+The integration branch (`integration/jewelflows-takeover`) is not pushed. The
+original worktree `ui-navigation-batch1` and its uncommitted files are untouched.
+
+## 2. Commits on the integration branch after the reviewed candidate
 
 | Commit | Content |
 |---|---|
-| `a87dcd58b8c8e1d1cfff9f24025872b24ab83401` | Recovery rule corrected (runbook and earlier handoff); staging-only release script; staging acceptance script. No path under `app`, `config`, `database`, `resources`, `routes` or `public` differs from the reviewed candidate. |
-| `8d50919f8c99d0791e318f465207f2f1a8fbc6ad` | Release script: schema gate fixed, gated `resume` added (see 3). Script only. |
-| this document | — |
+| `a87dcd5` | Corrected recovery rule; staging release script; staging acceptance script |
+| `8d50919` | Staging release script: schema gate fixed, `resume` added |
+| `aae763b` | This handoff, version 1 |
+| `496a7cd` | Production procedure, release script and check script |
+| `346eb2d` | Production script: the mobile API probe asks as JSON |
+| this commit | This handoff, version 2 |
 
-Recovery rule, as corrected: the earlier release may return only while the
-four new tables are empty. Once any preference, exposure, request or
-recognition row exists, recovery is a forward repair, or a compatibility
-rollback that keeps preference handling and consent invalidation and has been
-tested (none exists). Detail: `docs/runbooks/product-promotion-recognition.md`.
+`app`, `bootstrap`, `config`, `database`, `resources`, `routes`, `public`,
+`composer.lock`, `package-lock.json` and `vite.config.js` have the same tree
+hash in `5cbad19`, `a87dcd5` and `346eb2d` (compared locally and, for what is
+deployed, on the server).
 
-## 3. Retail staging release
+## 3. Staging release, with the evidence reconciled
 
-**Deployed: `a87dcd58b8c8e1d1cfff9f24025872b24ab83401`** on
-`https://staging.jewelflows.com`, from `aa3a62a…`. Maintenance 15:48:10Z to
-15:51:05Z (2 min 55 s). Procedure: `docs/runbooks/deploy-takeover-staging.sh`.
-Evidence on the server: `/root/takeover-staging/{preflight,release,resume}-*`.
+Deployed `a87dcd5` on `https://staging.jewelflows.com` from `aa3a62a`.
+Maintenance 15:48:10Z to 15:51:05Z. Evidence, root only, on the server:
+`/root/takeover-staging/{preflight,release,resume,recheck}-*`.
 
-| Gate | Measured |
-|---|---|
-| Fresh backup | `pg_dump -Fc`, SHA-256 `0a402ac0…2aea7381`, 144 table-data entries, read end to end |
-| Restore rehearsal | Isolated instance (own PostgreSQL, throwaway user, no network): 16 counted tables, 383 migrations, 42 triggers equal staging |
-| Migration | Only `2026_10_05_000001_create_product_promotion_tables`: 22 statements, 4 `create table`, none on an existing table. Four tables, empty |
-| Existing schema | Text identical to the pre-release backup's (6,530 lines); 42 triggers; row counts of 16 tables unchanged |
-| Assets | Tarball SHA-256 `47cdcf82…0a9e0e16`; served manifest, CSS and JS byte-identical to the build verified locally (manifest `5d0d0da8…18ad51a49`) |
-| Configuration | `DHIRAN_REGISTER_URL` explicitly empty; no Retail override; staging identity unchanged |
-| Processes | php8.2-fpm and nginx not reloaded (start times unchanged); new code proven served while still in maintenance; only the staging worker restarted; staging reconcile cron held and put back byte-identical |
-| Production | Commit, maintenance state, config cache and `/health` unchanged |
-| Logs | 0 new error lines in any `laravel*.log` since the release mark |
+**Code and assets against the reviewed candidate.** Staging's HEAD is `a87dcd5`
+with a clean tracked tree; its runtime tree hashes equal the reviewed
+candidate's. The asset manifest on disk and the one served are both
+`5d0d0da8…18ad51a49`, the manifest of the build verified locally; no file under
+`public/build` differs from the released tarball (`47cdcf82…0a9e0e16`).
 
-**One stop, caused by the tooling.** The first run stopped itself after the
-migration at "the schema of the existing tables changed". Nothing had changed:
-the gate compared hashes of two `pg_dump -s` outputs, and pg_dump writes a
-random `\restrict` token into each. Staging stayed in maintenance. The schema
-was compared properly against the run's own backup (identical apart from the
-new tables' two id sequences), the gate was fixed (`8d50919`), and the release
-was finished forward with the new `resume` mode. Preflight now reads the schema
-twice and refuses to continue if the reads differ.
+**Which revision of the release script ran.**
+
+| Run | Revision | How that is known |
+|---|---|---|
+| preflight 15:47:46Z, release 15:48:02Z | as committed in `a87dcd5` (SHA-256 `7149fea4…82400b8`) | **Inferred.** The runs did not record the script's hash and the file was then replaced. The two logs print a "schema hash" that differs between them, which only this revision computes, and its failure message. |
+| resume 15:50:52Z | as committed in `8d50919` (SHA-256 `db5b863d…6220702`), the schema-gate correction | **Verified**: the file still on the server has this hash, and the log's "existing schema (6530 lines) identical" exists only in this revision. |
+
+The production script records its own SHA-256 and keeps a copy of itself with
+each run, so this cannot be a matter of inference again.
+
+**"16 tables matched".** A sample. The restore rehearsal inside the window
+compared the row counts of sixteen named tables (shops, users, customers,
+invoices, invoice items and payments, cash transactions, karigar invoices,
+stock purchases, billing settings, loyalty transactions, report exports,
+idempotency keys, platform admins, categories, sub-categories), the number of
+migrations and the number of triggers, between the restored copy and live
+staging. It did not look at the other 128 tables or at any content.
+
+Closed afterwards, read-only, at 16:19Z: the same dump (SHA-256
+`0a402ac0…2aea7381`) was restored in isolation again and **every one of its
+144 tables** was fingerprinted by row count and content hash; 78 of them hold
+rows. Against live staging at that moment, 142 are identical. The two that
+differ are `migrations` (383 → 384, the release itself) and `sessions`
+(browser sessions since). Fifteen relations exist now that the backup does not
+have, exactly the migration's four tables, two id sequences and nine indexes;
+none was lost; 42 triggers on both sides.
+
+**Schema normalization.** The gate that passed the release dropped every line
+starting `--`, every blank line and the `\restrict` lines, and left relations
+out by two wildcard patterns. That is more than dump noise: comment and blank
+lines can be part of a function body, and a wildcard would hide an unexpected
+relation with a matching name. Re-run tightly: only pg_dump's two `\restrict`
+token lines are removed (2 of 16,160), and six relations are excluded by exact
+name. The schema inside the backup and the live schema are then identical byte
+for byte: 16,158 lines, 9,628 of them comment or blank lines that now take
+part in the comparison.
 
 ## 4. Acceptance on staging
 
 | Check | Result |
 |---|---|
-| `tests/Staging/verify_takeover_release.php` (synthetic tenants, one transaction, rolled back) | 25 passed, 0 failed |
-| `tests/Staging/verify_security_batch.php` (rolled back) | all checks passed |
+| `tests/Staging/verify_takeover_release.php` (synthetic tenants, rolled back) | 25 passed, 0 failed |
+| `tests/Staging/verify_security_batch.php` (rolled back) | all passed |
 | Guest real browser, Chrome at 360, 390, 768, 1440 px | 28 passed, 0 failed |
-| Public answers | `/health` 200; guests redirected; mobile API 401 without a token |
-
-The 25: landing (Retail log-in and register controls, both illustrations, no
-Dhiran destination, no `dhiran.*` address); moved navigation for the owner and
-for returns-only, sales-only and inventory-only roles, with the refusals;
-Categories (totals after each change, search and page kept, a rejected save, a
-refused delete, last-on-page falling back to the nearest page); the built
-bundle on disk holding the toast strip and the Open POS touch area; Retail
-product preferences, the recognition request rules, the lifecycle invalidation
-on a password change; another shop's rows refused on each new surface.
+| Public answers | `/health` 200; guests redirected; mobile API 401 to a JSON request without a token |
 
 **NOT RUN on staging**
 
-- **Signed-in browser behaviour** (Turbo Back, toast placement, Open POS touch
-  area, the Category modals): staging's three demo accounts are disabled and
-  the agent does not sign in to a non-local host. What stands in for it: the
-  served bundle is byte-identical to the one measured in a real browser
-  locally, and the pages carry the markup those behaviours hang on.
-  A five-minute owner check: sign in on a phone-width window; Stock →
-  Categories → Back; add a category, add the same name again, delete one;
-  watch where the message sits; Invoices → tap just above and below Open POS.
-- **Two-product checks** (approval by a Dhiran owner, finish, revoke, cookies
-  and logout per product): no Dhiran staging host exists and none is to be
-  created. The local two-host evidence at the reviewed candidate stands.
+- **Signed-in browser behaviour.** The rolled-back PHP script is not evidence
+  for it and is not offered as such. The agent's rules forbid it to create an
+  account or enter a password on a host that is not a local development host;
+  the owner's browser was reachable but not signed in to staging, and
+  staging's three demo accounts are disabled. Results: none. What is needed is
+  a synthetic shop registered and signed in by the owner; the agent can then
+  drive that session, or the owner can run the list below.
+- **Two-product checks**: no Dhiran staging host exists and none is to be
+  created. Local two-host evidence at the reviewed candidate stands.
 - Physical phones, Safari, Firefox.
+
+Signed-in list, at desktop width and at 390 px:
+
+1. Sidebar has no Tag Printing, Reorder Alerts or Returns / Exchange.
+   Jewellery Stock shows Categories, Tag Printing, Reorder Alerts; each opens,
+   keeps Jewellery Stock highlighted and leads back. Invoices shows Historical
+   Sales and Returns / Exchange; Invoices stays highlighted on Returns.
+2. Categories: add a name → message, totals up by one, no reload. Add the same
+   name → the form stays with what was typed and its error; totals unchanged.
+   With more than 20 categories: search, go to page 2, add and delete → same
+   search, same page. Delete the last one on a page → the nearest page.
+3. Back and Forward across Stock → Categories → Tag Printing: right page,
+   right highlight, no replayed message, no "Content missing".
+4. Add Category dialog: focus lands in the name field, Enter saves, Escape and
+   a click outside close it.
+5. On the phone width, after a save: the message is readable, sits clear of
+   the dialog's buttons, can be dismissed, and nothing under it is dead.
+6. Invoices → Open POS: a tap just above or below the button still opens it;
+   Tab reaches it with a visible focus ring and Enter opens it.
 
 ## 5. Remaining conditions
 
-1. The owner's signed-in check on staging (above).
-2. Evidence directories under `/root/takeover-staging/` hold a staging dump and
-   copies of the staging `.env` and config cache (root only, mode 700). Keep
-   until production is signed off, then remove.
-3. The integration branch is not pushed; staging received it as a git bundle.
+1. The signed-in list above, on staging.
+2. `/root/takeover-staging/` holds a staging dump and copies of the staging
+   `.env` and config cache (root only). Keep until production is signed off.
+3. The integration branch is not pushed.
 4. Inherited, unchanged: the Reports hub's Cash Book card is shown to roles
    its page refuses; `showToast` ignores the tone it is given.
 
-## 6. Production release plan (version 1) — needs approval before any step
+## 6. Production: prepared, preflight only
 
-**Verified read-only on 7 Oct, about 16:00Z**
+Procedure: `docs/runbooks/takeover-production-release.md`. Script:
+`docs/runbooks/deploy-takeover-production.sh` (SHA-256 `93016155…715becb2`).
+Check script: `tests/Production/verify_takeover_production.php`.
 
-- Production is at `aa3a62a…`, the commit staging was released from, with a
-  clean tracked tree. The production delta is therefore exactly the delta
-  staging received: 21 commits, 64 files; 11 application files, 1 additive
-  migration, 17 views, the stylesheet and script, `routes/web.php`,
-  `config/platform.php`. No payment, ledger or mobile-API file.
-- **Retail and Dhiran share the production application**: one nginx server
-  block serves `jewelflows.com`, `www.jewelflows.com` and
-  `dhiran.jewelflows.com` from one root, through one php-fpm pool, on one
-  database. Both realms have live owners.
-- Database: 383 migrations, 42 triggers, 144 tables, the four tables absent,
-  nothing pending. Tree owned by `dev`; `.env` readable by www-data; four
-  untracked files to preserve. A scheduler cron runs every minute; one
-  ops-alerts worker. The nightly backup is current.
-- The candidate commit is already in the staging repository, which is where
-  production's bundle comes from.
+**Preflight, 16:30:23Z, passed.** Production is `aa3a62a`, clean, up; the
+candidate descends from the reviewed commit and every runtime path equals both
+it and what staging runs; one additive migration, no dependency change; 144
+tables, 42 triggers, 383 migrations, nothing pending, none of the fifteen
+relations exists; schema 16,165 lines, stable across two reads; the three
+hosts and the mobile API answer as expected; ten private-storage probes
+refused with 403; nightly archive present. A dump was taken, restored in
+isolation and compared: 143 of 144 tables identical to live by row count and
+content hash, relations, triggers and the full schema text identical; the one
+table not compared, `sessions`, was written while the dump ran. The dump was
+then deleted.
 
-**What the approval has to cover (shared Retail / Dhiran impact)**
+What the preflight left behind: its evidence under `/root/takeover-production/`
+(3.5 MB, no dump), and guest session rows from its own page requests, as any
+visitor leaves. Production's repository, tree, `.env`, config cache, database
+schema, worker and scheduler are as they were (re-read afterwards). A first
+preflight at 16:29:47Z stopped itself on a wrong expectation of the script's
+(it probed the mobile API as a plain request) after reading the database and
+before taking any dump.
 
-1. One maintenance window takes down Retail, Dhiran and the mobile API
-   together. Staging measured 2 min 55 s.
-2. `User` and `Role` saves in both realms go through the new lifecycle path
-   (owner locks, invalidation in the same transaction).
-3. The public landing page on the Retail hosts is replaced. The Dhiran root
-   keeps redirecting to its log-in.
-4. New owner-only metadata routes in both realms; four new tables.
-5. From the first preference or consent recorded, recovery is forward-only.
+**The check script, described correctly.** It runs in one transaction that is
+rolled back, creates three test shops with one owner each and touches only
+promotion metadata. Rehearsed on the local test database (PHP 8.2,
+PostgreSQL 16; production is PostgreSQL 14), inside and outside a local
+maintenance window, with committed synthetic shops and promotion rows already
+present: 18 checks passed.
 
-**A production-only setting that is required.** Without an explicit override
-the Dhiran address is derived from the request host. On `www.jewelflows.com`,
-which serves the application directly, that gives `dhiran.www.jewelflows.com`,
-which does not exist (verified by running the function). Production's `.env`
-must therefore carry `DHIRAN_REGISTER_URL=https://dhiran.jewelflows.com/register`
-and `ERP_REGISTER_URL=https://jewelflows.com/register`.
+| | |
+|---|---|
+| Rolled back | every row (148 tables compared by count and content hash, 14 holding rows, all identical afterwards); the row lock on the shop-code counter and the advisory owner locks |
+| **Stays** | sequence values: `shops` +3, `users` +3, `roles` +9, `role_permission` +384, `shop_editions` +3, `product_promotion_preferences` +10, `product_promotion_exposures` +2. Not reset. Dead row versions and WAL until vacuum |
+| Files | none written in the rehearsal; a log line would stay; the script lists them |
+| Captured, not sent | 0 queue pushes, 0 notifications, 0 mails, 0 HTTP calls through the framework |
+| Checked | one database connection; one transaction id from first write to rollback; only ten expected tables written |
+| Observers that ran | shop code from its counter row; the shop's edition row; the user's realm default; the recognition invalidation on each user and role save. All on the one connection, inside the transaction |
+| Not exercised | anything deferred until after a commit; anything a browser does |
 
-**Procedure.** The staging script with these differences, as a production
-variant that must first pass its read-only `preflight` on production:
+Not rehearsed anywhere: this script on PostgreSQL 14 with production's cached
+configuration. Its in-memory captures and the maintenance bypass were checked
+on staging's `--no-dev` install (boot only, no database write).
 
-| | Staging (done) | Production |
-|---|---|---|
-| Target | `a87dcd58…` | the same commit, bundled from the staging repository |
-| Tree owner | root | `dev` (checkout and composer as `dev`) |
-| Held during the window | reconcile cron, staging worker | scheduler cron (wait for running scheduled commands), production worker |
-| Configuration | Dhiran address empty | the two explicit addresses above |
-| Proof before `up` | landing, new route, manifest | the same on all three hosts; no `dhiran.www.` anywhere; Dhiran log-in page served |
-| Smoke | Retail host | both realms; staging and the shared services untouched |
-| Shared services | not reloaded | not reloaded (same proof of fresh code) |
+## 7. Approval request
 
-Gates otherwise identical: identity, floor, one-migration delta, no dependency
-change, pinned assets tarball, fresh dump read end to end and restored in the
-isolated instance, statements of the migration, existing schema text, triggers,
-row counts, ownership, logs.
+**Release `346eb2dd5ea0266f398be926870b25955e2770b7` to production**, from
+`aa3a62a`, with the bundle `cfbd2379…deb5b8c2`, the assets tarball staging
+received (`47cdcf82…0a9e0e16`) and the script named in 6.
 
-**Backup and recovery.** In the window: `pg_dump -Fc` of `jewelflow`, hashed,
-read end to end, restored in isolation and compared; copies of `.env`, config
-cache and assets; the last nightly archive confirmed present. Recovery by the
-count of the four tables: empty → baseline may return; any row → forward
-repair only. A full restore only if maintenance was never left.
+- **Downtime**: one window in which Retail, Dhiran and the mobile API answer
+  503 together. Expected about 2 minutes, up to 4; up to 10 more only if a
+  scheduled command is mid-run when the window opens. Sessions survive. Not
+  between 23:40 and 03:10 or 05:40 and 06:10 India time (the script refuses).
+- **Changes**: the code and assets; two lines appended to `.env`
+  (`DHIRAN_REGISTER_URL=https://dhiran.jewelflows.com/register`,
+  `ERP_REGISTER_URL=https://jewelflows.com/register`); one additive migration
+  (four tables, fifteen relations). Nothing else, and the script stops if
+  anything else moved.
+- **Test actions**: inside the window, the script's own gates, including the
+  proof on three hosts. The synthetic check of 6 **only if separately
+  approved**; it leaves the sequence gaps listed there. After `up`: guest
+  browser checks by the agent; signed-in checks by the owner (procedure, 8).
+- **Recovery**: before the checkout the script undoes itself. After it,
+  production stays in maintenance: finish forward with `resume`, or return to
+  the baseline from the window's evidence, which is allowed only while the
+  four tables are empty. Once any owner has recorded a preference or consent,
+  forward repair only. The window's dump stays on the server, proven by an
+  isolated restore of every table; a full restore is the last resort and only
+  if the site never left maintenance. Not rehearsed: the return to baseline
+  and a full restore on production.
 
-**Verification with synthetic accounts in both realms.** Proposed, each part
-needing its own yes:
-
-1. *Before `up`, inside the window:* a production variant of the acceptance
-   script — synthetic Retail and Dhiran tenants in one transaction that is
-   rolled back, requests through the kernel for both hosts, mail, sessions,
-   cache and queue in memory. It would run the full recognition flow across
-   the two realms (start, approve, finish, suppression, revoke), preferences,
-   isolation and lifecycle. It must be written and proven against two local
-   hosts first. It writes nothing that survives, but it does run synthetic
-   writes inside a production transaction, hence the explicit approval.
-2. *After `up`:* guest real-browser checks of the three public hosts.
-3. *Signed-in checks by the owner:* one Retail owner and one Dhiran owner
-   (dedicated synthetic accounts created through normal registration, or the
-   owner's own), for what only real sessions show: per-product cookies and
-   logout, the recognition flow in two browsers. The agent does not sign in to
-   production.
-
-**Decisions needed**
-
-- The shared window and its time.
-- Yes or no to part 1 above on the production database.
-- Who performs part 3, and with which accounts.
-- Whether the production dump may be copied off the server.
+Needed from the owner: the time of the window; yes or no to the synthetic
+check; who runs the signed-in checks afterwards.
