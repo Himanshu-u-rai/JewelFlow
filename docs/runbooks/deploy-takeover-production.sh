@@ -205,11 +205,12 @@ shared_state() {
 }
 # The web server's refusals of private storage, on both products: 403 for every prefix.
 protections() { local h p; for h in "$RETAIL" "$DHIRAN"; do for p in "${DENIED[@]}"; do printf '%s ' "$(code "$h" "https://$h${p}takeover-probe.txt")"; done; done; }
-# What a visitor without a session is answered, on the three hosts and the mobile API.
+# What a visitor without a session is answered, on the three hosts, and the mobile API without a
+# token (asked as JSON, as the app asks: a plain request is redirected to the log-in instead).
 answers() {
   local h
   for h in "$RETAIL" "$WWW" "$DHIRAN"; do printf '%s ' "$(code "$h" "https://$h/health")" "$(code "$h" "https://$h/login")" "$(code "$h" "https://$h/register")"; done
-  printf '%s ' "$(code "$DHIRAN" "https://$DHIRAN/")" "$(code "$RETAIL" "https://$RETAIL/admin/login")" "$(code "$RETAIL" "https://$RETAIL/dashboard")" "$(code "$RETAIL" "https://$RETAIL/api/mobile/v1/sessions/me")"
+  printf '%s ' "$(code "$DHIRAN" "https://$DHIRAN/")" "$(code "$RETAIL" "https://$RETAIL/admin/login")" "$(code "$RETAIL" "https://$RETAIL/dashboard")" "$(code "$RETAIL" -H 'Accept: application/json' "https://$RETAIL/api/mobile/v1/sessions/me")"
 }
 ANSWERS_EXPECTED='200 200 200 200 200 200 200 200 200 302 200 302 401 '
 PROTECTIONS_EXPECTED='403 403 403 403 403 403 403 403 403 403 '
@@ -486,7 +487,7 @@ for i in $(seq 1 120); do [ "$(artisan_running)" = 0 ] && break; sleep 5; done
 [ "$(artisan_running)" = 0 ] || fail "a scheduled command of this application is still running after 10 minutes"
 sleep 5   # requests already inside PHP finish
 for h in "$RETAIL" "$WWW" "$DHIRAN"; do [ "$(code "$h" "https://$h/")" = 503 ] || fail "$h does not answer 503 in maintenance"; done
-[ "$(code "$RETAIL" "https://$RETAIL/api/mobile/v1/sessions/me")" = 503 ] || fail "the mobile API does not answer 503 in maintenance"
+[ "$(code "$RETAIL" -H 'Accept: application/json' "https://$RETAIL/api/mobile/v1/sessions/me")" = 503 ] || fail "the mobile API does not answer 503 in maintenance"
 fingerprint > "$WORK/live.before.fp" || fail "could not fingerprint the quiesced database"
 schema_live > "$WORK/schema.before.sql"
 ok "maintenance on at $(date -u +%H:%M:%SZ) for $RETAIL, $WWW, $DHIRAN and the mobile API; $WORKER stopped; scheduler cron held ($CRON_SHA, $CRON_STAT), no scheduled command running"
