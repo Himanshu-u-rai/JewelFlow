@@ -117,6 +117,21 @@ Route::post('/api/scan', [\App\Http\Controllers\ScanSessionController::class, 'p
 
 require __DIR__.'/admin.php';
 
+// Separate paths retain each product's existing realm and session boundaries.
+// Metadata only: billing/access holds cannot prevent opt-out or consent withdrawal.
+// The controller independently requires an active user with exact current ownership;
+// business routes retain account.active/subscription.active unchanged.
+foreach (['erp' => 'product-preferences', 'dhiran' => 'dhiran/product-preferences'] as $realm => $path) {
+    Route::middleware(['auth', 'tenant', 'realm:'.$realm, 'nocache'])
+        ->prefix($path)->name(($realm === 'dhiran' ? 'dhiran.' : '').'product-preferences.')
+        ->controller(\App\Http\Controllers\ProductPromotionController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            foreach (['preference', 'start', 'approve', 'finish', 'cancel', 'revoke'] as $action) {
+                Route::post('/'.$action, $action)->middleware('throttle:6,1')->name($action);
+            }
+        });
+}
+
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATED USERS WITHOUT A SHOP

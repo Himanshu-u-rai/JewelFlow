@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Concerns\RespondsDynamically;
+use App\Http\Concerns\ReturnsToCategoryList;
 use App\Models\SubCategory;
 use App\Rules\UniqueNameIgnoringCase;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 class SubCategoryController extends Controller
 {
     use RespondsDynamically;
+    use ReturnsToCategoryList;
+
     public function store(Request $request)
     {
         $shopId = auth()->user()->shop_id;
@@ -23,7 +26,7 @@ class SubCategoryController extends Controller
             'name' => [
                 'required', 'string', 'max:255',
                 new UniqueNameIgnoringCase('sub_categories', [
-                    'shop_id'     => $shopId,
+                    'shop_id' => $shopId,
                     'category_id' => $request->category_id,
                 ], null, 'sub-category'),
             ],
@@ -31,10 +34,10 @@ class SubCategoryController extends Controller
 
         SubCategory::create([
             'category_id' => $validated['category_id'],
-            'name'        => $validated['name'],
+            'name' => $validated['name'],
         ]);
 
-        return redirect()->route('categories.index')
+        return redirect()->route('categories.index', $this->categoryListQuery())
             ->with('success', 'Sub-category created successfully!');
     }
 
@@ -48,7 +51,7 @@ class SubCategoryController extends Controller
             'name' => [
                 'required', 'string', 'max:255',
                 new UniqueNameIgnoringCase('sub_categories', [
-                    'shop_id'     => $shopId,
+                    'shop_id' => $shopId,
                     'category_id' => $sub_category->category_id,
                 ], $sub_category->id, 'sub-category'),
             ],
@@ -56,7 +59,7 @@ class SubCategoryController extends Controller
 
         $sub_category->update(['name' => $validated['name']]);
 
-        return redirect()->route('categories.index')
+        return redirect()->route('categories.index', $this->categoryListQuery())
             ->with('success', 'Sub-category renamed successfully!');
     }
 
@@ -66,6 +69,6 @@ class SubCategoryController extends Controller
 
         $sub_category->delete();
 
-        return $this->dynamicRedirect('categories.index', [], 'Sub-category deleted successfully!');
+        return $this->dynamicRedirect('categories.index', $this->categoryListQuery(), 'Sub-category deleted successfully!');
     }
 }

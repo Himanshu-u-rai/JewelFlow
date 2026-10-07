@@ -96,6 +96,14 @@ final class TestDatabaseGuard
             ? sprintf(' (after expanding the connection URL on "%s")', $connection)
             : sprintf(' on connection "%s"', $connection);
 
+        // PostgresConnector prefers these over database/port, including URL
+        // query options. This suite permits no pooler/destination aliases.
+        foreach (['connect_via_database', 'connect_via_port'] as $override) {
+            if (isset($settings[$override])) {
+                $violations[] = sprintf('connection "%s" declares "%s", which overrides the checked destination', $connection, $override);
+            }
+        }
+
         // A read/write split carries its own host and database per half, merged
         // later by the connection factory. This suite never uses one, so its
         // presence means the effective destination is not what is checked here.

@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, CanonicalisesMobileNumbers;
+    use HasApiTokens, HasFactory, Notifiable, CanonicalisesMobileNumbers, Concerns\InvalidatesProductRecognition;
 
     /** @var array<int, string> */
     protected static array $mobileColumns = ['mobile_number'];

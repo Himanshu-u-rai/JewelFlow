@@ -2258,6 +2258,11 @@
     <div>
         <h1 class="page-title">{{ __('Settings') }}</h1>
     </div>
+    @if(auth()->user()?->isShopOwner())
+        <div class="page-actions">
+            <a href="{{ route('product-preferences.index') }}" class="btn btn-secondary" data-turbo="false">Product preferences</a>
+        </div>
+    @endif
 </x-page-header>
 
 <div class="content-inner settings-shell">

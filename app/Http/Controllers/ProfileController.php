@@ -6,7 +6,6 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
@@ -50,11 +49,11 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::guard('web')->logout();
+        // Keep activity/employment consistent and invalidate consent atomically
+        // through the shared model save path before logging out.
+        $user->forceFill(['is_active' => false, 'employment_status' => 'suspended'])->save();
 
-        DB::table('users')
-            ->where('id', $user->id)
-            ->update(['is_active' => DB::raw('false')]);
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

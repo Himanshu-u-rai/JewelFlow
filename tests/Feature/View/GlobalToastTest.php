@@ -13,36 +13,49 @@ use Tests\TestCase;
  * (initMobileHeaderActionFabs). A message shown after a save lay over the
  * Save button of the modal the user had just reopened, and took its taps.
  *
- * A browser showed the failure and the fix (at 320 to 430px wide, the point
- * at the centre of each modal button is that button while a toast shows).
- * PHP cannot lay a page out, so these pin the causes.
+ * It was first moved under the page header, which only moved the problem: it
+ * then lay over whatever the page starts with. It now takes room of its own.
+ *
+ * A browser showed the failures and the fix (at 320 to 430px wide the toast
+ * overlaps no control and no message, on a page and over a modal). PHP cannot
+ * lay a page out, so these pin the causes.
  */
 class GlobalToastTest extends TestCase
 {
     /**
-     * On phones the toast is anchored under the bar across the top of the page
-     * and no longer at the bottom. That bar's height differs from page to page
-     * (63 to 133px measured), so showToast() measures it for the stylesheet.
+     * On phones the toast lies over nothing. With the page in view it gets a
+     * strip of its own at the top: the page, its header included, moves down
+     * by the toast's height for as long as the toast shows (showToast() says
+     * how tall) and gets the strip back when it hides. Under the page header,
+     * where the toast sat before, it covered whatever a page starts with: the
+     * Stock page's tabs, the Invoices row, the POS filters.
+     *
+     * With a modal, a sheet, a drawer or a dialog over the page there is
+     * nothing to move, so the toast goes to the highest place where it covers
+     * no control and no validation message of whatever is on top.
      */
-    public function test_on_phones_the_toast_sits_under_the_page_header_not_at_the_bottom(): void
+    public function test_on_phones_the_page_makes_room_for_the_toast_instead_of_lying_under_it(): void
     {
         $this->assertSame(1, preg_match(
-            '~@media \(max-width: 768px\) \{\s*\.global-toast \{([^}]*)\}~',
+            '~@media \(max-width: 768px\) \{\s*\.global-toast \{([^}]*)\}\s*(?:/\*.*?\*/\s*)?\.content-area \{([^}]*)\}~s',
             file_get_contents(resource_path('css/app.css')),
             $rule
-        ), 'app.css has no rule for the toast at phone widths.');
+        ), 'app.css has no rule for the toast and the page under it at phone widths.');
 
         $this->assertStringContainsString('bottom: auto;', $rule[1]);
-        $this->assertStringContainsString(
-            'top: calc(max(var(--toast-header-bottom, 0px), env(safe-area-inset-top, 0px)) + 8px);',
-            $rule[1]
-        );
+        $this->assertStringContainsString('var(--toast-top', $rule[1]);
+        $this->assertStringContainsString('padding-top: var(--toast-space, 0px);', $rule[2]);
 
-        $this->assertSame(1, preg_match(
-            "~const header = document\.querySelector\('\.content-header, \.admin-topbar, \.pos-topbar, \.pos-header'\);\s*"
-            ."toast\.style\.setProperty\('--toast-header-bottom', `\\$\{header \? header\.getBoundingClientRect\(\)\.bottom : 0\}px`\);~",
-            file_get_contents(resource_path('js/app.js'))
-        ), 'showToast() does not tell the stylesheet where the page header ends.');
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        // Room is made for exactly the toast, and given back with it.
+        $this->assertStringContainsString("root.style.setProperty('--toast-space', `\${toast.offsetHeight + 16}px`);", $js);
+        $this->assertSame(1, preg_match("~function hideToast\(toast\) \{[^}]*removeProperty\('--toast-space'\);~", $js),
+            'The strip is not given back when the toast hides.');
+
+        // Over a modal the place is looked for, not assumed; with none clear the toast waits.
+        $this->assertSame(1, preg_match('~const clear = clearToastTop\(toast, top\);\s*if \(clear === null\) return false;~', $js),
+            'A toast with no clear place over a modal is shown anyway.');
     }
 
     /**

@@ -89,6 +89,18 @@ switch ($scenario) {
         ]));
         break;
 
+    case 'connector-database-alias':
+    case 'connector-port-alias':
+    case 'url-connector-database-alias':
+    case 'url-connector-port-alias':
+        $key = str_contains($scenario, 'database') ? 'connect_via_database' : 'connect_via_port';
+        $value = $key === 'connect_via_database' ? 'jewelflow_test' : '6432';
+        $override = str_starts_with($scenario, 'url-')
+            ? ['url' => 'pgsql://someone:secret@127.0.0.1:5432/jewelflow_testing?'.$key.'='.$value]
+            : [$key => $value];
+        TestDatabaseGuard::enforce($application($approved + $override));
+        break;
+
         // The regression for the removed process-wide $cleared flag: a first,
         // genuinely safe application must not vouch for a second one. Laravel
         // builds a new application for EVERY test, so this is the ordinary case,

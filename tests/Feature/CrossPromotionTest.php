@@ -20,11 +20,12 @@ use Tests\TestCase;
  */
 class CrossPromotionTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesTestTenant;
+    use RefreshDatabase;
 
     private const DHIRAN_REGISTER = 'https://dhiran.jewelflows.com/register';
-    private const ERP_REGISTER    = 'https://jewelflows.com/register';
+
+    private const ERP_REGISTER = 'https://jewelflows.com/register';
 
     protected function setUp(): void
     {
@@ -35,6 +36,7 @@ class CrossPromotionTest extends TestCase
         // correctly hidden. Set the documented config override to the value host
         // derivation would produce, rather than widening that guard in Realm.
         config(['platform.cross_promotion.dhiran_register_url' => self::DHIRAN_REGISTER]);
+        config(['platform.cross_promotion.erp_register_url' => self::ERP_REGISTER]);
 
         // Dhiran yearly plan for the Dhiran onboarding path (RefreshDatabase has no plans).
         Plan::create([
@@ -77,20 +79,21 @@ class CrossPromotionTest extends TestCase
         $response->assertSee(self::DHIRAN_REGISTER, false);
     }
 
-    // 1b. The promo is a dismissable, once-per-day toast — not a body card.
-    public function test_promo_is_a_dismissable_once_per_day_toast(): void
+    // Server claim survives a new request, a new day and different browser storage.
+    public function test_promo_is_a_once_per_owner_introduction(): void
     {
         [$erpOwner] = $this->createRetailerTenant();
 
         $response = $this->actingAs($erpOwner)->get('https://jewelflows.com/dashboard');
         $response->assertOk();
-        // Fixed-position toast container (overlays, does not push content), starts hidden.
-        $response->assertSee('cross-promo-toast', false);
         $response->assertSee('data-cross-promo', false);
-        // Dismiss control present.
-        $response->assertSee('data-cross-promo-close', false);
-        // Once-per-day storage key, namespaced per promo.
-        $response->assertSee('cross_promo_seen:dhiran', false);
+        $response->assertSee('I already use this');
+        $response->assertSee('data-turbo-temporary', false);
+        $response->assertDontSee('cross_promo_seen:', false);
+        $this->travel(1)->days();
+        $this->actingAs($erpOwner->fresh())->get('https://jewelflows.com/dashboard')
+            ->assertOk()->assertDontSee('data-cross-promo', false);
+        $this->assertDatabaseCount('product_promotion_exposures', 1);
     }
 
     // 2. ERP user WITH Dhiran access does not see the Dhiran promo.

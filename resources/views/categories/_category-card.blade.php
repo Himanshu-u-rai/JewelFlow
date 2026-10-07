@@ -1,4 +1,4 @@
-<div class="categories-card is-collapsed overflow-hidden rounded-2xl border border-slate-200 bg-white">
+<div class="categories-card is-collapsed overflow-hidden rounded-2xl border border-slate-200 bg-white" data-category-id="{{ $category->id }}">
     <!-- Category Header -->
     <div class="categories-card-head flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4" data-category-toggle-surface>
         <div class="categories-card-title-wrap min-w-0">

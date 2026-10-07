@@ -6,11 +6,101 @@ import Alpine from 'alpinejs';
 import { registerHistoricalManual } from './historical-manual';
 
 let toastTimer = null;
+let toastDuration = 4000;
+let toastSettleTimers = [];
+
+// The width at which the toast's phone rule in app.css applies.
+const toastPhone = window.matchMedia('(max-width: 768px)');
 
 function hideToast(toast) {
+    window.clearTimeout(toastTimer);
+    toastTimer = null;
     toast.classList.remove('is-visible');
     toast.setAttribute('aria-hidden', 'true');
     toast.textContent = '';
+    document.documentElement.style.removeProperty('--toast-space');
+}
+
+// Is a modal, a sheet, a drawer or a dialog over the page? Each is fixed in place over the
+// middle of the screen, and nothing of the page itself is.
+function overlayIsOpen(toast) {
+    let el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+    for (; el && el !== document.body; el = el.parentElement) {
+        if (el !== toast && getComputedStyle(el).position === 'fixed') return true;
+    }
+    return false;
+}
+
+// The highest place for the toast, from `top` down, where it lies over no control and no
+// validation message; null when there is none. Only what is on top counts: what a backdrop
+// dims cannot be used anyway.
+function clearToastTop(toast, top) {
+    const { left, right, height } = toast.getBoundingClientRect();
+    const taken = [];
+
+    toast.style.pointerEvents = 'none'; // so the toast is never what is "on top" while looking
+    document.querySelectorAll('a[href], button, input, select, textarea, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"]), [data-field-error], [role="alert"], .text-red-600, .text-red-500').forEach((el) => {
+        const box = el.getBoundingClientRect();
+        if (toast.contains(el) || !box.width || !box.height || box.right <= left || box.left >= right) return;
+        // A backdrop that closes its modal on a tap fills the screen: it cannot be kept clear of.
+        if (box.width >= window.innerWidth && box.height >= window.innerHeight) return;
+
+        const onTop = document.elementFromPoint((Math.max(box.left, left) + Math.min(box.right, right)) / 2, box.top + box.height / 2);
+        if (onTop && el.contains(onTop)) taken.push(box);
+    });
+    toast.style.pointerEvents = '';
+
+    for (let y = top; y <= window.innerHeight - height - 8; y += 8) {
+        if (!taken.some((box) => box.bottom > y && box.top < y + height)) return y;
+    }
+    return null;
+}
+
+// On phones the toast lies over nothing (.global-toast in app.css); above 768px it keeps
+// its corner and none of this applies. False when there is no place for it at the moment.
+function placeToast(toast) {
+    const root = document.documentElement;
+    if (!toastPhone.matches) {
+        root.style.removeProperty('--toast-space');
+        return true;
+    }
+
+    const page = document.getElementById('main-content');
+    let top = (page ? Math.max(page.getBoundingClientRect().top, 0) : 0) + 8;
+
+    if (page && !overlayIsOpen(toast)) {
+        // The page is in view: it moves down by the toast's height, header and all, and the
+        // toast takes the strip that leaves at the top.
+        root.style.setProperty('--toast-space', `${toast.offsetHeight + 16}px`);
+    } else {
+        // Something lies over the page: there is nothing to move out of the way, so a clear
+        // place is looked for. (A layout with no page area to move shows it at the top.)
+        root.style.removeProperty('--toast-space');
+        const clear = clearToastTop(toast, top);
+        if (clear === null) return false;
+        top = clear ?? top;
+    }
+
+    toast.style.setProperty('--toast-top', `${top}px`);
+    return true;
+}
+
+// Shows the toast where placeToast() puts it. With no clear place (a long message over a
+// panel that fills a small screen with controls) it waits out of sight and is retried
+// after interaction or a viewport change. Its display time starts when it can be seen.
+function presentToast(toast) {
+    if (!placeToast(toast)) {
+        // ponytail: pause expiry too; otherwise opening a panel loses an already-visible message.
+        window.clearTimeout(toastTimer);
+        toastTimer = null;
+        toast.classList.remove('is-visible');
+        return;
+    }
+
+    toast.classList.add('is-visible');
+    if (!toastTimer) {
+        toastTimer = window.setTimeout(() => hideToast(toast), toastDuration);
+    }
 }
 
 window.showToast = function(message, durationOrTone = 4000) {
@@ -20,24 +110,35 @@ window.showToast = function(message, durationOrTone = 4000) {
         return;
     }
 
-    const duration = typeof durationOrTone === 'number' ? durationOrTone : 4000;
-
-    if (toastTimer) {
-        window.clearTimeout(toastTimer);
-    }
-
-    // On phones the toast sits just under the bar across the top of the page (.global-toast
-    // in app.css). That bar is not the same height on every page, so CSS cannot know where
-    // it ends: ordinary pages, the admin console, the POS and its checkout each have their own.
-    const header = document.querySelector('.content-header, .admin-topbar, .pos-topbar, .pos-header');
-    toast.style.setProperty('--toast-header-bottom', `${header ? header.getBoundingClientRect().bottom : 0}px`);
+    toastDuration = typeof durationOrTone === 'number' ? durationOrTone : 4000;
+    window.clearTimeout(toastTimer);
+    toastTimer = null;
 
     toast.textContent = message;
-    toast.classList.add('is-visible');
     toast.setAttribute('aria-hidden', 'false');
+    presentToast(toast);
+    settleToast();
+};
 
-    toastTimer = window.setTimeout(() => hideToast(toast), duration);
+// What is on the screen can change under a toast that shows or waits: a sheet opens, a
+// dialog closes, a panel slides in as the page loads. So it is placed again a moment after
+// it appears and after anything the user does: once when that has had time to show, and
+// once more when whatever slides or fades has finished.
+function settleToast() {
+    // Coalesce scroll/resize bursts; no work is queued when there is no message.
+    toastSettleTimers.forEach((timer) => window.clearTimeout(timer));
+    toastSettleTimers = [];
+    if (!document.getElementById('global-toast')?.textContent) return;
+
+    toastSettleTimers = [120, 500].map((delay) => window.setTimeout(() => {
+        const toast = document.getElementById('global-toast');
+        if (toast && toast.textContent) presentToast(toast);
+    }, delay));
 }
+
+['click', 'keyup'].forEach((type) => document.addEventListener(type, settleToast, true));
+document.addEventListener('scroll', settleToast, { capture: true, passive: true });
+window.addEventListener('resize', settleToast);
 
 // Turbo keeps a copy of the page for Back/Forward. A toast still showing would be kept
 // in it and come back for good: the timer that hides it belongs to the page that was left.

@@ -50,7 +50,7 @@ class CategoryPageRevisitTest extends TestCase
         $script = $this->pageScript();
 
         // One listener per kind, however many times the page is visited.
-        foreach (['turbo:load', 'keydown'] as $event) {
+        foreach (['turbo:load', 'keydown', 'turbo:submit-start'] as $event) {
             $this->assertSame(1, substr_count($script, "document.addEventListener('{$event}'"), "{$event}: added once per run");
             $this->assertSame(1, substr_count($script, "document.removeEventListener('{$event}'"), "{$event}: the previous run's listener is not removed first");
         }

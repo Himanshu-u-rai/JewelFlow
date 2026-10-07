@@ -4109,22 +4109,29 @@ body.drawer-open {
     pointer-events: auto;
 }
 
-/* Phones: the bottom edge belongs to the Cancel/Save row of bottom-sheet modals and
-   to .jf-header-mobile-fab, and the top edge to the page header with its own action.
-   So the toast goes just under that header, where no action row can be; showToast()
-   says where it ends, because its height differs from page to page. It starts from
-   the left, which keeps a one-line message off the close button a tall sheet has in
-   its top right corner, and it goes above the confirmation dialog (9999, later in
-   the page), whose backdrop would otherwise dim it. */
+/* Phones: the toast lies over nothing. The bottom edge belongs to the Cancel/Save row of
+   bottom-sheet modals and to .jf-header-mobile-fab; the top of the page is its header,
+   and under the header is whatever the page starts with (tabs, a navigation row, filters).
+   So while a toast shows the page makes room: it moves down by the toast's height, header
+   and all, and the toast takes the strip that leaves at the top. showToast() says how
+   tall (--toast-space) and where the strip starts (--toast-top). With a modal, a sheet or
+   a dialog over the page there is nothing to move; showToast() then looks for the highest
+   place clear of that overlay's controls and messages. The toast goes one layer above the
+   confirmation dialog (9999, later in the page), whose backdrop would otherwise dim it. */
 @media (max-width: 768px) {
     .global-toast {
-        top: calc(max(var(--toast-header-bottom, 0px), env(safe-area-inset-top, 0px)) + 8px);
+        top: max(var(--toast-top, 8px), calc(env(safe-area-inset-top, 0px) + 8px));
         right: max(12px, env(safe-area-inset-right, 0px));
         bottom: auto;
         left: max(12px, env(safe-area-inset-left, 0px));
         z-index: 10000;
         width: fit-content;
         max-width: none;
+    }
+
+    .content-area {
+        padding-top: var(--toast-space, 0px);
+        transition: padding-top 180ms ease;
     }
 }
 
@@ -18863,12 +18870,22 @@ input::-webkit-calendar-picker-indicator {
         justify-content: flex-end;
     }
 
+    /* 34px tall, so the header keeps one row. Its touch area is 44px: it reaches 5px
+       past the button above and below, inside the header's own padding. (-6px, because
+       the area is measured from inside the button's 1px border.) */
     .invoices-page-header .invoices-open-pos-btn {
+        position: relative;
         min-height: 34px;
         padding: 0 10px;
         font-size: 12px;
         line-height: 1;
         white-space: nowrap;
+    }
+
+    .invoices-page-header .invoices-open-pos-btn::after {
+        content: '';
+        position: absolute;
+        inset: -6px 0;
     }
 
     .invoices-page-header .invoices-open-pos-btn svg {

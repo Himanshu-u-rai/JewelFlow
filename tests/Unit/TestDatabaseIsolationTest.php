@@ -239,6 +239,17 @@ class TestDatabaseIsolationTest extends TestCase
         $this->assertStringContainsString('"read" half', $violations[0]);
     }
 
+    public function test_postgres_connector_destination_aliases_are_refused_in_fields_and_url(): void
+    {
+        foreach (['connect_via_database' => 'jewelflow_test', 'connect_via_port' => '6432'] as $key => $value) {
+            foreach ([[$key => $value], ['url' => 'pgsql://someone:secret@127.0.0.1:5432/jewelflow_testing?'.$key.'='.$value]] as $override) {
+                $violations = TestDatabaseGuard::violations($this->fakeApp($override));
+                $this->assertCount(1, $violations);
+                $this->assertStringContainsString($key, $violations[0]);
+            }
+        }
+    }
+
     // ---------------------------------------------------------------------
     // The refusal ITSELF — exit(1) before anything destructive.
     //
@@ -251,6 +262,16 @@ class TestDatabaseIsolationTest extends TestCase
     // ---------------------------------------------------------------------
 
     private const SENTINEL = 'SENTINEL: destructive setup was reached';
+
+    public function test_connector_aliases_exit_before_the_destructive_sentinel(): void
+    {
+        foreach (['connector-database-alias', 'connector-port-alias', 'url-connector-database-alias', 'url-connector-port-alias'] as $scenario) {
+            [$status, $output] = $this->runGuardProbe($scenario);
+            $this->assertSame(1, $status);
+            $this->assertStringContainsString(TestDatabaseGuard::REFUSAL_MARKER, $output);
+            $this->assertStringNotContainsString(self::SENTINEL, $output);
+        }
+    }
 
     /**
      * The control case. Without it, every refusal below would be satisfied by a

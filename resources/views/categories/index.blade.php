@@ -375,6 +375,48 @@
         };
         document.addEventListener('keydown', window.__categoriesPageEscapeHandler);
 
+        // ---- A change redraws the page; the user keeps their place ----
+        // Every change here is answered with this page drawn again, at the address it was
+        // made from. Two things the server cannot know go across in window, which a Turbo
+        // visit does not replace: how far the list was scrolled and which cards a phone user
+        // had opened. They are noted as a change is sent, and put back once by the page that
+        // comes back at the same address (an accepted change, a rejected save or a refusal).
+        if (window.__categoriesPageSubmitHandler) {
+            document.removeEventListener('turbo:submit-start', window.__categoriesPageSubmitHandler);
+        }
+        window.__categoriesPageSubmitHandler = function(event) {
+            const page = document.querySelector('.categories-index-page');
+            const form = event.target;
+            // The search is a form too: it asks for a different list, which starts at the top.
+            if (!page || !(form instanceof HTMLFormElement) || form.method === 'get') return;
+
+            const scroller = page.closest('.content-body');
+            window.__categoriesPagePlace = {
+                url: window.location.href,
+                scrollTop: scroller ? scroller.scrollTop : 0,
+                openCards: Array.from(page.querySelectorAll('.categories-card:not(.is-collapsed)'), (card) => card.dataset.categoryId),
+            };
+        };
+        document.addEventListener('turbo:submit-start', window.__categoriesPageSubmitHandler);
+
+        function restoreCategoriesPlace() {
+            const place = window.__categoriesPagePlace;
+            window.__categoriesPagePlace = null;
+
+            const page = document.querySelector('.categories-index-page');
+            if (!place || !page || place.url !== window.location.href) return;
+
+            // Cards are closed on a phone when the page is drawn; on a wider screen all are open.
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                page.querySelectorAll('.categories-card.is-collapsed').forEach((card) => {
+                    if (place.openCards.includes(card.dataset.categoryId)) toggleCategoryCard(card);
+                });
+            }
+
+            const scroller = page.closest('.content-body');
+            if (scroller) scroller.scrollTop = place.scrollTop;
+        }
+
         function syncCategoryCollapseMode() {
             const page = document.querySelector('.categories-index-page');
             if (!page) return;
@@ -444,19 +486,19 @@
             page.querySelectorAll('.categories-card').forEach((card) => {
                 const toggleBtn = card.querySelector('[data-category-toggle]');
                 const toggleSurface = card.querySelector('[data-category-toggle-surface]');
-                if (!toggleBtn || toggleBtn.dataset.categoryToggleBound === '1') return;
+                if (!toggleBtn) return;
 
-                toggleBtn.addEventListener('click', () => {
+                // ponytail: replace native handlers on each init. Turbo clones retain
+                // data-* markers, but not listeners, so a cached "bound" flag lies.
+                toggleBtn.onclick = () => {
                     toggleCategoryCard(card);
-                });
-                toggleBtn.dataset.categoryToggleBound = '1';
+                };
 
-                if (toggleSurface && toggleSurface.dataset.categorySurfaceBound !== '1') {
-                    toggleSurface.addEventListener('click', (event) => {
+                if (toggleSurface) {
+                    toggleSurface.onclick = (event) => {
                         if (event.target.closest('.categories-card-actions')) return;
                         toggleCategoryCard(card);
-                    });
-                    toggleSurface.dataset.categorySurfaceBound = '1';
+                    };
                 }
             });
 
@@ -466,7 +508,12 @@
         if (window.__categoriesPageTurboInitHandler) {
             document.removeEventListener('turbo:load', window.__categoriesPageTurboInitHandler);
         }
-        window.__categoriesPageTurboInitHandler = initCategoriesPage;
+        // The place is put back here and not as the script is evaluated: this runs last, when the
+        // address is the one the visit ended on and the cards have been closed for the last time.
+        window.__categoriesPageTurboInitHandler = function() {
+            initCategoriesPage();
+            restoreCategoriesPlace();
+        };
         document.addEventListener('turbo:load', window.__categoriesPageTurboInitHandler);
 
         if (window.__categoriesPageMediaQuery && window.__categoriesPageMediaHandler) {

@@ -4019,16 +4019,10 @@
     </script>
 
     <div class="content-inner dash-root dash-loading space-y-3" data-dashboard-shell>
-        {{-- Cross-promotion (Phase 4): a calm, one-time-per-view suggestion for an
-             ERP customer who doesn't yet use Dhiran. Links to Dhiran's SEPARATE
-             register front door — never grants an edition or links accounts. --}}
+        {{-- Owner-only introduction, atomically claimed once on the server. --}}
         @php
-            $promoUser = auth()->user();
-            $dhiranRegisterUrl = \App\Support\Realm::dhiranRegisterUrl();
-            $showDhiranPromo = config('platform.cross_promotion.enabled')
-                && ! empty($dhiranRegisterUrl)
-                && $promoUser?->isErp()
-                && ! ($promoUser?->shop?->hasEdition(\App\Support\ShopEdition::DHIRAN) ?? false);
+            $dhiranRegisterUrl = app(\App\Services\ProductPromotionService::class)->claimIntroduction(request());
+            $showDhiranPromo = $dhiranRegisterUrl !== null;
         @endphp
         {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
         <x-promo-banner realm="erp" />

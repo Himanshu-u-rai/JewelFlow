@@ -2,13 +2,44 @@
 
 namespace Tests\Feature;
 
+use App\Models\CreditNote;
+use App\Models\ReturnOrder;
+use App\Services\InvoiceAccountingService;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 class ConstitutionalInvariantsTest extends TestCase
 {
+    use CreatesTestTenant;
     use RefreshDatabase;
+
+    /** Populated, disposable fixtures; finalization uses the real accounting service. */
+    private function guardInvoice(): array
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->actingAs($owner);
+        TenantContext::set($shop->id);
+
+        return DB::transaction(function () use ($owner, $shop) {
+            $customer = $this->createCustomer($shop->id);
+            $item = $this->createItem($shop->id);
+            $invoice = InvoiceAccountingService::createDraft(['shop_id' => $shop->id,
+                'customer_id' => $customer->id, 'gold_rate' => 0, 'gst_rate' => 0]);
+            $line = DB::table('invoice_items')->insertGetId(['invoice_id' => $invoice->id,
+                'item_id' => $item->id, 'metal_type' => $item->metal_type, 'weight' => 0,
+                'rate' => 0, 'making_charges' => 0, 'stone_amount' => 100, 'line_total' => 100,
+                'created_at' => now(), 'updated_at' => now()]);
+            $stone = DB::table('stone_components')->insertGetId(['shop_id' => $shop->id,
+                'invoice_item_id' => $line, 'stone_type' => 'other', 'count' => 1,
+                'unit_value' => 100, 'total_value' => 100, 'created_at' => now(), 'updated_at' => now()]);
+            $invoice = InvoiceAccountingService::finalizeDraft($invoice, 0);
+
+            return [$owner, $invoice, $line, $stone];
+        });
+    }
 
     protected function setUp(): void
     {
@@ -89,16 +120,10 @@ class ConstitutionalInvariantsTest extends TestCase
 
     public function test_invoice_items_finalized_guard_blocks_update(): void
     {
-        // Find any invoice_item row, or skip if none exist yet.
-        $item = DB::selectOne('SELECT id FROM invoice_items LIMIT 1');
-
-        if ($item === null) {
-            $this->markTestSkipped('No invoice_items rows available to test the guard trigger against.');
-        }
-
-        $itemId = $item->id;
+        [, , $itemId] = $this->guardInvoice();
 
         $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectExceptionMessage('Cannot mutate invoice_items for finalized/cancelled invoice');
 
         // The DB trigger should raise an exception on any UPDATE to invoice_items.
         DB::statement('UPDATE invoice_items SET line_total = 99999 WHERE id = ?', [$itemId]);
@@ -108,16 +133,20 @@ class ConstitutionalInvariantsTest extends TestCase
 
     public function test_credit_notes_accounting_guard_blocks_total_mismatch(): void
     {
-        // Find any credit_note row, or skip if none exist yet.
-        $note = DB::selectOne('SELECT id FROM credit_notes LIMIT 1');
-
-        if ($note === null) {
-            $this->markTestSkipped('No credit_notes rows available to test the accounting guard trigger against.');
-        }
-
+        [$owner, $invoice] = $this->guardInvoice();
+        $return = ReturnOrder::create(['shop_id' => $invoice->shop_id, 'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id, 'return_type' => ReturnOrder::TYPE_CUSTOMER_RETURN,
+            'status' => ReturnOrder::STATUS_DRAFT, 'created_by_user_id' => $owner->id]);
+        // Valid new issued record, never mutate a finalized fixture to seed it.
+        InvoiceAccountingService::assertShopLockForDate($invoice->shop_id, now()->toDateString());
+        $note = CreditNote::create(['shop_id' => $invoice->shop_id, 'invoice_id' => $invoice->id,
+            'return_order_id' => $return->id, 'customer_id' => $invoice->customer_id,
+            'credit_note_sequence' => 1, 'credit_note_number' => 'CN-GUARD-1',
+            'subtotal' => 100, 'total' => 100, 'issued_at' => now(), 'issued_by_user_id' => $owner->id]);
         $noteId = $note->id;
 
         $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectExceptionMessage('Credit note total mismatch');
 
         // Force total to a value that cannot match subtotal + gst - discount + round_off,
         // which the trigger enforces. Setting total to an astronomical value ensures mismatch.
@@ -139,7 +168,7 @@ class ConstitutionalInvariantsTest extends TestCase
         );
 
         if ($tableExists === null) {
-            $this->markTestSkipped('store_credit_movements table does not exist; skipping guard test.');
+            $this->fail('store_credit_movements table is required.');
         }
 
         // Check whether the guard trigger exists on this table.
@@ -151,24 +180,19 @@ class ConstitutionalInvariantsTest extends TestCase
         );
 
         if ($triggerExists === null) {
-            $this->markTestSkipped('store_credit_non_negative_guard_trigger not found; skipping guard test.');
+            $this->fail('store_credit_non_negative_guard_trigger is required.');
         }
 
-        // Find a customer to target, or skip.
-        $customer = DB::selectOne('SELECT id FROM customers LIMIT 1');
-
-        if ($customer === null) {
-            $this->markTestSkipped('No customers available to test the store credit guard trigger.');
-        }
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id);
 
         $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectExceptionMessage('Store credit overdraft');
 
         // Insert a massive negative movement that should push the balance below zero.
-        DB::statement(
-            "INSERT INTO store_credit_movements (customer_id, amount, type, created_at, updated_at)
-             VALUES (?, -999999999, 'debit', NOW(), NOW())",
-            [$customer->id]
-        );
+        DB::table('store_credit_movements')->insert(['shop_id' => $shop->id, 'customer_id' => $customer->id,
+            'user_id' => $owner->id, 'approved_by_user_id' => $owner->id,
+            'amount' => -999999999, 'source_type' => 'manual_adjustment', 'notes' => 'guard test']);
     }
 
     // ── Test 5: Reconciliation commands contain no write operations ──────────
@@ -672,10 +696,7 @@ class ConstitutionalInvariantsTest extends TestCase
      */
     public function test_enabled_metals_for_shop_returns_tier_1(): void
     {
-        $shop = DB::table('shops')->first();
-        if (! $shop) {
-            $this->markTestSkipped('No shops exist to test enabledMetalsForShop against.');
-        }
+        $shop = $this->createShop();
 
         \App\Services\MetalRegistry::clearShopCache();
         $metals = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
@@ -741,18 +762,16 @@ class ConstitutionalInvariantsTest extends TestCase
      */
     public function test_stone_components_requires_parent_fk(): void
     {
-        $shop = DB::table('shops')->first();
-        if (! $shop) {
-            $this->markTestSkipped('No shops to test against.');
-        }
+        $shop = $this->createShop();
 
         $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectExceptionMessage('stone_components_parent_required');
         DB::table('stone_components')->insert([
-            'shop_id'    => $shop->id,
+            'shop_id' => $shop->id,
             'stone_type' => 'other',
             'unit_value' => 100,
-            'total_value'=> 100,
-            'count'      => 1,
+            'total_value' => 100,
+            'count' => 1,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -790,30 +809,20 @@ class ConstitutionalInvariantsTest extends TestCase
      */
     public function test_stone_snapshot_guard_blocks_value_update(): void
     {
-        $row = DB::selectOne(<<<'SQL'
-            SELECT sc.id
-            FROM stone_components sc
-            JOIN invoice_items ii ON ii.id = sc.invoice_item_id
-            JOIN invoices i ON i.id = ii.invoice_id
-            WHERE i.status = 'finalized'
-            LIMIT 1
-        SQL);
-
-        if (! $row) {
-            $this->markTestSkipped('No snapshotted stone_components row available.');
-        }
+        [, , , $stoneId] = $this->guardInvoice();
 
         // notes update should succeed
         DB::statement(
             'UPDATE stone_components SET notes = ? WHERE id = ?',
-            ['invariant test ' . uniqid(), $row->id]
+            ['invariant test '.uniqid(), $stoneId]
         );
 
         // value update should fail
         $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectExceptionMessage('Frozen: stone_components');
         DB::statement(
             'UPDATE stone_components SET unit_value = 99999, total_value = 99999 WHERE id = ?',
-            [$row->id]
+            [$stoneId]
         );
     }
 

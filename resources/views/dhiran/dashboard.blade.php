@@ -20,18 +20,10 @@
 
     <div class="content-inner dhiran-dash">
 
-        {{-- Cross-promotion (Phase 4): a calm suggestion for a Dhiran customer who
-             doesn't yet run a Retail ERP store. Links to the SEPARATE JewelFlows ERP
-             register — never grants an edition or links accounts. --}}
+        {{-- Owner-only introduction, atomically claimed once on the server. --}}
         @php
-            $promoUser = auth()->user();
-            $promoShop = $promoUser?->shop;
-            $hasErpEdition = $promoShop
-                && ($promoShop->hasEdition(\App\Support\ShopEdition::RETAILER)
-                    || $promoShop->hasEdition(\App\Support\ShopEdition::MANUFACTURER));
-            $showErpPromo = config('platform.cross_promotion.enabled')
-                && $promoUser?->isDhiran()
-                && ! $hasErpEdition;
+            $erpRegisterUrl = app(\App\Services\ProductPromotionService::class)->claimIntroduction(request());
+            $showErpPromo = $erpRegisterUrl !== null;
         @endphp
         {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
         <x-promo-banner realm="dhiran" />
@@ -43,7 +35,7 @@
                 heading="Running a jewellery store too?"
                 body="Use JewelFlows ERP for inventory, POS billing, returns, karigar work and reports — as its own separate account."
                 cta="Explore JewelFlows ERP"
-                :url="config('platform.cross_promotion.erp_register_url')"
+                :url="$erpRegisterUrl"
             />
         @endif
 

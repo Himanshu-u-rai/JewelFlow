@@ -5,6 +5,9 @@
             <p class="text-sm text-gray-500 mt-1">Configure pledge loan module preferences</p>
         </div>
         <div class="page-actions">
+            @if(auth()->user()?->isShopOwner())
+                <a href="{{ route('dhiran.product-preferences.index') }}" class="btn btn-secondary btn-sm" data-turbo="false">Product preferences</a>
+            @endif
             <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 Back to Dashboard

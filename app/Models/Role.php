@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Role extends Model
 {
-    use HasFactory, BelongsToShop;
+    use HasFactory, BelongsToShop, Concerns\InvalidatesProductRecognition;
 
     protected $fillable = [
         'name',

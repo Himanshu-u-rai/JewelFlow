@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Concerns\RespondsDynamically;
+use App\Http\Concerns\ReturnsToCategoryList;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\SubCategory;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 class CategoryController extends Controller
 {
     use RespondsDynamically;
+    use ReturnsToCategoryList;
 
     public function index(Request $request)
     {
@@ -45,6 +47,16 @@ class CategoryController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // A page past the end (its last category was just deleted, or an old
+        // address): the nearest page that exists. The message of the change
+        // that emptied the page is on its way to this request, so it is kept
+        // for the next one.
+        if ($categories->currentPage() > $categories->lastPage()) {
+            $request->session()->reflash();
+
+            return redirect()->to($categories->url($categories->lastPage()));
+        }
+
         // KPI cards are shop-wide totals — never page-limited or search-limited.
         $totalCategories = Category::where('shop_id', $shopId)->count();
         $totalSubCategories = SubCategory::where('shop_id', $shopId)->count();
@@ -75,7 +87,7 @@ class CategoryController extends Controller
             'name' => $validated['name'],
         ]);
 
-        return redirect()->route('categories.index')
+        return redirect()->route('categories.index', $this->categoryListQuery())
             ->with('success', 'Category created successfully!');
     }
 
@@ -94,7 +106,7 @@ class CategoryController extends Controller
 
         $category->update(['name' => $validated['name']]);
 
-        return redirect()->route('categories.index')
+        return redirect()->route('categories.index', $this->categoryListQuery())
             ->with('success', 'Category renamed successfully!');
     }
 
@@ -133,12 +145,12 @@ class CategoryController extends Controller
 
                 $message = 'Cannot delete this category: '.implode(' and ', $parts).' still reference it.';
 
-                return $this->dynamicRedirect('categories.index', [], $message, 'error');
+                return $this->dynamicRedirect('categories.index', $this->categoryListQuery(), $message, 'error');
             }
 
             $locked->delete();
 
-            return $this->dynamicRedirect('categories.index', [], 'Category deleted successfully!');
+            return $this->dynamicRedirect('categories.index', $this->categoryListQuery(), 'Category deleted successfully!');
         });
     }
 }
