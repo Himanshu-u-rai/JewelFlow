@@ -5,6 +5,15 @@
 #
 #   deploy-takeover-staging.sh <preflight|release> <from-sha (deployed now)> \
 #       <target-sha> <git bundle> <assets tarball> <assets tarball sha256>
+#   deploy-takeover-staging.sh resume <from-sha> <target-sha> \
+#       <evidence dir of the stopped release> <expected manifest sha256>
+#
+# `resume` finishes a release that a gate stopped AFTER the migration was
+# applied (staging in maintenance on the target commit, the four tables
+# empty). It moves forward only: it re-verifies the migrated database against
+# the stopped run's own backup, then runs the same remaining gates. (First
+# used on 2026-10-07: the schema gate compared hashes of pg_dump output, which
+# carries a random \restrict token on every run, so it could never match.)
 #
 # What differs from deploy-forward.sh, and why that script cannot do this:
 #   - one additive migration (four promotion-metadata tables) and new built
@@ -28,13 +37,14 @@
 # ============================================================================
 set -uo pipefail
 
-MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256}
+MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256 | resume from-sha target-sha stopped-run-dir manifest-sha256}
 FROM=${2:?from-sha}
 TARGET=${3:?target-sha}
-BUNDLE=${4:?bundle}
-ASSETS=${5:?assets tarball}
-ASSETS_SHA=${6:?assets sha256}
-case "$MODE" in preflight|release) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
+case "$MODE" in
+  preflight|release) BUNDLE=${4:?bundle}; ASSETS=${5:?assets tarball}; ASSETS_SHA=${6:?assets sha256} ;;
+  resume) PREV=${4:?evidence dir of the stopped release}; MANIFEST_EXPECT=${5:?expected manifest sha256} ;;
+  *) echo "unknown mode: $MODE"; exit 64 ;;
+esac
 
 DIR=/var/www/jewelflow-staging
 DB=jewelflow_staging
@@ -71,7 +81,11 @@ ok() { echo "ok    $*"; }
 code() { curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$HOSTN:443:127.0.0.1" "$@"; }
 counts() { local t; for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(PSQL "select count(*) from $t")"; done; }
 new_rows() { local t n=0; for t in "${NEW_TABLES[@]}"; do n=$((n + $(PSQL "select count(*) from $t"))); done; echo "$n"; }
-schema_hash() { sudo -u postgres pg_dump -s -d "$DB" $(printf -- '-T %s ' "${NEW_TABLES[@]}") | grep -v '^--' | sha256sum | cut -d' ' -f1; }
+# The existing schema as text: comments and pg_dump's per-run \restrict token dropped (the
+# token is random, so two dumps of one schema never hash alike), and the release's own
+# relations left out by pattern (the tables and their id sequences).
+schema_norm() { grep -vE '^(--|\\(un)?restrict |$)'; }
+schema_sql() { sudo -u postgres pg_dump -s -d "$DB" -T 'product_promotion_*' -T 'product_recognition*' | schema_norm; }
 untracked() { git -C "$DIR" status --porcelain | grep '^??' | sort; }
 # Production must be exactly as it was: its commit, its maintenance state, its
 # config cache, and the two shared services (never reloaded by this script).
@@ -89,8 +103,9 @@ new_errors() {
   done
   echo "$n"
 }
+HELD=$WORK/cron.held
 unquiesce() {
-  [ -e "$WORK/cron.held" ] && { mv "$WORK/cron.held" "$CRON"; echo "      cron put back: $CRON"; }
+  [ -e "$HELD" ] && { mv "$HELD" "$CRON"; echo "      cron put back: $CRON"; }
   systemctl start "$WORKER" && echo "      $WORKER started"
   ART up >/dev/null 2>&1 && echo "      maintenance off"
 }
@@ -102,12 +117,109 @@ fail() {
       echo "No code, schema or configuration was changed. Putting staging back as it was:"
       [ "$QUIESCED" = 1 ] && unquiesce ;;
     smoke) echo "Staging is UP on $TARGET (maintenance had ended); nothing was rolled back. Inspect now. Evidence: $WORK." ;;
-    *) echo "Staging is LEFT IN MAINTENANCE, $WORKER stopped, the reconcile cron held at $WORK/cron.held."
+    *) echo "Staging is LEFT IN MAINTENANCE, $WORKER stopped, the reconcile cron held at ${HELD:-$WORK/cron.held}."
        echo "Evidence and the pre-release copies (.env, config cache, assets, database dump): $WORK."
        echo "Recovery: docs/runbooks/product-promotion-recognition.md, 'Recovery' (count the four tables first)." ;;
   esac
   exit 2
 }
+
+verify_migrated() {
+  PHASE=migrate
+  grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is still pending"
+  [ "$(PSQL "select count(*) from migrations")" = "$((MIG_BEFORE + 1))" ] || fail "the migrations table did not grow by one"
+  [ "$(PSQL "select count(*) from information_schema.tables where table_schema = 'public'")" = "$((TBL_BEFORE + 4))" ] || fail "the table count did not grow by four"
+  [ "$(PSQL "select count(*) from pg_trigger where not tgisinternal")" = "$TRIG_BEFORE" ] || fail "the trigger count changed"
+  [ "$(new_rows)" = 0 ] || fail "the new tables are not empty"
+  schema_sql > "$WORK/schema.after.sql"
+  cmp -s "$WORK/schema.before.sql" "$WORK/schema.after.sql" || fail "the schema of the existing tables changed: diff $WORK/schema.before.sql $WORK/schema.after.sql"
+  [ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed"
+  ok "migration $MIGRATION applied: four empty tables; existing schema ($(wc -l < "$WORK/schema.after.sql") lines) identical, $TRIG_BEFORE triggers and row counts unchanged"
+}
+finish() {
+  PHASE=caches
+  ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
+  ART assets:verify-fresh >/dev/null 2>&1 || fail "assets:verify-fresh says the built assets are older than their sources"
+  while IFS= read -r f; do [ -e "$DIR/$f" ] || continue; sudo -u www-data test -r "$DIR/$f" || fail "www-data cannot read $f"; done < <(git diff --name-only "$FROM" "$TARGET")
+  [ -z "$(find "$DIR/storage" "$DIR/bootstrap/cache" "$DIR/public/build" -user root ! -path "$DIR/bootstrap/cache/config.php" 2>/dev/null | head -1)" ] || fail "a root-owned file appeared under storage, bootstrap/cache or public/build"
+  ok "routes and views cached; assets fresh; every changed file readable by www-data"
+
+  # ── proof, still in maintenance: the shared FPM pool serves the NEW code ─────
+  PHASE=freshness
+  sleep 6   # opcache: validate_timestamps on, revalidate_freq 2, file_update_protection 2
+  JAR=$WORK/bypass.jar
+  [ "$(code -c "$JAR" "https://$HOSTN/$SECRET")" = 302 ] || fail "the maintenance bypass did not answer"
+  LANDING=$(curl -sk -m 20 -b "$JAR" --resolve "$HOSTN:443:127.0.0.1" "https://$HOSTN/")
+  grep -q 'Start with Retail' <<< "$LANDING" || fail "the new landing page is not served (stale code?)"
+  ! grep -qiE 'https?://dhiran\.' <<< "$LANDING" || fail "the landing page links to a Dhiran host"
+  [ "$(code -b "$JAR" "https://$HOSTN/product-preferences")" = 302 ] || fail "the new route /product-preferences is not served"
+  [ "$(curl -sk -m 20 -b "$JAR" --resolve "$HOSTN:443:127.0.0.1" "https://$HOSTN/build/manifest.json" | sha256sum | cut -d' ' -f1)" = "$MANIFEST_SHA" ] || fail "the served asset manifest is not the released one"
+  [ "$(code "https://$HOSTN/")" = 503 ] || fail "maintenance does not hold for a visitor without the bypass"
+  rm -f "$JAR"
+  ok "new code is served without any shared-service reload: landing, new route and released manifest; visitors still get 503"
+
+  # ── staging processes back, then up ──────────────────────────────────────────
+  PHASE=processes
+  mv "$HELD" "$CRON" || fail "could not put the reconcile cron back"
+  [ "$(sha256sum "$CRON" | cut -d' ' -f1)" = "$CRON_SHA" ] && [ "$(stat -c '%U:%G %a' "$CRON")" = "$CRON_STAT" ] || fail "the reconcile cron is not byte-identical with its mode"
+  systemctl start "$WORKER" && sleep 2 && [ "$(systemctl is-failed "$WORKER")" != failed ] || fail "$WORKER did not start"
+  ok "reconcile cron back ($CRON_SHA, $CRON_STAT); $WORKER started"
+  PHASE=up
+  ART up >/dev/null || fail "artisan up failed"
+  ok "maintenance off at $(date -u +%H:%M:%SZ)"
+
+  PHASE=smoke
+  for u in /health / /login /register /admin/login; do [ "$(code "https://$HOSTN$u")" = 200 ] || fail "smoke: $u is not 200"; done
+  for u in /dashboard /product-preferences /super-admin/shops /admin/shops; do [ "$(code "https://$HOSTN$u")" = 302 ] || fail "smoke: $u did not redirect a guest"; done
+  NEWERR=$(new_errors)
+  [ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since the mark ($WORK/log.mark)"
+  [ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed across the window"
+  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "the untracked files changed"
+  [ "$(other_state)" = "$OTHER_BEFORE" ] || fail "production's commit, maintenance state, config cache or a shared service changed: $(other_state)"
+  [ "$(curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$OTHER_HOST:443:127.0.0.1" "https://$OTHER_HOST/health")" = "$OTHER_HEALTH_BEFORE" ] || fail "production /health changed"
+  ok "smoke passed; no row added or lost; no new error; production and the shared services untouched"
+  echo "TAKEOVER STAGING RELEASE PASSED: staging at $TARGET (from $FROM); manifest $MANIFEST_SHA; backup $BACKUP ($DUMP_SHA); evidence in $WORK"
+}
+
+# ── resume: finish a release a gate stopped after the migration ──────────────
+if [ "$MODE" = resume ]; then
+  echo "########## takeover staging resume: $FROM -> $TARGET at $STAMP (UTC), finishing the run in $PREV ##########"
+  cd "$DIR" || fail "no directory $DIR"
+  grep -qE '^APP_ENV=staging$' "$DIR/.env" || fail "$DIR/.env is not APP_ENV=staging"
+  [ -f storage/framework/down ] || fail "staging is not in maintenance: there is nothing to resume"
+  [ "$(git rev-parse HEAD)" = "$TARGET" ] && [ -z "$(git status --porcelain --untracked-files=no)" ] || fail "staging is not cleanly on $TARGET"
+  [ "$(cat "$PREV/code.before" 2>/dev/null)" = "$FROM" ] || fail "$PREV is not the evidence of a release from $FROM"
+  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump
+  [ -f "$HELD" ] && [ ! -e "$CRON" ] || fail "the reconcile cron is not held at $HELD"
+  [ "$(systemctl is-active "$WORKER")" != active ] || fail "$WORKER is running"
+  [ -f "$BACKUP" ] && pg_restore -f /dev/null "$BACKUP" 2>/dev/null || fail "the stopped run's backup does not read"
+  [ "$(cfgid)" = "staging|$APPURL|$DB" ] || fail "effective config is '$(cfgid)'"
+  [ "$(code "https://$HOSTN/")" = 503 ] || fail "staging does not answer 503"
+  # What was true before the release, from the stopped run's own backup and files.
+  LOG_MARK=$(cat "$PREV/log.mark")
+  SECRET=$(php -r 'echo json_decode(file_get_contents($argv[1]), true)["secret"] ?? "";' "$DIR/storage/framework/down")
+  [ -n "$SECRET" ] || fail "the maintenance file holds no bypass secret"
+  CRON_SHA=$(sha256sum "$HELD" | cut -d' ' -f1); CRON_STAT=$(stat -c '%U:%G %a' "$HELD")
+  DUMP_SHA=$(sha256sum "$BACKUP" | cut -d' ' -f1)
+  RESTORED=$(cat "$PREV/restore-rehearsal.txt")
+  COUNTS_BEFORE=$(for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(awk -v t="$t" '$1 == "count" && $2 == t { print $3 }' <<< "$RESTORED")"; done)
+  MIG_BEFORE=$(awk '$1 == "count" && $2 == "migrations" { print $3 }' <<< "$RESTORED"); TRIG_BEFORE=$(awk '$1 == "triggers" { print $2 }' <<< "$RESTORED")
+  TBL_BEFORE=$(pg_restore -l "$BACKUP" | grep -cE '^[0-9]+; [0-9]+ [0-9]+ TABLE public ')
+  pg_restore -s -f - "$BACKUP" | schema_norm > "$WORK/schema.before.sql"
+  [ -s "$WORK/schema.before.sql" ] || fail "could not read the schema from the backup"
+  MANIFEST_SHA=$(sha256sum "$DIR/public/build/manifest.json" | cut -d' ' -f1)
+  [ "$MANIFEST_SHA" = "$MANIFEST_EXPECT" ] || fail "the manifest on disk is $MANIFEST_SHA, not the released $MANIFEST_EXPECT"
+  ENV_STAT=$(stat -c '%U:%G %a' "$DIR/.env")
+  [ "$ENV_STAT" = "$(stat -c '%U:%G %a' "$PREV/env.before")" ] || [ "$ENV_STAT" = "www-data:www-data 600" ] || fail ".env ownership or mode is $ENV_STAT"
+  UNTRACKED_BEFORE=$(untracked)
+  OTHER_BEFORE=$(other_state)
+  OTHER_HEALTH_BEFORE=$(curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$OTHER_HOST:443:127.0.0.1" "https://$OTHER_HOST/health")
+  ok "resuming on $TARGET in maintenance; before-state from $PREV: $MIG_BEFORE migrations, $TRIG_BEFORE triggers, $TBL_BEFORE tables; backup $DUMP_SHA"
+  ok "production now: ${OTHER_BEFORE%%|*} (health $OTHER_HEALTH_BEFORE)"
+  verify_migrated
+  finish
+  exit 0
+fi
 
 echo "########## takeover staging $MODE: $FROM -> $TARGET at $STAMP (UTC) ##########"
 cd "$DIR" || fail "no directory $DIR"
@@ -142,7 +254,10 @@ tar -tzf "$ASSETS" | grep -qx 'build/manifest.json' || fail "the assets tarball 
 [ "$(df --output=avail -m /var/www | tail -1)" -gt 1024 ] || fail "less than 1 GB free"
 MIG_BEFORE=$(PSQL "select count(*) from migrations"); TRIG_BEFORE=$(PSQL "select count(*) from pg_trigger where not tgisinternal")
 TBL_BEFORE=$(PSQL "select count(*) from information_schema.tables where table_schema = 'public'")
-COUNTS_BEFORE=$(counts); SCHEMA_BEFORE=$(schema_hash)
+COUNTS_BEFORE=$(counts)
+schema_sql > "$WORK/schema.before.sql"
+[ -s "$WORK/schema.before.sql" ] && schema_sql | cmp -s - "$WORK/schema.before.sql" || fail "two reads of the schema differ: the schema gate would be meaningless"
+SCHEMA_BEFORE=$(sha256sum < "$WORK/schema.before.sql" | cut -d' ' -f1)
 ok "candidate $TARGET: on the bundle's branch, above the floor, one additive migration, no dependency change, no dev-only reference"
 ok "changes: $(git diff --shortstat "$FROM" "$TARGET")"
 ok "database $DB: $MIG_BEFORE migrations, $TRIG_BEFORE triggers, $TBL_BEFORE tables; schema hash $SCHEMA_BEFORE"
@@ -158,7 +273,7 @@ ART down --retry=30 --secret="$SECRET" >/dev/null || fail "artisan down failed"
 systemctl stop "$WORKER" || fail "could not stop $WORKER"
 [ "$(systemctl is-active "$WORKER")" != active ] || fail "$WORKER is still active"
 CRON_SHA=$(sha256sum "$CRON" | cut -d' ' -f1); CRON_STAT=$(stat -c '%U:%G %a' "$CRON")
-mv "$CRON" "$WORK/cron.held" || fail "could not hold $CRON"
+mv "$CRON" "$HELD" || fail "could not hold $CRON"
 for i in $(seq 1 60); do sudo -u www-data flock -n "$CRONLOCK" true 2>/dev/null && break; sleep 3; done
 sudo -u www-data flock -n "$CRONLOCK" true 2>/dev/null || fail "a reconcile run still holds its lock after 3 minutes"
 sleep 5   # requests already inside PHP finish
@@ -207,6 +322,7 @@ tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not c
 echo "$FROM" > "$WORK/code.before"
 ok "backup $WORK/$DB.dump: sha256 $DUMP_SHA, $DUMP_DATA table-data entries, read end to end"
 ok "restore rehearsal in an isolated instance (own PostgreSQL, throwaway user, no network): ${#COUNTED[@]} tables, $MIG_BEFORE migrations and $TRIG_BEFORE triggers match staging"
+BACKUP=$WORK/$DB.dump
 ok "pre-release copies: code $FROM, .env, config cache, public/build"
 
 # ── release: code, assets, configuration, the one migration ─────────────────
@@ -238,53 +354,5 @@ P=$(ART migrate --pretend --force --path="database/migrations/$MIGRATION.php" 2>
 ! grep -qiE 'drop |truncate |delete from|update ' <<< "$P" || fail "the migration holds a destructive statement"
 [ -z "$(grep -oiE 'alter table "[a-z_]+"' <<< "$P" | grep -viE "\"($(IFS='|'; echo "${NEW_TABLES[*]}"))\"" | head -1)" ] || fail "the migration alters an existing table"
 ART migrate --force --path="database/migrations/$MIGRATION.php" > "$WORK/migrate.out" 2>&1 || fail "migration failed (see $WORK/migrate.out)"
-grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is still pending"
-[ "$(PSQL "select count(*) from migrations")" = "$((MIG_BEFORE + 1))" ] || fail "the migrations table did not grow by one"
-[ "$(PSQL "select count(*) from information_schema.tables where table_schema = 'public'")" = "$((TBL_BEFORE + 4))" ] || fail "the table count did not grow by four"
-[ "$(PSQL "select count(*) from pg_trigger where not tgisinternal")" = "$TRIG_BEFORE" ] || fail "the trigger count changed"
-[ "$(new_rows)" = 0 ] || fail "the new tables are not empty"
-[ "$(schema_hash)" = "$SCHEMA_BEFORE" ] || fail "the schema of the existing tables changed"
-[ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed"
-ok "migration $MIGRATION applied: four empty tables; existing schema hash, $TRIG_BEFORE triggers and row counts unchanged"
-PHASE=caches
-ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
-ART assets:verify-fresh >/dev/null 2>&1 || fail "assets:verify-fresh says the built assets are older than their sources"
-while IFS= read -r f; do [ -e "$DIR/$f" ] || continue; sudo -u www-data test -r "$DIR/$f" || fail "www-data cannot read $f"; done < <(git diff --name-only "$FROM" "$TARGET")
-[ -z "$(find "$DIR/storage" "$DIR/bootstrap/cache" "$DIR/public/build" -user root ! -path "$DIR/bootstrap/cache/config.php" 2>/dev/null | head -1)" ] || fail "a root-owned file appeared under storage, bootstrap/cache or public/build"
-ok "routes and views cached; assets fresh; every changed file readable by www-data"
-
-# ── proof, still in maintenance: the shared FPM pool serves the NEW code ─────
-PHASE=freshness
-sleep 6   # opcache: validate_timestamps on, revalidate_freq 2, file_update_protection 2
-JAR=$WORK/bypass.jar
-[ "$(code -c "$JAR" "https://$HOSTN/$SECRET")" = 302 ] || fail "the maintenance bypass did not answer"
-LANDING=$(curl -sk -m 20 -b "$JAR" --resolve "$HOSTN:443:127.0.0.1" "https://$HOSTN/")
-grep -q 'Start with Retail' <<< "$LANDING" || fail "the new landing page is not served (stale code?)"
-! grep -qiE 'https?://dhiran\.' <<< "$LANDING" || fail "the landing page links to a Dhiran host"
-[ "$(code -b "$JAR" "https://$HOSTN/product-preferences")" = 302 ] || fail "the new route /product-preferences is not served"
-[ "$(curl -sk -m 20 -b "$JAR" --resolve "$HOSTN:443:127.0.0.1" "https://$HOSTN/build/manifest.json" | sha256sum | cut -d' ' -f1)" = "$MANIFEST_SHA" ] || fail "the served asset manifest is not the released one"
-[ "$(code "https://$HOSTN/")" = 503 ] || fail "maintenance does not hold for a visitor without the bypass"
-rm -f "$JAR"
-ok "new code is served without any shared-service reload: landing, new route and released manifest; visitors still get 503"
-
-# ── staging processes back, then up ──────────────────────────────────────────
-PHASE=processes
-mv "$WORK/cron.held" "$CRON" || fail "could not put the reconcile cron back"
-[ "$(sha256sum "$CRON" | cut -d' ' -f1)" = "$CRON_SHA" ] && [ "$(stat -c '%U:%G %a' "$CRON")" = "$CRON_STAT" ] || fail "the reconcile cron is not byte-identical with its mode"
-systemctl start "$WORKER" && sleep 2 && [ "$(systemctl is-failed "$WORKER")" != failed ] || fail "$WORKER did not start"
-ok "reconcile cron back ($CRON_SHA, $CRON_STAT); $WORKER started"
-PHASE=up
-ART up >/dev/null || fail "artisan up failed"
-ok "maintenance off at $(date -u +%H:%M:%SZ)"
-
-PHASE=smoke
-for u in /health / /login /register /admin/login; do [ "$(code "https://$HOSTN$u")" = 200 ] || fail "smoke: $u is not 200"; done
-for u in /dashboard /product-preferences /super-admin/shops /admin/shops; do [ "$(code "https://$HOSTN$u")" = 302 ] || fail "smoke: $u did not redirect a guest"; done
-NEWERR=$(new_errors)
-[ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since the mark ($WORK/log.mark)"
-[ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed across the window"
-[ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "the untracked files changed"
-[ "$(other_state)" = "$OTHER_BEFORE" ] || fail "production's commit, maintenance state, config cache or a shared service changed: $(other_state)"
-[ "$(curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$OTHER_HOST:443:127.0.0.1" "https://$OTHER_HOST/health")" = "$OTHER_HEALTH_BEFORE" ] || fail "production /health changed"
-ok "smoke passed; no row added or lost; no new error; production and the shared services untouched"
-echo "TAKEOVER STAGING RELEASE PASSED: staging at $TARGET (from $FROM); manifest $MANIFEST_SHA; backup $WORK/$DB.dump ($DUMP_SHA); evidence in $WORK"
+verify_migrated
+finish
