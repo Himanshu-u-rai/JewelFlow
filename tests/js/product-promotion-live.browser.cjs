@@ -288,14 +288,17 @@ async function consent(form, secret = password) {
         }
         pass('live Alpine historical typing appends one blank row on phone and desktop');
         await retail.goto(origins[0]+'/product-preferences');
-        await consent(retail.locator('form[action$="/start"]'));
-        assert.equal(fixture('report', data.retail.id).source_pending_requests, 1);
-        assert.equal((await submit(retail.locator('form[action$="/cancel"]'))).status(), 302);
-        const afterCancel = fixture('report', data.retail.id);
+        // Dhiran's fifth/sixth metadata actions stay within its actual allowance;
+        // do not spend Retail's remaining slot needed to prove 422 then 429 below.
+        await consent(dhiran.locator('form[action$="/start"]'));
+        assert.equal(fixture('report', data.dhiran.id).source_pending_requests, 1);
+        assert.equal((await submit(dhiran.locator('form[action$="/cancel"]'))).status(), 302);
+        const afterCancel = fixture('report', data.dhiran.id);
         assert.equal(afterCancel.source_pending_requests, 0);
         assert.equal(afterCancel.active_links, 1);
-        assert.equal(afterCancel.preferences[0].choice, 'opt_out');
-        assert.equal(await retail.locator('form[action$="/cancel"]').count(), 0);
+        assert.equal(afterCancel.preferences[0].choice, null);
+        assert.equal(fixture('report', data.retail.id).preferences[0].choice, 'opt_out');
+        assert.equal(await dhiran.locator('form[action$="/cancel"]').count(), 0);
         pass('real cancellation consumes pending consent without revoking an existing pair or changing opt-out');
         const csrf = await retail.locator('form[action$="/start"] [name=_token]').inputValue();
         const statuses = [];
