@@ -136,18 +136,24 @@ Exact proposed sequence, only after approval and DNS/TLS prerequisites:
    checks, logs and measured results. No destructive tests on staging. Stop on any
    failed identity/migration/freshness/access gate.
 
-Rollback: before `up`, recover the actual old code/assets/config at the recorded
-baseline, retaining the additive metadata tables; recheck that baseline is above
-the deployed security floor. After new consent is written, prefer a forward repair
-and retain metadata—dropping tables loses permanent preferences. A full database
-restore is a separate approved maintenance operation requiring no intervening writes
-and the fresh verified backup. Never replay old signature/security migrations or
-restore an obsolete pre-security code baseline. `CROSS_PROMOTION_ENABLED=false` alone
-is not a full feature rollback. Failed post-maintenance gates leave staging down.
+Rollback (corrected 2026-10-07; the earlier text here said to keep the new tables under
+the old code, which is only safe while they are empty): before the migration, recover
+the recorded baseline code/assets/config. After it, the baseline may return only while
+all four tables are empty (counted in maintenance). Once a preference, exposure, request
+or recognition exists, recovery is a forward repair, or a compatibility rollback that
+keeps preference handling and consent invalidation and has been tested (none exists
+yet); see `docs/runbooks/product-promotion-recognition.md`, "Recovery". A full database
+restore is a separate approved maintenance operation requiring no intervening writes and
+the fresh verified backup. Never drop the tables, replay old signature/security
+migrations or restore a pre-security code baseline. `CROSS_PROMOTION_ENABLED=false`
+alone is not a feature rollback. Failed post-maintenance gates leave staging down.
 
 No production checkout, database, configuration, URL or process is a deployment target.
 
-Concrete Dhiran prerequisite: the DNS owner must publish
+Superseded 2026-10-07 by the owner: no Dhiran staging hostname is to be created; Retail
+staging is released alone with `DHIRAN_REGISTER_URL=` (explicitly disabled), and the
+two-product staging checks are recorded NOT RUN (local two-host evidence stands).
+Earlier note: the DNS owner must publish
 `dhiran.staging.jewelflows.com A 147.93.96.166` (suggested TTL 300), with no AAAA
 unless a measured working IPv6 target is provided. An operator must provision a
 certificate whose SAN covers that exact host and route it exclusively to

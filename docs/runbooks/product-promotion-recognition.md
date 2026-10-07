@@ -24,7 +24,20 @@ Shop `deactivated_at`, `is_active` and `access_mode` are written by billing enfo
 
 Dashboard lookup failures suppress the optional card and log the exception class, not identity/payment data. Preferences/verification do not silently report success on database failures. No caching of cross-product ownership. No subscription/transaction data is returned. Counterparty business names are displayed only for owner-approved requests/relationships.
 
-Lifecycle invalidation is synchronous and atomic with security saves; a failure rolls back both changes and is not silently accepted. Run migration before enabling this code. For rollback, recover application code while retaining metadata; removing the four tables requires a separately reviewed destructive rollback. Merely setting `CROSS_PROMOTION_ENABLED=false` hides introductions, but does not disable preferences/recognition routes or lifecycle saves.
+Lifecycle invalidation is synchronous and atomic with security saves; a failure rolls back both changes and is not silently accepted. Run migration before enabling this code. Recovery is in the next section; it is not "old code over the new tables". Merely setting `CROSS_PROMOTION_ENABLED=false` hides introductions, but does not disable preferences/recognition routes or lifecycle saves.
+
+## Recovery (corrected 7 October 2026 after review)
+
+An earlier version of this runbook, and of the takeover handoff, said to recover the previous application code while keeping the four tables. That is safe only while the tables are empty. The earlier release does two things wrong over recorded data: it does not read `product_promotion_preferences`, so an owner who chose "already use" or "don't show again" is advertised to again; and it has none of the lifecycle invalidation, so a password, role, shop, realm or activity change made while it runs leaves a recognition or a pending consent standing, and the newer code honours it when it returns. Which case applies is decided by a count of the four tables, not by how long the release has been live:
+
+- **Migration not yet applied.** Recover the recorded baseline code, assets and configuration. Nothing of the feature exists.
+- **Migration applied, all four tables empty** (a failed gate inside the release window, before `up`, or no owner has used the feature yet). The baseline may be restored with the empty tables left in place. Count the rows first, in maintenance, and count them again before leaving maintenance.
+- **Any preference, exposure, request or recognition row exists.** Do not run the earlier release. Recover by one of:
+  1. **Forward repair** (the default): fix or revert the faulty commit on top of the deployed release and deploy that.
+  2. **A compatibility rollback that has been built and tested**: the earlier release plus preference handling and the same lifecycle invalidation (the shared User/Role save path, the cancel/revoke routes), proven with the promotion feature tests, the six race scenarios and the interleavings before it is used. **None exists today**, so forward repair is the only path until one does.
+  3. **A full database restore** from the release's fresh backup, under the existing rule only: the site has been in maintenance without a break since that backup, so nothing was recorded in between.
+- Dropping the four tables is never a recovery step: it destroys permanent choices and consent records.
+- Never go below the security release floor (`250950f`) and never replay old security or signature migrations.
 
 `ERP_REGISTER_URL` no longer defaults to production. Without an explicit override it derives the sibling Retail host only in local/production; testing/staging suppress it. An empty override disables it. Existing Dhiran URL derivation is preserved. Deployment-controlled explicit overrides must be reviewed per environment; the code cannot know whether an intentionally configured host points at the wrong environment.
 
