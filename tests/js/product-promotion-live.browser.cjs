@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const http = require('node:http');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '../..');
 const out = path.join(root, 'output/playwright');
@@ -41,11 +42,50 @@ async function consent(form, secret = password) {
 }
 (async () => {
     fs.mkdirSync(out, { recursive: true });
-    const data = fixture('seed');
-    const browser = await chromium.launch({ headless: true, executablePath: process.env.JF_BROWSER_EXECUTABLE });
-    let retail, dhiran;
+    // A single proxy, no DIRECT fallback: every hop can only reach this testing port.
+    // Browser route handlers alone do not protect all redirect destinations.
+    const denied = [];
+    const proxy = http.createServer((request, response) => {
+        let url;
+        try { url = new URL(request.url); } catch { response.writeHead(403).end(); return; }
+        if (!origins.includes(url.origin)) {
+            denied.push(url.href); response.writeHead(403).end('Testing egress denied'); return;
+        }
+        if (url.pathname.startsWith('/__jf_egress_')) {
+            response.writeHead(302, { location: url.pathname.endsWith('https')
+                ? 'https://blocked.invalid/' : 'http://blocked.invalid/' }).end(); return;
+        }
+        const upstream = http.request({ hostname: '127.0.0.1', port: 8786,
+            path: url.pathname+url.search, method: request.method, headers: { ...request.headers, host: url.host } }, result => {
+            response.writeHead(result.statusCode, result.headers); result.pipe(response);
+        });
+        upstream.on('error', error => { response.writeHead(502).end(error.code); });
+        upstream.setTimeout(15000, () => upstream.destroy(new Error('Testing upstream timeout')));
+        request.on('aborted', () => upstream.destroy());
+        request.pipe(upstream);
+    });
+    proxy.on('connect', (request, socket) => {
+        denied.push('CONNECT '+request.url); socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+    });
+    proxy.on('upgrade', (_request, socket) => socket.destroy());
+    await new Promise((resolve, reject) => {
+        proxy.once('error', reject); proxy.listen(0, '127.0.0.1', resolve);
+    });
+    let browser, retail, dhiran;
     try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
+    browser = await chromium.launch({ headless: true, executablePath: process.env.JF_BROWSER_EXECUTABLE,
+        proxy: { server: 'http://127.0.0.1:'+proxy.address().port, bypass: '<-loopback>' } });
+    const probe = await browser.newContext({ serviceWorkers: 'block' });
+    const probePage = await probe.newPage();
+    assert.equal((await probePage.goto(origins[0]+'/__jf_egress_http')).status(), 403);
+    assert(denied.includes('http://blocked.invalid/'), 'HTTP redirect did not reach the deny proxy');
+    await assert.rejects(probePage.goto(origins[0]+'/__jf_egress_https'), /ERR_TUNNEL_CONNECTION_FAILED/);
+    assert(denied.includes('CONNECT blocked.invalid:443'), 'HTTPS redirect did not reach the deny proxy');
+    await probe.close();
+    pass('independent loopback-only proxy denies HTTP/HTTPS redirect hops before database seeding');
+    if (process.argv.includes('--egress-check')) return;
+    const data = fixture('seed');
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', serviceWorkers: 'block' });
     const errors = [];
     retail = await context.newPage();
     dhiran = await context.newPage();
@@ -240,7 +280,7 @@ async function consent(form, secret = password) {
         assert.equal((await dhiran.goto(origins[1]+'/dhiran/product-preferences')).status(), 200);
         pass('Retail logout leaves Dhiran authenticated');
         const token = fixture('reset-token', data.retail.id).token;
-        const resetContext = await browser.newContext();
+        const resetContext = await browser.newContext({ serviceWorkers: 'block' });
         await resetContext.route('**/*', route => origins.includes(new URL(route.request().url()).origin)
             ? route.continue() : route.abort());
         const resetPage = await resetContext.newPage();
@@ -279,12 +319,17 @@ async function consent(form, secret = password) {
         fs.writeFileSync(path.join(out, 'live-results.json'), JSON.stringify({ checks, pageErrors: errors }, null, 2));
         console.log(`${checks.length} workflow groups passed; zero page errors`);
     } catch (error) {
-        for (const [i, page] of browser.contexts().flatMap(c => c.pages()).entries()) {
+        for (const [i, page] of (browser?.contexts() || []).flatMap(c => c.pages()).entries()) {
             fs.writeFileSync(path.join(out, `live-failure-${i}.yml`), await page.locator('body').ariaSnapshot());
         }
         if (retail) await retail.screenshot({ path: path.join(out, 'live-failure-retail.png'), fullPage: true });
         if (dhiran) await dhiran.screenshot({ path: path.join(out, 'live-failure-dhiran.png'), fullPage: true });
         console.error(error);
         process.exitCode = 1;
-    } finally { await browser.close(); }
+    } finally {
+        try { if (browser) await browser.close(); } finally {
+            proxy.closeAllConnections();
+            await new Promise(resolve => proxy.close(resolve));
+        }
+    }
 })();

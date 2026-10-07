@@ -12,6 +12,26 @@ use Illuminate\Support\Facades\Hash;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestDatabaseGuard;
 
+function introductionResultsAreValid(array $results): bool
+{
+    $values = array_column($results, 'value');
+    sort($values);
+
+    return count($results) === 2 && array_column($results, 'status') === [200, 200]
+        && $values === [false, true];
+}
+
+if (($argv[1] ?? '') === 'assertion-check') {
+    if (! introductionResultsAreValid([['status' => 200, 'value' => true], ['status' => 200, 'value' => false]])
+        || ! introductionResultsAreValid([['status' => 200, 'value' => false], ['status' => 200, 'value' => true]])
+        || introductionResultsAreValid([['status' => 200, 'value' => true], ['status' => 500]])
+        || introductionResultsAreValid([['status' => 200, 'value' => true], ['status' => 200, 'value' => true]])) {
+        throw new RuntimeException('Introduction race assertion accepted a failed worker or invalid winner count.');
+    }
+    echo "PASS: introduction assertion requires two successful workers and exactly one boolean winner\n";
+    exit;
+}
+
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->afterBootstrapping(\Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function ($app): void {
@@ -251,7 +271,7 @@ $rival = $fixture->owner('dhiran');
 $preference = $service->preference($source);
 $results = race([['claim', $source->id, null], ['claim', $source->id, null]],
     fn () => DB::table('product_promotion_preferences')->where('id', $preference->id)->lockForUpdate()->first());
-check(count(array_filter(array_column($results, 'value'))) === 1
+check(introductionResultsAreValid($results)
     && DB::table('product_promotion_exposures')->where('preference_id', $preference->id)->count() === 1, 'exactly one introduction');
 
 $code = $service->start($source, 'password');

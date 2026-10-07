@@ -1,7 +1,7 @@
 # JewelFlows takeover — local candidate checkpoint
 
 No push or deployment is authorized before user review. Production is out of scope.
-The commit containing this file is the candidate implementation; the final measured
+The final measured
 report and sanitized review ZIP identify its full SHA. Local report location:
 `output/takeover/pre-staging-review.md` (ignored evidence, not application source).
 Do not mistake the historical cloud handoffs or pre-commit test runs for that report.
@@ -62,6 +62,11 @@ Review strengthened the guard to refuse PostgreSQL connector destination aliases
 standalone harnesses enforce it after configuration loads, before provider boot,
 and again afterwards. Browser API calls refuse automatic redirects; live HTTP
 acceptance independently records its actual database/environment/worktree identity.
+The browser's launch-level loopback-only proxy independently refuses every external
+hop, including HTTP/HTTPS redirects, and is self-tested before fixture seeding.
+The local HTTP router never passes PHP files to the unguarded built-in server.
+The introduction race requires both workers to succeed and exactly one boolean
+winner; its assertion-check mode rejects a synthetic 500 without opening a database.
 
 - Focused PHPUnit and full regression, with JUnit/counts/skipped reasons.
 - Original six multi-process races; original five forced interleavings plus approval/cancel.
