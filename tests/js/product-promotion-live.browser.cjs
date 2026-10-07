@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const net = require('node:net');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '../..');
 const out = path.join(root, 'output/playwright');
@@ -45,6 +46,7 @@ async function consent(form, secret = password) {
     // A single proxy, no DIRECT fallback: every hop can only reach this testing port.
     // Browser route handlers alone do not protect all redirect destinations.
     const denied = [];
+    const tunnels = new Set();
     const proxy = http.createServer((request, response) => {
         let url;
         try { url = new URL(request.url); } catch { response.writeHead(403).end(); return; }
@@ -59,13 +61,33 @@ async function consent(form, secret = password) {
             path: url.pathname+url.search, method: request.method, headers: { ...request.headers, host: url.host } }, result => {
             response.writeHead(result.statusCode, result.headers); result.pipe(response);
         });
-        upstream.on('error', error => { response.writeHead(502).end(error.code); });
+        upstream.on('error', error => {
+            // Turbo may abort after upstream headers. Close that response rather
+            // than trying to send a second status line and crashing the runner.
+            if (response.headersSent) response.destroy();
+            else response.writeHead(502).end(error.code || 'Testing upstream failed');
+        });
         upstream.setTimeout(15000, () => upstream.destroy(new Error('Testing upstream timeout')));
         request.on('aborted', () => upstream.destroy());
         request.pipe(upstream);
     });
-    proxy.on('connect', (request, socket) => {
-        denied.push('CONNECT '+request.url); socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+    proxy.on('connect', (request, socket, head) => {
+        if (!origins.some(origin => new URL(origin).host === request.url)) {
+            denied.push('CONNECT '+request.url); socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
+        }
+        // Playwright APIRequestContext tunnels even plain HTTP. Pin local tunnels,
+        // never resolve their supplied host or open an arbitrary port.
+        const upstream = net.connect(8786, '127.0.0.1', () => {
+            socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+            if (head.length) upstream.write(head);
+            socket.pipe(upstream); upstream.pipe(socket);
+        });
+        for (const connection of [socket, upstream]) {
+            tunnels.add(connection);
+            connection.on('close', () => { tunnels.delete(connection); socket.destroy(); upstream.destroy(); });
+            connection.on('error', () => { socket.destroy(); upstream.destroy(); });
+            connection.setTimeout(15000, () => { socket.destroy(); upstream.destroy(); });
+        }
     });
     proxy.on('upgrade', (_request, socket) => socket.destroy());
     await new Promise((resolve, reject) => {
@@ -266,6 +288,15 @@ async function consent(form, secret = password) {
         }
         pass('live Alpine historical typing appends one blank row on phone and desktop');
         await retail.goto(origins[0]+'/product-preferences');
+        await consent(retail.locator('form[action$="/start"]'));
+        assert.equal(fixture('report', data.retail.id).source_pending_requests, 1);
+        assert.equal((await submit(retail.locator('form[action$="/cancel"]'))).status(), 302);
+        const afterCancel = fixture('report', data.retail.id);
+        assert.equal(afterCancel.source_pending_requests, 0);
+        assert.equal(afterCancel.active_links, 1);
+        assert.equal(afterCancel.preferences[0].choice, 'opt_out');
+        assert.equal(await retail.locator('form[action$="/cancel"]').count(), 0);
+        pass('real cancellation consumes pending consent without revoking an existing pair or changing opt-out');
         const csrf = await retail.locator('form[action$="/start"] [name=_token]').inputValue();
         const statuses = [];
         for (let i = 0; i < 7; i++) statuses.push((await context.request.post(origins[0]+'/product-preferences/start', {
@@ -328,6 +359,7 @@ async function consent(form, secret = password) {
         process.exitCode = 1;
     } finally {
         try { if (browser) await browser.close(); } finally {
+            for (const connection of tunnels) connection.destroy();
             proxy.closeAllConnections();
             await new Promise(resolve => proxy.close(resolve));
         }

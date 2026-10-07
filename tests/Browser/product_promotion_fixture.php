@@ -53,6 +53,7 @@ if (($argv[1] ?? '') === 'seed') {
         echo json_encode(['token' => Password::createToken($user)]);
     } elseif ($argv[1] === 'report') {
         echo json_encode(['preferences' => DB::table('product_promotion_preferences')->where('user_id', $user->id)->get(),
+            'source_pending_requests' => DB::table('product_recognition_requests')->where('source_user_id', $user->id)->whereNull('consumed_at')->count(),
             'exposures' => DB::table('product_promotion_exposures as e')->join('product_promotion_preferences as p', 'p.id', '=', 'e.preference_id')->where('p.user_id', $user->id)->count(),
             'active_links' => DB::table('product_recognitions')->where($user->realm.'_user_id', $user->id)->whereNull('revoked_at')->count()]);
     } else {
