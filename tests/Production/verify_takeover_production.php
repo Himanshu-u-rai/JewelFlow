@@ -58,7 +58,22 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 require __DIR__.'/../../vendor/autoload.php';
+
+// A crash must never look like a pass. The framework's exception handler prints the error
+// and lets PHP exit 0, so anything that ends this script before its last line exits 3.
+$finished = false;
+register_shutdown_function(function () use (&$finished) {
+    if (! $finished) {
+        fwrite(STDERR, "\nTHE CHECK DID NOT FINISH (crashed or stopped early): this is a FAILURE\n");
+        exit(3);
+    }
+});
+
 $app = require __DIR__.'/../../bootstrap/app.php';
+// In production the application forces the https scheme while it boots, and the URL
+// generator cannot be built without a request. Give it one before booting; the real
+// host replaces it below. (Found by rehearsing in production mode; staging never hit it.)
+$app->instance('request', Request::create('https://localhost'));
 $kernel = $app->make(HttpKernel::class);
 $kernel->bootstrap();
 
@@ -73,14 +88,17 @@ $onProduction = app()->environment('production') && DB::connection()->getDatabas
 $onLocal = getenv('VERIFY_LOCAL_TESTING') === '1' && ! app()->environment('production') && DB::connection()->getDatabaseName() === 'jewelflow_testing';
 if ($onProduction && (getenv('TAKEOVER_PRODUCTION_CHECK') !== 'approved' || ! is_file($down))) {
     fwrite(STDERR, "REFUSED: on production this runs only inside the maintenance window (artisan down) with TAKEOVER_PRODUCTION_CHECK=approved\n");
+    $finished = true;
     exit(2);
 }
 if (! $onProduction && ! $onLocal) {
     fwrite(STDERR, "REFUSED: runs on production in its window, or on jewelflow_testing with VERIFY_LOCAL_TESTING=1\n");
+    $finished = true;
     exit(2);
 }
 if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
     fwrite(STDERR, "REFUSED: running as root would leave root-owned files under storage; run as the web user\n");
+    $finished = true;
     exit(2);
 }
 
@@ -349,4 +367,5 @@ echo "  database rows: none (see rollback above); PostgreSQL keeps the dead row 
 echo "  not exercised: anything deferred until after a commit; browser behaviour\n";
 
 echo $failures === 0 ? "\nTAKEOVER PRODUCTION CHECK PASSED on ".config('app.env')." ({$stamp})\n" : "\n{$failures} CHECK(S) FAILED\n";
+$finished = true;
 exit($failures === 0 ? 0 : 1);

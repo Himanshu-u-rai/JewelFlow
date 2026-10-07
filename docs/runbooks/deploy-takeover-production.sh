@@ -321,6 +321,9 @@ finish() {
   if [ "${TAKEOVER_PRODUCTION_CHECK:-}" = approved ]; then
     ( cd "$DIR" && sudo -u www-data env TAKEOVER_PRODUCTION_CHECK=approved php tests/Production/verify_takeover_production.php ) > "$WORK/production-check.txt" 2>&1 \
       || fail "the synthetic check failed (see $WORK/production-check.txt); the four tables hold $(new_rows) rows"
+    # The exit code alone is not trusted: the script must have run to its last line, with every check passing.
+    grep -q '^TAKEOVER PRODUCTION CHECK PASSED' "$WORK/production-check.txt" && ! grep -q '^FAIL' "$WORK/production-check.txt" && [ "$(grep -c '^PASS' "$WORK/production-check.txt")" -ge 18 ] \
+      || fail "the synthetic check did not finish with all of its checks passing (see $WORK/production-check.txt); the four tables hold $(new_rows) rows"
     [ "$(new_rows)" = 0 ] || fail "the synthetic check left rows in the new tables"
     fingerprint > "$WORK/live.checked.fp" && cmp -s <(fp_tables "$WORK/live.after.fp") <(fp_tables "$WORK/live.checked.fp") || fail "a table differs after the synthetic check"
     ok "synthetic two-product check passed and left no row (every table re-fingerprinted from outside it): $(grep -c '^PASS' "$WORK/production-check.txt") checks; lasting effects recorded in $WORK/production-check.txt"
