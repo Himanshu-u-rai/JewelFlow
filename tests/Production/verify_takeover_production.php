@@ -27,7 +27,8 @@
  *     every table, before and after) and the row and advisory locks it held;
  *   - NOT rolled back: sequence values (ids are consumed and leave gaps; they
  *     are reported and never reset), dead row versions and WAL in PostgreSQL,
- *     and any file written (log lines; compiled views if the view cache is cold);
+ *     and any file written (log lines; compiled views of pages the view cache does not
+ *     hold, such as the framework's own error pages);
  *   - prevented for this process: queued jobs, notifications, mail and HTTP
  *     calls are captured in memory and counted, sessions and the cache (the
  *     rate limiter) are in-memory arrays;
@@ -109,6 +110,13 @@ if ($onLocal) {
         'platform.cross_promotion.dhiran_register_url' => 'https://dhiran.jewelflows.test/register',
         'platform.cross_promotion.erp_register_url' => 'https://jewelflows.test/register']);
 }
+// The rate limiter is built while the application boots, on the configured cache store (files,
+// in production), before the line above can redirect it. Point it at the in-memory store too,
+// keeping its named limiters, so that no throttle counter is left in the cache directory.
+app()->forgetInstance('cache.store');
+(function ($store) {
+    $this->cache = $store;
+})->call(app(Illuminate\Cache\RateLimiter::class), app('cache')->store('array'));
 Queue::fake();          // nothing is queued or run; counted below
 Notification::fake();   // nothing is sent or stored; counted below
 Http::fake();           // no request leaves this process; counted below

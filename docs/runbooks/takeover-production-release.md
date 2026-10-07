@@ -86,17 +86,29 @@ No invoice, payment, loan, stock, customer, subscription or platform-admin row;
 no existing shop, user or customer.
 
 Everything runs in one transaction that is rolled back. **A rollback does not
-undo everything.** Measured on the disposable local database, with committed
-synthetic shops and promotion rows already present:
+undo everything.** Measured twice: on the disposable local database
+(PostgreSQL 16), and on **PostgreSQL 14.24 in production mode** in an isolated
+instance on the server (PHP 8.2.30, the `--no-dev` vendor directory, cached
+configuration, routes and views, maintenance on, no network, nothing of
+production visible), with committed synthetic shops and promotion rows already
+present. 18 checks passed in both.
 
 | | |
 |---|---|
-| Rolled back | Every row written (all tables compared by row count and content hash before and after: identical). The row lock on the shop-code counter and the advisory owner locks, held until the rollback. |
+| Rolled back | Every row written (all 148 tables compared by row count and content hash before and after, from inside the script and again from outside it: identical). The row lock on the shop-code counter and the advisory owner locks, held until the rollback. |
 | **Stays** | Sequence values: `shops` +3, `users` +3, `roles` +9, `role_permission` +384, `shop_editions` +3, `product_promotion_preferences` +10, `product_promotion_exposures` +2. The next real shop and user get ids that skip these. Shop codes do not skip (their counter is a table row). Sequences are **not** reset. Dead row versions and WAL of the rolled-back writes, until vacuum. |
-| Files | None written in the rehearsal. On production the view cache is prebuilt, so none is expected; a log line would stay. The script lists every file that changed under `storage` and `bootstrap/cache`. |
-| Prevented | Queue pushes, notifications, mail and HTTP calls made through the framework are captured in memory and counted (0 in the rehearsal). Sessions and the cache (the rate limiter) are in memory. |
+| **Files** | Four files under `storage/framework/views`: two templates the framework generates for components and their compiled forms, which the view cache does not hold and php-fpm writes identically the first time such a page is served. A log line, if anything is logged (none was). The script lists every file that changed under `storage` and `bootstrap/cache`. |
+| Not the check's own | Every boot of the application, by any artisan command or page view, refreshes its five-minute cache of the platform's mail settings in the cache directory. The check boots the application once, like each artisan command of the release does. |
+| Prevented | Queue pushes, notifications, mail and HTTP calls made through the framework are captured in memory and counted (0). Sessions, the cache and the rate limiter are in memory. |
 | Checked | One database connection only; the same transaction id from first write to rollback (nothing committed underneath); only the ten expected tables written. |
 | Not exercised | Anything deferred until after a commit. Anything a browser does. |
+
+The production-mode rehearsal found three defects that staging and the local
+rehearsal could not, all corrected before this version: the script could not
+boot in production mode; such a crash exited 0, which the release script would
+have recorded as a pass; and the rate limiter, built during boot, kept its
+throttle counters in the cache directory. A crash now exits 3, and the release
+script also requires the final PASSED line, no FAIL line and eighteen PASS lines.
 
 The script prints these measurements for the run itself, refuses to pass if a
 table outside its list was written, and the release script fingerprints every
