@@ -4,7 +4,7 @@
 # (SESSION_SECURE_COOKIE=true). No schema change. Runs ON the VPS as root, one
 # environment per run:
 #
-#   deploy-stabilization.sh <preflight|release|resume> <staging|production> \
+#   deploy-stabilization.sh <preflight|release|resume|return> <staging|production> \
 #       <from-sha (deployed now)> <target-sha> <bundle> <assets.tar.gz> <assets-sha256>
 #
 # preflight  every gate that can be checked without touching what serves,
@@ -15,6 +15,24 @@
 #            maintenance). Needs STABILIZATION_PREV=<that run's directory>: its
 #            pre-release copies and dump are used; every step is repeated only
 #            if it has not already taken effect.
+# return     goes back to an EARLIER commit of this batch (target is an
+#            ancestor of from) with that commit's assets: the same window and
+#            the same checks. No bundle is needed (pass -); the assets are the
+#            build.before.tar.gz of the run that replaced them. Possible
+#            because this batch changes no schema.
+#
+# What it touches beyond its own environment, stated plainly:
+#   * php8.2-fpm is ONE pool serving production and staging. Its reload at the
+#     end of a window restarts the other environment's PHP workers too and
+#     empties their code cache. Requests in flight finish; the next ones are
+#     slower for a moment. The script checks that the other environment
+#     still answers and that its checkout, .env, config cache and assets are
+#     byte for byte what they were. It cannot make the reload not happen.
+#   * The scheduler's cron is NOT held. The window is started just after a
+#     minute boundary and is over before the next one. A release that a gate
+#     STOPS stays in maintenance with cron running: scheduled commands are
+#     skipped while the site is down and do not catch up. Resume or return
+#     before the next daily job (00:00 to 03:00 and 06:00 India time).
 #
 # deploy-forward.sh with three additions, each lifted from the takeover
 # release script: built assets from a tarball checked by SHA-256, one named
@@ -32,10 +50,10 @@ ENVN=${2:?env}; FROM=${3:?from-sha}; TARGET=${4:?target-sha}; BUNDLE=${5:?bundle
 BRANCH=fix/stabilization-20261008; REF=refs/remotes/stabilization/$BRANCH
 SETTING=SESSION_SECURE_COOKIE
 STAGING_DIR=/var/www/jewelflow-staging
-case "$MODE" in preflight|release|resume) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
+case "$MODE" in preflight|release|resume|return) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
 case "$ENVN" in
-  staging)    DIR=$STAGING_DIR;       OWNER=root; DB=jewelflow_staging; APPURL=https://staging.jewelflows.com; HOSTS=(staging.jewelflows.com); WORKER=jewelflow-staging-ops-alerts;    OTHER=/var/www/jewelflow ;;
-  production) DIR=/var/www/jewelflow; OWNER=dev;  DB=jewelflow;         APPURL=https://jewelflows.com;         HOSTS=(jewelflows.com www.jewelflows.com dhiran.jewelflows.com); WORKER=jewelflow-production-ops-alerts; OTHER=$STAGING_DIR ;;
+  staging)    DIR=$STAGING_DIR;       OWNER=root; DB=jewelflow_staging; APPURL=https://staging.jewelflows.com; HOSTS=(staging.jewelflows.com); WORKER=jewelflow-staging-ops-alerts;    OTHER=/var/www/jewelflow; OTHER_HOST=jewelflows.com ;;
+  production) DIR=/var/www/jewelflow; OWNER=dev;  DB=jewelflow;         APPURL=https://jewelflows.com;         HOSTS=(jewelflows.com www.jewelflows.com dhiran.jewelflows.com); WORKER=jewelflow-production-ops-alerts; OTHER=$STAGING_DIR; OTHER_HOST=staging.jewelflows.com ;;
   *) echo "unknown environment: $ENVN"; exit 64 ;;
 esac
 HOSTN=${HOSTS[0]}
@@ -57,6 +75,8 @@ cfg() { ( cd "$DIR" && sudo -u www-data php -r '$c = require "bootstrap/cache/co
 cache_ok() { cfg 'exit($c["app"]["key"] && $c["database"]["connections"]["pgsql"]["password"] !== null ? 0 : 1);'; }
 cfgid() { cfg 'echo $c["app"]["env"]."|".$c["app"]["url"]."|".$c["database"]["connections"]["pgsql"]["database"];' 2>/dev/null; }
 config_hashes() { cfg 'ksort($c); foreach ($c as $k => $v) { echo $k." ".hash("sha256", serialize($v))."\n"; }'; }
+# The other environment as this script can see it: its commit, its .env, its config cache, its assets.
+other_state() { printf '%s %s %s %s' "$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)" "$(sha256sum < "$OTHER/.env" | cut -c1-16)" "$(sha256sum < "$OTHER/bootstrap/cache/config.php" | cut -c1-16)" "$(sha256sum < "$OTHER/public/build/manifest.json" | cut -c1-16)"; }
 untracked() { G ls-files --others --exclude-standard -z | ( cd "$DIR" && xargs -0 -r sha256sum -- ) | sort -k2 | sha256sum | cut -d' ' -f1; }
 code() { local h=$1; shift; curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
 counts() { local t; for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(PSQL "select count(*) from $t")"; done; }
@@ -106,7 +126,8 @@ fail() {
     preflight) echo "Nothing that serves was changed." ;;
     smoke) echo "The site is UP on the target (maintenance had ended); nothing was rolled back. Inspect now. State: $WORK." ;;
     *) echo "The site is LEFT IN MAINTENANCE and $WORKER is stopped. Pre-release .env, config cache and assets: ${PRE:-$WORK}."
-       echo "After the cause is fixed: STABILIZATION_PREV=${PRE:-$WORK} $0 resume $ENVN $FROM $TARGET <bundle> <assets> <sha256>" ;;
+       echo "After the cause is fixed: STABILIZATION_PREV=${PRE:-$WORK} $0 resume $ENVN $FROM $TARGET <bundle> <assets> <sha256>"
+       echo "Cron is still running: scheduled commands are skipped while the site is down and do not catch up. India time now $(TZ=Asia/Kolkata date +%H:%M)." ;;
   esac
   exit 2
 }
@@ -126,21 +147,26 @@ if [ "$MODE" != resume ]; then
   [ ! -f storage/framework/down ] || fail "the site is already in maintenance (a stopped release is finished with: resume)"
   for _ in $(seq 1 30); do [ "$(artisan_running)" = 0 ] && break; sleep 2; done   # a scheduled command may be finishing
   [ "$(artisan_running)" = 0 ] || fail "an artisan command is running in $DIR"
-  OTHER_HEAD_BEFORE=$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)
+  OTHER_STATE_BEFORE=$(other_state)
   UNTRACKED_BEFORE=$(untracked)
 fi
-[ -f "$BUNDLE" ] && git bundle verify "$BUNDLE" >/dev/null 2>&1 || fail "the bundle is missing or does not verify"
-[ "$(git bundle list-heads "$BUNDLE" "refs/heads/$BRANCH" | cut -d' ' -f1)" = "$TARGET" ] || fail "the bundle's $BRANCH is not $TARGET"
-BTMP=$(OWNERDO mktemp -d) && install -o "$OWNER" -g "$OWNER" -m 600 "$BUNDLE" "$BTMP/candidate.bundle" || fail "could not hand the bundle to $OWNER"
-G fetch --quiet "$BTMP/candidate.bundle" "+refs/heads/$BRANCH:$REF"; FETCHED=$?; rm -rf "$BTMP"
-[ "$FETCHED" = 0 ] && [ "$(G rev-parse "$REF")" = "$TARGET" ] || fail "fetch from the bundle failed"
-G merge-base --is-ancestor "$FROM" "$TARGET" || fail "target does not descend from the deployed commit"
+if [ "$MODE" = return ]; then
+  G cat-file -e "$TARGET^{commit}" 2>/dev/null || fail "the commit to return to is not in this repository"
+  G merge-base --is-ancestor "$TARGET" "$FROM" && [ "$TARGET" != "$FROM" ] || fail "return goes to an earlier commit: $TARGET is not an ancestor of the deployed $FROM"
+else
+  [ -f "$BUNDLE" ] && git bundle verify "$BUNDLE" >/dev/null 2>&1 || fail "the bundle is missing or does not verify"
+  [ "$(git bundle list-heads "$BUNDLE" "refs/heads/$BRANCH" | cut -d' ' -f1)" = "$TARGET" ] || fail "the bundle's $BRANCH is not $TARGET"
+  BTMP=$(OWNERDO mktemp -d) && install -o "$OWNER" -g "$OWNER" -m 600 "$BUNDLE" "$BTMP/candidate.bundle" || fail "could not hand the bundle to $OWNER"
+  G fetch --quiet "$BTMP/candidate.bundle" "+refs/heads/$BRANCH:$REF"; FETCHED=$?; rm -rf "$BTMP"
+  [ "$FETCHED" = 0 ] && [ "$(G rev-parse "$REF")" = "$TARGET" ] || fail "fetch from the bundle failed"
+  G merge-base --is-ancestor "$FROM" "$TARGET" || fail "target does not descend from the deployed commit"
+fi
 [ -z "$(G diff --name-only "$FROM" "$TARGET" -- database/migrations composer.lock composer.json package.json package-lock.json vite.config.js)" ] \
   || fail "the target changes a migration or a dependency: not this script"
 [ "$MODE" = resume ] || grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is pending"
 DEVREF=$(G grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
 [ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
-ok "target $TARGET: descends from $FROM, no migration, no dependency change, no dev-only reference; $(G diff --name-only "$FROM" "$TARGET" -- app bootstrap config routes resources public | wc -l) runtime path(s) change"
+ok "target $TARGET: $([ "$MODE" = return ] && echo "an ancestor of" || echo "descends from") $FROM, no migration, no dependency change, no dev-only reference; $(G diff --name-only "$FROM" "$TARGET" -- app bootstrap config routes resources public | wc -l) runtime path(s) change"
 [ -f "$ASSETS" ] && [ "$(sha256sum "$ASSETS" | cut -d' ' -f1)" = "$ASSETS_SHA" ] || fail "the assets tarball is missing or its SHA-256 is not $ASSETS_SHA"
 [ -z "$(tar -tzf "$ASSETS" | grep -vE '^build/([A-Za-z0-9._/-]*)$' | head -1)" ] && ! tar -tzf "$ASSETS" | grep -q '\.\.' || fail "the assets tarball holds a path outside build/"
 tar -tzf "$ASSETS" | grep -qx 'build/manifest.json' || fail "the assets tarball has no build/manifest.json"
@@ -148,8 +174,8 @@ MISSING=$(comm -23 <(tar -xzOf "$ASSETS" build/manifest.json | grep -oE '"(file|
 [ -z "$MISSING" ] || fail "the manifest names files the tarball does not hold: $MISSING"
 NEW_MANIFEST=$(tar -xzOf "$ASSETS" build/manifest.json | sha256sum | cut -d' ' -f1)
 CSS_LOST=$(css_lost)
-[ "$CSS_LOST" = 0 ] || [ "${STABILIZATION_CSS_RULES_REMOVED:-}" = accepted ] || fail "the new stylesheets lack $CSS_LOST rule(s) that the deployed ones have (build in a real checkout; or set STABILIZATION_CSS_RULES_REMOVED=accepted if the removal is intended)"
-ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST; deployed CSS rules absent from the new build: $CSS_LOST$([ "$CSS_LOST" = 0 ] || echo ' (declared intended)')"
+[ "$CSS_LOST" = 0 ] || [ "$MODE" = return ] || [ "${STABILIZATION_CSS_RULES_REMOVED:-}" = accepted ] || fail "the new stylesheets lack $CSS_LOST rule(s) that the deployed ones have (build in a real checkout; or set STABILIZATION_CSS_RULES_REMOVED=accepted if the removal is intended)"
+ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST; deployed CSS rules absent from the new build: $CSS_LOST$([ "$CSS_LOST" = 0 ] || { [ "$MODE" = return ] && echo ' (a return to an earlier build)' || echo ' (declared intended)'; })"
 if [ "$MODE" = resume ]; then
   PRE=${STABILIZATION_PREV:?resume needs STABILIZATION_PREV=<directory of the stopped run>}
   [ -f "$DIR/storage/framework/down" ] || fail "resume is for a release stopped in maintenance; this site is up"
@@ -160,7 +186,7 @@ if [ "$MODE" = resume ]; then
   if [ -f "$PRE/state" ]; then . "$PRE/state"; else
     ENV_STAT=$(stat -c '%U:%G %a' "$DIR/.env"); CACHE_STAT=$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")
     BUILD_STAT=$(stat -c '%U:%G' "$PRE/build.replaced" 2>/dev/null || stat -c '%U:%G' "$DIR/public/build")
-    UNTRACKED_BEFORE=$(untracked); OTHER_HEAD_BEFORE=$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)
+    UNTRACKED_BEFORE=$(untracked); OTHER_STATE_BEFORE=$(other_state)
   fi
   CUR=$(grep -E "^$SETTING=" "$PRE/env.before" | cut -d= -f2)
   ok "resuming the run in $PRE: HEAD $H, site in maintenance, its backup reads end to end; assets were $BUILD_STAT, .env $ENV_STAT"
@@ -183,7 +209,7 @@ done < <(G diff --name-only "$FROM" "$TARGET")
 install -m 600 "$DIR/.env" "$WORK/env.before" && install -m 600 "$DIR/bootstrap/cache/config.php" "$WORK/config.cache.before" && tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not copy the pre-release .env, config cache and assets"
 chmod 600 "$WORK/build.before.tar.gz"; config_hashes > "$WORK/config.before.hashes"
 ok "pre-release copies in $WORK (root only)"
-declare -p ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE OTHER_HEAD_BEFORE > "$WORK/state"
+declare -p ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE OTHER_STATE_BEFORE > "$WORK/state"
 if [ "$MODE" = preflight ]; then echo "STABILIZATION PREFLIGHT PASSED: $ENVN $FROM -> $TARGET; nothing was changed; evidence in $WORK"; exit 0; fi
 
 fi
@@ -252,6 +278,8 @@ ART route:list --path=api/mobile/quick-bills --method=POST -v 2>/dev/null | grep
 ! ART schedule:list 2>/dev/null | grep -q 'archive-audit-logs' || fail "smoke: the retired archive command is still scheduled"
 NEWERR=$(new_errors)
 [ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since the mark ($WORK/log.mark)"
-[ "$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)" = "$OTHER_HEAD_BEFORE" ] || fail "the other environment's HEAD changed"
-ok "smoke passed on ${HOSTS[*]}: cookies Secure, mobile API 401, released manifest served, route and schedule as released, worker steady, no row added or lost, no new error, other environment untouched"
+[ "$(other_state)" = "${OTHER_STATE_BEFORE:-}" ] || fail "the other environment's commit, .env, config cache or assets changed"
+[ "$(code "$OTHER_HOST" "https://$OTHER_HOST/health")" = 200 ] || fail "the other environment ($OTHER_HOST) does not answer 200 after the shared PHP reload"
+ok "smoke passed on ${HOSTS[*]}: cookies Secure, mobile API 401, released manifest served, route and schedule as released, worker steady, no row added or lost, no new error"
+ok "other environment ($OTHER_HOST): commit, .env, config cache and assets unchanged, and it answers 200. Its PHP workers were reloaded with this one's: the pool is shared"
 echo "STABILIZATION RELEASE PASSED: $ENVN at $TARGET (from $FROM); manifest $NEW_MANIFEST; evidence in $WORK"
