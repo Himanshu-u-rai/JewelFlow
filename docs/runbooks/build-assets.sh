@@ -29,10 +29,12 @@ cd "$TMP"
 if grep -nE "'\./(storage|vendor|bootstrap/cache|public)/" tailwind.config.js; then
   echo "tailwind.config.js scans a directory that is not tracked source: refusing" >&2; exit 2
 fi
-for glob in $(sed -n "/^    content: \[/,/^    \],/p" tailwind.config.js | grep -oE "'\./[^']+'" | tr -d "'"); do
-  dir=${glob%%\**}
+GLOBS=0
+while IFS= read -r glob; do   # read, never word-split: the shell must not expand these
+  dir=${glob%%\**}; GLOBS=$((GLOBS + 1))
   [ -n "$(find "$dir" -type f -name "*${glob##*\*}" -print -quit 2>/dev/null)" ] || { echo "$glob matches nothing in a clean export: refusing" >&2; exit 2; }
-done
+done < <(sed -n "/^    content: \[/,/^    \],/p" tailwind.config.js | grep -oE "'\./[^']+'" | tr -d "'")
+[ "$GLOBS" -gt 0 ] || { echo "no content globs found in tailwind.config.js: refusing" >&2; exit 2; }
 
 npm ci --no-audit --no-fund --loglevel=error
 npm run build >/dev/null
