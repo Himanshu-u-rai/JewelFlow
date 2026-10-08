@@ -1,14 +1,18 @@
-# JewelFlows takeover — Retail staging acceptance and production review
+# JewelFlows takeover — staging acceptance and production release
 
-**Version 4, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
-version 3 `99587f2`). The
+**Version 5, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+version 3 `99587f2`, version 4 `f158425`). The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
 
-**Production has not been changed.** The window and the production actions
-are the owner's to choose after this review. Section 7 lists what would be
-approved.
+**Production was released on 8 October 2026, 03:36Z, with the owner's
+approval. It runs `e49e611768e62674de0c4b2a77da42d018b28c30`.** Section 8 is the
+record. The signed-in browser checks on production are NOT RUN yet: nobody is
+signed in to either product in the owner's browser, and the agent does not
+sign in.
+
+New in version 5: section 8, the release and its verification.
 
 New in version 4 (section 6a):
 
@@ -40,9 +44,9 @@ than dump noise; production has five untracked files; the mobile API answers
 |---|---|---|
 | Reviewed candidate | `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0` | application code of everything below |
 | Staging | `a87dcd58b8c8e1d1cfff9f24025872b24ab83401` | released 7 Oct, up, unchanged since |
-| Production candidate | `e49e611768e62674de0c4b2a77da42d018b28c30` | read-only preflight passed 7 Oct 17:06:56Z with an earlier script revision; not released |
-| Release tooling | `de92e604da275768ed1ea7391ea19193639a3242` | rehearsed in isolation 8 Oct from 02:39Z; this revision has not been run against production at all |
-| Production | `aa3a62a93630751058c38b31f2b49c604450ec68` | unchanged (re-read 8 Oct 02:46Z) |
+| Production | `e49e611768e62674de0c4b2a77da42d018b28c30` | released 8 Oct 03:36Z from `aa3a62a…`; up |
+| Release tooling | `de92e604da275768ed1ea7391ea19193639a3242` | rehearsed in isolation 8 Oct from 02:39Z; used for the release |
+| Earlier production release | `aa3a62a93630751058c38b31f2b49c604450ec68` | the baseline the window's backup and evidence belong to |
 
 The integration branch (`integration/jewelflows-takeover`) is not pushed. The
 original worktree `ui-navigation-batch1` and its uncommitted files are untouched.
@@ -62,7 +66,8 @@ original worktree `ui-navigation-batch1` and its uncommitted files are untouched
 | `99587f2` | Handoff, version 3; the PostgreSQL 14 rehearsal script |
 | `effafd0` | Work in progress on the release tooling (superseded by the next) |
 | `de92e60` | Release script: worker health, untracked files by content, sessions row by row, `baseline`, `tree-check`; the tooling rehearsal script; the procedure |
-| this commit | Handoff, version 4 |
+| `f158425` | Handoff, version 4 |
+| this commit | Handoff, version 5: the production release |
 
 `app`, `bootstrap`, `config`, `database`, `resources`, `routes`, `public`,
 `artisan` and the dependency and build manifests are identical in `5cbad19`,
@@ -409,3 +414,98 @@ script named in 6, preceded by a fresh `preflight` with that script.
 
 To decide: the time of the window; yes or no to the synthetic check; who runs
 the signed-in checks afterwards.
+
+## 8. Production release, 8 October 2026
+
+Approved by the owner for: one shared window for Retail, Dhiran and the
+mobile API; candidate `e49e611768e62674de0c4b2a77da42d018b28c30` from
+`aa3a62a93630751058c38b31f2b49c604450ec68`; the release script of `de92e60`
+with SHA-256 `8ef5bac9bd49f5d73f3a6798f87eb5dc1d3e966498f410db81393da52227914e`;
+the synthetic check with its documented lasting effects.
+
+**Before.** No other login, deployment, rehearsal, git or artisan process on
+the server; no local writer. Script, bundle (`98e43e08…016150a`) and assets
+tarball (`47cdcf82…0a9e0e16`) on the server matched the version 4 packet.
+Fresh `preflight` with that script at 03:27:32Z: passed (production at the
+expected baseline, clean, 5 untracked files recorded by content, 144 tables,
+383 migrations, nothing pending; dump restored in isolation, 143 of 144 tables
+identical, `sessions` written meanwhile; dump deleted). India time 08:57,
+outside the refused windows.
+
+A first attempt to start the release at 03:27:59Z started nothing: the
+agent's own launch guard matched its own command line. Production was
+re-read (unchanged, up) and the release started at 03:36:00Z.
+
+**The release** (`/root/takeover-production/release-20261008T033600Z/run.log`):
+
+| | Measured |
+|---|---|
+| Script | SHA-256 `8ef5bac9…227914e`, recorded by the run and copied into its evidence |
+| Maintenance | from just after 03:36:05Z to 03:36:27Z: **about 22 seconds** of 503 on the three hosts and the mobile API |
+| Backup | `/root/takeover-production/release-20261008T033600Z/jewelflow.dump`, on the server, root only (directory 700, file 600), SHA-256 `e03a895c09c323808a0fee6dc398ad9b9c21d68ddeeb5f578beaf7bc76a75030`, 144 table-data entries, read end to end |
+| Isolated restore | 144 of 144 tables identical to live by row count and content hash; relations, triggers and the full schema text identical |
+| Code and assets | checked out `e49e611…` as `dev`; manifest `5d0d0da8e6f1789fe183291f9fac84e49f8c28e22cf1cea01368b9718ad51a49`, the one verified on staging |
+| Configuration | the two product addresses appended to `.env` and in effect; every other `.env` line and every other setting unchanged; ownership and modes as before |
+| Migration | `2026_10_05_000001_create_product_promotion_tables`: fifteen named relations added, four empty tables; every existing table with its rows and content; existing schema (16,165 lines) identical; 384 migrations |
+| Files | every changed file readable by `www-data`; no new root-owned file; all 5 untracked files present with their content |
+| Proof before `up` | new landing with the one Dhiran address on both Retail hosts, new routes in both products, released manifest; visitors still 503; ten private-storage probes 403 |
+| Synthetic check | 18 passed, 0 failed; no row left (every table fingerprinted immediately before and after) |
+| After `up` | scheduler file back byte-identical; worker started after `up` and steady; smoke passed; no new error line; staging, php-fpm, nginx and its site file untouched |
+
+What the synthetic check left, as approved: sequences `users` +3, `shops` +3,
+`roles` +9, `role_permission` **+474**, `shop_editions` +3,
+`product_promotion_preferences` +10, `product_promotion_exposures` +2; four
+files under `storage/framework/views` (two framework-generated component
+templates and their compiled forms). The `role_permission` gap is larger than
+the +384 measured in the rehearsals: production has more permissions per
+default role than the rehearsal databases had. Nothing was reset.
+
+**After reopening** (read again at 03:37Z and 03:41Z):
+
+| | Result |
+|---|---|
+| Hosts | `jewelflows.com`, `www.jewelflows.com`: `/health`, `/`, `/login`, `/register` 200. `dhiran.jewelflows.com`: `/health`, `/login`, `/register` 200, `/` 302. Served manifest on all three: the released one |
+| Product links | both Retail hosts link to `https://dhiran.jewelflows.com/register` and `/login`; no `dhiran.www.`, no staging address |
+| New routes | a guest is redirected on `/product-preferences` and `/dhiran/product-preferences` |
+| Mobile API | 401 to a JSON request without a token |
+| Private storage | 403 on all five prefixes, both products |
+| Worker | active; the same main process at 03:37Z and 03:41Z, started 03:36:27Z |
+| Scheduler | file identical; cron ran `schedule:run` every minute after `up` (five runs by 03:41Z) |
+| Application log | no line at all since the release began, so no error |
+| Promotion tables | 0 rows in all four |
+| Staging | `a87dcd5…`, `/health` 200; php-fpm (since 19 Sep) and nginx (since 16 Sep) not reloaded |
+
+**Guest real browser** (Chrome, 360, 390, 768 and 1440 px, nothing typed or
+submitted): 34 passed, 0 failed. New landing on both Retail hosts without
+sideways scroll; log-in and register controls; both illustrations; the Dhiran
+links exactly the two explicit addresses, also on `www`; "Dhiran login" opens
+the Dhiran log-in and Back returns; Retail log-in, Retail register and Dhiran
+register open; the Dhiran root lands on its log-in.
+
+One thing the browser showed that is not of this release: Cloudflare's edge
+adds its analytics beacon to every page and the application's content policy
+refuses it (a console error and a blocked request on each page load). The
+policy file is unchanged by this release; the page as the origin serves it
+does not contain the beacon. Whether the policy should allow it or the edge
+should stop adding it is a decision, not a defect of the release.
+
+**NOT RUN on production**
+
+- **Signed-in Retail and Dhiran checks with the designated test accounts**
+  (navigation, Categories, Product preferences in each product, recognition
+  across the two products, revocation, independent sessions and log-out).
+  Neither product has a signed-in session in the owner's browser. To do: sign
+  in to the Retail test owner at `https://jewelflows.com/login` and to the
+  Dhiran test owner at `https://dhiran.jewelflows.com/login` (two tabs are
+  open at those pages). The recognition steps ask each owner for their own
+  password three times; the agent does not type passwords.
+- What the synthetic check stands in for meanwhile: the same flows through the
+  deployed HTTP kernel on both hosts, in a rolled-back transaction. It is not
+  a browser, and it does not show cookies, log-out or what a person sees.
+- Physical phones, Safari, Firefox; restricted roles in a browser.
+
+**Recovery position now.** Production has left the window. The four tables are
+empty at the time of writing; from the first preference or consent an owner
+records, the return to `aa3a62a` is refused by the script and by the rule.
+The window's dump is the last complete copy of the database before the
+release.
