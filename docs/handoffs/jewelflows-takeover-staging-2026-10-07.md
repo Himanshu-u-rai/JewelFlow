@@ -1,12 +1,13 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 10, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 11, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`).
+`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`).
 
-**Production and staging now run `bcc336a4b7c88e5431f35dbaa7bddc5d56774574`,
-the stabilization batch released at 09:04Z on 8 October: section 10.** What
-follows describes the takeover release that came before it. The
+**Production and staging now run `affb59c1e0e1344a4aea04cbf010f420bf33fea4`**
+(09:41Z on 8 October): the stabilization batch of section 10 and its second
+pass, section 11. What follows describes the takeover release that came
+before them. The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
@@ -17,7 +18,7 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 10, then section 9.** It names the one worktree and
+**Start here for the next task: section 11, then 10, then 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -754,4 +755,156 @@ branch **`fix/stabilization-20261008`**, at the commit that adds this
 version, level with its `origin` branch. Production's commit `bcc336a…` is an
 ancestor; the commits after it change only the release script, a staging
 check and `docs/`.
+
+## 11. Stabilization, second pass (version 11)
+
+Same branch, `fix/stabilization-20261008`, now **draft pull request #3**
+(base `integration/jewelflows-takeover`, stacked on #2). **Not everything is
+closed: the list at the end of this section is what remains.**
+
+### Deployed
+
+| | Commit | When (UTC) | Maintenance |
+|---|---|---|---|
+| Production | `affb59c1e0e1344a4aea04cbf010f420bf33fea4` (from `bcc336a…`) | 09:41:03 to 09:41:07 | 4 s |
+| Staging | the same | 09:38:14, 09:39:04, 09:40:03, 09:44:09 | 5 to 6 s each (release, return, release, a run of the final script) |
+
+Manifest `c9e1e434a8510a69…`; assets tarball `9cb9a7d5847d7609…`, built by
+`docs/runbooks/build-assets.sh`. Release script SHA-256 `a5c509ed9d85a457…`
+for the production run. No migration. Suite on PHP 8.2 at the deployed
+commit: 3,553 tests, 17,894 assertions, 0 failures, 1 skipped.
+
+### 1. The first use of a number counter (`2f44a60`)
+
+A shop's first quick bill, invoice, purchase or credit note creates the
+counter row. Several first uses at once: all but one answered 500 and booked
+nothing. Cause, in `BusinessIdentifierService::nextCounter()`: it caught the
+unique violation and carried on, which PostgreSQL does not allow inside a
+transaction (the failed statement aborts it). Now `ON CONFLICT DO NOTHING`;
+only that conflict is absorbed, any other error still raises. The two
+platform counters had the same pattern and the same fix.
+
+Race probe (`tests/Concurrency/quick_bill_create_race.php`), every scenario
+with measured overlap. A to C keep their warm-up; D to I are fresh shops:
+
+| Scenario | Before the fix | After |
+|---|---|---|
+| D. fresh shop, six identical requests, one key | 1 bill | 1 bill, 1 payment |
+| E. fresh shop, four requests, four keys | 1 × 201, 3 × 500 | 4 bills, 4 payments, 4 numbers |
+| F. fresh shop, four requests, no key | 1 × 201, 3 × 500 | 4 bills, 4 payments, 4 numbers |
+| G. six first invoice numbers | 1 issued, 5 failed | `INV-1001` to `INV-1006` |
+| H. six first purchase numbers | 1 issued, 5 failed | `PUR-1` to `PUR-6` |
+| I. two fresh shops, three credit notes each | 1 each | `CN-1` to `CN-3` in each |
+
+Six sequential tests pin the numbering: a shop's own starting number, prefix
+and suffix; other counters from one; each shop for itself; an existing
+counter continued; a caller's transaction still usable; a missing shop still
+raises.
+
+**Quick-bill edit sent twice, measured:** the bill is identical afterwards
+(same number, totals, one set of lines and payments: an edit replaces them).
+The only lasting difference is a second audit entry. No financial duplicate;
+nothing changed. A test pins it.
+
+Seen by reading, not reproduced, not changed: the fiscal-year reset of the
+invoice counter checks and resets without a lock, so two first invoices of a
+new fiscal year could both reset it. It needs `year_reset` on and happens
+once a year.
+
+### 2. The asset build (`815293e`, `19f53ac`)
+
+The stylesheet was generated partly from `storage/framework/views`, the
+compiled-view cache of the machine doing the build. That cache had the
+framework's own error and mail pages in it, compiled by local test runs.
+**Of the class names a clean build lost, 137 are used only by those
+framework templates, none of which loads this stylesheet; the rest are used
+nowhere.** No rule naming a class the application writes was lost.
+
+Tailwind now scans tracked sources only: `resources/views` (the
+application's own pagination and error views included) and `resources/js`.
+The second adds one rule the scripts needed and never had, the dimmed
+backdrop of the confirmation dialog. Measured:
+
+- two builds from clean exports with `npm ci`, and the working checkout:
+  byte-identical tarballs;
+- against the stylesheet deployed before: 154 rules gone, 2 added; none of
+  the 154 names a class written in a template, a script or a PHP string;
+- on production, signed in to Retail: 16 pages fetched (paginated lists
+  among them), none uses a class that lost its rule; the backdrop class
+  computes to `rgba(0, 0, 0, 0.45)`.
+
+The release script's comparison with the deployed stylesheet stays as a
+safeguard and refused this build until the removal was declared.
+
+### 3. Signed-in acceptance
+
+**Run, on production, in the owner's Retail session:**
+
+| Check | Result |
+|---|---|
+| Signed in with `Secure` cookies | yes |
+| The session across the 09:41Z release | signed in before the window, still signed in after it |
+| Turbo navigation | two sidebar links followed without a new document (a marker on `window` survived) |
+| Retail does not sign Dhiran or staging in | both asked for a log-in while Retail was signed in |
+| Stylesheet change | see 2 |
+
+**Pending, with the reason:**
+
+| Check | Why not |
+|---|---|
+| The session across the change to `Secure` itself | no session was held across it; nothing was inferred from that |
+| The return-policy message in a browser | the owner's Retail shop has a return policy, so its return form opens (seen; nothing submitted). It needs the synthetic staging shop: sign in at `https://staging.jewelflows.com/login` |
+| Dhiran, and logging out of one product while the other stays in | not signed in: `https://dhiran.jewelflows.com/login` |
+| The platform-admin Account link | not signed in: `https://jewelflows.com/admin/login` (or staging's) |
+| Phone layout | the browser window cannot be resized by the agent; a physical phone is the owner's check |
+
+### 4. APP_KEY rotation (`72539de`): corrected, not done
+
+The first proposal was wrong: a rotation would not leave recognitions
+"invalid", it would **revoke them for good** on first read. Tested.
+`promotion:restamp-proofs` migrates them inside the window; a proof whose
+owner changed is not revived. The lifecycle test goes from the old key to
+its removal, after which nothing made under it is accepted. The proposal has
+the order, the retirement date (31 days, for catalogue links) and the way
+back at each stage. The command is released and inert: no previous key is
+configured anywhere.
+
+### 5. The release tooling, accounted for
+
+- **Shared PHP-FPM.** One pool serves production and staging; every release
+  of either reloads it. Seven reloads on 8 October, five of them caused by
+  staging runs. Requests in flight finish; no 5xx after any of them in the
+  shared log, which has no host field, so production and staging cannot be
+  told apart in it. The script now says this and checks the other
+  environment's commit, `.env`, config cache and assets byte for byte, and
+  that it answers 200 after the reload.
+- **Cron is not held.** Production's scheduler started every minute
+  throughout (10 of 10 around the first window, 8 of 8 around this one).
+  Staging has one job, every ten minutes; none started inside the
+  interrupted 106-second window. **One did start two seconds before a later
+  staging window**; no error was logged, and whether it was still running at
+  the checkout is not known. The script now opens a window only when no
+  scheduled command is running.
+- **A way back.** `return` goes to an earlier commit of the batch with its
+  own assets; rehearsed on staging (forward, back, forward).
+- **Still true:** a release stopped by a gate stays in maintenance with cron
+  running and scheduled commands skipped; a restore of a window's dump has
+  not been rehearsed for this script (the dumps are read end to end).
+
+### What remains
+
+Pending checks: the five rows of 3; the suite on PHP 8.4; physical devices;
+a restore of a stabilization dump.
+
+Decisions for the owner: merge pull requests #2, then #3; the APP_KEY
+rotation date; an off-site backup destination; retention of dumps and of the
+older backup series; the tool data in root's home.
+
+Open findings, not changed here: the fiscal-year reset race (above); POS 500
+on an item with no price or metal type; three private files on the public
+disk; `pageinspect`; the review lows of the security batch; the mobile items
+(physical device, build 25, runtime policy, iOS).
+
+Deferred by the owner: Product preferences placement; the policy questions
+(quick-bill edit, loyalty expiry, shopfront); mobile builds.
 
