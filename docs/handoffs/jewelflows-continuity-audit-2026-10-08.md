@@ -31,9 +31,8 @@ with the evidence each rests on:
 | The two explicit product addresses | release gates; guest browser on `www` | — |
 
 Later the same morning the owner signed in to both products and navigation,
-Categories, preferences, withdrawal of a request and log-out were run on
-production (handoff, end of section 8). The recognition flow past its first
-step was not: it needs two more password entries by the owners.
+Categories, preferences, a recognition from request to removal, and log-out
+were run on production (handoff, end of section 8).
 
 ## 2. Inventory, and what each thing is
 
@@ -98,10 +97,12 @@ their archive tag was verified to point at the same commit.
 
 ## 4. Unfinished work and open decisions
 
-1. **Recognition in two real browsers on production: NOT RUN past the first
-   step.** Approval on Dhiran, the final confirmation on Retail and revocation
-   each need the owner to type an account password. The rest of the signed-in
-   checks passed (handoff, end of section 8).
+1. **The Product preferences page is hard to find** (the owner's finding on
+   production): one secondary button in each Settings header and nothing else.
+   A placement defect by the owner's own rule; an application change, so it
+   waits for a decision and the normal local → staging → production path.
+   Signed-in checks on production otherwise passed, recognition included
+   (handoff, end of section 8).
 2. **The release is not on `origin`.** The 27 commits of the release, and the
    documentation commits after it, exist only in the local repository and as
    a bundle on the server.

@@ -1,21 +1,21 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 6, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
-version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`). The
+**Version 7, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
+`0a7eb55`). The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
 
 **Production was released on 8 October 2026, 03:36Z, with the owner's
 approval. It runs `e49e611768e62674de0c4b2a77da42d018b28c30`.** Section 8 is the
-record. Signed-in browser checks on production were then run in part (end of
-section 8): navigation, Categories, preferences, withdrawal of a request and
-independent log-out passed; **approval, final confirmation and revocation of
-a recognition in two browsers are NOT RUN**, because they need each owner's
-password and the agent does not type passwords.
+record. The signed-in browser checks on production were then run (end of
+section 8), the recognition flow included: the owner typed the passwords, the
+agent verified each step and removed the recognition again.
 
-New in version 5: section 8, the release and its verification. New in
-version 6: the signed-in results at the end of section 8.
+New in version 5: section 8, the release and its verification. Versions 6
+and 7: the signed-in results at the end of section 8. One finding from the
+owner: the Product preferences page is hard to find (end of section 8).
 
 New in version 4 (section 6a):
 
@@ -508,15 +508,39 @@ the owner designated as the test accounts; the agent entered no credential):
 | Independent sessions | logged out of Retail through its confirmation dialog: Retail asks for a log-in, the Dhiran session still opens its pages |
 | Left behind | 2 preference rows, 2 exposure rows, 1 consumed request, 0 recognitions. Categories, invoices, customers and loans of the two shops as before. No error line |
 
+**Recognition across the two products, in the owner's two signed-in sessions**
+(the owner typed every password and ticked every consent; the agent read the
+pages and the rows, and typed no credential):
+
+| Step | Result |
+|---|---|
+| Request (Retail owner, 10:07:24 India time) | one pending row, expiring ten minutes later |
+| Approval (Dhiran owner, 10:08:00) | the row carries the Dhiran owner and shop; the Retail page then names the approving business and asks for the final confirmation; no recognition exists yet |
+| Final confirmation (Retail owner, 10:11:32) | request consumed; one recognition row for exactly that pair, purpose `promotion_suppression`, a 64-character proof on each side |
+| Both products | each shows "Goldlux — other product confirmed on 08 Oct 2026" and "Remove this recognition" |
+| Removal (from the Dhiran side, 10:12:20) | "Recognition removed."; `revoked_at` set; neither product shows it or offers to remove it any more |
+| Nothing else moved | invoices, customers, loans, users and editions of the two shops unchanged (no edition granted, nothing shared); no error line |
+
+Rows now: 2 preferences (both owners chose "I already use…" themselves), 2
+exposures, 2 consumed requests, 1 revoked recognition; nothing open.
+
+**A finding from the owner while doing this: the page is hard to reach.**
+Measured: each product has exactly one standing entry, a secondary
+"Product preferences" button in the header of its Settings page (visible and
+on top at 1920 px and at 390 px); the only other entry is the introduction
+card, which is shown once. Nothing in the fourteen Settings tabs mentions it,
+and one of them is called "Preferences" and is something else. The owner did
+not find it. By the owner's own rule for where features live (prominent,
+clearly labelled) that is a defect of placement, not of function. It is not
+fixed here: it is an application change and goes local → staging →
+production.
+
 **NOT RUN on production**
 
-- **Approval on the other product, the final confirmation, an established
-  recognition, its suppression of offers, and its revocation, in real
-  browsers.** Each of the two remaining steps needs an account password; the
-  owner did not complete them and the agent does not type passwords into a
-  live site, whoever supplies them. What stands in: the same flow through the
-  deployed HTTP kernel on both hosts inside the release window (18 checks),
-  which is not a browser.
+- Suppression of the introduction by an established recognition, as seen in
+  a browser: both owners had already switched offers off themselves, so there
+  was no introduction left to suppress. It is covered through the HTTP kernel
+  by the check script (18 checks in the window).
 - Logging out of Dhiran while Retail stays signed in (the other direction).
 - Physical phones, Safari, Firefox; restricted roles in a browser; the phone
   width signed in on production (measured on staging on the same bundle).
