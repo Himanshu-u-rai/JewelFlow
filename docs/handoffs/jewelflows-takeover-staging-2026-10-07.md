@@ -1,8 +1,8 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 8, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 9, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`, version 7 `35b640e`). The
+`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`). The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
@@ -16,6 +16,10 @@ agent verified each step and removed the recognition again.
 **Start here for the next task: section 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
+
+New in version 9: `main` is being reconciled through **draft pull request
+#2** (section 9); the inventory of older work is finished, with a disposition
+for every item, in the audit (version 3). No application code changed.
 
 New in version 8: the release was verified again after the window and the
 second log-out direction was run (end of section 8); the branch is published
@@ -606,7 +610,7 @@ release.
 | Branch | `integration/jewelflows-takeover`, tracking `origin/integration/jewelflows-takeover` |
 | Commit | the one that adds this version; `git rev-parse HEAD` and `git rev-parse @{u}` must print the same value, and `git status --short` nothing |
 | Relation to production | production runs `e49e611768e62674de0c4b2a77da42d018b28c30` (tag `release/production-20261008`), which is an ancestor of this commit; everything after it changes only `docs/` (`git diff --stat release/production-20261008 HEAD -- . ':!docs'` prints nothing) |
-| Relation to `main` | `origin/main` (`dab0774…`) is an ancestor, 35 commits behind. **Do not deploy `main` until it has been moved to this branch**: it predates the release |
+| Relation to `main` | `origin/main` (`dab0774…`) is an ancestor and predates the release. It is being brought level by **draft pull request #2** (`https://github.com/Himanshu-u-rai/JewelFlow/pull/2`, base `main`, head this branch, opened by the owner). **Do not open a second pull request, do not push `main` directly, and do not deploy `main` until #2 is merged** |
 
 Cut the next task's branch from this commit. Do not start from
 `fix/small-batch-20260914` (the owner's checkout, September), from any
@@ -624,6 +628,16 @@ repository the recovery copy for them.
 **Not done, by decision or because it is not this release:**
 
 - The placement of the Product preferences page: deferred by the owner.
-- Moving `origin/main`: left to the owner (a fast-forward).
-- Everything in section 4 of the audit.
+- Moving `origin/main`: in hand through draft pull request #2. Commits pushed
+  to this branch join that pull request; they are documentation only.
+- Everything in sections 3 to 5 of the audit (version 3): two confirmed
+  defects with a ready fix on an old branch, the open findings of the
+  security and tenant batch, and the decisions that are the owner's.
+
+**Local repository after the inventory (version 9):** three worktrees (the
+owner's checkout, this one, `main-integration`); branches `main`, this
+branch, the owner's `fix/small-batch-20260914`, and three kept on purpose
+(`fix/returns-flash-channel`, `design/customers-codex-polish`,
+`fix/masters-safety-guards`: see the audit); no stash; 17 `archive/…` tags,
+local only.
 
