@@ -9,6 +9,7 @@
 #   deploy-takeover-production.sh release   <same five arguments>
 #   deploy-takeover-production.sh resume    <from-sha> <target-sha> <evidence dir of the stopped release>
 #   deploy-takeover-production.sh baseline  <from-sha> <target-sha> <evidence dir of the stopped release>
+#   deploy-takeover-production.sh tree-check <from-sha> <target-sha> <evidence dir of the stopped release>
 #   deploy-takeover-production.sh restore-check <dump file>
 #
 # Retail (jewelflows.com, www.jewelflows.com), Dhiran (dhiran.jewelflows.com)
@@ -34,6 +35,11 @@
 #                empty: the earlier release must never run over recorded preferences
 #                or consent. Empty tables are left in place, never dropped; a later
 #                `release` recognises them and does not run the migration again.
+# tree-check     changes nothing. For a tree that `resume` and `baseline` refuse as dirty (a
+#                checkout cut short): says of every differing path whether it is, byte for
+#                byte, the other commit's version, and writes out the commands that would put
+#                exactly those paths back. It runs none of them. One path that is neither
+#                version and it says STOP and writes no command.
 # restore-check  restores a dump in the isolated instance and fingerprints it.
 #                It touches nothing live. Use it before trusting any backup.
 #
@@ -54,10 +60,10 @@
 set -uo pipefail
 export LC_ALL=C
 
-MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256 | resume|baseline from-sha target-sha stopped-run-dir | restore-check dump}
+MODE=${1:?usage: preflight|release from-sha target-sha bundle assets.tar.gz assets-sha256 | resume|baseline|tree-check from-sha target-sha stopped-run-dir | restore-check dump}
 case "$MODE" in
   preflight|release) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; BUNDLE=${4:?bundle}; ASSETS=${5:?assets tarball}; ASSETS_SHA=${6:?assets sha256} ;;
-  resume|baseline) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; PREV=${4:?evidence dir of the stopped release} ;;
+  resume|baseline|tree-check) FROM=${2:?from-sha}; TARGET=${3:?target-sha}; PREV=${4:?evidence dir of the stopped release} ;;
   restore-check) CHECK_DUMP=${2:?dump file} ;;
   *) echo "unknown mode: $MODE"; exit 64 ;;
 esac
@@ -140,11 +146,13 @@ ok() { echo "ok    $*"; }
 code() { local h=$1; shift; curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
 body() { local h=$1; shift; curl -sk -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
 new_rows() { local t n=0; for t in "${NEW_TABLES[@]}"; do n=$((n + $(PSQL "select count(*) from $t"))); done; echo "$n"; }
-# Every untracked FILE, one by one. (Git's default folds an untracked directory into one line, and
-# unfolds it as soon as the target tracks any file in it: production's docs/superpowers/ is such a
-# directory. Found in the tooling rehearsal; the folded listing made the gate fail on a tree in
-# which no untracked file had been touched.)
-untracked() { G status --porcelain --untracked-files=all | grep '^??' | sort; }
+# Every untracked file (not ignored), as "<sha256 of its content>  <path>": the actual files, not
+# git's summary of them. (Git folds an untracked directory into one line and unfolds it as soon as
+# the target tracks any file in it; production's docs/superpowers/ is such a directory. A gate on
+# that listing failed in rehearsal on a tree in which no untracked file had been touched.)
+untracked() { G ls-files --others --exclude-standard -z | ( cd "$DIR" && xargs -0 -r sha256sum -- ) | sort -k2; }
+untracked_paths() { sed -E 's/^\\?[0-9a-f]{64}  //' <<< "$1"; }
+untracked_differ() { diff <(echo "$UNTRACKED_BEFORE") <(untracked) | sed -nE 's/^[<>] \\?[0-9a-f]{64}  //p' | sort -u | tr '\n' ' '; }
 
 # Every table of the public schema (row count and a hash of its content), every relation
 # and the trigger count. Session settings are pinned so that the text of a value is the
@@ -165,6 +173,23 @@ fingerprint() { sudo -u postgres env "PGOPTIONS=$FP_OPTS" psql -X -q -A -t -v ON
 fp_tables() { grep '^table ' "$1"; }
 fp_summary() { echo "$(grep -c '^table ' "$1") tables, $(awk '$1 == "table" && $3 > 0' "$1" | wc -l) holding rows, $(grep -c '^rel ' "$1") relations, $(awk '$1 == "triggers" { print $2 }' "$1") triggers"; }
 fp_get() { awk -v t="$2" '$1 == "table" && $2 == t { print $3 }' "$1"; }
+# `sessions` is the one table this script's own page requests write (the proof through the bypass):
+# it is left out of the whole-table comparisons after quiesce and checked row by row instead. Two
+# kinds of change are understood: a GUEST row added since the window opened, and a row removed by
+# the session garbage collector because it had expired. Anything else is listed: a row that existed
+# and changed, a new row belonging to a user, a new row older than the window, a live row gone.
+SESSION_SQL="select md5(id)||' '||md5(s::text)||' '||last_activity||' '||(user_id is null) from sessions s order by 1"
+sessions_now() { sudo -u postgres env "PGOPTIONS=$FP_OPTS" psql -X -q -A -t -v ON_ERROR_STOP=1 -d "$DB" -c "$SESSION_SQL"; }
+sessions_unexplained() {
+  sessions_now | awk -v start="$WINDOW_START" -v life="$SESSION_LIFETIME" -v now="$(date +%s)" -v snapshot="$1" '
+    BEGIN { while ((getline line < snapshot) > 0) { split(line, f, " "); before[f[1]] = f[2]; act[f[1]] = f[3] } }
+    { seen[$1] = 1
+      if ($1 in before) { if (before[$1] != $2) c++ }
+      else if ($4 != "t") u++
+      else if ($3 < start - 5) o++ }
+    END { for (k in before) if (!(k in seen) && act[k] >= now - life) g++
+          if (c + u + o + g) printf "%d existing row(s) changed, %d new row(s) belonging to a user, %d new row(s) older than the window, %d unexpired row(s) gone", c, u, o, g }'
+}
 fp_differ() { diff <(fp_tables "$1") <(fp_tables "$2") | awk '/^[<>] table/ { print $3 }' | sort -u | tr '\n' ' '; }
 # The schema as text. Only pg_dump's per-run \restrict token is removed (it is random, so two
 # dumps of one schema never compare equal with it). Comments and blank lines stay: they can be
@@ -248,10 +273,24 @@ new_errors() {
   echo "$n"
 }
 save() { declare -p "$@" >> "$WORK/state"; }
+# The worker is started only once the site is up, and must then stay up. A worker with --max-time
+# that finds the application in maintenance leaves after its first pause, with status 0 (Laravel's
+# Worker::pauseWorker asks stopIfNecessary without a start time, so the time limit counts from the
+# machine's boot). Started before `up`, it exits; systemd restarts it five seconds later; a look at
+# "did not fail" two seconds after the start sees nothing wrong. Seen in the staging release of
+# 7 October (started 15:51:03, gone 15:51:06, restarted 15:51:11) and in the tooling rehearsal.
+# Healthy here means: active, and the same main process ten seconds apart.
+worker_steady() {
+  local a b
+  systemctl start "$WORKER" || return 1
+  sleep 2; a=$(systemctl show -p MainPID --value "$WORKER")
+  sleep 10; b=$(systemctl show -p MainPID --value "$WORKER")
+  [ "$(systemctl is-active "$WORKER")" = active ] && [ -n "$a" ] && [ "$a" != 0 ] && [ "$a" = "$b" ]
+}
 unquiesce() {
   [ -e "$HELD" ] && { mv "$HELD" "$CRON"; echo "      cron put back: $CRON"; }
-  systemctl start "$WORKER" && echo "      $WORKER started"
   ART up >/dev/null 2>&1 && echo "      maintenance off"
+  worker_steady && echo "      $WORKER started and steady" || echo "      $WORKER IS NOT RUNNING STEADILY: look at it now"
 }
 fail() {
   echo "!!!!! GATE FAILED [$PHASE]: $*"
@@ -272,9 +311,7 @@ fail() {
 verify_migrated() {
   PHASE=migrate
   local added mine
-  # `sessions` aside: this script's own page requests (the proof through the bypass, the smoke test)
-  # open guest sessions, so after a stopped run that table has moved without any user having been let in.
-  mine="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "
+  mine="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "   # sessions: checked row by row just below
   grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is still pending"
   [ "$(new_rows)" = 0 ] || fail "the new tables are not empty"
   fingerprint > "$WORK/live.after.fp" || fail "could not fingerprint the migrated database"
@@ -288,9 +325,10 @@ verify_migrated() {
   # Every table that existed before: same row count, same content. Only `migrations` may differ (one row more).
   cmp -s <(fp_tables "$BEFORE_FP" | grep -vE "$mine") <(fp_tables "$WORK/live.after.fp" | grep -vE "$mine") \
     || fail "a row of an existing table changed: $(fp_differ "$BEFORE_FP" "$WORK/live.after.fp")"
+  [ -z "$(sessions_unexplained "$SESSIONS_BEFORE")" ] || fail "the sessions table changed in a way this script does not account for: $(sessions_unexplained "$SESSIONS_BEFORE")"
   schema_live "${EXCLUDE[@]}" > "$WORK/schema.after.sql"
   cmp -s "$BEFORE_SCHEMA" "$WORK/schema.after.sql" || fail "the schema outside the six named relations changed: diff $BEFORE_SCHEMA $WORK/schema.after.sql"
-  ok "migration $MIGRATION $([ "$MIGRATED" = 1 ] && echo 'was already applied (not run again)' || echo 'applied: fifteen named relations added'), four empty tables; every existing table has its rows and content (sessions aside); existing schema ($(wc -l < "$WORK/schema.after.sql") lines) identical"
+  ok "migration $MIGRATION $([ "$MIGRATED" = 1 ] && echo 'was already applied (not run again)' || echo 'applied: fifteen named relations added'), four empty tables; every existing table has its rows and content (in sessions, nothing but guest rows of this window and expired rows collected); existing schema ($(wc -l < "$WORK/schema.after.sql") lines) identical"
 }
 configure() {
   PHASE=config
@@ -313,8 +351,8 @@ finish() {
   ART assets:verify-fresh >/dev/null 2>&1 || fail "assets:verify-fresh says the built assets are older than their sources"
   while IFS= read -r f; do [ -e "$DIR/$f" ] || continue; sudo -u www-data test -r "$DIR/$f" || fail "www-data cannot read $f"; done < <(G diff --name-only "$FROM" "$TARGET")
   [ "$(root_owned)" = "$ROOT_OWNED_BEFORE" ] || fail "the root-owned files in the tree changed: $(diff <(echo "$ROOT_OWNED_BEFORE") <(root_owned) | head -3 | tr '\n' ' ')"
-  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "the untracked files changed"
-  ok "routes and views cached; assets fresh; every changed file readable by www-data; no new root-owned file; untracked files as before"
+  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "an untracked file was added, removed or changed: $(untracked_differ)"
+  ok "routes and views cached; assets fresh; every changed file readable by www-data; no new root-owned file; every untracked file present with its content"
 
   # ── proof, still in maintenance: the shared FPM pool serves the NEW code on all three hosts ──
   PHASE=freshness
@@ -355,13 +393,14 @@ finish() {
   PHASE=processes
   mv "$HELD" "$CRON" || fail "could not put the scheduler cron back"
   [ "$(sha256sum "$CRON" | cut -d' ' -f1)" = "$CRON_SHA" ] && [ "$(stat -c '%U:%G %a' "$CRON")" = "$CRON_STAT" ] || fail "the scheduler cron is not byte-identical with its mode"
-  systemctl start "$WORKER" && sleep 2 && [ "$(systemctl is-failed "$WORKER")" != failed ] || fail "$WORKER did not start"
-  ok "scheduler cron back ($CRON_SHA, $CRON_STAT); $WORKER started"
+  ok "scheduler cron back ($CRON_SHA, $CRON_STAT)"
   PHASE=up
   ART up >/dev/null || fail "artisan up failed"
   ok "maintenance off at $(date -u +%H:%M:%SZ)"
 
   PHASE=smoke
+  worker_steady || fail "smoke: $WORKER is not running steadily (active, same main process ten seconds apart)"
+  ok "$WORKER started after maintenance ended and is steady"
   [ "$(answers)" = "$ANSWERS_EXPECTED" ] || fail "smoke: a public answer changed: $(answers) (expected $ANSWERS_EXPECTED)"
   [ "$(code "$RETAIL" "https://$RETAIL/")" = 200 ] && [ "$(code "$WWW" "https://$WWW/")" = 200 ] || fail "smoke: the landing page is not 200"
   [ "$(code "$RETAIL" "https://$RETAIL/product-preferences")" = 302 ] && [ "$(code "$DHIRAN" "https://$DHIRAN/dhiran/product-preferences")" = 302 ] || fail "smoke: the new routes did not redirect a guest"
@@ -381,10 +420,11 @@ if [ "$MODE" = resume ]; then
   [ -f "$PREV/state" ] && [ "$(cat "$PREV/code.before" 2>/dev/null)" = "$FROM" ] || fail "$PREV is not the evidence of a release from $FROM"
   # shellcheck disable=SC1091
   source "$PREV/state"; MIGRATED=${MIGRATED:-0}
-  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; BEFORE_SCHEMA=$PREV/schema.before.sql; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes
+  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; BEFORE_SCHEMA=$PREV/schema.before.sql; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes; SESSIONS_BEFORE=$PREV/sessions.before
   grep -qE '^APP_ENV=production$' "$DIR/.env" || fail "$DIR/.env is not APP_ENV=production"
   [ -f storage/framework/down ] || fail "production is not in maintenance: there is nothing to resume"
-  [ "$(G rev-parse HEAD)" = "$TARGET" ] && [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "production is not cleanly on $TARGET"
+  [ "$(G rev-parse HEAD)" = "$TARGET" ] && [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "production is not cleanly on $TARGET (HEAD $(G rev-parse HEAD), $(G status --porcelain --untracked-files=no | wc -l) tracked path(s) differing): see the procedure, 'A checkout cut short'. Nothing is discarded automatically"
+  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "an untracked file was added, removed or changed since the release began: $(untracked_differ)"
   [ -f "$HELD" ] && [ ! -e "$CRON" ] || fail "the scheduler cron is not held at $HELD"
   [ "$(systemctl is-active "$WORKER")" != active ] && [ "$(artisan_running)" = 0 ] || fail "$WORKER or a scheduled command is running"
   [ -f "$BACKUP" ] && [ "$(sha256sum "$BACKUP" | cut -d' ' -f1)" = "$DUMP_SHA" ] && pg_restore -f /dev/null "$BACKUP" 2>/dev/null || fail "the stopped run's backup is not the one it recorded, or does not read"
@@ -400,6 +440,54 @@ if [ "$MODE" = resume ]; then
   exit 0
 fi
 
+# ── tree-check: read-only. What a checkout that was cut short left, path by path ──
+if [ "$MODE" = tree-check ]; then
+  echo "########## takeover production tree-check at $STAMP (UTC): deployed $FROM, target $TARGET, evidence $PREV. This mode changes nothing. ##########"
+  cd "$DIR" || fail "no directory $DIR"
+  [ -f "$PREV/state" ] && [ -d "$PREV/candidate.git" ] || fail "$PREV is not the evidence of a release (no saved state, or no throwaway repository of the candidate)"
+  # shellcheck disable=SC1091
+  source "$PREV/state"
+  CAND=$PREV/candidate.git   # holds both commits even if the fetch into the production repository was cut short
+  HEAD_NOW=$(G rev-parse HEAD)
+  case "$HEAD_NOW" in "$FROM") OTHER=$TARGET ;; "$TARGET") OTHER=$FROM ;; *) fail "HEAD is $HEAD_NOW, neither the deployed commit nor the target" ;; esac
+  blob() { C rev-parse --verify --quiet "$1:$2" 2>/dev/null || echo absent; }
+  have() { if [ -e "$DIR/$1" ]; then G hash-object --no-filters -- "$1"; else echo absent; fi; }
+  UNKNOWN=0; RESTORE=(); REMOVE=()
+  echo "HEAD is $HEAD_NOW; the other commit is $OTHER. Paths that differ from HEAD:"
+  while IFS= read -r -d '' e; do
+    p=${e:3}
+    if [ "$(have "$p")" = "$(blob "$OTHER" "$p")" ]; then echo "  the other commit's version    $p"; RESTORE+=("$p")
+    else echo "  NEITHER VERSION               $p"; UNKNOWN=$((UNKNOWN + 1)); fi
+  done < <(G status --porcelain -z --untracked-files=no)
+  NOW=$(untracked)
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if [ "$(have "$p")" = "$(blob "$OTHER" "$p")" ]; then echo "  added by the other commit     $p"; REMOVE+=("$p")
+    else echo "  NOT THERE BEFORE THE RELEASE AND NOT THE OTHER COMMIT'S   $p"; UNKNOWN=$((UNKNOWN + 1)); fi
+  done < <(comm -13 <(untracked_paths "$UNTRACKED_BEFORE" | sort) <(untracked_paths "$NOW" | sort))
+  while IFS= read -r l; do
+    [ -n "$l" ] || continue
+    echo "  AN UNTRACKED FILE RECORDED BEFORE THE RELEASE CHANGED OR IS GONE   $(untracked_paths "$l")"; UNKNOWN=$((UNKNOWN + 1))
+  done < <(comm -23 <(echo "$UNTRACKED_BEFORE" | sort) <(echo "$NOW" | sort))
+  [ ! -e "$DIR/.git/index.lock" ] || echo "note  .git/index.lock is present ($(pgrep -x git >/dev/null && echo 'and a git process IS RUNNING: wait for it' || echo 'no git process is running: it is a left-over'))"
+  if [ "$UNKNOWN" -gt 0 ]; then
+    echo "STOP: $UNKNOWN path(s) are not explained by the checkout. Restore nothing and remove nothing. Copy those files aside and find out what they are first."
+    exit 3
+  fi
+  if [ $(( ${#RESTORE[@]} + ${#REMOVE[@]} )) = 0 ]; then echo "The tracked tree is clean at $HEAD_NOW and no file was added: nothing to repair. Use resume or baseline."; exit 0; fi
+  {
+    [ ! -e "$DIR/.git/index.lock" ] || printf 'rm -f -- %q    # only when "pgrep -x git" prints nothing\n' "$DIR/.git/index.lock"
+    if [ ${#RESTORE[@]} -gt 0 ]; then printf 'sudo -H -u %q git -C %q restore --source=HEAD --staged --worktree --' "$OWNER" "$DIR"; printf ' %q' "${RESTORE[@]}"; echo; fi
+    for p in "${REMOVE[@]}"; do printf 'rm -- %q\n' "$DIR/$p"; done
+    printf 'sudo -H -u %q git -C %q --no-optional-locks status --porcelain --untracked-files=no    # must print nothing\n' "$OWNER" "$DIR"
+  } > "$WORK/commands.sh"
+  echo "Every differing path is, byte for byte, the other commit's version (${#RESTORE[@]} changed, ${#REMOVE[@]} added): nothing but the cut-short checkout is in the tree, and putting those paths back loses nothing that is not in the repository."
+  echo "The commands that would do exactly that, and no more, are in $WORK/commands.sh. They have NOT been run:"
+  sed 's/^/    /' "$WORK/commands.sh" | cut -c1-400
+  echo "Run them yourself only if you agree with the list above. Then: baseline (HEAD is the deployed commit) or resume/baseline (HEAD is the target)."
+  exit 0
+fi
+
 # ── baseline: back to the release that was running, only while that is permitted ──
 if [ "$MODE" = baseline ]; then
   echo "########## takeover production baseline: back to $FROM from an attempt at $TARGET, at $STAMP (UTC); evidence of that attempt: $PREV ##########"
@@ -407,14 +495,15 @@ if [ "$MODE" = baseline ]; then
   [ -f "$PREV/state" ] && [ "$(cat "$PREV/code.before" 2>/dev/null)" = "$FROM" ] || fail "$PREV is not the evidence of a release from $FROM"
   # shellcheck disable=SC1091
   source "$PREV/state"; MIGRATED=${MIGRATED:-0}
-  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes
+  HELD=$PREV/cron.held; BACKUP=$PREV/$DB.dump; BEFORE_FP=$PREV/live.before.fp; ENV_BEFORE=$PREV/env.before; CONFIG_BEFORE=$PREV/config.before.hashes; SESSIONS_BEFORE=$PREV/sessions.before
   grep -qE '^APP_ENV=production$' "$DIR/.env" || fail "$DIR/.env is not APP_ENV=production"
   [ -f storage/framework/down ] || fail "production is not in maintenance. Once it has been up on the new release, owners may have recorded a preference or consent, and the earlier release must not run over those: REFUSED, repair forward"
   [ -f "$BACKUP" ] && [ "$(sha256sum "$BACKUP" | cut -d' ' -f1)" = "$DUMP_SHA" ] || fail "the stopped run's backup is missing or is not the one it recorded"
   [ storage/framework/down -ot "$BACKUP" ] || fail "maintenance was switched on again after that run's backup, so production has been up in between: REFUSED, repair forward"
   HEAD_NOW=$(G rev-parse HEAD)
   [ "$HEAD_NOW" = "$FROM" ] || [ "$HEAD_NOW" = "$TARGET" ] || fail "HEAD is $HEAD_NOW, neither the baseline nor the target"
-  [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "the tracked tree is dirty (a checkout cut short?): this mode does not repair that"
+  [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "$(G status --porcelain --untracked-files=no | wc -l) tracked path(s) differ from HEAD (a checkout cut short?): see the procedure, 'A checkout cut short'. Nothing is discarded automatically"
+  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "an untracked file was added, removed or changed since the release began: $(untracked_differ)"
   [ -f "$HELD" ] && [ ! -e "$CRON" ] || fail "the scheduler cron is not held at $HELD"
   [ "$(systemctl is-active "$WORKER")" != active ] && [ "$(artisan_running)" = 0 ] || fail "$WORKER or a scheduled command is running"
   # The rule. Counted here, in maintenance, with nothing able to write.
@@ -451,7 +540,8 @@ if [ "$MODE" = baseline ]; then
   [ -z "$(diff <(config_hashes) "$CONFIG_BEFORE")" ] || fail "the configuration in effect is not what it was before the release, under: $(diff <(config_hashes) "$CONFIG_BEFORE" | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')"
   [ "$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")" = "$CACHE_STAT" ] || fail "the config cache's ownership or mode changed (was $CACHE_STAT)"
   ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
-  [ "$(root_owned)" = "$ROOT_OWNED_BEFORE" ] && [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "root-owned or untracked files in the tree changed"
+  [ "$(root_owned)" = "$ROOT_OWNED_BEFORE" ] || fail "the root-owned files in the tree changed"
+  [ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "an untracked file was added, removed or changed: $(untracked_differ)"
   ok "code $FROM, its assets (manifest $BASE_MANIFEST), .env and configuration are back as recorded before the release"
 
   # The database: nothing of what existed may have moved; the four tables absent, or present and empty.
@@ -460,10 +550,11 @@ if [ "$MODE" = baseline ]; then
   [ -z "$ADDED" ] || [ "$ADDED" = "$NEW_RELATIONS" ] || fail "relations other than the release's fifteen were added: $(tr '\n' ' ' <<< "$ADDED")"
   [ -z "$(comm -23 <(grep '^rel ' "$BEFORE_FP") <(grep '^rel ' "$WORK/live.baseline.fp"))" ] || fail "a relation that existed before the release is gone"
   [ "$(awk '$1 == "triggers" { print $2 }' "$WORK/live.baseline.fp")" = "$(awk '$1 == "triggers" { print $2 }' "$BEFORE_FP")" ] || fail "the trigger count changed"
-  MINE="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "   # sessions: guest sessions of the attempt's own page requests
+  MINE="^table (migrations|sessions|$(IFS='|'; echo "${NEW_TABLES[*]}")) "   # sessions: checked row by row just below
   cmp -s <(fp_tables "$BEFORE_FP" | grep -vE "$MINE") <(fp_tables "$WORK/live.baseline.fp" | grep -vE "$MINE") || fail "a row of an existing table changed since before the release: $(fp_differ "$BEFORE_FP" "$WORK/live.baseline.fp")"
+  [ -z "$(sessions_unexplained "$SESSIONS_BEFORE")" ] || fail "the sessions table changed in a way this script does not account for: $(sessions_unexplained "$SESSIONS_BEFORE")"
   [ -z "$(fp_tables "$WORK/live.baseline.fp" | grep -E "^table ($(IFS='|'; echo "${NEW_TABLES[*]}")) " | awk '$3 != 0')" ] || fail "a promotion table is not empty"
-  ok "database: every table that existed before the release has its rows and content (sessions aside: $(fp_get "$BEFORE_FP" sessions) rows before, $(fp_get "$WORK/live.baseline.fp" sessions) now); relations $([ -z "$ADDED" ] && echo 'exactly as before' || echo 'as before plus the fifteen of the migration, its four tables empty and left in place')"
+  ok "database: every table that existed before the release has its rows and content (sessions: $(fp_get "$BEFORE_FP" sessions) rows before, $(fp_get "$WORK/live.baseline.fp" sessions) now, the difference all guest rows of this window or expired rows collected); relations $([ -z "$ADDED" ] && echo 'exactly as before' || echo 'as before plus the fifteen of the migration, its four tables empty and left in place')"
 
   PHASE=freshness
   sleep 6
@@ -486,11 +577,12 @@ if [ "$MODE" = baseline ]; then
   PHASE=processes
   mv "$HELD" "$CRON" || fail "could not put the scheduler cron back"
   [ "$(sha256sum "$CRON" | cut -d' ' -f1)" = "$CRON_SHA" ] && [ "$(stat -c '%U:%G %a' "$CRON")" = "$CRON_STAT" ] || fail "the scheduler cron is not byte-identical with its mode"
-  systemctl start "$WORKER" && sleep 2 && [ "$(systemctl is-failed "$WORKER")" != failed ] || fail "$WORKER did not start"
   PHASE=up
   ART up >/dev/null || fail "artisan up failed"
-  ok "scheduler cron back ($CRON_SHA, $CRON_STAT); $WORKER started; maintenance off at $(date -u +%H:%M:%SZ)"
+  ok "scheduler cron back ($CRON_SHA, $CRON_STAT); maintenance off at $(date -u +%H:%M:%SZ)"
   PHASE=smoke
+  worker_steady || fail "smoke: $WORKER is not running steadily (active, same main process ten seconds apart)"
+  ok "$WORKER started after maintenance ended and is steady"
   [ "$(answers)" = "$ANSWERS_EXPECTED" ] || fail "smoke: a public answer changed: $(answers) (expected $ANSWERS_EXPECTED)"
   [ "$(code "$RETAIL" "https://$RETAIL/")" = 200 ] && [ "$(code "$WWW" "https://$WWW/")" = 200 ] || fail "smoke: the landing page is not 200"
   [ "$(protections)" = "$PROTECTIONS_EXPECTED" ] || fail "smoke: a private storage prefix is not refused: $(protections)"
@@ -521,7 +613,7 @@ SHARED_BEFORE=$(shared_state)
 OTHER_HEALTH_BEFORE=$(code "$OTHER_HOST" "https://$OTHER_HOST/health")
 [ "$(systemctl is-active "$WORKER")" = active ] || fail "$WORKER is not active"
 [ "$(grep -cvE '^\s*(#|$)' "$CRON")" = 1 ] && grep -qE "^\* \* \* \* \* www-data /usr/bin/php $DIR/artisan schedule:run" "$CRON" || fail "$CRON is not the one scheduler line this script knows how to hold"
-ok "production is $FROM, clean, up, owned by $OWNER; .env $ENV_STAT, config cache $CACHE_STAT; $(grep -c . <<< "$UNTRACKED_BEFORE") untracked and $(grep -c . <<< "$ROOT_OWNED_BEFORE") root-owned files recorded; $WORKER active; scheduler cron as expected"
+ok "production is $FROM, clean, up, owned by $OWNER; .env $ENV_STAT, config cache $CACHE_STAT; $(grep -c . <<< "$UNTRACKED_BEFORE") untracked files recorded with their content hashes, $(grep -c . <<< "$ROOT_OWNED_BEFORE") root-owned; $WORKER active; scheduler cron as expected"
 ok "staging recorded: ${SHARED_BEFORE%%|*} (health $OTHER_HEALTH_BEFORE); php-fpm, nginx and its site file recorded"
 
 # ── preflight 2: the candidate, in a throwaway repository (production's is not written) ──
@@ -542,8 +634,15 @@ done
 DEVREF=$(C grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
 [ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
 C cat-file -e "$TARGET:tests/Production/verify_takeover_production.php" || fail "the target does not carry the production check script"
-COLLIDE=$(comm -12 <(sed 's/^?? //' <<< "$UNTRACKED_BEFORE" | sort) <(C ls-tree -r --name-only "$TARGET" | sort))
-[ -z "$COLLIDE" ] || fail "the target tracks a path that is an untracked file here (the checkout would refuse or overwrite it): $(tr '\n' ' ' <<< "$COLLIDE")"
+# No untracked file may be in the target's way: the same path, a file where the target needs a
+# directory, or inside a directory where the target has a file. Git would refuse such a checkout
+# (this script never forces one); better to know before the window than inside it.
+COLLIDE=$(untracked_paths "$UNTRACKED_BEFORE" | awk '
+  NR == FNR { t[$0] = 1; n = split($0, p, "/"); d = ""; for (i = 1; i < n; i++) { d = d (i > 1 ? "/" : "") p[i]; dirs[d] = 1 } next }
+  $0 == "" { next }
+  ($0 in t) || ($0 in dirs) { print; next }
+  { n = split($0, p, "/"); d = ""; for (i = 1; i < n; i++) { d = d (i > 1 ? "/" : "") p[i]; if (d in t) { print; next } } }' <(C ls-tree -r --name-only "$TARGET") -)
+[ -z "$COLLIDE" ] || fail "an untracked file here is in the way of a path the target tracks (the checkout would refuse; nothing is overwritten): $(tr '\n' ' ' <<< "$COLLIDE")"
 UNWRITABLE=0
 while IFS= read -r p; do d=$DIR/$p; while [ ! -e "$d" ]; do d=$(dirname "$d"); done; OWNERDO test -w "$d" || { echo "      not writable by $OWNER: $p"; UNWRITABLE=$((UNWRITABLE + 1)); }; done < <(C diff --name-only "$FROM" "$TARGET")
 [ "$UNWRITABLE" = 0 ] || fail "$UNWRITABLE changed path(s) not writable by $OWNER"
@@ -621,7 +720,11 @@ for i in $(seq 1 120); do [ "$(artisan_running)" = 0 ] && break; sleep 5; done
 sleep 5   # requests already inside PHP finish
 for h in "$RETAIL" "$WWW" "$DHIRAN"; do [ "$(code "$h" "https://$h/")" = 503 ] || fail "$h does not answer 503 in maintenance"; done
 [ "$(code "$RETAIL" -H 'Accept: application/json' "https://$RETAIL/api/mobile/v1/sessions/me")" = 503 ] || fail "the mobile API does not answer 503 in maintenance"
+WINDOW_START=$(date +%s)
+SESSION_LIFETIME=$( cd "$DIR" && sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; echo (int) $c["session"]["lifetime"] * 60;' )
+[ "$SESSION_LIFETIME" -gt 0 ] 2>/dev/null || fail "could not read the session lifetime from the configuration in effect"
 fingerprint > "$WORK/live.before.fp" || fail "could not fingerprint the quiesced database"
+sessions_now > "$WORK/sessions.before" || fail "could not record the sessions table"
 schema_live > "$WORK/schema.full.sql"; schema_live "${EXCLUDE[@]}" > "$WORK/schema.before.sql"
 ok "maintenance on at $(date -u +%H:%M:%SZ) for $RETAIL, $WWW, $DHIRAN and the mobile API; $WORKER stopped; scheduler cron held ($CRON_SHA, $CRON_STAT), no scheduled command running"
 
@@ -633,8 +736,8 @@ cp -p "$DIR/.env" "$WORK/env.before" && cp -p "$DIR/bootstrap/cache/config.php" 
 tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not copy the deployed assets"
 config_hashes > "$WORK/config.before.hashes" && [ -s "$WORK/config.before.hashes" ] || fail "could not record the configuration in effect"
 echo "$FROM" > "$WORK/code.before"
-BEFORE_FP=$WORK/live.before.fp; BEFORE_SCHEMA=$WORK/schema.before.sql; ENV_BEFORE=$WORK/env.before; CONFIG_BEFORE=$WORK/config.before.hashes
-save LOG_MARK CRON_SHA CRON_STAT DUMP_SHA ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE ROOT_OWNED_BEFORE SHARED_BEFORE OTHER_HEALTH_BEFORE MIGRATED
+BEFORE_FP=$WORK/live.before.fp; BEFORE_SCHEMA=$WORK/schema.before.sql; ENV_BEFORE=$WORK/env.before; CONFIG_BEFORE=$WORK/config.before.hashes; SESSIONS_BEFORE=$WORK/sessions.before
+save LOG_MARK CRON_SHA CRON_STAT DUMP_SHA ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE ROOT_OWNED_BEFORE SHARED_BEFORE OTHER_HEALTH_BEFORE MIGRATED WINDOW_START SESSION_LIFETIME
 ok "pre-release copies in $WORK (root only): code $FROM, .env, config cache, public/build, database dump"
 
 # ── release: code, assets, configuration, the one migration ─────────────────
@@ -644,7 +747,7 @@ G fetch --quiet "$BTMP/candidate.bundle" "+refs/heads/$BRANCH:$REF"; FETCHED=$?;
 [ "$FETCHED" = 0 ] && [ "$(G rev-parse "$REF")" = "$TARGET" ] || fail "fetch from the bundle into the production repository failed"
 G checkout --quiet --detach "$TARGET" || fail "checkout failed"
 [ "$(G rev-parse HEAD)" = "$TARGET" ] && [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "checkout did not land cleanly"
-[ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "the untracked files changed"
+[ "$(untracked)" = "$UNTRACKED_BEFORE" ] || fail "an untracked file was added, removed or changed by the checkout: $(untracked_differ)"
 OWNERDO env COMPOSER_ALLOW_SUPERUSER=1 composer -d "$DIR" install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --quiet || fail "composer install failed"
 ART package:discover >/dev/null || fail "package:discover failed"
 PHASE=assets

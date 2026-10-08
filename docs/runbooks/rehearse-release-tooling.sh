@@ -34,8 +34,9 @@
 # and aborts if not.
 #
 # Stand-ins, which are the limits of this rehearsal:
-#   systemctl    a shim: the queue worker is a real `artisan queue:work` process it starts
-#                and stops; php8.2-fpm and nginx report a fixed start time
+#   systemctl    a shim: the queue worker is a real `artisan queue:work` process run as
+#                www-data with the real unit's command line, Restart=always and RestartSec=5,
+#                every start and exit logged; php8.2-fpm and nginx report a fixed start time
 #   systemd-run  a shim: the script's isolated restore runs as an unprivileged user inside
 #                this unit instead of in a transient unit of its own (the real one ran in
 #                the production preflights)
@@ -79,21 +80,46 @@ chown -R root:root "$STAGE/in"; chmod -R a+rX "$STAGE/in"; chown -R dev:dev "$ST
 # The application's database role is given the same standing as production's (superuser or not).
 APP_SUPER=$(sudo -u postgres psql -X -A -t -d postgres -c "select bool_or(r.rolsuper) from pg_database d join pg_roles r on r.oid = d.datdba where d.datname = 'jewelflow'")
 
+cat > "$STAGE/bin/worker-unit" <<'SH'
+#!/bin/bash
+# Stand-in for the real unit: User=www-data, the same ExecStart, Restart=always, RestartSec=5.
+# Every start and exit goes on record, with whether the copy was in maintenance at that moment.
+# Whatever started this (the release script, through the stand-in) must not be held open by it:
+# the real unit is a child of the service manager, not of the script.
+for fd in /proc/$$/fd/*; do fd=${fd##*/}; [ "$fd" -gt 2 ] 2>/dev/null && eval "exec $fd>&-" 2>/dev/null; done
+L=/out/worker-lifecycle.log
+m() { [ -e /var/www/jewelflow/storage/framework/down ] && echo on || echo off; }
+while [ ! -e /mnt/state/worker.stop ]; do
+  setpriv --reuid=www-data --regid=www-data --init-groups /usr/bin/php /var/www/jewelflow/artisan queue:work database --queue=ops-alerts --sleep=3 --tries=3 --backoff=30 --timeout=60 --max-time=3600 >> /mnt/worker.log 2>&1 &
+  pid=$!; echo "$pid" > /mnt/state/worker.pid; t0=$(date +%s.%N)
+  echo "$(date -u +%T) started   pid $pid, maintenance $(m)" >> "$L"
+  wait "$pid"; rc=$?
+  rm -f /mnt/state/worker.pid
+  echo "$(date -u +%T) exited    pid $pid, status $rc, after $(awk -v a="$t0" -v b="$(date +%s.%N)" 'BEGIN { printf "%.1f", b - a }') s, maintenance $(m)$([ -e /mnt/state/worker.stop ] && echo ', stop requested')" >> "$L"
+  [ -e /mnt/state/worker.stop ] && break
+  sleep 5
+done
+SH
 cat > "$STAGE/bin/systemctl" <<'SH'
 #!/bin/bash
 # Stand-in for the service manager inside the rehearsal unit (the host's is not reachable).
 W=jewelflow-production-ops-alerts
-running() { pgrep -u www-data -f '/var/www/jewelflow/artisan queue:work' >/dev/null; }
+unit() { [ -e /mnt/state/unit.pid ] && kill -0 "$(cat /mnt/state/unit.pid)" 2>/dev/null; }
+main() { [ -e /mnt/state/worker.pid ] && kill -0 "$(cat /mnt/state/worker.pid)" 2>/dev/null; }
 case "$1" in
   start) [ "$2" = "$W" ] || exit 5
-    # (no sudo here: its pseudo-terminal would take the worker down with whatever started it)
-    running || ( cd / && nohup setsid setpriv --reuid=www-data --regid=www-data --init-groups /usr/bin/php /var/www/jewelflow/artisan queue:work database --queue=ops-alerts --sleep=3 --tries=3 --backoff=30 --timeout=60 --max-time=3600 >> /mnt/worker.log 2>&1 < /dev/null & )
-    sleep 1; exit 0 ;;
-  stop) [ "$2" = "$W" ] || exit 5
-    pkill -u www-data -f '/var/www/jewelflow/artisan queue:work'; for i in $(seq 1 50); do running || break; sleep 0.2; done; exit 0 ;;
-  is-active) if [ "$2" = "$W" ]; then running && { echo active; exit 0; } || { echo inactive; exit 3; }; fi; echo active; exit 0 ;;
+    rm -f /mnt/state/worker.stop
+    # (one simple command in the background: a list here would leave a shell of this stand-in alive, holding its caller's output)
+    if ! unit; then cd /; nohup setsid /stage/bin/worker-unit > /dev/null 2>&1 < /dev/null & echo $! > /mnt/state/unit.pid; fi
+    for i in $(seq 1 20); do main && break; sleep 0.1; done; exit 0 ;;
+  stop) [ "$2" = "$W" ] || exit 5   # as the service manager does it: SIGTERM, wait, SIGKILL if it will not go; return only when it is gone
+    touch /mnt/state/worker.stop
+    if main; then p=$(cat /mnt/state/worker.pid); kill "$p" 2>/dev/null && echo "$(date -u +%T) stop      SIGTERM to pid $p" >> /out/worker-lifecycle.log; fi
+    for i in $(seq 1 300); do unit || break; [ "$i" = 200 ] && main && { kill -9 "$(cat /mnt/state/worker.pid)" 2>/dev/null; echo "$(date -u +%T) stop      SIGKILL after 20 s" >> /out/worker-lifecycle.log; }; sleep 0.1; done
+    unit && exit 1; exit 0 ;;
+  is-active) if [ "$2" = "$W" ]; then if main; then echo active; exit 0; elif unit; then echo activating; exit 3; else echo inactive; exit 3; fi; fi; echo active; exit 0 ;;
   is-failed) echo inactive; exit 1 ;;
-  show) cat "/mnt/state/${!#}.started" 2>/dev/null; exit 0 ;;
+  show) case "$*" in *MainPID*) main && cat /mnt/state/worker.pid || echo 0 ;; *) cat "/mnt/state/${!#}.started" 2>/dev/null ;; esac; exit 0 ;;
   *) echo "systemctl stand-in: unsupported: $*" >&2; exit 64 ;;
 esac
 SH
@@ -134,9 +160,13 @@ for p in /var/lib/postgresql /etc/letsencrypt /var/backups /var/log /etc/ssh; do
 # Not one process of the host may be visible: the release script stops, counts and signals processes by name.
 [ "$(ps -e -o comm= | grep -cE '^(systemd|sshd|postgres|nginx|php-fpm8\.2|cron|php)$')" = 0 ] && [ "$(ps -e -o pid= | wc -l)" -lt 12 ] || die "processes of the host are visible: $(ps -e -o comm= | sort -u | head -8 | tr '\n' ' ')"
 if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null || (exec 3<>/dev/tcp/127.0.0.1/443) 2>/dev/null; then die "something already answers on the database or https port"; fi
+# Shared memory is this unit's own; kernel settings and control groups cannot be written from here.
+[ -z "$(ls -A /dev/shm)" ] || die "/dev/shm is not private: $(ls -A /dev/shm | head -3 | tr '\n' ' ')"
+mount -o remount,ro,bind /sys && mount -o remount,ro,bind /sys/fs/cgroup && mount --bind /proc/sys /proc/sys && mount -o remount,ro,bind /proc/sys || die "could not make /sys, the control groups and /proc/sys read-only"
+for m in /sys /sys/fs/cgroup /proc/sys; do findmnt -n -o OPTIONS --target "$m" | tr ',' '\n' | grep -qx ro || die "$m is writable"; done
 export PATH=/stage/bin:$PATH
 [ "$(command -v systemctl)" = /stage/bin/systemctl ] && [ "$(command -v systemd-run)" = /stage/bin/systemd-run ] || die "the stand-ins are not first in PATH"
-echo "isolation proven: per-run sentinels present; /var/www was empty; own process namespace ($(ps -e -o pid= | wc -l) processes visible, none of the host's); no host service manager, database or php-fpm socket; loopback only; live data, certificates and backups not visible"
+echo "isolation proven: per-run sentinels present; /var/www was empty; own process namespace ($(ps -e -o pid= | wc -l) processes visible, none of the host's); no host service manager, database or php-fpm socket; private shared memory; /sys, control groups and /proc/sys read-only; loopback only; live data, certificates, backups, logs and keys not visible"
 
 D=/var/www/jewelflow; B=/usr/lib/postgresql/14/bin
 S=/root/takeover-production/incoming/deploy-takeover-production.sh
@@ -151,6 +181,7 @@ mkdir -p /run/postgresql /run/php /mnt/pgdata /mnt/tls /mnt/nginx /mnt/state /mn
 chown postgres:www-data /run/postgresql; chmod 2750 /run/postgresql; chown postgres /mnt/pgdata; chown www-data /mnt/nginx
 sudo -u postgres "$B/initdb" -D /mnt/pgdata -A trust -E UTF8 --locale=C.UTF-8 >/dev/null 2>&1 || die "initdb"
 sudo -u postgres "$B/pg_ctl" -D /mnt/pgdata -s -w -l /mnt/pg.log -o "-c listen_addresses='' -c unix_socket_directories=/run/postgresql -c fsync=off -c synchronous_commit=off -c full_page_writes=off" start >/dev/null 2>&1 || die "PostgreSQL did not start"
+[ "$(PGDB=postgres PS 'show data_directory')" = /mnt/pgdata ] || die "the database answering on the default socket is not this rehearsal's"
 PGDB=postgres PS "create role jewelflow_app login $([ "$APP_SUPER" = t ] && echo superuser || echo nosuperuser)" && PGDB=postgres PS "create database jewelflow owner jewelflow_app" || die "database"
 install -d -o dev -g dev "$D"
 sudo -u dev -H git clone -q /stage/in/production.git "$D" 2>/dev/null && sudo -u dev -H git -C "$D" checkout -q --detach "$FROM" && sudo -u dev -H git -C "$D" remote remove origin || die "clone of the deployed commit"
@@ -206,6 +237,7 @@ foreach ([['RETAIL', 'erp'], ['DHIRAN', 'dhiran'], ['RETAIL-2', 'erp']] as [$tag
 echo 'shops '.DB::table('shops')->count().', users '.DB::table('users')->count().', categories '.DB::table('categories')->count()."\n";
 PHP
 SEEDED=$(cd "$D" && sudo -u www-data env TOKEN="$TOKEN" php /mnt/seed.php 2>&1 | tail -1); case "$SEEDED" in shops\ 3,*) ;; *) die "seeding: $SEEDED" ;; esac
+PS "insert into sessions (id, user_id, ip_address, user_agent, payload, last_activity) select 'rehearsal-signed-in-session-000000000000', min(id), '127.0.0.1', 'rehearsal', 'payload', extract(epoch from now())::int from users" && PS "insert into sessions (id, user_id, ip_address, user_agent, payload, last_activity) values ('rehearsal-expired-guest-session-0000000000', null, '127.0.0.1', 'rehearsal', 'payload', extract(epoch from now())::int - 2592000)" || die "seeding sessions"
 ART config:cache >/dev/null 2>&1 && ART route:cache >/dev/null 2>&1 && ART view:cache >/dev/null 2>&1 || die "caches at the deployed commit"
 install -d -o www-data -g www-data "$D/storage/app/private/JewelFlows" && head -c 2M /dev/zero > "$D/storage/app/private/JewelFlows/nightly.zip" && chown www-data:www-data "$D/storage/app/private/JewelFlows/nightly.zip"
 git clone -q /stage/in/staging.git /var/www/jewelflow-staging 2>/dev/null && git -C /var/www/jewelflow-staging checkout -q --detach "$STAGING_HEAD" && mkdir -p /var/www/jewelflow-staging/bootstrap/cache && touch /var/www/jewelflow-staging/bootstrap/cache/config.php || die "staging stand-in"
@@ -238,7 +270,7 @@ select line from (
 SQL
 FPRINT() { sudo -u postgres env PGOPTIONS='-c timezone=UTC -c datestyle=ISO,YMD' psql -X -A -t -q -v ON_ERROR_STOP=1 -d jewelflow -f /mnt/fp.sql; }
 FPRINT > /mnt/pristine/fp
-echo "the copy: $(sudo -u dev -H git -C "$D" rev-parse HEAD) owned by $(stat -c %U "$D"), .env $(stat -c '%U:%G %a' "$D/.env"); PHP $(php -r 'echo PHP_VERSION;'), $(PS 'select version()' | cut -d' ' -f1-2); $(PS 'select count(*) from migrations') migrations, $(grep -c '^table ' /mnt/pristine/fp) tables besides sessions; synthetic data: $SEEDED"
+echo "the copy: $(sudo -u dev -H git -C "$D" rev-parse HEAD) owned by $(stat -c %U "$D"), .env $(stat -c '%U:%G %a' "$D/.env"); PHP $(php -r 'echo PHP_VERSION;'), $(PS 'select version()' | cut -d' ' -f1-2); $(PS 'select count(*) from migrations') migrations, $(grep -c '^table ' /mnt/pristine/fp) tables besides sessions; synthetic data: $SEEDED, sessions $(PS 'select count(*) from sessions') (one of a signed-in user, one expired guest)"
 echo "script under rehearsal: sha256 $(sha256sum "$S" | cut -d' ' -f1)"
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -246,7 +278,7 @@ N=0
 state() { echo "   state: HEAD $(sudo -u dev -H git -C "$D" rev-parse --short=12 HEAD); maintenance $([ -e "$D/storage/framework/down" ] && echo on || echo off); cron $([ -e /etc/cron.d/jewelflow-scheduler ] && echo in-place || echo held); worker $(systemctl is-active jewelflow-production-ops-alerts); product addresses in .env $(grep -cE '^(DHIRAN|ERP)_REGISTER_URL=' "$D/.env"); promotion tables $(PS "select count(*) from information_schema.tables where table_schema = 'public' and (table_name like 'product_promotion%' or table_name like 'product_recognition%')") holding $(PS "select coalesce(sum((xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I', table_name), false, true, '')))[1]::text::int), 0) from information_schema.tables where table_schema = 'public' and (table_name like 'product_promotion%' or table_name like 'product_recognition%')") rows; landing $(curl -sk -m 20 --resolve jewelflows.com:443:127.0.0.1 https://jewelflows.com/ | grep -c 'Start with Retail') new-page marker(s), http $(curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve jewelflows.com:443:127.0.0.1 https://jewelflows.com/)"; }
 run() { # label, expected exit (0 or "fail"), expected text, command...
   local label=$1 want=$2 text=$3; shift 3; N=$((N + 1)); local log; log=/out/$(printf '%02d' "$N")-$label.log
-  "$@" > "$log" 2>&1; local rc=$?
+  timeout --kill-after=10 900 "$@" > "$log" 2>&1; local rc=$?
   local verdict=UNEXPECTED
   if { [ "$want" = 0 ] && [ "$rc" = 0 ]; } || { [ "$want" = fail ] && [ "$rc" != 0 ]; }; then grep -qF -- "$text" "$log" && verdict=AS-EXPECTED; fi
   echo "[$verdict] $label: exit $rc; $(grep -E '^(script |!!!!! |TAKEOVER PRODUCTION|RETURNED TO BASELINE|PREFLIGHT PASSED|NOT RUN)' "$log" | cut -c1-260 | tr '\n' '|')"
@@ -282,14 +314,39 @@ APPROVED="TAKEOVER_RELEASE_APPROVED=$TARGET"
 migrated='[ "$(PS "select count(*) from migrations where migration = '"'$MIG'"'")" = 1 ]'
 assets_in='[ -e "$(release_dir)/build.replaced" ] && [ -e "$D/public/build/manifest.json" ]'
 
+state_saved='[ -s "$(release_dir)/state" ]'
+expect() { # description, command that must succeed
+  local what=$1; shift
+  if "$@" >/dev/null 2>&1; then echo "   $what"; else echo "   NOT SO: $what"; FAILED=$((FAILED + 1)); fi
+}
+dbsame() { FPRINT > /mnt/after.fp; cmp -s /mnt/pristine/fp /mnt/after.fp; }
+
+say "W. diagnosis: what a worker does when it is started while the site is in maintenance"
+WK=jewelflow-production-ops-alerts
+systemctl stop $WK; : > /out/worker-lifecycle.log; ART down >/dev/null 2>&1
+systemctl start $WK; sleep 13
+echo "   started in maintenance; 13 s later the unit's record reads:"; sed 's/^/      /' /out/worker-lifecycle.log
+expect "in maintenance the worker left by itself with status 0 after its first pause, and the unit restarted it" sh -c "grep -qE 'exited .*status 0, after [2-4]\\.[0-9] s, maintenance on\$' /out/worker-lifecycle.log && [ \$(grep -c 'started .*maintenance on' /out/worker-lifecycle.log) -ge 2 ]"
+systemctl stop $WK; ART up >/dev/null 2>&1; N0=$(grep -c . /out/worker-lifecycle.log)
+systemctl start $WK; sleep 2; P1=$(systemctl show -p MainPID --value $WK); sleep 12; P2=$(systemctl show -p MainPID --value $WK)
+echo "   started with the site up; over 14 s: $(tail -n +$((N0 + 1)) /out/worker-lifecycle.log | tr '\n' '|') main process $P1 then $P2, $(systemctl is-active $WK)"
+expect "with the site up the same worker process is still there 12 s later" sh -c "[ '$P1' = '$P2' ] && [ '$P1' != 0 ] && [ \$(tail -n +$((N0 + 1)) /out/worker-lifecycle.log | grep -c exited) = 0 ]"
+echo "   (cause, in the framework: Worker::pauseWorker calls stopIfNecessary without a start time, so with --max-time the limit is measured from the machine's boot: $(cut -d. -f1 /proc/uptime) s here)"
+
 say "A. guards that must refuse, changing nothing"
 run preflight 0 "PREFLIGHT PASSED" bash "$S" preflight $ARGS
 run release-without-approval fail "release needs TAKEOVER_RELEASE_APPROVED" bash "$S" release $ARGS
 run release-in-the-scheduler-window fail "would overlap the daily scheduled jobs" env "$APPROVED" REHEARSAL_IST="23 50" bash "$S" release $ARGS
+# an untracked file sitting exactly where the target has a file of its own
+sudo -u dev sh -c "echo 'an operator note, not the plan' > $D/docs/superpowers/plans/2026-10-06-jewelflows-takeover.md"
+run preflight-with-an-untracked-file-in-the-way fail "is in the way of a path the target tracks" bash "$S" preflight $ARGS
+expect "that file is untouched" grep -qx 'an operator note, not the plan' "$D/docs/superpowers/plans/2026-10-06-jewelflows-takeover.md"
+rm -f "$D/docs/superpowers/plans/2026-10-06-jewelflows-takeover.md"
 
 say "B. the whole release, uninterrupted, with the synthetic check"
 run release-complete 0 "TAKEOVER PRODUCTION RELEASE PASSED" env "$APPROVED" TAKEOVER_PRODUCTION_CHECK=approved bash "$S" release $ARGS
-echo "   synthetic check inside it: $(grep -c '^PASS' "$(release_dir)/production-check.txt") PASS, $(grep -c '^FAIL' "$(release_dir)/production-check.txt") FAIL; $(grep -E '^ok +synthetic' /out/04-release-complete.log | cut -c1-170)"
+echo "   synthetic check inside it: $(grep -c '^PASS' "$(release_dir)/production-check.txt") PASS, $(grep -c '^FAIL' "$(release_dir)/production-check.txt") FAIL; $(grep -hE '^ok +synthetic' /out/*-release-complete.log | cut -c1-170)"
+grep -hE '^ok +.*(started after maintenance ended|every untracked file present)' /out/*-release-complete.log | cut -c1-200 | sed 's/^/   /'
 run baseline-after-a-completed-release fail "production is not in maintenance" bash "$S" baseline "$FROM" "$TARGET" "$(release_dir)"
 reset_copy
 
@@ -321,11 +378,57 @@ run baseline-before-migration 0 "RETURNED TO BASELINE" bash "$S" baseline "$FROM
 FPRINT > /mnt/after.fp
 cmp -s /mnt/pristine/fp /mnt/after.fp && echo "   database: every table (sessions aside) and every relation identical to the pristine copy" || { echo "   DATABASE DIFFERS: $(diff /mnt/pristine/fp /mnt/after.fp | awk '/^[<>]/ { print $2" "$3 }' | sort -u | head -5 | tr '\n' ';')"; FAILED=$((FAILED + 1)); }
 cmp -s "$D/.env" /mnt/pristine/env && echo "   .env is byte-identical to the pre-release one" || { echo "   .ENV DIFFERS"; FAILED=$((FAILED + 1)); }
+reset_copy
+
+say "F. a stopped release must not be finished over a change nobody made on purpose: business data, a user's session, an untracked file"
+killed_after release-killed-after-migration "$migrated" "$APPROVED"
+STOPPED=$(release_dir)
+PS "update categories set name = name || ' x' where id = (select min(id) from categories)"
+run resume-after-a-business-row-changed fail "a row of an existing table changed: categories" bash "$S" resume "$FROM" "$TARGET" "$STOPPED"
+PS "update categories set name = left(name, length(name) - 2) where id = (select min(id) from categories)"
+PS "update sessions set payload = payload || 'x' where user_id is not null"
+run resume-after-a-users-session-changed fail "the sessions table changed in a way this script does not account for: 1 existing row(s) changed" bash "$S" resume "$FROM" "$TARGET" "$STOPPED"
+PS "update sessions set payload = left(payload, length(payload) - 1) where user_id is not null"
+sudo -u dev sh -c "echo edited >> $D/REPORT_EXPORT_GAP_AUDIT.md"
+run resume-after-an-untracked-file-changed fail "an untracked file was added, removed or changed since the release began: REPORT_EXPORT_GAP_AUDIT.md" bash "$S" resume "$FROM" "$TARGET" "$STOPPED"
+sudo -u dev sh -c "echo note > $D/REPORT_EXPORT_GAP_AUDIT.md"
+run resume-once-all-three-are-as-they-were 0 "TAKEOVER PRODUCTION RELEASE PASSED" bash "$S" resume "$FROM" "$TARGET" "$STOPPED"
+reset_copy
+
+say "G. a checkout cut short: resume and baseline refuse the dirty tree and discard nothing; tree-check; the operator's commands; baseline"
+killed_after release-killed-at-the-checkout "$state_saved" "$APPROVED"
+STOPPED=$(release_dir); GD() { sudo -u dev -H git -C "$D" "$@"; }; CG() { git --git-dir="$STOPPED/candidate.git" "$@"; }
+# Where the kill lands inside the checkout cannot be aimed. So the state git leaves when it is killed
+# in the middle of one is completed by hand: HEAD and index at the deployed commit, some files already
+# the target's, a file the target adds lying there untracked, the index lock left behind.
+if [ "$(GD rev-parse HEAD)" = "$TARGET" ] && [ -z "$(GD status --porcelain --untracked-files=no)" ] && [ ! -e "$STOPPED/build.replaced" ]; then GD checkout -q --detach "$FROM"; echo "   (the kill landed just after the checkout; put back to the deployed commit to build the cut-short state)"; fi
+[ "$(GD rev-parse HEAD)" = "$FROM" ] && [ ! -e "$STOPPED/build.replaced" ] || { echo "   THE KILL LANDED TOO LATE FOR THIS SCENARIO"; FAILED=$((FAILED + 1)); }
+for f in resources/views/landing.blade.php routes/web.php app/Services/ProductPromotionService.php; do CG show "$TARGET:$f" > /mnt/cut.tmp && install -o dev -g dev -m 644 /mnt/cut.tmp "$D/$f"; done
+sudo -u dev touch "$D/.git/index.lock"
+echo "   cut-short state: HEAD $(GD rev-parse --short=12 HEAD); differing from it: $(GD --no-optional-locks status --porcelain --untracked-files=no | wc -l) tracked path(s); added: app/Services/ProductPromotionService.php; index.lock present"
+TREE_BEFORE=$(cd "$D" && sha256sum resources/views/landing.blade.php routes/web.php app/Services/ProductPromotionService.php .env | sha256sum)
+run resume-on-the-dirty-tree fail "is not cleanly on" bash "$S" resume "$FROM" "$TARGET" "$STOPPED"
+run baseline-on-the-dirty-tree fail "tracked path(s) differ from HEAD" bash "$S" baseline "$FROM" "$TARGET" "$STOPPED"
+expect "neither refusal touched a file: the three paths and .env are byte for byte what they were, the lock is still there" sh -c "[ \"$TREE_BEFORE\" = \"\$(cd $D && sha256sum resources/views/landing.blade.php routes/web.php app/Services/ProductPromotionService.php .env | sha256sum)\" ] && [ -e $D/.git/index.lock ]"
+sudo -u dev sh -c "echo '// a line somebody typed by hand' >> $D/routes/web.php"
+run tree-check-with-a-hand-edited-file fail "STOP: 1 path(s) are not explained by the checkout" bash "$S" tree-check "$FROM" "$TARGET" "$STOPPED"
+expect "tree-check wrote no command for it and changed nothing" sh -c "[ ! -s \$(ls -d /root/takeover-production/tree-check-* | tail -1)/commands.sh ] && tail -1 $D/routes/web.php | grep -q 'typed by hand'"
+CG show "$TARGET:routes/web.php" > /mnt/cut.tmp && install -o dev -g dev -m 644 /mnt/cut.tmp "$D/routes/web.php"
+sleep 1
+run tree-check 0 "nothing but the cut-short checkout is in the tree" bash "$S" tree-check "$FROM" "$TARGET" "$STOPPED"
+CMDS=$(ls -d /root/takeover-production/tree-check-* | tail -1)/commands.sh
+expect "tree-check itself changed nothing (the tree is still dirty, the lock still there)" sh -c "[ \$(sudo -u dev -H git -C $D --no-optional-locks status --porcelain --untracked-files=no | wc -l) = 2 ] && [ -e $D/.git/index.lock ]"
+echo "   the operator now runs, by hand, the commands tree-check wrote:"; sed 's/^/      /' "$CMDS" | cut -c1-220
+bash "$CMDS" > /mnt/cmds.out 2>&1; expect "after them the tracked tree is clean at the deployed commit, the added file and the lock are gone" sh -c "[ -z \"\$(sudo -u dev -H git -C $D --no-optional-locks status --porcelain --untracked-files=no)\" ] && [ ! -e $D/app/Services/ProductPromotionService.php ] && [ ! -e $D/.git/index.lock ] && [ \$(sudo -u dev -H git -C $D rev-parse HEAD) = $FROM ]"
+run baseline-after-the-operators-commands 0 "RETURNED TO BASELINE" bash "$S" baseline "$FROM" "$TARGET" "$STOPPED"
+expect "database: every table (sessions aside) and every relation identical to the pristine copy" dbsame
+expect ".env is byte-identical to the pre-release one" cmp -s "$D/.env" /mnt/pristine/env
 
 say "result"
-echo "scenarios with an unexpected outcome: $FAILED"
+echo "scenarios run: $N; scenarios or assertions with an unexpected outcome: $FAILED"
 echo "error lines in the copy's application log: $(cat "$D"/storage/logs/laravel*.log 2>/dev/null | grep -cE '\.(ERROR|CRITICAL|EMERGENCY|ALERT):')"
-for d in /root/takeover-production/*-2*; do [ -f "$d/run.log" ] && cp "$d/run.log" "/out/evidence-$(basename "$d").run.log"; [ -f "$d/production-check.txt" ] && cp "$d/production-check.txt" "/out/evidence-$(basename "$d").production-check.txt"; done
+cp /mnt/worker.log /out/worker-output.log 2>/dev/null
+for d in /root/takeover-production/*-2*; do [ -f "$d/run.log" ] && cp "$d/run.log" "/out/evidence-$(basename "$d").run.log"; [ -f "$d/production-check.txt" ] && cp "$d/production-check.txt" "/out/evidence-$(basename "$d").production-check.txt"; [ -f "$d/commands.sh" ] && cp "$d/commands.sh" "/out/evidence-$(basename "$d").commands.sh"; done
 nginx -c /mnt/nginx.conf -s stop 2>/dev/null; pkill php-fpm8.2 2>/dev/null; systemctl stop jewelflow-production-ops-alerts; sudo -u postgres "$B/pg_ctl" -D /mnt/pgdata -s -m immediate stop >/dev/null 2>&1
 [ "$FAILED" = 0 ] && echo "TOOLING REHEARSAL PASSED" || echo "TOOLING REHEARSAL FAILED"
 exit "$FAILED"
@@ -338,9 +441,9 @@ systemd-run --quiet --wait --pipe --collect \
     -p PrivateNetwork=yes -p PrivateIPC=yes -p PrivateTmp=yes -p PrivateMounts=yes -p ProtectSystem=strict \
     -p "BindPaths=$STAGE/www:/var/www $STAGE/root:/root $STAGE/crond:/etc/cron.d $STAGE/home:/home $OUT:/out" \
     -p "BindReadOnlyPaths=$STAGE:/stage $STAGE/in/nginx-site:/etc/nginx/sites-available/jewelflow" \
-    -p "TemporaryFileSystem=/run:mode=0755" -p "TemporaryFileSystem=/mnt:mode=1777,size=1500M" \
+    -p "TemporaryFileSystem=/run:mode=0755" -p "TemporaryFileSystem=/mnt:mode=1777,size=1500M" -p "TemporaryFileSystem=/dev/shm:mode=1777" \
     -p "InaccessiblePaths=-/var/lib/postgresql -/etc/letsencrypt -/var/backups -/etc/ssh -/var/log" \
-    -p MemoryMax=3G -p TasksMax=1024 -p RuntimeMaxSec=2400 -p Nice=10 -p CPUWeight=20 \
+    -p MemoryMax=3G -p TasksMax=1024 -p RuntimeMaxSec=2400 -p TimeoutStopSec=10 -p Nice=10 -p CPUWeight=20 \
     -E "TOKEN=$TOKEN" -E "FROM=$FROM" -E "TARGET=$TARGET" -E "ASSETS_SHA=$ASSETS_SHA" -E "STAGING_HEAD=$STAGING_HEAD" -E "APP_SUPER=$APP_SUPER" \
     -- /usr/bin/unshare --pid --fork --mount-proc --kill-child /bin/bash /stage/driver.sh 2>&1 | tee -a "$OUT/result.txt"
 RC=${PIPESTATUS[0]}
