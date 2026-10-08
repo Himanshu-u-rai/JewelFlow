@@ -3,10 +3,15 @@ import forms from '@tailwindcss/forms';
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    // Every template this application renders and the markup its scripts build:
+    // nothing else. The pagination and error views are the application's own
+    // copies under resources/views. Not storage/framework/views: that cache
+    // holds whatever was rendered on the machine doing the build, the
+    // framework's own error and mail pages included, so two machines built two
+    // different stylesheets. tests/js/tailwind-content.check.mjs holds this.
     content: [
-        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
+        './resources/js/**/*.js',
     ],
 
     theme: {
