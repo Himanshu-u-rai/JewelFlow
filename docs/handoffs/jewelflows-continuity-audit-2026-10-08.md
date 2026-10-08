@@ -30,8 +30,10 @@ with the evidence each rests on:
 | Product preferences, recognition across the two products, invalidation on a security change (four tables, fourteen routes) | feature tests and race harnesses at the reviewed candidate; staging script (Retail realm); the check script on PostgreSQL 14 in production mode and inside the production window (18 each) | **the flow in two real browsers; the Dhiran pages in a browser; cookies and log-out per product** |
 | The two explicit product addresses | release gates; guest browser on `www` | — |
 
-Everything in the right-hand column waits for one thing: a signed-in session
-of a Retail test owner and of a Dhiran test owner on production.
+Later the same morning the owner signed in to both products and navigation,
+Categories, preferences, withdrawal of a request and log-out were run on
+production (handoff, end of section 8). The recognition flow past its first
+step was not: it needs two more password entries by the owners.
 
 ## 2. Inventory, and what each thing is
 
@@ -96,9 +98,10 @@ their archive tag was verified to point at the same commit.
 
 ## 4. Unfinished work and open decisions
 
-1. **Signed-in checks on production: NOT RUN.** Sign in to the Retail test
-   owner at `https://jewelflows.com/login` and to the Dhiran test owner at
-   `https://dhiran.jewelflows.com/login`.
+1. **Recognition in two real browsers on production: NOT RUN past the first
+   step.** Approval on Dhiran, the final confirmation on Retail and revocation
+   each need the owner to type an account password. The rest of the signed-in
+   checks passed (handoff, end of section 8).
 2. **The release is not on `origin`.** The 27 commits of the release, and the
    documentation commits after it, exist only in the local repository and as
    a bundle on the server.

@@ -1,18 +1,21 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 5, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
-version 3 `99587f2`, version 4 `f158425`). The
+**Version 6, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`). The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
 
 **Production was released on 8 October 2026, 03:36Z, with the owner's
 approval. It runs `e49e611768e62674de0c4b2a77da42d018b28c30`.** Section 8 is the
-record. The signed-in browser checks on production are NOT RUN yet: nobody is
-signed in to either product in the owner's browser, and the agent does not
-sign in.
+record. Signed-in browser checks on production were then run in part (end of
+section 8): navigation, Categories, preferences, withdrawal of a request and
+independent log-out passed; **approval, final confirmation and revocation of
+a recognition in two browsers are NOT RUN**, because they need each owner's
+password and the agent does not type passwords.
 
-New in version 5: section 8, the release and its verification.
+New in version 5: section 8, the release and its verification. New in
+version 6: the signed-in results at the end of section 8.
 
 New in version 4 (section 6a):
 
@@ -489,23 +492,37 @@ policy file is unchanged by this release; the page as the origin serves it
 does not contain the beacon. Whether the policy should allow it or the edge
 should stop adding it is a decision, not a defect of the release.
 
+**Signed in on production** (the owner's Chrome, 04:20Z to 04:32Z; the owner
+signed in to the Retail owner of shop 1 and the Dhiran owner of shop 2, which
+the owner designated as the test accounts; the agent entered no credential):
+
+| | Result |
+|---|---|
+| Retail navigation | sidebar without the three moved entries; Stock offers Categories, Tag Printing, Reorder Alerts, each opening with Jewellery Stock highlighted and a way back; Invoices offers Returns / Exchange with Invoices highlighted and a way back; Turbo throughout, never "Content missing" |
+| Categories | one test category added (totals 3/17/0 → 4/17/1, message shown, focus in the name field); the same name in another case refused with the text kept; deleted after its confirmation (focus on Cancel); totals back to 3/17/0 |
+| Introduction | on the Retail owner's first dashboard, not on the second visit; one exposure row. The Dhiran owner pressed "I already use JewelFlows Retail" themselves: recorded, and the Dhiran page says offers are switched off |
+| Product preferences | opens in each product on its own host, with the preference, code and approval forms |
+| A request | created by the owner with the Retail password: one pending row, only a hash stored, ten-minute expiry; the code is not shown again on a second visit |
+| Wrong password | an attempt with a password the application did not accept created nothing and said so |
+| Withdrawal | "Cancel this request" on the Retail page: "Request cancelled.", the row consumed, the page no longer waiting |
+| Independent sessions | logged out of Retail through its confirmation dialog: Retail asks for a log-in, the Dhiran session still opens its pages |
+| Left behind | 2 preference rows, 2 exposure rows, 1 consumed request, 0 recognitions. Categories, invoices, customers and loans of the two shops as before. No error line |
+
 **NOT RUN on production**
 
-- **Signed-in Retail and Dhiran checks with the designated test accounts**
-  (navigation, Categories, Product preferences in each product, recognition
-  across the two products, revocation, independent sessions and log-out).
-  Neither product has a signed-in session in the owner's browser. To do: sign
-  in to the Retail test owner at `https://jewelflows.com/login` and to the
-  Dhiran test owner at `https://dhiran.jewelflows.com/login` (two tabs are
-  open at those pages). The recognition steps ask each owner for their own
-  password three times; the agent does not type passwords.
-- What the synthetic check stands in for meanwhile: the same flows through the
-  deployed HTTP kernel on both hosts, in a rolled-back transaction. It is not
-  a browser, and it does not show cookies, log-out or what a person sees.
-- Physical phones, Safari, Firefox; restricted roles in a browser.
+- **Approval on the other product, the final confirmation, an established
+  recognition, its suppression of offers, and its revocation, in real
+  browsers.** Each of the two remaining steps needs an account password; the
+  owner did not complete them and the agent does not type passwords into a
+  live site, whoever supplies them. What stands in: the same flow through the
+  deployed HTTP kernel on both hosts inside the release window (18 checks),
+  which is not a browser.
+- Logging out of Dhiran while Retail stays signed in (the other direction).
+- Physical phones, Safari, Firefox; restricted roles in a browser; the phone
+  width signed in on production (measured on staging on the same bundle).
 
-**Recovery position now.** Production has left the window. The four tables are
-empty at the time of writing; from the first preference or consent an owner
-records, the return to `aa3a62a` is refused by the script and by the rule.
+**Recovery position now.** Production has left the window and two owners have
+recorded promotion metadata, so the return to `aa3a62a` is closed: the script
+refuses it and so does the rule. Recovery is forward repair.
 The window's dump is the last complete copy of the database before the
 release.
