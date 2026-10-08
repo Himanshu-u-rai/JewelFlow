@@ -1,8 +1,8 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 7, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 8, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`). The
+`0a7eb55`, version 7 `35b640e`). The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
@@ -12,6 +12,16 @@ approval. It runs `e49e611768e62674de0c4b2a77da42d018b28c30`.** Section 8 is the
 record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
+
+**Start here for the next task: section 9.** It names the one worktree and
+branch to use. The inventory of every older branch, stash and worktree, and
+what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
+
+New in version 8: the release was verified again after the window and the
+second log-out direction was run (end of section 8); the branch is published
+(section 9). The placement of the Product preferences page is **deferred by
+the owner's decision**; nothing about that page, its navigation or its design
+was changed.
 
 New in version 5: section 8, the release and its verification. Versions 6
 and 7: the signed-in results at the end of section 8. One finding from the
@@ -51,8 +61,10 @@ than dump noise; production has five untracked files; the mobile API answers
 | Release tooling | `de92e604da275768ed1ea7391ea19193639a3242` | rehearsed in isolation 8 Oct from 02:39Z; used for the release |
 | Earlier production release | `aa3a62a93630751058c38b31f2b49c604450ec68` | the baseline the window's backup and evidence belong to |
 
-The integration branch (`integration/jewelflows-takeover`) is not pushed. The
-original worktree `ui-navigation-batch1` and its uncommitted files are untouched.
+The integration branch (`integration/jewelflows-takeover`) is published
+(section 9). The original worktree `ui-navigation-batch1` was removed on
+8 October, without force, after its eleven uncommitted paths were verified
+byte for byte against `archive/ui-navigation-batch1-uncommitted-20261008`.
 
 ## 2. Commits on the integration branch after the reviewed candidate
 
@@ -541,12 +553,77 @@ production.
   a browser: both owners had already switched offers off themselves, so there
   was no introduction left to suppress. It is covered through the HTTP kernel
   by the check script (18 checks in the window).
-- Logging out of Dhiran while Retail stays signed in (the other direction).
 - Physical phones, Safari, Firefox; restricted roles in a browser; the phone
   width signed in on production (measured on staging on the same bundle).
+- The Dhiran "Sign out" button pressed by a person on production (see the
+  next table: the log-out itself was run, the press was not).
+
+**The other log-out direction (version 8)**
+
+| Step | Result |
+|---|---|
+| Both sessions signed in | Dhiran and Retail each open their own pages |
+| Log out of Dhiran | the Dhiran session's own log-out request, sent from its page with the form's own fields: answered with a redirect to the Dhiran log-in; Dhiran pages then ask for a log-in |
+| Retail afterwards | still signed in: Settings opens, same user, same shop |
+| What this does not show | two automated presses of the "Sign out" button sent no request at all (the web server's log has none), so the request was sent from the page instead. On the deployed code run locally with a synthetic owner, a real press of the same button signs out. An artefact of the automation, not a defect; a person's press on production remains NOT RUN |
+
+**Verified again after the window (05:01Z to 05:14Z, read-only)**
+
+| | Result |
+|---|---|
+| Source | production at `e49e611…`, no tracked file modified; staging at `a87dcd5…`, the same |
+| Built assets | every file equal to the released tarball; manifest `5d0d0da8…` on both |
+| Migrations | 384 run, none pending; 148 tables, 42 triggers |
+| Configuration | differs from the pre-release copy in the two explicit product addresses and in nothing else |
+| Health | 200 on the three production hosts and on staging; no maintenance file |
+| Worker | active; one restart at 04:36:33Z, the hourly one its `--max-time=3600` asks for, result success |
+| Scheduler | cron file present; one run a minute, 85 in the 85 minutes after reopening |
+| Errors since the window | application log: no line (no log file for the day exists). php-fpm: none. Web server error log: 40 lines, every one a refused probe for private storage. Server errors answered: 7, all 503, all between 03:36:10Z and 03:36:26Z, inside the window |
+| Another deployment or agent | none running; no other login on the server |
+
+**Why production, staging and the branch differ.** Staging (`a87dcd5`) is
+seven commits behind production (`e49e611`); those commits change one
+handoff, three runbooks and the production check script, and nothing an
+installation runs. The branch tip is the deployed commit plus commits that
+change only `docs/`. `app`, `bootstrap`, `config`, `database`, `resources`,
+`routes`, `public`, `artisan` and the dependency and build manifests are the
+same tree in all three. Staging was left as it is: bringing it level would be
+a deployment that changes no behaviour.
 
 **Recovery position now.** Production has left the window and two owners have
 recorded promotion metadata, so the return to `aa3a62a` is closed: the script
 refuses it and so does the rule. Recovery is forward repair.
 The window's dump is the last complete copy of the database before the
 release.
+
+## 9. Closure, and where the next task starts
+
+**Use this, and nothing older:**
+
+| | |
+|---|---|
+| Worktree | `/home/himanshu/Desktop/jewelflow-worktrees/jewelflows-takeover` |
+| Branch | `integration/jewelflows-takeover`, tracking `origin/integration/jewelflows-takeover` |
+| Commit | the one that adds this version; `git rev-parse HEAD` and `git rev-parse @{u}` must print the same value, and `git status --short` nothing |
+| Relation to production | production runs `e49e611768e62674de0c4b2a77da42d018b28c30` (tag `release/production-20261008`), which is an ancestor of this commit; everything after it changes only `docs/` (`git diff --stat release/production-20261008 HEAD -- . ':!docs'` prints nothing) |
+| Relation to `main` | `origin/main` (`dab0774…`) is an ancestor, 35 commits behind. **Do not deploy `main` until it has been moved to this branch**: it predates the release |
+
+Cut the next task's branch from this commit. Do not start from
+`fix/small-batch-20260914` (the owner's checkout, September), from any
+`archive/…` tag, or from a branch listed as unfinished in the audit.
+
+**Published on 8 October:** this branch and the tag
+`release/production-20261008`, by an ordinary push, nothing forced. Before
+publishing, the 9,467 added lines of the 34 commits were searched for keys,
+passwords, addresses, phone numbers and names: the only credentials are the
+fixed test password and test phone number of synthetic local fixtures. The
+`archive/…` tags were **not** published: several hold old unreviewed work and
+browser snapshots. They exist only in the local repository, which makes that
+repository the recovery copy for them.
+
+**Not done, by decision or because it is not this release:**
+
+- The placement of the Product preferences page: deferred by the owner.
+- Moving `origin/main`: left to the owner (a fast-forward).
+- Everything in section 4 of the audit.
+
