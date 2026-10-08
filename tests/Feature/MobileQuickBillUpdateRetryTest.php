@@ -90,7 +90,10 @@ class MobileQuickBillUpdateRetryTest extends TestCase
         // The records first: this is the effect that matters.
         $this->assertSame($afterB, $this->records($id), 'the late retry of edit A overwrote edit B');
         $retry->assertOk()->assertHeader('X-Idempotent-Replay', 'true')->assertJsonPath('quick_bill.totals.total_amount', 1500);
-        $this->assertSame($first->json('quick_bill'), $retry->json('quick_bill'), 'the retry is answered with what edit A was answered');
+        // The whole receipt, value for value and type for type. Only the order of
+        // the keys is set aside: the stored reply comes back from a jsonb column,
+        // which keeps its own key order.
+        $this->assertSame(self::keysSorted($first->json('quick_bill')), self::keysSorted($retry->json('quick_bill')), 'the retry is answered with what edit A was answered');
         $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('shop_id', $shop->id)->where('action', 'quick_bill.updated')->count(), 'the retry was logged as a third edit');
     }
 
@@ -126,6 +129,18 @@ class MobileQuickBillUpdateRetryTest extends TestCase
         }
 
         $this->assertSame($before, $this->records($id));
+    }
+
+    private static function keysSorted(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map(self::keysSorted(...), $value);
     }
 
     /** The bill's own records, not counts: what each line says and what each payment is for. */
