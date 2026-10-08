@@ -107,6 +107,11 @@
                         <span class="admin-nav-suffix">Control</span>
                     </a>
                 @endif
+                {{-- Every admin's own sign-in email and mobile. Not tied to a role: the routes are not. --}}
+                <a href="{{ route('admin.account.show') }}" class="admin-nav-link {{ request()->routeIs('admin.account.*') ? 'is-active' : '' }}">
+                    <span>Account</span>
+                    <span class="admin-nav-suffix">Security</span>
+                </a>
             </nav>
             <div class="px-4 pb-5">
                 <button type="button" class="admin-btn admin-btn-danger w-full" onclick="document.getElementById('admin-logout-dialog')?.showModal()">

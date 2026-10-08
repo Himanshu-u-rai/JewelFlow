@@ -85,4 +85,35 @@ class SuperAdminHeaderTitleTest extends TestCase
         $res->assertOk();
         $res->assertSee('<h2 class="admin-title">Platform Dashboard</h2>', false);
     }
+
+    /**
+     * Account Security (change your own sign-in email and mobile) shipped in
+     * June with its routes and page, and no link: it opened only if the
+     * address was typed. Every platform admin may open their own, so the
+     * link is not tied to a role.
+     */
+    #[DataProvider('adminRoles')]
+    public function test_the_sidebar_links_to_account_security_for_every_admin(string $role): void
+    {
+        $admin = PlatformAdmin::create([
+            'first_name' => 'Nav', 'last_name' => 'Test', 'name' => 'Nav Test',
+            'email' => 'nav' . random_int(1000, 999999) . '@example.com',
+            'mobile_number' => '9' . random_int(100000000, 999999999),
+            'password' => Hash::make('password'),
+            'role' => $role, 'is_active' => true,
+            'email_verified_at' => now(),
+        ]);
+        $as = fn () => $this->actingAs($admin, 'platform_admin')->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true]);
+
+        $link = '<a href="' . route('admin.account.show') . '" class="admin-nav-link ';
+
+        $as()->get(route('admin.dashboard'))->assertOk()->assertSee($link . '"', false);
+        $as()->get(route('admin.account.show'))->assertOk()->assertSee($link . 'is-active"', false);
+    }
+
+    public static function adminRoles(): array
+    {
+        return ['super admin' => ['super_admin'], 'platform operator' => ['platform_operator']];
+    }
 }
+
