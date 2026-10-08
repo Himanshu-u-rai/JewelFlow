@@ -1,9 +1,10 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 14, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 15, 8 October 2026: the closure record of the takeover and
+stabilization batches** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
 `0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`, version 12
-`a1703fe`, version 13 `c809f6e`).
+`a1703fe`, version 13 `c809f6e`, version 14 `8456682`).
 
 **Production and staging now run `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`**
 (10:19Z on 8 October): the stabilization batch of section 10, its second
@@ -19,7 +20,10 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 14, then 13, 12, 11, 10 and 9.** It names the one worktree and
+**Start here for the next task: section 15.** It supersedes every earlier
+"where the next task starts" in this file (sections 9 to 14) and holds the
+one backlog. The earlier sections remain as the record of how things got
+here. It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -1218,4 +1222,118 @@ current release; the suite on PHP 8.4; a restore test of a nightly archive
 from after the releases.
 
 Decisions for the owner, leads and deferred items: unchanged from section 13.
+
+## 15. Closure (version 15)
+
+This is the last entry for the two batches. It was written **before** the
+final alignment on purpose, so that no further documentation commit has to
+follow it: the commit that adds this section is the release commit, and the
+SHAs observed after alignment are in the closing report of the session, not
+in this file.
+
+### Where the next task starts
+
+| | |
+|---|---|
+| Branch | **`main`** |
+| Commit | the one that adds this section (`git rev-parse origin/main`) |
+| Worktree | `/home/himanshu/Desktop/jewelflow-worktrees/jewelflows-takeover`, on `main` |
+| Deployed | production and staging run that same commit. Their application code is that of `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`, the last commit that changed anything the application runs; everything after it is documentation, tests and operator tooling |
+
+Cut the next task's branch from `main`. `integration/jewelflows-takeover`,
+`fix/stabilization-20261008` and `fix/stabilization-review-20261008` are
+finished and merged; do not start from them.
+
+### How the pull requests were integrated
+
+- **#2** (`integration/jewelflows-takeover`, 36 commits): `main` was an
+  ancestor of it, so `main` was fast-forwarded. History kept, nothing
+  rewritten, nothing forced.
+- **#3** (`fix/stabilization-20261008`, stacked on #2): fast-forwarded into
+  `main` in the same way. The command-line login this work has can only read
+  the repository, so the pull request's base could not be changed to `main`
+  through GitHub; its base branch was fast-forwarded to the same commit
+  instead, which is how GitHub came to show it as merged. The result is the
+  one asked for: both batches on `main`, each commit once.
+- **#4** (the review corrections, `4f042e6`): fast-forwarded into the
+  stabilization branch earlier; it is in `main` exactly once.
+- Reviewed before integrating: 63 commits, one author, no merge commit, no
+  required check and no branch protection on the repository. Nothing the
+  application runs differs between the last tested and deployed commit
+  (`6c2ac60`) and the final one, so the suite of that commit stands: PHP 8.2,
+  3,556 tests, 0 failures. The checks that the later commits touch were run
+  again: the return guard (8 of 8), shell syntax of the three scripts, and
+  the quick-bill edit retry tests (4 tests, 33 assertions).
+
+### How the servers were aligned
+
+The deployed trees differed from the final commit only under `docs/` and
+`tests/`. `docs/runbooks/sync-release-docs.sh` moves a checkout across such
+a difference and nothing else: it refuses if any other path differs, takes
+no maintenance window, installs, rebuilds, reloads and restarts nothing, and
+afterwards requires `.env`, the config cache, the built assets, the worker's
+process and PHP-FPM to be exactly what they were. Staging first, then
+production. The operator copy of `deploy-stabilization.sh` on the server is
+the corrected one (SHA-256 `10f4bf61fadf49d6…`) and keeps both quick-bill
+retry protections.
+
+### Acceptance
+
+| Check | State |
+|---|---|
+| Return-policy warning, admin Account Security link, Dhiran sign-out leaving Retail signed in, signed-in narrow window | done on 8 October: section 14 |
+| **Out of Retail while Dhiran stays signed in, on this release** | **pending at the time of this record**: Dhiran was not signed in. It needs `https://dhiran.jewelflows.com/login` (Retail was signed in). If it was run later in the same session, the closing report says so |
+| A physical phone | not run. Everything narrow was a 390-pixel desktop window or viewport emulation: no touch, no mobile browser |
+| Session continuity across the switch to `Secure` cookies (8 October, 09:04Z) | never observed, and cannot be now. Sessions were seen to survive two later releases; that is a different thing |
+| Restore test of a nightly archive made after the releases | pending: the newest archive was made at 18:30Z on 7 October, before them. A fresh post-release dump was restore-tested instead (section 12); it does not stand in for the archive |
+| The suite on PHP 8.4 | not run for the stabilization commits |
+
+### Cleaned up
+
+- Local branches deleted after an archive tag was verified on the same
+  commit: `fix/returns-flash-channel` (its purpose is delivered by `7e78687`
+  in another way), `design/customers-codex-polish` (the Account link is
+  delivered by `76dd1ef`; its hover fix no longer applies),
+  `fix/masters-safety-guards` (a rejected alternative).
+- After integration: the local and remote branches of the three merged pull
+  requests, and the spare `main-integration` worktree.
+- 19 `archive/…` tags and `release/production-20261008` are kept; the
+  archive tags exist only in the local repository.
+
+### Deliberately kept
+
+- On the server, root only: every release dump and pre-release copy under
+  `/root/takeover-production`, `/root/takeover-staging` and
+  `/root/stabilization`; the archives of the old agent worktrees; the storage
+  inventory; both nightly backup series.
+- On staging: one deactivated synthetic shop (`SYNTH-…`) with its
+  idempotency claims.
+- Locally: the owner's checkout and its untracked notes; the review packets
+  and evidence folders; the databases `jewelflow_test_mobile_returns` (in
+  use) and `jewelflow_test_pre_merge` (purpose unconfirmed); the mobile
+  repository, untouched.
+
+### The one backlog
+
+**Deferred by the owner (decisions, not started):** the APP_KEY rotation and
+the date the old key is retired; an off-site backup destination; retention
+or deletion of dumps and of the older backup series; the placement of the
+Product preferences page; the policy questions (which of two quick-bill
+edits wins, loyalty expiry, what the shopfront publishes); mobile builds;
+the tool data in root's home on the server.
+
+**Pending checks:** the three rows marked pending or not run above, and a
+physical phone.
+
+**Leads and open findings, not proven and not resolved:** the fiscal-year
+reset of the invoice counter checks and resets without a lock (read in the
+code, never reproduced); POS 500 on an item with no price or metal type;
+three private files on the public disk; `pageinspect`; the review lows of
+the security batch; the 32 × 32 mobile menu button and Dhiran's 42 px
+log-in button; a warning toast in an error's red; the mobile items
+(physical device, build 25, runtime policy, iOS).
+
+**Limits of the tooling that stand:** one PHP-FPM pool serves both
+environments, so a release of either reloads the other's workers; cron is
+not held during a release window.
 
