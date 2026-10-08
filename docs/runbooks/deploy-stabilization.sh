@@ -28,10 +28,11 @@
 #            So return has a boundary, checked before anything is touched:
 #              * never below RETURN_FLOOR, the first commit of this batch
 #                that was released (this script's own checks assume it);
-#              * never to a commit that drops the protection of a route the
-#                deployed commit protects WHILE a claim for that route (or an
-#                unresolved claim) remains. Claims are not deleted to make a
-#                return possible: they are pruned 48 hours after they resolve.
+#              * never to a commit that lacks quick-bill create or edit retry
+#                protection, even if the claim table is currently empty. The
+#                site still accepts requests during preflight, so another claim
+#                can arrive before maintenance. Use a compatible target that
+#                retains both protections; claims are never changed by return.
 #
 # What it touches beyond its own environment, stated plainly:
 #   * php8.2-fpm is ONE pool serving production and staging. Its reload at the
@@ -62,11 +63,10 @@ ENVN=${2:?env}; FROM=${3:?from-sha}; TARGET=${4:?target-sha}; BUNDLE=${5:?bundle
 BRANCH=fix/stabilization-20261008; REF=refs/remotes/stabilization/$BRANCH
 SETTING=SESSION_SECURE_COOKIE
 RETURN_FLOOR=bcc336a4b7c88e5431f35dbaa7bddc5d56774574
-# route as written in routes/mobile.php | claims that belong to it (an unresolved claim belongs to all)
-UNRESOLVED="response_status < 100 or response_status > 599"
+# Required route declarations as written in routes/mobile.php.
 PROTECTED_ROUTES=(
-  "Route::post('/quick-bills',|$UNRESOLVED or (response_body::jsonb ? 'quick_bill' and coalesce(response_body::jsonb->>'message','') <> 'Quick bill updated successfully.')"
-  "Route::put('/quick-bills/{quickBill}',|$UNRESOLVED or (response_body::jsonb ? 'quick_bill' and coalesce(response_body::jsonb->>'message','') <> 'Quick bill saved successfully.')"
+  "Route::post('/quick-bills',"
+  "Route::put('/quick-bills/{quickBill}',"
 )
 STAGING_DIR=/var/www/jewelflow-staging
 case "$MODE" in preflight|release|resume|return) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
@@ -169,20 +169,16 @@ if [ "$MODE" != resume ]; then
   OTHER_STATE_BEFORE=$(other_state)
   UNTRACKED_BEFORE=$(untracked)
 fi
-protects() { G show "$1:routes/mobile.php" 2>/dev/null | grep -A1 -F "$2" | grep -q 'mobile.idempotency'; }
+protects() { grep -A1 -F "$1" <<< "$TARGET_ROUTES" | grep -q 'mobile.idempotency'; }
 if [ "$MODE" = return ]; then
   G cat-file -e "$TARGET^{commit}" 2>/dev/null || fail "the commit to return to is not in this repository"
   G merge-base --is-ancestor "$TARGET" "$FROM" && [ "$TARGET" != "$FROM" ] || fail "return goes to an earlier commit: $TARGET is not an ancestor of the deployed $FROM"
   G merge-base --is-ancestor "$RETURN_FLOOR" "$TARGET" || fail "return refused: $TARGET is below the boundary $RETURN_FLOOR (the first released commit of this batch); nothing was touched"
-  for entry in "${PROTECTED_ROUTES[@]}"; do
-    route=${entry%%|*}; claims_sql=${entry#*|}
-    if protects "$FROM" "$route" && ! protects "$TARGET" "$route"; then
-      CLAIMS=$(PSQL "select count(*) from idempotency_keys where $claims_sql") || fail "could not count idempotency claims"
-      [ "$CLAIMS" = 0 ] || fail "return refused: $TARGET does not protect ${route%,} against retries and $CLAIMS claim(s) for it remain. A request the deployed commit already carried out would be carried out again when retried. Claims are kept; nothing was touched. Return to a commit that keeps the protection, or wait until the claims have been pruned (48 hours after they resolve)"
-      ok "the commit to return to drops the retry protection of ${route%,}, and no claim for it remains"
-    fi
+  TARGET_ROUTES=$(G show "$TARGET:routes/mobile.php" 2>/dev/null) || fail "could not read the target's mobile routes; nothing was touched"
+  for route in "${PROTECTED_ROUTES[@]}"; do
+    protects "$route" || fail "return refused: $TARGET does not retain retry protection for ${route%,}. An empty claim table is not a safe exception while requests are still accepted. Use a compatible target that keeps both quick-bill protections; claims are kept and nothing was touched"
   done
-  ok "return boundary: at or above $RETURN_FLOOR; no remaining claim depends on protection the earlier commit lacks"
+  ok "return boundary: at or above $RETURN_FLOOR; quick-bill create and edit retry protection retained"
 else
   [ -f "$BUNDLE" ] && git bundle verify "$BUNDLE" >/dev/null 2>&1 || fail "the bundle is missing or does not verify"
   [ "$(git bundle list-heads "$BUNDLE" "refs/heads/$BRANCH" | cut -d' ' -f1)" = "$TARGET" ] || fail "the bundle's $BRANCH is not $TARGET"

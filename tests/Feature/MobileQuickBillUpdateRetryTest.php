@@ -78,9 +78,10 @@ class MobileQuickBillUpdateRetryTest extends TestCase
         $a = $this->payload(1500, 'Edit A item');
         $b = $this->payload(2500, 'Edit B item');
 
-        $first = $put($a, 'qb-edit-key-A')->assertOk();
-        $put($b, 'qb-edit-key-B')->assertOk();
+        $first = $put($a, 'qb-edit-key-A')->assertOk()->assertJsonPath('quick_bill.totals.total_amount', 1500);
+        $put($b, 'qb-edit-key-B')->assertOk()->assertJsonPath('quick_bill.totals.total_amount', 2500);
         $afterB = $this->records($id);
+        $this->assertSame('2500.00', $afterB['total']);
         $this->assertSame(['Edit B item'], $afterB['lines']);
         $this->assertSame(['2500.00'], $afterB['payments']);
 
@@ -88,8 +89,8 @@ class MobileQuickBillUpdateRetryTest extends TestCase
 
         // The records first: this is the effect that matters.
         $this->assertSame($afterB, $this->records($id), 'the late retry of edit A overwrote edit B');
-        $retry->assertOk()->assertHeader('X-Idempotent-Replay', 'true');
-        $this->assertSame($first->json('quick_bill.total_amount'), $retry->json('quick_bill.total_amount'), 'the retry is answered with what edit A was answered');
+        $retry->assertOk()->assertHeader('X-Idempotent-Replay', 'true')->assertJsonPath('quick_bill.totals.total_amount', 1500);
+        $this->assertSame($first->json('quick_bill'), $retry->json('quick_bill'), 'the retry is answered with what edit A was answered');
         $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('shop_id', $shop->id)->where('action', 'quick_bill.updated')->count(), 'the retry was logged as a third edit');
     }
 
