@@ -13,12 +13,16 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * What a repeated PUT /api/mobile/quick-bills/{id} actually does. The app
- * sends an idempotency key with it and the route has no idempotency
- * middleware; that alone does not show money is processed twice. Measured:
- * an edit replaces the bill's lines and payments with the ones sent, so the
- * same edit sent twice leaves the same bill. Only the audit trail gains a
- * second entry.
+ * Retries of PUT /api/mobile/quick-bills/{id}.
+ *
+ * The same edit sent twice in a row leaves the same bill, because an edit
+ * replaces the bill's lines and payments. That was measured first and said
+ * nothing about a retry that arrives LATE: edit A, then a different edit B,
+ * then A again. That one was applied a second time and undid B (total, line
+ * and payment all back to A's). The route now runs behind the idempotency
+ * middleware, key optional as on create, so a retried edit is answered with
+ * its first reply and applied once. Which edit should win when two people
+ * edit a bill is a separate policy and is not touched here.
  */
 class MobileQuickBillUpdateRetryTest extends TestCase
 {
@@ -49,8 +53,91 @@ class MobileQuickBillUpdateRetryTest extends TestCase
         $this->assertSame($first->json('quick_bill.bill_number'), $second->json('quick_bill.bill_number'));
         $this->assertSame(1, QuickBill::withoutGlobalScopes()->where('shop_id', $shop->id)->count());
 
-        // The one lasting difference: each accepted edit is logged.
-        $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('shop_id', $shop->id)->where('action', 'quick_bill.updated')->count());
+        // And it is one edit, logged once: the second request was a replay.
+        $second->assertHeader('X-Idempotent-Replay', 'true');
+        $this->assertSame(1, AuditLog::withoutGlobalScopes()->where('shop_id', $shop->id)->where('action', 'quick_bill.updated')->count());
+    }
+
+    /**
+     * The retry that matters arrives late. Edit A is saved but its reply is
+     * lost; the user makes a different edit B, which is saved; then the app's
+     * queued retry of A goes out with A's key. A is not a new instruction: it
+     * was already carried out, and carrying it out again would silently undo
+     * B. With the key the server knows that and replays A's first reply.
+     */
+    public function test_a_late_retry_of_an_earlier_edit_does_not_undo_the_edit_made_since(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        Sanctum::actingAs($user);
+
+        $id = $this->postJson('/api/mobile/quick-bills', $this->payload(1000))->assertCreated()->json('quick_bill.id');
+        $put = fn (array $payload, ?string $key) => TenantContext::runFor($shop->id, fn () => $this->putJson(
+            "/api/mobile/quick-bills/{$id}", $payload, $key === null ? [] : ['X-Idempotency-Key' => $key]
+        ));
+
+        $a = $this->payload(1500, 'Edit A item');
+        $b = $this->payload(2500, 'Edit B item');
+
+        $first = $put($a, 'qb-edit-key-A')->assertOk();
+        $put($b, 'qb-edit-key-B')->assertOk();
+        $afterB = $this->records($id);
+        $this->assertSame(['Edit B item'], $afterB['lines']);
+        $this->assertSame(['2500.00'], $afterB['payments']);
+
+        $retry = $put($a, 'qb-edit-key-A');
+
+        // The records first: this is the effect that matters.
+        $this->assertSame($afterB, $this->records($id), 'the late retry of edit A overwrote edit B');
+        $retry->assertOk()->assertHeader('X-Idempotent-Replay', 'true');
+        $this->assertSame($first->json('quick_bill.total_amount'), $retry->json('quick_bill.total_amount'), 'the retry is answered with what edit A was answered');
+        $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('shop_id', $shop->id)->where('action', 'quick_bill.updated')->count(), 'the retry was logged as a third edit');
+    }
+
+    public function test_an_edit_without_a_key_is_applied_as_before(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        Sanctum::actingAs($user);
+
+        $id = $this->postJson('/api/mobile/quick-bills', $this->payload(1000))->assertCreated()->json('quick_bill.id');
+        $put = fn (array $payload) => TenantContext::runFor($shop->id, fn () => $this->putJson("/api/mobile/quick-bills/{$id}", $payload));
+
+        // Older builds send no key: every edit they send is applied, in order.
+        $put($this->payload(1500, 'Edit A item'))->assertOk();
+        $put($this->payload(2500, 'Edit B item'))->assertOk();
+        $put($this->payload(1500, 'Edit A item'))->assertOk();
+
+        $this->assertSame(['Edit A item'], $this->records($id)['lines']);
+    }
+
+    public function test_another_shops_user_cannot_edit_the_bill_with_or_without_a_key(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [$stranger, $other] = $this->createRetailerTenant();
+
+        Sanctum::actingAs($owner);
+        $id = $this->postJson('/api/mobile/quick-bills', $this->payload(1000))->assertCreated()->json('quick_bill.id');
+        $before = $this->records($id);
+
+        Sanctum::actingAs($stranger);
+        foreach ([[], ['X-Idempotency-Key' => 'qb-edit-stranger']] as $headers) {
+            TenantContext::runFor($other->id, fn () => $this->putJson("/api/mobile/quick-bills/{$id}", $this->payload(9999, 'Not yours'), $headers))
+                ->assertNotFound();
+        }
+
+        $this->assertSame($before, $this->records($id));
+    }
+
+    /** The bill's own records, not counts: what each line says and what each payment is for. */
+    private function records(int $id): array
+    {
+        $bill = QuickBill::withoutGlobalScopes()->findOrFail($id);
+
+        return [
+            'total' => (string) $bill->total_amount,
+            'paid' => (string) $bill->paid_amount,
+            'lines' => QuickBillItem::withoutGlobalScopes()->where('quick_bill_id', $id)->orderBy('id')->pluck('description')->all(),
+            'payments' => QuickBillPayment::withoutGlobalScopes()->where('quick_bill_id', $id)->orderBy('id')->pluck('amount')->map(fn ($v) => number_format((float) $v, 2, '.', ''))->all(),
+        ];
     }
 
     private function state(int $id): array
@@ -69,7 +156,7 @@ class MobileQuickBillUpdateRetryTest extends TestCase
         ];
     }
 
-    private function payload(int $rate): array
+    private function payload(int $rate, string $description = 'Synthetic item'): array
     {
         return [
             'bill_date' => now()->toDateString(),
@@ -78,7 +165,7 @@ class MobileQuickBillUpdateRetryTest extends TestCase
             'round_off' => 0,
             'save_action' => 'issue',
             'customer_name' => 'Synthetic Walk-in',
-            'items' => [['description' => 'Synthetic item', 'pcs' => 1, 'gross_weight' => 1, 'net_weight' => 1, 'rate' => $rate]],
+            'items' => [['description' => $description, 'pcs' => 1, 'gross_weight' => 1, 'net_weight' => 1, 'rate' => $rate]],
             'payments' => [['payment_mode' => 'cash', 'amount' => $rate]],
         ];
     }

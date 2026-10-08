@@ -187,8 +187,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             // user stakes no claim. Optional: older builds send no key.
             Route::post('/quick-bills', [QuickBillController::class, 'store'])
                 ->middleware(['throttle:api-pos-sale', 'can:sales.create', 'mobile.idempotency:optional']);
+            // An edit is retried too. Without the key's protection a late retry of
+            // an earlier edit was applied again and undid the edit made since.
             Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-                ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
+                ->middleware(['throttle:api-pos-sale', 'can:sales.create', 'mobile.idempotency:optional']);
             Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
                 ->middleware(['throttle:api-pos-sale', 'can:sales.void']);
         });
