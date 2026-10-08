@@ -174,7 +174,7 @@ MISSING=$(comm -23 <(tar -xzOf "$ASSETS" build/manifest.json | grep -oE '"(file|
 [ -z "$MISSING" ] || fail "the manifest names files the tarball does not hold: $MISSING"
 NEW_MANIFEST=$(tar -xzOf "$ASSETS" build/manifest.json | sha256sum | cut -d' ' -f1)
 CSS_LOST=$(css_lost)
-[ "$CSS_LOST" = 0 ] || [ "$MODE" = return ] || [ "${STABILIZATION_CSS_RULES_REMOVED:-}" = accepted ] || fail "the new stylesheets lack $CSS_LOST rule(s) that the deployed ones have (build in a real checkout; or set STABILIZATION_CSS_RULES_REMOVED=accepted if the removal is intended)"
+[ "$CSS_LOST" = 0 ] || [ "$MODE" = return ] || [ "${STABILIZATION_CSS_RULES_REMOVED:-}" = accepted ] || fail "the new stylesheets lack $CSS_LOST rule(s) that the deployed ones have (build with docs/runbooks/build-assets.sh and account for every lost rule; then set STABILIZATION_CSS_RULES_REMOVED=accepted if the removal is intended)"
 ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST; deployed CSS rules absent from the new build: $CSS_LOST$([ "$CSS_LOST" = 0 ] || { [ "$MODE" = return ] && echo ' (a return to an earlier build)' || echo ' (declared intended)'; })"
 if [ "$MODE" = resume ]; then
   PRE=${STABILIZATION_PREV:?resume needs STABILIZATION_PREV=<directory of the stopped run>}
