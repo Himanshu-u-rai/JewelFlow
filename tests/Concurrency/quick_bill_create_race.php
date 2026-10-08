@@ -15,6 +15,7 @@
 
 use App\Models\QuickBill;
 use App\Models\QuickBillPayment;
+use App\Services\BusinessIdentifierService;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,7 +139,7 @@ function overlapped(array $results): bool
     return $sentBefore >= 2;
 }
 
-function scenario(string $name, array $specs, callable $verdict): bool
+function scenario(string $name, array $specs, callable $verdict, bool $warm = true): bool
 {
     [$user, $shop] = (new QuickBillRaceFixture())->build();
     $token = $user->createToken('quick-bill-race')->plainTextToken;
@@ -146,11 +147,14 @@ function scenario(string $name, array $specs, callable $verdict): bool
     // One bill first, alone. A shop's very first quick bill also creates its
     // number counter, and concurrent first bills collide on THAT (the losers
     // get a 500 and book nothing: seen here, not part of this probe).
-    $warm = race($token, [['-', payload(500)]]);
-    if (($warm[0]['status'] ?? 0) !== 201) {
-        echo "\n--- {$name} ---\nwarm-up bill failed: " . json_encode($warm[0]) . "\nVERDICT: NOT SAFE\n";
+    // With $warm false the shop is fresh: the race itself creates the counter.
+    if ($warm) {
+        $first = race($token, [['-', payload(500)]]);
+        if (($first[0]['status'] ?? 0) !== 201) {
+            echo "\n--- {$name} ---\nwarm-up bill failed: " . json_encode($first[0]) . "\nVERDICT: NOT SAFE\n";
 
-        return false;
+            return false;
+        }
     }
     $before = booked($shop->id);
 
@@ -181,8 +185,90 @@ function scenario(string $name, array $specs, callable $verdict): bool
     return $ok;
 }
 
+/** CHILD: take one identifier inside a transaction that stays open a moment, as a real caller's does. */
+function take(int $shopId, string $kind, float $startMicro): void
+{
+    DB::select('select 1');
+    while (microtime(true) < $startMicro) {
+        usleep(500);
+    }
+    $sent = microtime(true);
+    try {
+        $identity = DB::transaction(function () use ($shopId, $kind) {
+            $identity = match ($kind) {
+                'invoice' => BusinessIdentifierService::nextInvoiceIdentifier($shopId),
+                'purchase' => BusinessIdentifierService::nextPurchaseIdentifier($shopId),
+                'credit_note' => BusinessIdentifierService::nextCreditNoteIdentifier($shopId),
+            };
+            usleep(120_000);
+
+            return $identity;
+        });
+        $out = ['sequence' => $identity['sequence'], 'number' => $identity['number']];
+    } catch (Throwable $e) {
+        $out = ['fatal' => get_class($e) . ': ' . mb_substr($e->getMessage(), 0, 160)];
+    }
+    fwrite(STDOUT, json_encode($out + ['shop' => $shopId, 'sent_at' => $sent, 'done_at' => microtime(true)]) . "\n");
+}
+
+/** PARENT: N processes take the same kind of identifier for the given fresh shops at one instant. */
+function takeRace(array $shopIds, string $kind): array
+{
+    $start = microtime(true) + 2.0;
+    $procs = [];
+    foreach ($shopIds as $i => $shopId) {
+        $cmd = sprintf('%s %s take %d %s %.6f', escapeshellarg(PHP_BINARY), escapeshellarg(__FILE__), $shopId, escapeshellarg($kind), $start);
+        $procs[$i] = ['proc' => proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, dirname(__DIR__, 2)), 'pipes' => $pipes];
+    }
+    $results = [];
+    foreach ($procs as $i => $p) {
+        $out = stream_get_contents($p['pipes'][1]);
+        $err = stream_get_contents($p['pipes'][2]);
+        proc_close($p['proc']);
+        $results[$i] = json_decode(trim(strtok(trim($out), "\n") ?: ''), true) ?: ['fatal' => trim($out . ' ' . $err)];
+    }
+
+    return $results;
+}
+
+function counterScenario(string $name, string $kind, int $shops, int $each, callable $expected): bool
+{
+    $built = [];
+    for ($i = 0; $i < $shops; $i++) {
+        $built[] = (new QuickBillRaceFixture())->build()[1];
+    }
+    $ids = [];
+    foreach ($built as $shop) {
+        $ids = array_merge($ids, array_fill(0, $each, (int) $shop->id));
+    }
+    $results = takeRace($ids, $kind);
+    $fatal = array_values(array_filter(array_map(fn ($r) => $r['fatal'] ?? null, $results)));
+    $ok = $fatal === [] && overlapped($results);
+    $summary = [];
+    foreach ($built as $shop) {
+        $numbers = array_values(array_map(fn ($r) => $r['number'], array_filter($results, fn ($r) => ($r['shop'] ?? 0) === (int) $shop->id && isset($r['number']))));
+        sort($numbers, SORT_NATURAL);
+        $want = $expected($shop, $each);
+        $ok = $ok && $numbers === $want;
+        $summary[] = implode(',', $numbers) . ($numbers === $want ? '' : ' (wanted ' . implode(',', $want) . ')');
+    }
+    echo "\n--- {$name} ---\n";
+    echo 'numbers issued per shop: ' . implode(' | ', $summary) . "\n";
+    printf("overlapped: %s\n", overlapped($results) ? 'yes' : 'NO');
+    foreach (array_unique($fatal) as $f) {
+        echo "  !! child failed: {$f}\n";
+    }
+    echo 'VERDICT: ' . ($ok ? 'SAFE' : 'NOT SAFE') . "\n";
+
+    return $ok;
+}
+
 if (($argv[1] ?? 'run') === 'fire') {
     fire($argv[2], $argv[3], (float) $argv[4], $argv[5]);
+    exit(0);
+}
+if (($argv[1] ?? 'run') === 'take') {
+    take((int) $argv[2], $argv[3], (float) $argv[4]);
     exit(0);
 }
 
@@ -219,6 +305,42 @@ $passed[] = scenario('C. control: four requests, no key', array_fill(0, 4, ['-',
     return count(array_filter($results, fn ($r) => $r['status'] === 201)) === 4
         && $booked === ['bills' => 4, 'payments' => 4, 'numbers' => 4];
 });
+
+// ── Fresh shops: no warm-up, so the race itself creates the number counter ──
+$created = fn (array $results) => count(array_filter($results, fn ($r) => $r['status'] === 201 && ! $r['replay']));
+
+// D. A fresh shop's first bill, sent six times with one key: one bill.
+$passed[] = scenario('D. fresh shop: six identical requests, one key', array_fill(0, 6, [$key . 'd', payload()]), function (array $results, array $booked) use ($created) {
+    $others = array_filter($results, fn ($r) => ! ($r['status'] === 201 && ! $r['replay']));
+    $safe = array_filter($others, fn ($r) => ($r['status'] === 201 && $r['replay']) || ($r['status'] === 409 && $r['code'] === 'idempotency_in_flight'));
+
+    return $created($results) === 1 && count($safe) === count($others) && $booked === ['bills' => 1, 'payments' => 1, 'numbers' => 1];
+}, false);
+
+// E. A fresh shop's first four bills at once, each with its own key: four bills, four numbers.
+$passed[] = scenario('E. fresh shop: four requests, four keys', [[$key . 'e1', payload()], [$key . 'e2', payload()], [$key . 'e3', payload()], [$key . 'e4', payload()]], function (array $results, array $booked) use ($created) {
+    return $created($results) === 4 && $booked === ['bills' => 4, 'payments' => 4, 'numbers' => 4];
+}, false);
+
+// F. The same without keys, as an older build of the app sends them.
+$passed[] = scenario('F. fresh shop: four requests, no key', array_fill(0, 4, ['-', payload()]), function (array $results, array $booked) use ($created) {
+    return $created($results) === 4 && $booked === ['bills' => 4, 'payments' => 4, 'numbers' => 4];
+}, false);
+
+// ── The shared identifier service, through other callers' entry points ──────
+$from = fn (string $prefix, int $first) => fn ($shop, int $n) => array_map(fn ($i) => $prefix . ($first + $i), range(0, $n - 1));
+$invoiceStart = function ($shop, int $n): array {
+    $settings = DB::table('shop_billing_settings')->where('shop_id', $shop->id)->first(['invoice_prefix', 'invoice_start_number', 'invoice_suffix']);
+    $start = max(1, (int) ($settings->invoice_start_number ?? 1001));
+
+    return array_map(fn ($i) => ($settings->invoice_prefix ?? 'INV-') . ($start + $i) . ($settings->invoice_suffix ?? ''), range(0, $n - 1));
+};
+// G. Six first invoices of a fresh shop: the shop's own starting number, then the next five.
+$passed[] = counterScenario('G. fresh shop: six first invoice numbers', 'invoice', 1, 6, $invoiceStart);
+// H. Six first purchases of a fresh shop: 1 to 6.
+$passed[] = counterScenario('H. fresh shop: six first purchase numbers', 'purchase', 1, 6, $from('PUR-', 1));
+// I. Two fresh shops at once, three credit notes each: each shop counts for itself.
+$passed[] = counterScenario('I. two fresh shops: three first credit notes each', 'credit_note', 2, 3, $from('CN-', 1));
 
 $all = ! in_array(false, $passed, true);
 echo "\nRESULT: " . ($all ? 'ALL SCENARIOS SAFE' : 'FAILED') . ' (' . count(array_filter($passed)) . ' of ' . count($passed) . ")\n";

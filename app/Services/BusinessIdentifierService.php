@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ShopCounter;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -40,18 +39,20 @@ class BusinessIdentifierService
                 ->first();
 
             if (!$counter) {
-                $initialValue = self::initialCounterSeed($shopId, $counterKey);
-                try {
-                    ShopCounter::query()->create([
-                        'shop_id'       => $shopId,
-                        'counter_key'   => $counterKey,
-                        'current_value' => $initialValue,
-                    ]);
-                } catch (QueryException $e) {
-                    if (($e->getCode() ?? '') !== '23505') {
-                        throw $e;
-                    }
-                }
+                // The counter's first use. Two first uses at the same instant both
+                // get here. ON CONFLICT DO NOTHING lets the second wait for the
+                // first to commit and then insert nothing, without an error.
+                // (Catching the unique violation instead, as this did, does not
+                // work on PostgreSQL: the failed INSERT aborts the transaction and
+                // every later statement in it, the caller's included, is refused.)
+                // Only that conflict is absorbed: any other failure still raises.
+                ShopCounter::query()->insertOrIgnore([
+                    'shop_id'       => $shopId,
+                    'counter_key'   => $counterKey,
+                    'current_value' => self::initialCounterSeed($shopId, $counterKey),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
 
                 $counter = ShopCounter::query()
                     ->where('shop_id', $shopId)
@@ -271,18 +272,13 @@ class BusinessIdentifierService
             ->first();
 
         if (! $row) {
-            try {
-                DB::table('platform_counters')->insert([
-                    'counter_key'   => self::KEY_SHOP_CODE,
-                    'current_value' => 0,
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ]);
-            } catch (QueryException $e) {
-                if (($e->getCode() ?? '') !== '23505') {
-                    throw $e;
-                }
-            }
+            // See nextCounter(): the conflict is absorbed by the statement, not caught.
+            DB::table('platform_counters')->insertOrIgnore([
+                'counter_key'   => self::KEY_SHOP_CODE,
+                'current_value' => 0,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
 
             $row = DB::table('platform_counters')
                 ->where('counter_key', self::KEY_SHOP_CODE)
@@ -318,18 +314,13 @@ class BusinessIdentifierService
             ->first();
 
         if (! $row) {
-            try {
-                DB::table('platform_counters')->insert([
-                    'counter_key'   => self::KEY_PLATFORM_INVOICE,
-                    'current_value' => 0,
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ]);
-            } catch (QueryException $e) {
-                if (($e->getCode() ?? '') !== '23505') {
-                    throw $e;
-                }
-            }
+            // See nextCounter(): the conflict is absorbed by the statement, not caught.
+            DB::table('platform_counters')->insertOrIgnore([
+                'counter_key'   => self::KEY_PLATFORM_INVOICE,
+                'current_value' => 0,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
 
             $row = DB::table('platform_counters')
                 ->where('counter_key', self::KEY_PLATFORM_INVOICE)
