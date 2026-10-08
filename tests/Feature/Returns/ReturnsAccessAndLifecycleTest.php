@@ -267,4 +267,36 @@ class ReturnsAccessAndLifecycleTest extends TestCase
         $res->assertRedirect();
         $this->assertStringContainsString('/login', (string) $res->headers->get('Location'));
     }
+
+    /**
+     * A shop with no return policy is sent to Settings, and the page it lands
+     * on must say why.
+     *
+     * The message is flashed as a `warning`, which is what it is, and reaches
+     * the page as the `flash-warning` tag. For months nothing read that tag
+     * (tests/js/flash-channels.check.mjs holds the script to it now), so the
+     * user was moved to Settings with no explanation. Asserting the tag, not
+     * only the session key or the text, is the point: the session key alone
+     * was satisfied the whole time.
+     */
+    public function test_unconfigured_return_policy_bounce_tells_the_user_why(): void
+    {
+        // soldInvoice() never calls configureReturnPolicy(): exactly the state
+        // that trips the gate.
+        [$owner, $shop, $invoice] = $this->soldInvoice();
+
+        // Built on self::ERP, not route(): these tests drive the tenant host.
+        $target = self::ERP . '/settings?tab=return-policy';
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get(self::ERP . '/invoices/' . $invoice->id . '/returns/create'))
+            ->assertRedirect($target)
+            ->assertSessionHas('warning')
+            ->assertSessionMissing('error');
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get($target))
+            ->assertOk()
+            ->assertSee('<meta name="flash-warning" content="Please set up your return policy before processing returns.', false)
+            ->assertDontSee('meta name="flash-error"', false);
+    }
 }

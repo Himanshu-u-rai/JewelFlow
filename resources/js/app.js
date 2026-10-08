@@ -186,6 +186,14 @@ function showFlashToasts() {
         window.showToast(error.content);
         error.remove();
     }
+    // A warning explains why the user was sent somewhere else (no return policy
+    // yet, for one). The layouts always emitted it; nothing read it. It tells
+    // the user what to do next, so it stays up twice as long as a confirmation.
+    const warning = document.querySelector('meta[name="flash-warning"]');
+    if (warning) {
+        window.showToast(warning.content, 8000);
+        warning.remove();
+    }
 }
 
 function initAjaxDeletes() {
