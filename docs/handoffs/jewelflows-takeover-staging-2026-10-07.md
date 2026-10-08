@@ -1,10 +1,11 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 15, 8 October 2026: the closure record of the takeover and
+**Version 16, 8 October 2026: the closure record of the takeover and
 stabilization batches** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
 `0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`, version 12
-`a1703fe`, version 13 `c809f6e`, version 14 `8456682`).
+`a1703fe`, version 13 `c809f6e`, version 14 `8456682`, version 15
+`6a3ea6e`).
 
 **Production and staging now run `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`**
 (10:19Z on 8 October): the stabilization batch of section 10, its second
@@ -1282,7 +1283,7 @@ retry protections.
 | Check | State |
 |---|---|
 | Return-policy warning, admin Account Security link, Dhiran sign-out leaving Retail signed in, signed-in narrow window | done on 8 October: section 14 |
-| **Out of Retail while Dhiran stays signed in, on this release** | **pending at the time of this record**: Dhiran was not signed in. It needs `https://dhiran.jewelflows.com/login` (Retail was signed in). If it was run later in the same session, the closing report says so |
+| **Out of Retail while Dhiran stays signed in, on this release** | **done** (version 16, below) |
 | A physical phone | not run. Everything narrow was a 390-pixel desktop window or viewport emulation: no touch, no mobile browser |
 | Session continuity across the switch to `Secure` cookies (8 October, 09:04Z) | never observed, and cannot be now. Sessions were seen to survive two later releases; that is a different thing |
 | Restore test of a nightly archive made after the releases | pending: the newest archive was made at 18:30Z on 7 October, before them. A fresh post-release dump was restore-tested instead (section 12); it does not stand in for the archive |
@@ -1322,8 +1323,8 @@ Product preferences page; the policy questions (which of two quick-bill
 edits wins, loyalty expiry, what the shopfront publishes); mobile builds;
 the tool data in root's home on the server.
 
-**Pending checks:** the three rows marked pending or not run above, and a
-physical phone.
+**Pending checks:** the rows marked pending or not run above (a nightly
+archive restore test, the suite on PHP 8.4), and a physical phone.
 
 **Leads and open findings, not proven and not resolved:** the fiscal-year
 reset of the invoice counter checks and resets without a lock (read in the
@@ -1336,4 +1337,22 @@ log-in button; a warning toast in an error's red; the mobile items
 **Limits of the tooling that stand:** one PHP-FPM pool serves both
 environments, so a release of either reloads the other's workers; cron is
 not held during a release window.
+
+### Added in version 16: the reverse logout direction
+
+Run on production at this release, after the owner signed in to both
+products. **Real mouse clicks** (the browser marked both as trusted) in a
+visible window, 1920 px wide.
+
+| Step | Result |
+|---|---|
+| Before | Dhiran on its dashboard with its sign-out form; Retail on its dashboard |
+| Retail, click "Log out" | the confirmation dialog opens: "Log out? Are you sure you want to log out?" |
+| Click "Log out" in the dialog | Retail is on its log-in page; its dashboard and Settings both lead back to the log-in |
+| Dhiran, loaded afresh | still on its dashboard ("Dhiran — Pledge Loans"), sign-out form present; a second Dhiran page (loans) opens |
+| Retail again, after visiting Dhiran | still asks for a log-in: the Dhiran session does not sign Retail back in |
+
+With section 14 (out of Dhiran, Retail stays) both directions are now
+observed on the current release. This commit changes only this file; the
+servers were brought to it with `sync-release-docs.sh`.
 
