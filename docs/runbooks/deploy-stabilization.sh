@@ -87,6 +87,18 @@ worker_steady() {
   sleep 10; b=$(systemctl show -p MainPID --value "$WORKER")
   [ "$(systemctl is-active "$WORKER")" = active ] && [ -n "$a" ] && [ "$a" != 0 ] && [ "$a" = "$b" ]
 }
+# Rules the deployed stylesheets hold that the tarball's do not. A build from an incomplete tree loses
+# rules silently: part of the stylesheet is generated from compiled views that only a real checkout has.
+css_lost() {
+  local d n=0 f b new
+  d=$(mktemp -d) && tar -xzf "$ASSETS" -C "$d" || { echo unreadable; return; }
+  for f in "$DIR"/public/build/assets/*.css; do
+    b=$(basename "$f" | sed -E 's/-[A-Za-z0-9_-]{8}\.css$//'); new=$(ls "$d"/build/assets/"$b"-????????.css 2>/dev/null | head -1)
+    if [ -z "$new" ]; then n=$((n + 1)); continue; fi
+    n=$((n + $(comm -23 <(tr '}' '\n' < "$f" | sort -u) <(tr '}' '\n' < "$new" | sort -u) | grep -c .)))
+  done
+  rm -rf "$d"; echo "$n"
+}
 ok() { echo "ok    $*"; }
 fail() {
   echo "!!!!! GATE FAILED [$PHASE]: $*"
@@ -135,7 +147,9 @@ tar -tzf "$ASSETS" | grep -qx 'build/manifest.json' || fail "the assets tarball 
 MISSING=$(comm -23 <(tar -xzOf "$ASSETS" build/manifest.json | grep -oE '"(file|src)": *"[^"]+"' | grep '"file"' | sed -E 's/.*"file": *"([^"]+)".*/build\/\1/' | sort -u) <(tar -tzf "$ASSETS" | sort -u) | head -3)
 [ -z "$MISSING" ] || fail "the manifest names files the tarball does not hold: $MISSING"
 NEW_MANIFEST=$(tar -xzOf "$ASSETS" build/manifest.json | sha256sum | cut -d' ' -f1)
-ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST"
+CSS_LOST=$(css_lost)
+[ "$CSS_LOST" = 0 ] || [ "${STABILIZATION_CSS_RULES_REMOVED:-}" = accepted ] || fail "the new stylesheets lack $CSS_LOST rule(s) that the deployed ones have (build in a real checkout; or set STABILIZATION_CSS_RULES_REMOVED=accepted if the removal is intended)"
+ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST; no deployed CSS rule is lost"
 if [ "$MODE" = resume ]; then
   PRE=${STABILIZATION_PREV:?resume needs STABILIZATION_PREV=<directory of the stopped run>}
   [ -f "$DIR/storage/framework/down" ] || fail "resume is for a release stopped in maintenance; this site is up"
