@@ -1,12 +1,12 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 11, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 12, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`).
+`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`).
 
-**Production and staging now run `affb59c1e0e1344a4aea04cbf010f420bf33fea4`**
-(09:41Z on 8 October): the stabilization batch of section 10 and its second
-pass, section 11. What follows describes the takeover release that came
+**Production and staging now run `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`**
+(10:19Z on 8 October): the stabilization batch of section 10, its second
+pass (11) and the closure checks (12). What follows describes the takeover release that came
 before them. The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
@@ -18,7 +18,7 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 11, then 10, then 9.** It names the one worktree and
+**Start here for the next task: section 12, then 11, 10 and 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -907,4 +907,131 @@ disk; `pageinspect`; the review lows of the security batch; the mobile items
 
 Deferred by the owner: Product preferences placement; the policy questions
 (quick-bill edit, loyalty expiry, shopfront); mobile builds.
+
+## 12. Closure checks (version 12)
+
+Same branch and pull request (#3). **Still not everything is closed: see the
+list at the end.**
+
+### Deployed
+
+| | Commit | When (UTC) | Maintenance |
+|---|---|---|---|
+| Production | `6c2ac60050d7ac728bbe872e98a5b2d56f825a39` (from `affb59c…`) | 10:19:03 to 10:19:08 | 5 s |
+| Staging | the same | 10:15:04, 10:16:04, 10:17:03 | 4 to 5 s each (release, return, release) |
+
+One runtime path changed (`routes/mobile.php`). Assets unchanged (manifest
+`c9e1e434…`). Release script SHA-256 `51e65c97ef12422c…`. Suite on PHP 8.2
+at the deployed commit: 3,556 tests, 17,916 assertions, 0 failures.
+
+### 1. A late retry of a quick-bill edit (`2501d5f`)
+
+The earlier test sent the same edit twice in a row and supports only that.
+The case that matters: edit A (key A), a different edit B (key B), then the
+retry of A with key A.
+
+| | Before | After |
+|---|---|---|
+| The bill after the retry | A's again: total 1500.00, line "Edit A item", payment 1500.00. **B was undone** | B's: total 2500.00, line "Edit B item", payment 2500.00 |
+| The retry's answer | 200, applied as a third edit | 200, a replay of A's first reply |
+| Audit entries for the three requests | 3 | 2 |
+
+Fix: the edit route runs behind the idempotency middleware, after the
+permission check, key optional. An edit with no key (an older build) is
+applied as before; another shop's user gets 404 with or without a key. The
+app already keeps its key across a network or server error and takes a new
+one after a success. Which of two different edits should win is a separate
+policy and is unchanged. Checked again on staging's deployed code.
+
+### 2. A boundary for going back (`6c2ac60`)
+
+`return` accepted any ancestor with unchanged migrations and dependencies.
+That is not compatibility: an idempotency claim says a request was carried
+out, and a commit without the middleware on that route would carry a retry
+out again. `return` now refuses, in its first gates:
+
+- a target below `bcc336a…`, the first released commit of the batch;
+- a target that drops the retry protection of a route the deployed commit
+  protects **while a claim for that route, or an unresolved claim, remains**.
+
+Claims are counted, never deleted. Rehearsed on staging:
+
+| Rehearsal | Result |
+|---|---|
+| Return to `affb59c` with no quick-bill claim on staging | allowed: went back and forward again |
+| The same after a synthetic shop left 1 create claim and 2 edit claims | **refused**: "2 claim(s) for it remain"; nothing touched |
+| Return to `e49e611` | **refused**: below the boundary; nothing touched |
+| After the two refusals | same commit, no maintenance file, 200, worker active, claims unchanged, no dump made, no PHP reload |
+
+**Left on staging by this rehearsal, deliberately:** one synthetic shop
+(`SYNTH-…`, deactivated) with two quick bills and three claims. The claims
+are pruned 48 hours after they resolved. While they exist a return from
+`6c2ac60` to `affb59c` is refused on staging: that is the gate working.
+Production has no claim at all, so the same return is allowed there today.
+
+### 3. Signed-in acceptance
+
+| Check | State |
+|---|---|
+| Retail session across a release | **observed twice**: signed in before the 09:41Z and the 10:19Z windows, still signed in after each |
+| Session across the switch to `Secure` cookies (09:04Z) | **not observed, and cannot be now**: no session was held across it. Recorded as a limitation; the live setting was not weakened to recreate it |
+| Return-policy warning in a browser | **pending**: staging not signed in (`https://staging.jewelflows.com/login`); the owner's Retail shop has a policy |
+| Platform-admin Account link in a browser | **pending**: not signed in (`https://jewelflows.com/admin/login`) |
+| Dhiran and Retail: log out of one, the other stays | **pending** for this release: Dhiran not signed in. (Both directions were run on 8 October before the stabilization batch: section 8.) |
+| Narrow screen, signed in | **pending**: the agent's clicks do not reach the owner's browser window while it is hidden, so no narrow window could be opened in it |
+| Narrow screen, pages without a log-in | **run in viewport emulation** (375 × 812, touch reported), not on a phone: Retail log-in, landing page, Dhiran log-in, staging log-in. No horizontal overflow and no element past the right edge on any. Dhiran's log-in button is 42 px high, Retail's 52 |
+
+### 4. Restore test
+
+A fresh dump of production, taken at 10:09:26Z at `affb59c` (after the
+releases of the day), restored with the established isolated procedure
+(`deploy-takeover-production.sh restore-check`, the released revision): own
+PostgreSQL on a tmpfs, throwaway user, no network. The dump and the live
+fingerprint were taken on **one exported snapshot**, so the comparison is
+exact although the site stayed up.
+
+| | Live | Restored |
+|---|---|---|
+| Tables / holding rows | 148 / 90 | 148 / 90 |
+| Rows in all | 5,444 | 5,444 |
+| Relations / triggers / migrations | 802 / 42 / 384 | 802 / 42 / 384 |
+| Tables whose count or content differs | — | **none** |
+
+Dump: `/root/stabilization/restore-test-20261008T100925Z/jewelflow.dump`,
+SHA-256 `f734ea5afa86040a…`, root only. Every earlier recovery copy is
+untouched. The nightly archives made by the backup package were **not** the
+thing tested: none exists yet from after the releases.
+
+### 5. APP_KEY: not rotated
+
+The proposal now says plainly that a new current key does not end the
+exposure: for as long as the old key is kept as previous, whoever holds it
+can still sign links the application accepts and read cookies they have
+captured. Only retirement ends that. It gives the two dates to choose
+between (31 days later, or the rotation day itself with everyone signing in
+again and sent links breaking) and what each costs.
+
+### What remains
+
+Pending checks (the owner's sign-in or hardware): the four pending rows of 3;
+a physical phone; the suite on PHP 8.4; a restore test of a nightly archive
+once one exists from after the releases.
+
+Decisions for the owner: merge pull requests #2, then #3; the APP_KEY
+rotation and retirement dates; an off-site backup destination; retention of
+dumps and of the older backup series; the tool data in root's home.
+
+Leads and open findings, **not proven and not resolved here**: the
+fiscal-year reset of the invoice counter checks and resets without a lock
+(read in the code, never reproduced); POS 500 on an item with no price or
+metal type; three private files on the public disk; `pageinspect`; the
+review lows of the security batch; Dhiran's 42 px log-in button; the mobile
+items (physical device, build 25, runtime policy, iOS).
+
+Limits of the tooling that stand: one PHP-FPM pool, so every release of
+either environment reloads the other's workers; cron is not held, so a
+release stopped by a gate skips scheduled commands until it is resumed.
+
+Deferred by the owner: Product preferences placement; the policy questions
+(which quick-bill edit wins, loyalty expiry, shopfront); mobile builds.
 

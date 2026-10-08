@@ -1,6 +1,6 @@
 # APP_KEY rotation — proposal, not yet approved
 
-**Status, 8 October 2026 (second version): prepared and tested end to end on
+**Status, 8 October 2026 (third version): prepared and tested end to end on
 generated keys. No real key has been rotated.**
 
 The whole lifecycle below, from the old key to the day it opens nothing, is
@@ -99,6 +99,44 @@ the window is started again.
 4. Staging has its own key and goes through steps 2 and 3 first, as the
    rehearsal, with its retirement after a shortened wait.
 
+## What the waiting period does not do
+
+Making a new key current does **not** end the old key's exposure. For as long
+as the old key sits in `APP_PREVIOUS_KEYS`, whoever holds it can still:
+
+- sign a link that the application accepts: a report download, a catalogue
+  share, a scan session, a repair photo, an email verification;
+- read a session or `XSRF-TOKEN` cookie they have captured (the cookie holds
+  an identifier, not a log-in: an identifier that is not in the sessions
+  table opens nothing).
+
+What ends on the day of the rotation: new POS quote signatures and
+recognition proofs made under the old key are refused from then on.
+What ends only on the day of retirement: everything else in the table at the
+top. So the exposure runs from now until **the retirement date**, not until
+the rotation date.
+
+| | Rotation day R | R to retirement | From retirement |
+|---|---|---|---|
+| Old-key quote signatures, old-key proofs | refused | refused | refused |
+| Old-key cookies and signed links | accepted | **accepted** | refused |
+
+Two ways to choose the retirement date:
+
+1. **R + 31 days** (the proposal): nobody is signed out and no link already
+   sent breaks; the old key stays useful to a holder for 31 more days.
+2. **R itself** (no previous key at all): the exposure ends that day. Cost:
+   every browser signs in again once, and every link already sent (report
+   downloads, catalogue shares up to 30 days old, pending email
+   verifications) stops working and has to be sent again. The recognition
+   proofs are still migrated in the window: the old key is set as
+   previous while the site is down, the re-stamp runs, the line is removed
+   and the config cache rebuilt, and only then does the site come up. It is
+   the sequence the lifecycle test runs.
+
+Any date between the two is possible; the cost is the links older than the
+chosen number of days.
+
 ## Recovery
 
 - During the window, before the re-stamp: put the old `APP_KEY` back and
@@ -112,5 +150,7 @@ the window is started again.
 
 ## Decisions for the owner
 
-- Approve the rotation and its date; the retirement date follows from it.
-- 31 days, or sooner with the catalogue-link consequence above.
+- The rotation date R.
+- The retirement date: R + 31 days, R itself, or a date between, with the
+  consequences in the table above. Until that date the old key still signs
+  links the application accepts.
