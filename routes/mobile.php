@@ -182,8 +182,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
                 ->middleware(['throttle:api-pos-read', 'can:sales.view']);
             Route::get('/quick-bills/{quickBill}/template', [QuickBillController::class, 'template'])
                 ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
+            // The app sends X-Idempotency-Key on create; without this the same
+            // request twice booked two bills. After `can:` so that a refused
+            // user stakes no claim. Optional: older builds send no key.
             Route::post('/quick-bills', [QuickBillController::class, 'store'])
-                ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
+                ->middleware(['throttle:api-pos-sale', 'can:sales.create', 'mobile.idempotency:optional']);
             Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
                 ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
             Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])

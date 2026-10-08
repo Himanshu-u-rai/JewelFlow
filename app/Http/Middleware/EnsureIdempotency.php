@@ -82,7 +82,13 @@ class EnsureIdempotency
      */
     private static array $pinned = [];
 
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * `mobile.idempotency:optional` is for routes older than this middleware,
+     * whose deployed clients may send no key: a request without one passes
+     * through exactly as it did before, and one with a key gets the full
+     * contract. Everywhere else the key stays required.
+     */
+    public function handle(Request $request, Closure $next, string $keyPolicy = 'required'): Response
     {
         $method = strtoupper($request->method());
 
@@ -99,6 +105,10 @@ class EnsureIdempotency
         }
 
         if (! is_string($key) || $key === '') {
+            if ($keyPolicy === 'optional') {
+                return $next($request);
+            }
+
             return $this->errorResponse(
                 422,
                 'missing_idempotency_key',
