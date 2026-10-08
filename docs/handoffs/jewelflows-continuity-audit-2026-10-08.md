@@ -5,6 +5,14 @@
 release record, its section 9 says where the next task starts). Version 1 of
 this audit is commit `e9bdb7d`, version 2 `1287a8e`.
 
+**Since version 3 (handoff version 10, section 10):** the two defects of
+section 3 and the first three rows of section 4 (quick-bill idempotency,
+`Secure` cookies, the two scheduled commands) are fixed and released at
+`bcc336a`; the 22 server worktrees of section 6 are removed after a second
+archive of their ignored files; the Redis password named among the old
+configuration copies was the placeholder `null`, not a secret. Everything
+else below stands as written.
+
 **This audit does not end with "no unresolved work".** The release is
 verified and the active working tree is clean. The inventory is finished:
 every item below has a disposition. Two of the old branches turned out to

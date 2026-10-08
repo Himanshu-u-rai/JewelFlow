@@ -1,8 +1,12 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 9, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 10, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`). The
+`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`).
+
+**Production and staging now run `bcc336a4b7c88e5431f35dbaa7bddc5d56774574`,
+the stabilization batch released at 09:04Z on 8 October: section 10.** What
+follows describes the takeover release that came before it. The
 application code is the independently reviewed candidate
 `5cbad199a719ffdc86a4a87ac2e60dc7d2ea01f0`; every commit after it is
 documentation, runbooks or `tests/`.
@@ -13,7 +17,7 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 9.** It names the one worktree and
+**Start here for the next task: section 10, then section 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -640,4 +644,114 @@ branch, the owner's `fix/small-batch-20260914`, and three kept on purpose
 (`fix/returns-flash-channel`, `design/customers-codex-polish`,
 `fix/masters-safety-guards`: see the audit); no stash; 17 `archive/…` tags,
 local only.
+
+## 10. Stabilization batch, 8 October 2026 (version 10)
+
+One ordered batch on branch `fix/stabilization-20261008`, cut from the head
+of pull request #2. **Historical work is not all closed: section 4 of the
+audit still lists confirmed defects and open decisions.**
+
+### Deployed
+
+| | Commit | When (UTC) | Maintenance |
+|---|---|---|---|
+| Production | `bcc336a4b7c88e5431f35dbaa7bddc5d56774574` (from `e49e611…`) | 09:04:04 to 09:04:13 | 9 s |
+| Staging | the same (from `a87dcd5…`) | 08:57:07 to 08:58:53, then 09:03:03 to 09:03:08 | 106 s, then 5 s |
+
+Asset manifest on both: `75085b6b4d80a448…` (assets tarball
+`1659514cc24a4097…`). Release script `docs/runbooks/deploy-stabilization.sh`,
+SHA-256 `3c157bcc29489173…` for the production run. No migration; 384 run,
+none pending. Evidence, root only: `/root/stabilization/` on the server.
+
+### What changed
+
+| Commit | Change | Evidence |
+|---|---|---|
+| `fe9d114` | Mobile quick-bill creation is idempotent: the route runs behind the existing idempotency middleware, key optional for older builds | 7 feature tests (replay, changed payload refused, unrecorded outcome refused, key reusable after a refusal, two shops independent, no permission, no key); a multi-process race probe, 3 scenarios, with a keyless control that books all four; staging check through the HTTP kernel |
+| `7e78687` | Warning flashes are shown: the return-policy bounce says why. The message stays a `warning`; no controller changed | a check that fails if a layout emits a flash channel the script does not show; a feature test on the page the user lands on; the served script on staging contains the reader |
+| `76dd1ef` | Account Security linked from the platform-admin sidebar, for every admin | feature test for both roles; rendered by the deployed layout on staging |
+| `d6fd2ca` | `subscription:reconcile-payments` defers on a provider timeout or rate limit and fails after six in a row; `platform:archive-audit-logs` is retired | 7 tests with the provider listing replaced; the schedule on both environments no longer lists the archive command |
+| configuration | `SESSION_SECURE_COOKIE=true` on both environments, the one line of `.env` that changed | 4 tests; every cookie `Secure` on the three production hosts and on staging, read over the public path; plain HTTP redirects to HTTPS |
+
+Full suite on PHP 8.2 at the deployed commit: 3,542 tests, 17,845
+assertions, 0 failures, 1 skipped. JavaScript checks: 4 of 4.
+
+### What the staging run caught
+
+1. **The script unpacked the assets as root** where staging's belong to the
+   web user. Its own gate stopped it, in maintenance. Fixed (`a47d956`), and
+   the release finished with the new `resume` mode.
+2. **My first assets were built from a clean export of the commit and lost
+   142 CSS rules.** The stylesheet is generated partly from compiled views
+   that only a real checkout has. Staging served that stylesheet from
+   08:58:53Z to 09:03:08Z; production never received it. The preflight now
+   refuses a build that loses a deployed rule (`be19d9d`); the corrected build
+   differs from the previous production build in the script and the manifest
+   only. **Build assets in the worktree itself, never from an export.**
+
+### On the server, outside the application
+
+- **Old copies of configuration contained, then removed.** Eleven copies of
+  old environment files inside the old agent worktrees were readable by other
+  local accounts; they were restricted to their owner and then removed with
+  the worktrees. All 22 worktrees are gone, each only after every one of its
+  uncommitted files matched a verified archive, without force. A second
+  archive holds the ignored files that existed nowhere else. Both archives
+  are root-only beside the release evidence.
+- **Correction to version 9 and the audit:** the Redis password was not a
+  live secret. It is the placeholder `null`; no Redis server is installed.
+  The application key was the only current secret in those copies. **It has
+  not been rotated**: `docs/runbooks/app-key-rotation-proposal.md`.
+- **Storage:** 33% of the disk and 3% of inodes in use. Removed: the
+  worktrees (2.2 GB), 649 old agent leftovers in `/tmp` (103 MB), root's npm
+  download cache (943 MB). A detailed inventory is kept root-only on the
+  server. Left for a decision: an editor's server installs, browser caches
+  and agent session data in root's home (about 9 GB together), and the older
+  backup series (14 GB). No container runtime is installed. Nothing in
+  application storage, the database, sessions or idempotency claims was
+  cleared.
+- **Off-site backups:** planned, not configured. No approved private
+  destination exists: `docs/runbooks/offsite-backup-plan.md`.
+
+### NOT RUN, and other limits
+
+- **Signed-in browser checks after the release**, on Retail, Dhiran and
+  staging: both of the owner's sessions had expired (the lifetime is two
+  hours) and the agent does not sign in. Measured instead: a cookie stored
+  without `Secure` still carries its session when sent back; a request with
+  no cookie gets another session; no signed-in user was active across the
+  window, so nobody was interrupted and nobody's continuity was observed.
+- The return-policy message and the Account link **seen in a browser**.
+- Quick-bill creation exercised on production: not done, by instruction (no
+  financial test writes). Staging and local only.
+- The reconciliation command's deferral observed on production: it needs a
+  provider timeout to happen.
+- The suite on PHP 8.4; physical devices; a restore of this window's dump
+  (it was read end to end, not restored).
+
+### Seen in passing, not changed
+
+- A shop's very first quick bill also creates its number counter; several
+  first bills at the same instant collide there and the losers get a 500
+  (nothing is booked). Found by the race probe's control.
+- Quick-bill **update** also receives a key from the app and is not behind
+  the middleware.
+- `docs/runbooks/tenant-inventory-resolved.tsv` still lists the removed
+  archive command's file.
+
+### Pull requests
+
+- **#2** (draft, base `main`, head `integration/jewelflows-takeover` at
+  `896d70e`): unchanged by this batch. Nothing was pushed to that branch.
+- This batch is on `fix/stabilization-20261008`, published, stacked on #2's
+  head. It needs its own pull request **after #2 is merged**; this session
+  cannot open one. `main` was not touched.
+
+### Where the next task starts now
+
+Same worktree, `/home/himanshu/Desktop/jewelflow-worktrees/jewelflows-takeover`,
+branch **`fix/stabilization-20261008`**, at the commit that adds this
+version, level with its `origin` branch. Production's commit `bcc336a…` is an
+ancestor; the commits after it change only the release script, a staging
+check and `docs/`.
 
