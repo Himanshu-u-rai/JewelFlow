@@ -222,11 +222,18 @@ if [ "$MODE" = resume ]; then
   COUNTS_BEFORE=$(cat "$PRE/counts.before" 2>/dev/null || counts)
 else
   LOG_MARK=$(log_mark); echo "$LOG_MARK" > "$WORK/log.mark"
-  # The scheduler's cron fires on the minute and is not held: start just after one, so the window ends before the next.
-  while s=$(date +%S); [ "$((10#$s))" -lt 3 ] || [ "$((10#$s))" -gt 15 ]; do sleep 1; done
+  # The scheduler's cron fires on the minute and is not held: start just after one, so the window ends
+  # before the next. "Just after a minute" is also when cron's own commands start, so the window opens
+  # only once none of them is still running (a staging job that began two seconds before a window showed this).
+  PHASE=preflight
+  for _ in $(seq 1 240); do s=$(date +%S); { [ "$((10#$s))" -ge 3 ] && [ "$((10#$s))" -le 15 ] && [ "$(artisan_running)" = 0 ]; } && break; sleep 1; done
+  s=$(date +%S); { [ "$((10#$s))" -ge 3 ] && [ "$((10#$s))" -le 20 ] && [ "$(artisan_running)" = 0 ]; } || fail "no quiet moment after a minute boundary in four minutes: a scheduled command keeps running"
+  PHASE=down
   ART down --retry=30 >/dev/null || fail "artisan down failed"
   DOWN_AT=$(date -u +%s); ok "maintenance on at $(date -u +%H:%M:%SZ)"
   systemctl stop "$WORKER" || fail "could not stop $WORKER"
+  for _ in $(seq 1 60); do [ "$(artisan_running)" = 0 ] && break; sleep 2; done   # one that slipped in with the same second
+  [ "$(artisan_running)" = 0 ] || fail "an artisan command that began before maintenance is still running after two minutes"
   COUNTS_BEFORE=$(counts); echo "$COUNTS_BEFORE" > "$WORK/counts.before"; ok "counts in maintenance: $COUNTS_BEFORE"
 fi
 PHASE=checkout
