@@ -1,9 +1,9 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 13, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 14, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
 `0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`, version 12
-`a1703fe`).
+`a1703fe`, version 13 `c809f6e`).
 
 **Production and staging now run `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`**
 (10:19Z on 8 October): the stabilization batch of section 10, its second
@@ -19,7 +19,7 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 13, then 12, 11, 10 and 9.** It names the one worktree and
+**Start here for the next task: section 14, then 13, 12, 11, 10 and 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -1134,4 +1134,88 @@ batch; Dhiran's 42 px log-in button; the mobile items.
 
 Deferred by the owner: Product preferences placement; key rotation; backup
 deletion; the policy questions; mobile builds.
+
+## 14. Browser acceptance, run in the owner's signed-in sessions (version 14)
+
+The owner signed in to staging (a shop owner), Retail, Dhiran and the
+production admin console. The agent typed no credential. **No deployment and
+no code change: production and staging still run `6c2ac60…`.** Nothing was
+submitted on production; on staging one confirmation dialog was opened and
+cancelled.
+
+How each result was obtained is stated, because it differs. "Real click" is
+a mouse event the browser marks as trusted, in a window the browser reports
+as visible. "By script" is a click or navigation issued from the page's own
+JavaScript. The narrow window is a real Chrome window 390 pixels wide: not a
+phone, no touch.
+
+### 1. Return-policy warning (staging)
+
+The staging shop that was signed in has a return policy, so its return form
+opens and nothing is shown. To see the warning, that shop's
+`return_policy_configured_at` was set to NULL **on staging only** for the
+length of the check and then put back to its exact saved value (compared
+after; the saved value is kept root-only beside the release evidence). No
+other row changed; no return was created.
+
+| | Desktop, 1920 px, **real click** on the invoice's own "Return" link | Narrow window, 390 px, by script |
+|---|---|---|
+| Lands on | Settings, `tab=return-policy`, same document | the same |
+| Text | "Please set up your return policy before processing returns. This takes about 1 minute." | the same |
+| Painted | opacity 1, on top, white on `rgb(190, 18, 60)` | opacity 1, on top |
+| Where | 420 × 66 at the bottom right, inside the viewport | 366 × 66 at the top, 12 px from each side, inside the viewport |
+| Controls underneath it | — | **none** |
+| Cleared | 8.4 s after the click | 8.7 s after the visit |
+| Flash tags | warning consumed, no error tag | the same |
+
+After the value was restored the same link opens the return form again.
+
+### 2. Platform-admin Account Security link (production)
+
+**Real click** on the sidebar's "Account / Security" entry (the last of 14,
+220 × 42, on top): opens `/admin/account`, titled "Account Security", the
+entry marked active, with the email and mobile forms. Nothing submitted.
+
+### 3. Logout isolation
+
+Signed out of Dhiran with its own "Sign out" button (by script; the window
+was hidden at that moment). Afterwards: Dhiran asks for a log-in; **Retail
+is still signed in** (dashboard and Settings open); the production admin
+console is still signed in; staging is still signed in.
+
+The other direction (out of Retail, Dhiran stays) was **not run in this
+pass**: it needs Dhiran signed in again. It was run on 8 October before the
+stabilization releases (section 8).
+
+### 4. Narrow screen, signed in (staging, 390 px window)
+
+The window was opened by a real click; inside it the steps were by script.
+
+| | Result |
+|---|---|
+| Dashboard | 390 × 787, no horizontal overflow, nothing past the right edge; the sidebar is off-canvas |
+| Navigation | the menu button opens the drawer (sidebar from −278 px to 0, `aria-expanded` true); 18 entries, none shorter than 44 px, all inside the width; "Invoices" navigates in the same document and the drawer closes; no overflow on the new page |
+| Confirmation dialog (delete a category, **cancelled**) | shown; backdrop `rgba(0, 0, 0, 0.45)` over the whole window; panel 358 × 211, inside the viewport, on top, focus inside; buttons 44 px high; Cancel closes it, the page and the form are unchanged, the category still exists |
+| Toast clearance | see 1: at the top, clear of every control |
+
+Seen and not changed: the menu button is 32 × 32; a warning has the same
+red as an error (the known "toast ignores its tone" finding).
+
+### Limits of this pass
+
+- Not a phone: no touch, no mobile browser.
+- The narrow-window steps and the Dhiran sign-out were issued by script.
+  The owner's browser window kept being covered, during which real input
+  does not reach it and animations do not run; the measurements above were
+  taken while it was visible, except where marked.
+- Session continuity across the switch to `Secure` cookies was never
+  observed and is not claimed.
+
+### What remains
+
+Pending checks: a physical phone; Retail-out-while-Dhiran-stays on the
+current release; the suite on PHP 8.4; a restore test of a nightly archive
+from after the releases.
+
+Decisions for the owner, leads and deferred items: unchanged from section 13.
 
