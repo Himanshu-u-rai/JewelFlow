@@ -159,7 +159,10 @@ Schedule::command('dhiran:forfeiture-check')->daily();
 Schedule::command('platform:evaluate-alerts')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('platform:detect-fraud')->dailyAt('03:00');
 Schedule::command('storage:recompute-stats')->daily()->withoutOverlapping();
-Schedule::command('platform:archive-audit-logs')->monthly();
+// platform:archive-audit-logs is retired. It moved rows out of
+// platform_audit_logs, which is append-only by a protected trigger
+// (CONSTITUTION.md, Article IX.A, 27), so it could never finish and failed on
+// the first of every month. Retention for that log is a decision, not a job.
 Schedule::command('reporting:sweep-expired-exports')->daily()->withoutOverlapping();
 Schedule::command('platform:check-shop-health')->dailyAt('06:00')->withoutOverlapping();
 Schedule::command('mobile:prune-idempotency-keys')->daily();
