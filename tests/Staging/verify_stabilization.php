@@ -12,6 +12,11 @@
  * What survives the rollback: sequence values (shops, users, roles, plans,
  * quick bills, tokens and so on advance), a minute of rate-limit counters for
  * a user id that no longer exists, and dead tuples. No row.
+ *
+ * VERIFY_KEEP_SYNTHETIC=1 (staging only) COMMITS instead: it leaves one
+ * synthetic shop, deactivated, with its two quick bills and their
+ * idempotency claims. That exists for one purpose: to rehearse the release
+ * script's refusal to return to a commit that would ignore those claims.
  */
 
 use App\Models\Platform\PlatformAdmin;
@@ -82,20 +87,25 @@ try {
     App\Models\ShopPreferences::withoutTenant()->firstOrNew(['shop_id' => $shop->id])->forceFill(['shop_id' => $shop->id, 'opening_setup_skipped_at' => now()])->save();
     $token = $owner->createToken('verify-stabilization')->plainTextToken;
 
-    $post = function (array $payload, ?string $key) use ($kernel, $token) {
+    $send = function (string $method, string $uri, array $payload, ?string $key) use ($kernel, $token, $shop) {
         Auth::forgetGuards();
-        TenantContext::clear();
+        // Route bindings resolve before the tenant middleware. On a web request the
+        // model scope takes the shop from the signed-in user; in a console process
+        // it refuses without a context, so this script supplies one, as the
+        // established staging script does.
+        TenantContext::set((int) $shop->id);
         $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer '.$token, 'HTTPS' => 'on'];
         if ($key !== null) {
             $server['HTTP_X_IDEMPOTENCY_KEY'] = $key;
         }
-        $request = Request::create(url('/api/mobile/quick-bills'), 'POST', [], [], [], $server, json_encode($payload));
+        $request = Request::create(url($uri), $method, [], [], [], $server, json_encode($payload));
         app()->instance('request', $request);
         $response = $kernel->handle($request);
         $kernel->terminate($request, $response);
 
         return $response;
     };
+    $post = fn (array $payload, ?string $key) => $send('POST', '/api/mobile/quick-bills', $payload, $key);
     $payload = fn (int $rate) => ['bill_date' => now()->toDateString(), 'pricing_mode' => 'no_gst', 'gst_rate' => 0, 'round_off' => 0, 'save_action' => 'issue',
         'customer_name' => 'Synthetic Walk-in', 'items' => [['description' => 'Synthetic item', 'pcs' => 1, 'gross_weight' => 1, 'net_weight' => 1, 'rate' => $rate]],
         'payments' => [['payment_mode' => 'cash', 'amount' => $rate]]];
@@ -119,6 +129,17 @@ try {
     $legacy = $post($payload(500), null);
     check($legacy->getStatusCode() === 201 && $booked() === '2 bill(s), 2 payment(s)', 'quick bill: a client that sends no key is served as before', 'status '.$legacy->getStatusCode().', '.$booked());
 
+    // A late retry of an earlier edit: A, then a different B, then A again with A's key.
+    $billId = (int) ($firstBody['quick_bill']['id'] ?? 0);
+    $edit = fn (int $rate, string $label, string $k) => $send('PUT', "/api/mobile/quick-bills/{$billId}", array_replace_recursive($payload($rate), ['items' => [['description' => $label]]]), $k);
+    $lines = fn () => implode('|', App\Models\QuickBillItem::withoutGlobalScopes()->where('quick_bill_id', $billId)->orderBy('id')->pluck('description')->all())
+        .' / '.implode('|', QuickBillPayment::withoutGlobalScopes()->where('quick_bill_id', $billId)->orderBy('id')->pluck('amount')->map(fn ($v) => (string) (int) $v)->all());
+    $a = $edit(1500, 'Edit A', $key.'-a');
+    $b = $edit(2500, 'Edit B', $key.'-b');
+    check($a->getStatusCode() === 200 && $b->getStatusCode() === 200 && $lines() === 'Edit B / 2500', 'quick bill edit: A then B are applied in order', 'statuses '.$a->getStatusCode().' '.$b->getStatusCode().', bill now '.$lines());
+    $late = $edit(1500, 'Edit A', $key.'-a');
+    check($late->getStatusCode() === 200 && $late->headers->get('X-Idempotent-Replay') === 'true' && $lines() === 'Edit B / 2500', 'quick bill edit: a late retry of A is a replay and does not undo B', 'status '.$late->getStatusCode().', bill now '.$lines());
+
     // The platform-admin sidebar, rendered by the deployed layout for an operator (not a super admin).
     Auth::forgetGuards();
     Auth::guard('platform_admin')->setUser($admin);
@@ -130,10 +151,23 @@ try {
 
     check(! array_key_exists('platform:archive-audit-logs', Illuminate\Support\Facades\Artisan::all()), 'the retired archive command is not registered');
     check(config('session.secure') === true || $onLocal, 'session.secure is true in the running configuration', var_export(config('session.secure'), true));
+    $keep = $onStaging && getenv('VERIFY_KEEP_SYNTHETIC') === '1' && $failures === 0;
+    if ($keep) {
+        DB::table('personal_access_tokens')->where('tokenable_id', $owner->id)->delete();
+        $shop->forceFill(['is_active' => false])->save();
+        $admin->forceFill(['is_active' => false])->save();
+    }
 } catch (Throwable $e) {
+    $keep = false;
     check(false, 'the check ran to its end', get_class($e).': '.$e->getMessage());
 } finally {
-    DB::rollBack();
+    ($keep ?? false) ? DB::commit() : DB::rollBack();
+}
+if ($keep ?? false) {
+    echo "KEPT ON STAGING (committed, by request): synthetic shop {$shop->name}, deactivated; its quick bills; ".DB::table('idempotency_keys')->where('shop_id', $shop->id)->count()." idempotency claim(s).\n";
+    echo $failures === 0 ? "STABILIZATION CHECK PASSED\n" : "STABILIZATION CHECK FAILED ({$failures})\n";
+    $finished = true;
+    exit($failures === 0 ? 0 : 1);
 }
 
 $after = ['shops' => Shop::withoutGlobalScopes()->count(), 'users' => User::withoutGlobalScopes()->count(), 'bills' => QuickBill::withoutGlobalScopes()->count(),

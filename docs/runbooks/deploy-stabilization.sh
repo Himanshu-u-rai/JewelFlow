@@ -18,8 +18,20 @@
 # return     goes back to an EARLIER commit of this batch (target is an
 #            ancestor of from) with that commit's assets: the same window and
 #            the same checks. No bundle is needed (pass -); the assets are the
-#            build.before.tar.gz of the run that replaced them. Possible
-#            because this batch changes no schema.
+#            build.before.tar.gz of the run that replaced them.
+#
+#            "No schema change" does not make an earlier commit compatible.
+#            Newer code leaves durable records that older code must still
+#            honour: an idempotency claim says "this request was carried out,
+#            do not carry it out again", and a commit without the middleware
+#            on that route would carry a retried request out a second time.
+#            So return has a boundary, checked before anything is touched:
+#              * never below RETURN_FLOOR, the first commit of this batch
+#                that was released (this script's own checks assume it);
+#              * never to a commit that drops the protection of a route the
+#                deployed commit protects WHILE a claim for that route (or an
+#                unresolved claim) remains. Claims are not deleted to make a
+#                return possible: they are pruned 48 hours after they resolve.
 #
 # What it touches beyond its own environment, stated plainly:
 #   * php8.2-fpm is ONE pool serving production and staging. Its reload at the
@@ -49,6 +61,13 @@ MODE=${1:?usage: mode env from-sha target-sha bundle assets assets-sha256}
 ENVN=${2:?env}; FROM=${3:?from-sha}; TARGET=${4:?target-sha}; BUNDLE=${5:?bundle}; ASSETS=${6:?assets tarball}; ASSETS_SHA=${7:?assets sha256}
 BRANCH=fix/stabilization-20261008; REF=refs/remotes/stabilization/$BRANCH
 SETTING=SESSION_SECURE_COOKIE
+RETURN_FLOOR=bcc336a4b7c88e5431f35dbaa7bddc5d56774574
+# route as written in routes/mobile.php | claims that belong to it (an unresolved claim belongs to all)
+UNRESOLVED="response_status < 100 or response_status > 599"
+PROTECTED_ROUTES=(
+  "Route::post('/quick-bills',|$UNRESOLVED or (response_body::jsonb ? 'quick_bill' and coalesce(response_body::jsonb->>'message','') <> 'Quick bill updated successfully.')"
+  "Route::put('/quick-bills/{quickBill}',|$UNRESOLVED or (response_body::jsonb ? 'quick_bill' and coalesce(response_body::jsonb->>'message','') <> 'Quick bill saved successfully.')"
+)
 STAGING_DIR=/var/www/jewelflow-staging
 case "$MODE" in preflight|release|resume|return) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
 case "$ENVN" in
@@ -150,9 +169,20 @@ if [ "$MODE" != resume ]; then
   OTHER_STATE_BEFORE=$(other_state)
   UNTRACKED_BEFORE=$(untracked)
 fi
+protects() { G show "$1:routes/mobile.php" 2>/dev/null | grep -A1 -F "$2" | grep -q 'mobile.idempotency'; }
 if [ "$MODE" = return ]; then
   G cat-file -e "$TARGET^{commit}" 2>/dev/null || fail "the commit to return to is not in this repository"
   G merge-base --is-ancestor "$TARGET" "$FROM" && [ "$TARGET" != "$FROM" ] || fail "return goes to an earlier commit: $TARGET is not an ancestor of the deployed $FROM"
+  G merge-base --is-ancestor "$RETURN_FLOOR" "$TARGET" || fail "return refused: $TARGET is below the boundary $RETURN_FLOOR (the first released commit of this batch); nothing was touched"
+  for entry in "${PROTECTED_ROUTES[@]}"; do
+    route=${entry%%|*}; claims_sql=${entry#*|}
+    if protects "$FROM" "$route" && ! protects "$TARGET" "$route"; then
+      CLAIMS=$(PSQL "select count(*) from idempotency_keys where $claims_sql") || fail "could not count idempotency claims"
+      [ "$CLAIMS" = 0 ] || fail "return refused: $TARGET does not protect ${route%,} against retries and $CLAIMS claim(s) for it remain. A request the deployed commit already carried out would be carried out again when retried. Claims are kept; nothing was touched. Return to a commit that keeps the protection, or wait until the claims have been pruned (48 hours after they resolve)"
+      ok "the commit to return to drops the retry protection of ${route%,}, and no claim for it remains"
+    fi
+  done
+  ok "return boundary: at or above $RETURN_FLOOR; no remaining claim depends on protection the earlier commit lacks"
 else
   [ -f "$BUNDLE" ] && git bundle verify "$BUNDLE" >/dev/null 2>&1 || fail "the bundle is missing or does not verify"
   [ "$(git bundle list-heads "$BUNDLE" "refs/heads/$BRANCH" | cut -d' ' -f1)" = "$TARGET" ] || fail "the bundle's $BRANCH is not $TARGET"
