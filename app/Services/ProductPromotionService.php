@@ -175,9 +175,64 @@ class ProductPromotionService
             ->first(['u.id', 'u.shop_id', 'u.realm', 'u.role_id', 'u.password', 'u.created_at']);
     }
 
-    private function proof(object $identity): string
+    private function proof(object $identity, ?string $key = null): string
     {
-        return hash_hmac('sha256', json_encode((array) $identity, JSON_THROW_ON_ERROR), (string) config('app.key'));
+        return hash_hmac('sha256', json_encode((array) $identity, JSON_THROW_ON_ERROR), $key ?? (string) config('app.key'));
+    }
+
+    /**
+     * APP_KEY rotation only (docs/runbooks/app-key-rotation-proposal.md).
+     *
+     * A proof is an HMAC of the owner's identity under the application key,
+     * and recognitions() revokes a recognition whose proof no longer matches.
+     * So the first page read after a rotation would revoke every one of
+     * them, for good. This re-stamps, under the current key, each proof that
+     * still matches its owner's identity under one of the given previous
+     * keys. A proof that matches under no key is left alone: its owner
+     * changed, it was already invalid, and it must stay so.
+     *
+     * Verification itself never accepts a previous key.
+     *
+     * @return array{current:int, restamped:int, invalid:int}
+     */
+    public function restampProofs(array $previousKeys, bool $write): array
+    {
+        $counts = ['current' => 0, 'restamped' => 0, 'invalid' => 0];
+
+        DB::transaction(function () use ($previousKeys, $write, &$counts) {
+            $rows = DB::table('product_recognitions')->where('environment', app()->environment())
+                ->whereNull('revoked_at')->orderBy('id')->lockForUpdate()->get();
+
+            foreach ($rows as $row) {
+                foreach ([Realm::ERP, Realm::DHIRAN] as $side) {
+                    $identity = $this->identity($row->{$side.'_user_id'}, $row->{$side.'_shop_id'}, $side);
+                    $stored = (string) $row->{$side.'_proof'};
+
+                    if ($identity && hash_equals($stored, $this->proof($identity))) {
+                        $counts['current']++;
+
+                        continue;
+                    }
+
+                    $underPrevious = $identity && collect($previousKeys)
+                        ->contains(fn ($key) => hash_equals($stored, $this->proof($identity, (string) $key)));
+
+                    if (! $underPrevious) {
+                        $counts['invalid']++;
+
+                        continue;
+                    }
+
+                    $counts['restamped']++;
+                    if ($write) {
+                        DB::table('product_recognitions')->where('id', $row->id)->whereNull('revoked_at')
+                            ->update([$side.'_proof' => $this->proof($identity), 'updated_at' => now()]);
+                    }
+                }
+            }
+        });
+
+        return $counts;
     }
 
     private function proofMatches(int $userId, int $shopId, string $realm, string $proof): bool
