@@ -1,8 +1,9 @@
 # JewelFlows takeover — staging acceptance and production release
 
-**Version 12, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
+**Version 13, 8 October 2026** (version 1 `aae763b`, version 2 `a1ed636`,
 version 3 `99587f2`, version 4 `f158425`, version 5 `e9bdb7d`, version 6
-`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`).
+`0a7eb55`, version 7 `35b640e`, version 8 `1287a8e`, version 9 `896d70e`, version 10 `cf3ee22`, version 11 `4b496b3`, version 12
+`a1703fe`).
 
 **Production and staging now run `6c2ac60050d7ac728bbe872e98a5b2d56f825a39`**
 (10:19Z on 8 October): the stabilization batch of section 10, its second
@@ -18,7 +19,7 @@ record. The signed-in browser checks on production were then run (end of
 section 8), the recognition flow included: the owner typed the passwords, the
 agent verified each step and removed the recognition again.
 
-**Start here for the next task: section 12, then 11, 10 and 9.** It names the one worktree and
+**Start here for the next task: section 13, then 12, 11, 10 and 9.** It names the one worktree and
 branch to use. The inventory of every older branch, stash and worktree, and
 what became of each, is in `jewelflows-continuity-audit-2026-10-08.md`.
 
@@ -945,6 +946,13 @@ policy and is unchanged. Checked again on staging's deployed code.
 
 ### 2. A boundary for going back (`6c2ac60`)
 
+> **Superseded in part by section 13.** The rule below let a return drop a
+> route's retry protection when no claim for it remained. That exception was
+> unsafe and is gone: a return target must keep both quick-bill protections,
+> whatever the claim table holds. Nothing in this subsection permits a return
+> to `affb59c` or `bcc336a` any more, on staging or on production, now or
+> after the claims are pruned.
+
 `return` accepted any ancestor with unchanged migrations and dependencies.
 That is not compatibility: an idempotency claim says a request was carried
 out, and a commit without the middleware on that route would carry a retry
@@ -965,9 +973,8 @@ Claims are counted, never deleted. Rehearsed on staging:
 
 **Left on staging by this rehearsal, deliberately:** one synthetic shop
 (`SYNTH-…`, deactivated) with two quick bills and three claims. The claims
-are pruned 48 hours after they resolved. While they exist a return from
-`6c2ac60` to `affb59c` is refused on staging: that is the gate working.
-Production has no claim at all, so the same return is allowed there today.
+are pruned 48 hours after they resolved. (The two sentences that stood here,
+on when that return would be allowed, are withdrawn: section 13.)
 
 ### 3. Signed-in acceptance
 
@@ -1034,4 +1041,97 @@ release stopped by a gate skips scheduled commands until it is resumed.
 
 Deferred by the owner: Product preferences placement; the policy questions
 (which quick-bill edit wins, loyalty expiry, shopfront); mobile builds.
+
+## 13. Review corrections integrated (version 13)
+
+Two corrections prepared in review (pull request #4, commit
+`4f042e6dcec03b1f56f4417f96996470b50094a4`, parent `a1703fe…`) were
+fast-forwarded into `fix/stabilization-20261008`; one commit of mine follows
+(`1bc2f0e`). **No application change and no deployment: production and
+staging still run `6c2ac60…`.** Only the release script and tests changed.
+
+### 1. Return never drops quick-bill retry protection
+
+Section 12 refused such a return only while a claim remained. **That was
+wrong.** The claim table is read during preflight, while the site still
+accepts requests: a claim can be made between the count and the maintenance
+window, and an empty table proves nothing. Now:
+
+- a return target must carry the idempotency middleware on **both**
+  quick-bill create and quick-bill edit, regardless of how many claims exist;
+- if the target's route file cannot be read, the return is refused;
+- the boundary `bcc336a…` and every other gate stay.
+
+So from the deployed `6c2ac60` the one earlier commit that is eligible is
+`2501d5f` (the edit fix itself). `affb59c` and `bcc336a` are not, and will
+not become so when claims are pruned.
+
+| Check | Result |
+|---|---|
+| `python3 tests/Runbooks/stabilization_return_test.py` (the script's own gate, run against temporary git history: no deployment, database or service) | 8 passed, 0 failed: refuses losing edit protection and losing create protection with an empty table, refuses with claims, refuses a missing route file, refuses below the floor, refuses the current commit; allows a compatible ancestor with and without claims; the claim table is never queried |
+| `bash -n` on the script | clean, locally and on the server |
+| The operator copy asked to return staging to `affb59c` | refused in preflight; same commit, no maintenance file, 200, the 7 claims kept |
+| Production | not asked to return anywhere |
+
+**Operator copy:** `/root/stabilization/incoming/deploy-stabilization.sh`,
+SHA-256 `10f4bf61fadf49d60315af5ac9d2016ae888078cf057fc719580c458bb5fa14a`,
+identical to the integrated file. The previous copy (`51e65c97ef12…`) and my
+claims-based rehearsal helper are kept beside it under `superseded/` and are
+not to be used.
+
+### 2. The late-retry test proves what it says
+
+The assertion I wrote compared `quick_bill.total_amount`, a path that does
+not exist: both sides were null. The review's version asserts the real one.
+Run on the local disposable test database (`jewelflow_testing` on
+127.0.0.1, confirmed before the run), 4 tests, 33 assertions, all passing:
+
+| Claim | Assertion |
+|---|---|
+| Edit A is answered with a ₹1,500 receipt | `quick_bill.totals.total_amount` is 1500 |
+| Edit B leaves a ₹2,500 bill with B's line and payment | stored total `2500.00`, line "Edit B item", payment `2500.00` |
+| The retry of A returns A's original receipt while B stays stored | the whole receipt equals A's first, value for value and type for type; the stored records equal those after B |
+| Two edit audit entries | exactly 2 |
+
+One thing failed when the review's version was first run, and was fixed
+without loosening it: the stored reply comes back from a `jsonb` column with
+its own key order, so the receipts are compared with the key order set
+aside. Related suites (quick bill, idempotency): 113 tests, 0 failures.
+
+### 3. Browser acceptance: still pending, and why
+
+At the time of this pass **no session was signed in** on Retail, Dhiran,
+staging or either admin console (the Retail session of section 12 had
+expired). The agent does not sign in.
+
+What could be established without one: real mouse input now reaches the
+owner's browser (the click event was trusted), and a real 390-pixel-wide
+window opened on the Retail log-in page: no horizontal overflow, nothing
+past the right edge. That is a narrow desktop window, not a phone and not
+touch.
+
+| Pending check | Sign-in needed |
+|---|---|
+| Return-policy warning (toast seen, text, clearance) | `https://staging.jewelflows.com/login`, a staging shop with no return policy |
+| Platform-admin Account Security link | `https://staging.jewelflows.com/admin/login` or `https://jewelflows.com/admin/login` |
+| Dhiran and Retail: log out of one, the other stays | `https://jewelflows.com/login` and `https://dhiran.jewelflows.com/login` |
+| Signed-in narrow-screen navigation, dialogs and toast clearance | any one of the above, kept signed in |
+
+### What remains
+
+Pending checks: the four rows above; a physical phone; the suite on PHP 8.4;
+a restore test of a nightly archive from after the releases.
+
+Decisions for the owner: pull requests #2 and #3; the APP_KEY rotation and
+retirement dates; an off-site backup destination; retention of dumps and of
+the older backup series; the tool data in root's home.
+
+Leads and open findings, unchanged and **not proven or resolved**: the
+fiscal-year reset of the invoice counter (read in the code, never
+reproduced); POS 500 on an item with no price or metal type; three private
+files on the public disk; `pageinspect`; the review lows of the security
+batch; Dhiran's 42 px log-in button; the mobile items.
+
+Deferred by the owner: Product preferences placement; key rotation; backup
+deletion; the policy questions; mobile builds.
 
