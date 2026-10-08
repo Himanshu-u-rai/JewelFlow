@@ -4,13 +4,17 @@
 # (SESSION_SECURE_COOKIE=true). No schema change. Runs ON the VPS as root, one
 # environment per run:
 #
-#   deploy-stabilization.sh <preflight|release> <staging|production> \
+#   deploy-stabilization.sh <preflight|release|resume> <staging|production> \
 #       <from-sha (deployed now)> <target-sha> <bundle> <assets.tar.gz> <assets-sha256>
 #
 # preflight  every gate that can be checked without touching what serves,
 #            including a database dump read end to end. Changes nothing.
 # release    the same gates, then the window. On production it also needs
 #            STABILIZATION_RELEASE_APPROVED=<target-sha>.
+# resume     finishes a release that a gate stopped inside its window (site in
+#            maintenance). Needs STABILIZATION_PREV=<that run's directory>: its
+#            pre-release copies and dump are used; every step is repeated only
+#            if it has not already taken effect.
 #
 # deploy-forward.sh with three additions, each lifted from the takeover
 # release script: built assets from a tarball checked by SHA-256, one named
@@ -28,7 +32,7 @@ ENVN=${2:?env}; FROM=${3:?from-sha}; TARGET=${4:?target-sha}; BUNDLE=${5:?bundle
 BRANCH=fix/stabilization-20261008; REF=refs/remotes/stabilization/$BRANCH
 SETTING=SESSION_SECURE_COOKIE
 STAGING_DIR=/var/www/jewelflow-staging
-case "$MODE" in preflight|release) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
+case "$MODE" in preflight|release|resume) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
 case "$ENVN" in
   staging)    DIR=$STAGING_DIR;       OWNER=root; DB=jewelflow_staging; APPURL=https://staging.jewelflows.com; HOSTS=(staging.jewelflows.com); WORKER=jewelflow-staging-ops-alerts;    OTHER=/var/www/jewelflow ;;
   production) DIR=/var/www/jewelflow; OWNER=dev;  DB=jewelflow;         APPURL=https://jewelflows.com;         HOSTS=(jewelflows.com www.jewelflows.com dhiran.jewelflows.com); WORKER=jewelflow-production-ops-alerts; OTHER=$STAGING_DIR ;;
@@ -89,7 +93,8 @@ fail() {
   case "$PHASE" in
     preflight) echo "Nothing that serves was changed." ;;
     smoke) echo "The site is UP on the target (maintenance had ended); nothing was rolled back. Inspect now. State: $WORK." ;;
-    *) echo "The site is LEFT IN MAINTENANCE and $WORKER is stopped. Pre-release .env, config cache and assets: $WORK." ;;
+    *) echo "The site is LEFT IN MAINTENANCE and $WORKER is stopped. Pre-release .env, config cache and assets: ${PRE:-$WORK}."
+       echo "After the cause is fixed: STABILIZATION_PREV=${PRE:-$WORK} $0 resume $ENVN $FROM $TARGET <bundle> <assets> <sha256>" ;;
   esac
   exit 2
 }
@@ -98,18 +103,20 @@ echo "########## stabilization $MODE: $ENVN $FROM -> $TARGET at $STAMP (UTC); sc
 # ── gates: nothing that serves is touched ───────────────────────────────────
 [ "$(id -u)" = 0 ] || fail "run as root"
 cd "$DIR" || fail "no directory $DIR"
-if [ "$MODE" = release ] && [ "$ENVN" = production ]; then
+if [ "$MODE" != preflight ] && [ "$ENVN" = production ]; then
   [ "${STABILIZATION_RELEASE_APPROVED:-}" = "$TARGET" ] || fail "a production release needs STABILIZATION_RELEASE_APPROVED=$TARGET"
   window_clear || fail "inside a window that would cover a daily scheduled job (India time $(TZ=Asia/Kolkata date +%H:%M))"
 fi
-[ "$(cfgid)" = "$ENVN|$APPURL|$DB" ] || fail "effective (cached) config is '$(cfgid)'"
-[ "$(G rev-parse HEAD)" = "$FROM" ] || fail "HEAD is $(G rev-parse HEAD), expected the deployed $FROM"
-[ -z "$(G status --porcelain --untracked-files=no)" ] || fail "tracked tree is dirty"
-[ ! -f storage/framework/down ] || fail "the site is already in maintenance"
-for _ in $(seq 1 30); do [ "$(artisan_running)" = 0 ] && break; sleep 2; done   # a scheduled command may be finishing
-[ "$(artisan_running)" = 0 ] || fail "an artisan command is running in $DIR"
-OTHER_HEAD_BEFORE=$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)
-UNTRACKED_BEFORE=$(untracked)
+if [ "$MODE" != resume ]; then
+  [ "$(cfgid)" = "$ENVN|$APPURL|$DB" ] || fail "effective (cached) config is '$(cfgid)'"
+  [ "$(G rev-parse HEAD)" = "$FROM" ] || fail "HEAD is $(G rev-parse HEAD), expected the deployed $FROM"
+  [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "tracked tree is dirty"
+  [ ! -f storage/framework/down ] || fail "the site is already in maintenance (a stopped release is finished with: resume)"
+  for _ in $(seq 1 30); do [ "$(artisan_running)" = 0 ] && break; sleep 2; done   # a scheduled command may be finishing
+  [ "$(artisan_running)" = 0 ] || fail "an artisan command is running in $DIR"
+  OTHER_HEAD_BEFORE=$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)
+  UNTRACKED_BEFORE=$(untracked)
+fi
 [ -f "$BUNDLE" ] && git bundle verify "$BUNDLE" >/dev/null 2>&1 || fail "the bundle is missing or does not verify"
 [ "$(git bundle list-heads "$BUNDLE" "refs/heads/$BRANCH" | cut -d' ' -f1)" = "$TARGET" ] || fail "the bundle's $BRANCH is not $TARGET"
 BTMP=$(OWNERDO mktemp -d) && install -o "$OWNER" -g "$OWNER" -m 600 "$BUNDLE" "$BTMP/candidate.bundle" || fail "could not hand the bundle to $OWNER"
@@ -118,7 +125,7 @@ G fetch --quiet "$BTMP/candidate.bundle" "+refs/heads/$BRANCH:$REF"; FETCHED=$?;
 G merge-base --is-ancestor "$FROM" "$TARGET" || fail "target does not descend from the deployed commit"
 [ -z "$(G diff --name-only "$FROM" "$TARGET" -- database/migrations composer.lock composer.json package.json package-lock.json vite.config.js)" ] \
   || fail "the target changes a migration or a dependency: not this script"
-grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is pending"
+[ "$MODE" = resume ] || grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is pending"
 DEVREF=$(G grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
 [ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
 ok "target $TARGET: descends from $FROM, no migration, no dependency change, no dev-only reference; $(G diff --name-only "$FROM" "$TARGET" -- app bootstrap config routes resources public | wc -l) runtime path(s) change"
@@ -129,6 +136,22 @@ MISSING=$(comm -23 <(tar -xzOf "$ASSETS" build/manifest.json | grep -oE '"(file|
 [ -z "$MISSING" ] || fail "the manifest names files the tarball does not hold: $MISSING"
 NEW_MANIFEST=$(tar -xzOf "$ASSETS" build/manifest.json | sha256sum | cut -d' ' -f1)
 ok "assets tarball $ASSETS_SHA: $(tar -tzf "$ASSETS" | grep -vc '/$') files, manifest $NEW_MANIFEST"
+if [ "$MODE" = resume ]; then
+  PRE=${STABILIZATION_PREV:?resume needs STABILIZATION_PREV=<directory of the stopped run>}
+  [ -f "$DIR/storage/framework/down" ] || fail "resume is for a release stopped in maintenance; this site is up"
+  H=$(G rev-parse HEAD); [ "$H" = "$FROM" ] || [ "$H" = "$TARGET" ] || fail "HEAD is $H, neither the deployed $FROM nor the target"
+  [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "tracked tree is dirty"
+  for f in env.before config.cache.before build.before.tar.gz config.before.hashes log.mark "$DB.dump"; do [ -s "$PRE/$f" ] || fail "$PRE has no $f"; done
+  pg_restore -f /dev/null "$PRE/$DB.dump" 2>/dev/null || fail "the stopped run's backup does not read end to end"
+  if [ -f "$PRE/state" ]; then . "$PRE/state"; else
+    ENV_STAT=$(stat -c '%U:%G %a' "$DIR/.env"); CACHE_STAT=$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")
+    BUILD_STAT=$(stat -c '%U:%G' "$PRE/build.replaced" 2>/dev/null || stat -c '%U:%G' "$DIR/public/build")
+    UNTRACKED_BEFORE=$(untracked); OTHER_HEAD_BEFORE=$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)
+  fi
+  CUR=$(grep -E "^$SETTING=" "$PRE/env.before" | cut -d= -f2)
+  ok "resuming the run in $PRE: HEAD $H, site in maintenance, its backup reads end to end; assets were $BUILD_STAT, .env $ENV_STAT"
+else
+PRE=$WORK
 ENV_STAT=$(stat -c '%U:%G %a' "$DIR/.env"); CACHE_STAT=$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php"); BUILD_STAT=$(stat -c '%U:%G' "$DIR/public/build")
 N_SET=$(grep -cE "^$SETTING=" "$DIR/.env"); CUR=$(grep -E "^$SETTING=" "$DIR/.env" | cut -d= -f2)
 [ "$N_SET" = 1 ] && { [ "$CUR" = false ] || [ "$CUR" = true ]; } || fail ".env does not hold exactly one $SETTING line set to false or true"
@@ -146,17 +169,26 @@ done < <(G diff --name-only "$FROM" "$TARGET")
 install -m 600 "$DIR/.env" "$WORK/env.before" && install -m 600 "$DIR/bootstrap/cache/config.php" "$WORK/config.cache.before" && tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not copy the pre-release .env, config cache and assets"
 chmod 600 "$WORK/build.before.tar.gz"; config_hashes > "$WORK/config.before.hashes"
 ok "pre-release copies in $WORK (root only)"
+declare -p ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE OTHER_HEAD_BEFORE > "$WORK/state"
 if [ "$MODE" = preflight ]; then echo "STABILIZATION PREFLIGHT PASSED: $ENVN $FROM -> $TARGET; nothing was changed; evidence in $WORK"; exit 0; fi
+
+fi
 
 # ── the window ──────────────────────────────────────────────────────────────
 PHASE=down
-LOG_MARK=$(log_mark); echo "$LOG_MARK" > "$WORK/log.mark"
-# The scheduler's cron fires on the minute and is not held: start just after one, so the window ends before the next.
-while s=$(date +%S); [ "$((10#$s))" -lt 3 ] || [ "$((10#$s))" -gt 15 ]; do sleep 1; done
-ART down --retry=30 >/dev/null || fail "artisan down failed"
-DOWN_AT=$(date -u +%s); ok "maintenance on at $(date -u +%H:%M:%SZ)"
-systemctl stop "$WORKER" || fail "could not stop $WORKER"
-COUNTS_BEFORE=$(counts); ok "counts in maintenance: $COUNTS_BEFORE"
+if [ "$MODE" = resume ]; then
+  LOG_MARK=$(cat "$PRE/log.mark"); DOWN_AT=$(date -u +%s)
+  systemctl stop "$WORKER" 2>/dev/null || true
+  COUNTS_BEFORE=$(cat "$PRE/counts.before" 2>/dev/null || counts)
+else
+  LOG_MARK=$(log_mark); echo "$LOG_MARK" > "$WORK/log.mark"
+  # The scheduler's cron fires on the minute and is not held: start just after one, so the window ends before the next.
+  while s=$(date +%S); [ "$((10#$s))" -lt 3 ] || [ "$((10#$s))" -gt 15 ]; do sleep 1; done
+  ART down --retry=30 >/dev/null || fail "artisan down failed"
+  DOWN_AT=$(date -u +%s); ok "maintenance on at $(date -u +%H:%M:%SZ)"
+  systemctl stop "$WORKER" || fail "could not stop $WORKER"
+  COUNTS_BEFORE=$(counts); echo "$COUNTS_BEFORE" > "$WORK/counts.before"; ok "counts in maintenance: $COUNTS_BEFORE"
+fi
 PHASE=checkout
 G checkout --quiet --detach "$TARGET" || fail "checkout failed"
 [ "$(G rev-parse HEAD)" = "$TARGET" ] && [ -z "$(G status --porcelain --untracked-files=no)" ] || fail "checkout did not land cleanly"
@@ -164,20 +196,24 @@ G checkout --quiet --detach "$TARGET" || fail "checkout failed"
 OWNERDO env COMPOSER_ALLOW_SUPERUSER=1 composer -d "$DIR" install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --quiet || fail "composer install failed"
 ART package:discover >/dev/null || fail "package:discover failed"
 PHASE=assets
-OWNERDO rm -rf "$DIR/public/build.incoming" && OWNERDO mkdir "$DIR/public/build.incoming" && OWNERDO tar -xzmf - -C "$DIR/public/build.incoming" < "$ASSETS" || fail "could not unpack the assets"
-mv "$DIR/public/build" "$WORK/build.replaced" && OWNERDO mv "$DIR/public/build.incoming/build" "$DIR/public/build" && OWNERDO rmdir "$DIR/public/build.incoming" || fail "could not put the assets in place"
+if [ "$(sha256sum "$DIR/public/build/manifest.json" 2>/dev/null | cut -d' ' -f1)" != "$NEW_MANIFEST" ]; then
+  OWNERDO rm -rf "$DIR/public/build.incoming" && OWNERDO mkdir "$DIR/public/build.incoming" && OWNERDO tar -xzmf - -C "$DIR/public/build.incoming" < "$ASSETS" || fail "could not unpack the assets"
+  mv "$DIR/public/build" "$WORK/build.replaced" && OWNERDO mv "$DIR/public/build.incoming/build" "$DIR/public/build" && OWNERDO rmdir "$DIR/public/build.incoming" || fail "could not put the assets in place"
+fi
+# The directory this script has just put there, and only that: owned as the assets it replaces were.
+chown -R "$BUILD_STAT" "$DIR/public/build" || fail "could not give the new assets the owner of the old ($BUILD_STAT)"
 [ "$(stat -c '%U:%G' "$DIR/public/build")" = "$BUILD_STAT" ] && [ "$(sha256sum "$DIR/public/build/manifest.json" | cut -d' ' -f1)" = "$NEW_MANIFEST" ] || fail "public/build is not owned as before or its manifest is not the released one"
 PHASE=config
 # Written through the existing file (same inode, owner and mode), from the pre-release copy: one line differs.
-sed "s/^$SETTING=false\$/$SETTING=true/" "$WORK/env.before" > "$WORK/env.after" && chmod 600 "$WORK/env.after" && cat "$WORK/env.after" > "$DIR/.env" || fail "could not write $SETTING"
+sed "s/^$SETTING=false\$/$SETTING=true/" "$PRE/env.before" > "$WORK/env.after" && chmod 600 "$WORK/env.after" && cat "$WORK/env.after" > "$DIR/.env" || fail "could not write $SETTING"
 [ "$(stat -c '%U:%G %a' "$DIR/.env")" = "$ENV_STAT" ] || fail ".env ownership or mode changed (was $ENV_STAT)"
-CHANGED=$(diff "$WORK/env.before" "$DIR/.env" | grep -E '^[<>]' | sed -E 's/=.*//' | tr '\n' ' ')
+CHANGED=$(diff "$PRE/env.before" "$DIR/.env" | grep -E '^[<>]' | sed -E 's/=.*//' | tr '\n' ' ')
 [ "$CUR" = true ] && [ -z "$CHANGED" ] || [ "$CHANGED" = "< $SETTING > $SETTING " ] || fail ".env differs from its pre-release copy by more than the one setting: $CHANGED"
 CFG config:cache >/dev/null && ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
 cache_ok || fail "the config cache has no application key or database password"
 [ "$(cfgid)" = "$ENVN|$APPURL|$DB" ] || fail "effective config after the release is '$(cfgid)'"
 [ "$(cfg 'echo var_export($c["session"]["secure"], true);')" = true ] || fail "session.secure is not true in the cached config"
-SECTIONS=$(diff <(config_hashes) "$WORK/config.before.hashes" | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')
+SECTIONS=$(diff <(config_hashes) "$PRE/config.before.hashes" | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')
 [ "$SECTIONS" = "session " ] || [ -z "$SECTIONS" ] || fail "configuration changed outside the session section: $SECTIONS"
 [ "$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")" = "$CACHE_STAT" ] || fail "the config cache's ownership or mode changed (was $CACHE_STAT)"
 while IFS= read -r f; do [ -e "$DIR/$f" ] || continue; sudo -u www-data test -r "$DIR/$f" || fail "www-data cannot read $f"; done < <(G diff --name-only "$FROM" "$TARGET")
@@ -187,7 +223,7 @@ ok "checked out $TARGET; assets in place; $SETTING=true and nothing else changed
 [ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed inside the window"
 PHASE=up
 ART up >/dev/null || fail "artisan up failed"
-ok "maintenance off at $(date -u +%H:%M:%SZ) after $(( $(date -u +%s) - DOWN_AT )) s"
+ok "maintenance off at $(date -u +%H:%M:%SZ)$([ "$MODE" = resume ] || echo " after $(( $(date -u +%s) - DOWN_AT )) s")"
 PHASE=smoke
 worker_steady || fail "$WORKER is not steady after the site came up"
 for h in "${HOSTS[@]}"; do
