@@ -40,6 +40,7 @@
             <div class="customers-show-retailer-overview">
                 <section class="customers-show-retailer-profile" aria-label="Customer profile">
                     <div class="customers-show-retailer-profile-main">
+                        <x-customer-photo :customer="$customer" />
                         <span class="customers-show-retailer-profile-kicker">Customer profile</span>
                         <h2>{{ $customer->first_name }} {{ $customer->last_name }}</h2>
                         <div class="customers-show-retailer-profile-meta">
@@ -387,6 +388,7 @@
                         <div class="p-4 border-b border-gray-200">
                             <h2 class="text-lg font-semibold text-gray-900">Customer Information</h2>
                         </div>
+                        <div class="p-4 pb-0"><x-customer-photo :customer="$customer" /></div>
                         <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p class="text-gray-500">Name</p>

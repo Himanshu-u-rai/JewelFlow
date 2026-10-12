@@ -737,6 +737,7 @@ class DhiranController extends Controller
 
         $query = Customer::query()
             ->whereHas('dhiranLoans', fn ($q) => $q->where('shop_id', $shopId))
+            ->with('profilePhoto')
             ->withCount([
                 'dhiranLoans as active_loans_count'        => fn ($q) => $q->where('status', 'active'),
                 'dhiranLoans as pending_evidence_count'    => fn ($q) => $q->where('status', 'pending_evidence'),

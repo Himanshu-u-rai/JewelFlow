@@ -12,6 +12,7 @@ use App\Http\Concerns\RespondsDynamically;
 use App\Rules\IndianMobileRule;
 use App\Rules\PanFormatRule;
 use App\Services\ComplianceService;
+use App\Services\CustomerProfilePhotoService;
 use App\Services\PosSearchCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -57,7 +58,7 @@ class CustomerController extends Controller
             ")
             ->first();
 
-        $query = $applySearch(Customer::where('shop_id', $shopId));
+        $query = $applySearch(Customer::where('shop_id', $shopId))->with('profilePhoto');
 
         if ($status === 'active') {
             $query->active();
@@ -234,11 +235,13 @@ class CustomerController extends Controller
             'anniversary_date' => 'nullable|date',
             'wedding_date'     => 'nullable|date',
             'notes'            => 'nullable|string|max:2000',
+            'customer_photo'   => 'nullable|file|max:5120',
         ], [
         ]);
 
         $data['mobile'] = $data['mobile'] ?? null;
         $data['shop_id'] = $shopId;
+        unset($data['customer_photo']);
 
         // The duplicate check Rule::unique cannot do.
         //
@@ -272,7 +275,13 @@ class CustomerController extends Controller
             }
         }
 
-        $customer = Customer::create($data);
+        if ($request->hasFile('customer_photo')) {
+            $customer = new Customer;
+            $customer->shop_id = $shopId;
+            app(CustomerProfilePhotoService::class)->save($customer, $request->file('customer_photo'), '', $data);
+        } else {
+            $customer = Customer::create($data);
+        }
         Cache::forget(PosSearchCacheService::customersCacheKey($shopId, null));
 
         if ($request->expectsJson() || $request->ajax()) {
@@ -371,11 +380,19 @@ class CustomerController extends Controller
             'anniversary_date' => 'nullable|date',
             'wedding_date'     => 'nullable|date',
             'notes'            => 'nullable|string|max:2000',
+            'customer_photo' => ['nullable', 'file', 'max:5120', Rule::prohibitedIf($request->boolean('customer_photo_remove'))],
+            'customer_photo_remove' => 'nullable|boolean',
+            'customer_photo_version' => [$request->hasFile('customer_photo') || $request->boolean('customer_photo_remove') ? 'present' : 'nullable', 'nullable', 'uuid'],
         ], [
         ]);
 
         $data['mobile'] = $data['mobile'] ?? null;
-        $customer->update($data);
+        unset($data['customer_photo'], $data['customer_photo_remove'], $data['customer_photo_version']);
+        if ($request->hasFile('customer_photo') || $request->boolean('customer_photo_remove')) {
+            app(CustomerProfilePhotoService::class)->save($customer, $request->file('customer_photo'), (string) $request->input('customer_photo_version'), $data);
+        } else {
+            $customer->update($data);
+        }
         Cache::forget(PosSearchCacheService::customersCacheKey($shopId, null));
 
         return redirect()->route('customers.show', $customer->id)

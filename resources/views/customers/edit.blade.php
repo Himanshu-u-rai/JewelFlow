@@ -14,7 +14,7 @@
     </x-page-header>
 
     <div class="content-inner customers-create-page customers-edit-page">
-        <form method="POST" action="{{ route('customers.update', $customer) }}" class="customers-create-form-card">
+        <form method="POST" action="{{ route('customers.update', $customer) }}" class="customers-create-form-card" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -25,6 +25,8 @@
                 </div>
                 <span class="customers-create-required">Required fields marked *</span>
             </div>
+
+            <x-customer-photo :customer="$customer" mode="form" />
 
             <div class="customers-create-form-grid">
                 <div class="customers-create-field">

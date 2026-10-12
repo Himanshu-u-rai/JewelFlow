@@ -4,6 +4,9 @@ import flatpickr from 'flatpickr';
 
 import Alpine from 'alpinejs';
 import { registerHistoricalManual } from './historical-manual';
+import { initializeCustomerPhotos } from './customer-photo';
+
+initializeCustomerPhotos();
 
 let toastTimer = null;
 let toastDuration = 4000;

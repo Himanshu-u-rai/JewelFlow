@@ -1,4 +1,5 @@
 @import "flatpickr/dist/flatpickr.min.css";
+@import "./customer-photo.css";
 
 @tailwind base;
 @tailwind components;

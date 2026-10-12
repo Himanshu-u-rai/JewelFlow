@@ -21,6 +21,7 @@
         {{-- 1. Basic details --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
             <h2 class="text-base font-semibold text-slate-900 mb-4">Borrower details</h2>
+            <x-customer-photo :customer="$customer" realm="dhiran" />
             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Name</dt><dd class="text-slate-800 font-medium mt-0.5">{{ $customer->name }}</dd></div>
                 <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mobile</dt><dd class="text-slate-800 mt-0.5">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '—' }}</dd></div>

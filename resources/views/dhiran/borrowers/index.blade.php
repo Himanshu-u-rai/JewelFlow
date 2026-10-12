@@ -43,11 +43,16 @@
             @endif
                                 <tr class="hover:bg-slate-50/70">
                                     <td class="pl-6 pr-4 py-4">
-                                        <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="font-medium text-slate-800 hover:text-amber-700">{{ $borrower->name }}</a>
-                                        <div class="text-xs text-slate-400 font-mono mt-0.5">{{ $borrower->customer_code }}</div>
-                                        @if(($borrower->pending_evidence_count ?? 0) > 0)
-                                            <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">{{ $borrower->pending_evidence_count }} awaiting evidence</span>
-                                        @endif
+                                        <div class="flex items-start gap-3">
+                                            <x-customer-avatar :customer="$borrower" realm="dhiran" />
+                                            <div>
+                                                <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="font-medium text-slate-800 hover:text-amber-700">{{ $borrower->name }}</a>
+                                                <div class="text-xs text-slate-400 font-mono mt-0.5">{{ $borrower->customer_code }}</div>
+                                                @if(($borrower->pending_evidence_count ?? 0) > 0)
+                                                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">{{ $borrower->pending_evidence_count }} awaiting evidence</span>
+                                                @endif
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-4 text-sm text-slate-600 whitespace-nowrap">{{ \App\Support\Mobile::forDisplay($borrower->mobile) ?: '—' }}</td>
                                     <td class="px-4 py-4 text-center text-sm font-medium text-emerald-700">{{ $borrower->active_loans_count }}</td>
