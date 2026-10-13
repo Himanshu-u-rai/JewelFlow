@@ -92,6 +92,8 @@ function initializePhoto(root) {
     let busy = false;
     let opener = null;
     let alive = true;
+    let generation = 0;
+    let needsReconcile = false;
 
     const buttons = (action) => root.querySelectorAll(`[data-photo-action="${action}"]`);
     const show = (action, visible) => buttons(action).forEach(button => { button.hidden = !visible; });
@@ -126,14 +128,21 @@ function initializePhoto(root) {
             dialog.showModal();
         }
     };
+    const restoreFocus = () => {
+        if (!alive || dialog.open) return;
+        const usable = button => button?.isConnected && !button.disabled && button.getClientRects().length;
+        const target = usable(opener) ? opener : [...root.querySelectorAll('.customer-photo__actions button')].find(usable);
+        target?.focus();
+    };
     const close = () => {
         camera.stop();
         clearCandidate();
         view('choose');
         if (dialog.open) dialog.close();
-        opener?.focus();
+        if (!busy) restoreFocus();
     };
     const changed = (photo) => {
+        generation++;
         version = photo?.version ?? '';
         currentUrl = photo?.url ?? null;
         root.dataset.photoVersion = version;
@@ -141,6 +150,22 @@ function initializePhoto(root) {
         setAvatar(avatar, currentUrl);
         show('change', !!currentUrl);
         show('remove', !!currentUrl);
+    };
+    const reconcile = async () => {
+        try {
+            const response = await fetch(root.dataset.photoUrl, {
+                credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: listeners.signal,
+            });
+            if (!response.ok) throw new Error('Current photo is unavailable.');
+            const data = await response.json();
+            if (!alive) return;
+            changed(data.photo);
+            needsReconcile = false;
+            globalThis.Turbo?.cache.clear();
+            status.textContent = 'Current photo checked. Review it before retrying the change.';
+        } catch {
+            if (alive) status.textContent = 'The photo outcome is still unconfirmed. Refresh this page before retrying.';
+        }
     };
     const startCamera = async (button) => {
         open(button);
@@ -186,30 +211,48 @@ function initializePhoto(root) {
             return;
         }
         const removing = mode === 'remove';
-        const body = new FormData();
-        body.set('customer_photo_version', version);
-        if (!removing) body.set('customer_photo', candidate);
-        if (removing) body.set('_method', 'DELETE');
+        generation++;
         busy = true;
         root.querySelectorAll('button').forEach(button => { button.disabled = true; });
+        let message = 'The photo change could not be confirmed. Check the current photo before retrying.';
         status.textContent = removing ? 'Removing photo…' : 'Processing and saving photo…';
         try {
+            if (needsReconcile) {
+                await reconcile();
+                return;
+            }
+            const body = new FormData();
+            body.set('customer_photo_version', version);
+            if (!removing) body.set('customer_photo', candidate);
+            if (removing) body.set('_method', 'DELETE');
             const response = await fetch(root.dataset.photoUrl, {
                 method: 'POST', credentials: 'same-origin', body,
                 headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.errors?.customer_photo?.[0] ?? data.message ?? 'The photo could not be saved. Please try again.');
+            if (!response.ok) {
+                message = data.errors?.customer_photo?.[0] ?? data.message ?? message;
+                throw new Error(message);
+            }
             if (!alive) return;
             changed(data.photo);
             globalThis.Turbo?.cache.clear();
             status.textContent = data.message;
             close();
-        } catch (error) {
-            if (alive) { status.textContent = 'Photo not saved.'; fail(error.message || 'Connection failed. Check the current photo before retrying.'); }
+        } catch {
+            if (alive) {
+                needsReconcile = true;
+                status.textContent = 'The photo change could not be confirmed. Checking the current photo…';
+                fail(message);
+                await reconcile();
+            }
         } finally {
+            generation++;
             busy = false;
-            if (alive) root.querySelectorAll('button').forEach(button => { button.disabled = false; });
+            if (alive) {
+                root.querySelectorAll('button').forEach(button => { button.disabled = false; });
+                restoreFocus();
+            }
         }
     };
 
@@ -266,7 +309,9 @@ function initializePhoto(root) {
 
     return {
         root,
-        refresh(photo) {
+        get generation() { return generation; },
+        refresh(photo, expectedGeneration) {
+            if (!alive || busy || expectedGeneration !== generation) return;
             if (!formFile?.files.length && formRemove?.value !== '1') changed(photo);
             delete avatar.dataset.photoStale;
         },
@@ -274,6 +319,7 @@ function initializePhoto(root) {
             alive = false;
             close();
             listeners.abort();
+            root.querySelectorAll('button').forEach(button => { button.disabled = false; });
             if (selectedUrl) URL.revokeObjectURL(selectedUrl);
         },
     };
@@ -281,17 +327,22 @@ function initializePhoto(root) {
 
 export function initializeCustomerPhotos() {
     const controllers = new Map();
+    let refreshGeneration = 0;
     const refresh = async () => {
+        const generation = ++refreshGeneration;
         const requests = new Map();
         for (const avatar of document.querySelectorAll('[data-customer-avatar][data-photo-stale]')) {
+            const root = avatar.closest('[data-customer-photo]');
+            const controller = controllers.get(root);
+            const expectedGeneration = controller?.generation;
             const url = avatar.dataset.photoMeta;
             if (!url) continue;
             if (!requests.has(url)) requests.set(url, fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }).then(async response => response.ok ? response.json() : { photo: null }).catch(() => ({ photo: null })));
             const { photo } = await requests.get(url);
-            if (!avatar.isConnected) continue;
-            const root = avatar.closest('[data-customer-photo]');
-            const controller = controllers.get(root);
-            if (controller) controller.refresh(photo);
+            if (!avatar.isConnected || generation !== refreshGeneration) continue;
+            if (controller) {
+                if (controllers.get(root) === controller) controller.refresh(photo, expectedGeneration);
+            }
             else setAvatar(avatar, photo?.url);
         }
     };
@@ -305,6 +356,7 @@ export function initializeCustomerPhotos() {
         refresh();
     };
     const dispose = () => {
+        refreshGeneration++;
         controllers.forEach(controller => controller.dispose());
         controllers.clear();
         document.querySelectorAll('[data-customer-avatar]').forEach(avatar => {

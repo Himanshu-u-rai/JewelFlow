@@ -4,7 +4,7 @@
 
 - Branch: `feature/customer-profile-photos`.
 - Worktree: `/home/himanshu/Desktop/jewelflow-worktrees/customer-profile-photos`.
-- Base/parent: `c68f0f932035370e72cf126da88d724aa3815665`, verified against the
+- Base/original feature parent: `c68f0f932035370e72cf126da88d724aa3815665`, verified against the
   production checkout read-only on 11 October 2026 at 15:53:47 UTC.
 - Feature commit subject: `feat: add private customer profile photos`.
   Final SHA is recorded after committing in the separate evidence coordination
@@ -14,6 +14,56 @@
   OTP staging was `4deb8dadfc09e943c30fac229badebff74bbd319`, enforcement OFF,
   at the initial read-only check. Neither was changed by this feature. OTP remains
   paused pending Fast2SMS approval; no SMS sent. OTP and UI-audit work stay paused.
+
+## Independent-review corrections — 14 October 2026
+
+Correction parent: `917109839d13ae3b1849296472b6a06126119608`.
+The final correction SHA and its immutable full-suite results are recorded after
+commit in the external review packet and coordination ledger, not guessed here.
+This correction changes only the shared photo JavaScript, its new browser
+regressions and this handoff. Backend, storage, encoder, permission gates, CSS,
+dependency manifests/locks and mobile APIs are unchanged.
+
+- R1: metadata reads capture both controller identity and its change generation;
+  a late restored-page response cannot undo a newer save/remove or apply to a
+  disposed controller. Cached controls remain usable after an outstanding save.
+- R2: successful mutations restore keyboard focus after re-enabling controls;
+  removing a photo chooses an enabled, visible fallback if its opener disappears.
+- R3: an uncertain response reports an unconfirmed outcome, reads authoritative
+  metadata and requires fresh readable state before retrying. A read never
+  automatically resubmits a mutation. Known validation messages remain visible.
+
+The supplied reviewer reproducer initially reproduced all three findings and
+then passed all three against the correction. All 28 frontend tests passed with
+zero skips: 18 actual Chromium/native-DOM cases using candidate JS/CSS and
+controlled HTTP responses, plus the 10 existing camera/lifecycle tests. Running
+the same tests against exported original-commit JS/CSS produced 14 failures and
+14 passes, proving the checks distinguish the broken implementation. The feature
+worktree was never reverted for this falsification.
+
+Guarded focused PHP tests passed: 65 tests / 652 assertions. Vite build, JS syntax
+and diff checks passed. The full configured PHP suite at the original immutable
+9171098 candidate passed 3,621 tests / 18,572 assertions with zero failures/errors,
+one deliberate browser-only skip and 29 existing PHPUnit deprecations. Its first
+run without APP_NAME recorded one inherited BackupConfigurationTest failure;
+explicit APP_NAME=JewelFlows matched the example configuration and passed. No
+application/configuration fix was made to hide that failure. New immutable
+candidate results, exact commands, local Laravel browser coverage and screenshots
+are in the updated packet; physical-device acceptance remains NOT RUN.
+
+Both real local Laravel product flows passed with isolated synthetic accounts:
+normal upload/replace/remove, delayed authenticated metadata after Turbo restore,
+the next mutation returning 200, keyboard focus, actual commits with intentionally
+lost upload/removal responses, authoritative read reconciliation without duplicate
+submission, Back/Forward, emulated capture/retake/cancel cleanup, and 390px layouts
+with 44px controls and no horizontal page overflow. Four refreshed synthetic
+desktop/mobile screenshots were inspected. HTTP delivery manipulation in these
+checks is not a provider/storage failure rehearsal or physical-camera acceptance.
+
+The new browser test requires an existing Playwright installation through
+PLAYWRIGHT_MODULE_PATH and optionally BROWSER_EXECUTABLE. Without Playwright it
+explicitly skips its browser cases; the verified run supplied both and skipped
+none. No new application dependency was introduced.
 
 ## Implemented behavior
 
@@ -200,8 +250,9 @@ enforcement, Fast2SMS route/key, DNS or upstream.
 ## Remaining limitations / scope exclusions
 
 - Physical phones/webcams and Safari/Firefox browser acceptance: NOT RUN.
-- Full repository suite and remote recovery/deployment: NOT RUN; the relevant
-  286-test regression is actual, not a whole-repository claim.
+- Full repository suite at the original 9171098 candidate: actually run as
+  described above. Correction-candidate results are recorded in the updated
+  external packet. Remote recovery/deployment remains NOT RUN.
 - Existing npm lock audit reports 19 vulnerabilities (3 moderate, 14 high,
   2 critical). No dependency versions changed and no automatic audit fix applied.
 - No cropping editor, photo albums, additional image variants, KYC promotion,
