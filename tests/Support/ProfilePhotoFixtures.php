@@ -61,6 +61,52 @@ final class ProfilePhotoFixtures
         return self::fromBytes($encoded, 'synthetic-oriented.'.($format === 'jpeg' ? 'jpg' : $format));
     }
 
+    /** JPEG bytes of the synthetic portrait; progressive when asked. */
+    public static function jpegBytes(int $width = 800, int $height = 600, bool $progressive = false): string
+    {
+        $image = imagecreatefromstring(file_get_contents(($file = self::portrait($width, $height))->getPathname()));
+        unlink($file->getPathname());
+        imageinterlace($image, $progressive);
+        ob_start();
+        imagejpeg($image, null, 90);
+        imagedestroy($image);
+
+        return ob_get_clean();
+    }
+
+    /** Inserts an APP segment right after SOI. */
+    public static function withSegment(string $jpeg, int $marker, string $payload): string
+    {
+        return substr($jpeg, 0, 2)."\xFF".chr($marker).pack('n', strlen($payload) + 2).$payload.substr($jpeg, 2);
+    }
+
+    /**
+     * A Motion Photo as phone cameras write it: XMP declaring the embedded video,
+     * then the MP4 appended AFTER the JPEG's end-of-image marker. The video bytes
+     * deliberately contain JPEG-looking markers.
+     */
+    public static function motionPhoto(): string
+    {
+        $video = pack('N', 24).'ftypmp42'.pack('N', 0).'isommp42'
+            .pack('N', 40).'mdat'."\xFF\xD8\xFF\xDA\x00\x08\x01\x01\x00\x00\x3F\x00".str_repeat("\x12\xFF\x00\x34", 6);
+        $xmp = 'http://ns.adobe.com/xap/1.0/'."\0"
+            .'<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+            .'<rdf:Description xmlns:GCamera="http://ns.google.com/photos/1.0/camera/" GCamera:MotionPhoto="1" GCamera:MotionPhotoVersion="1"'
+            .' GCamera:MotionPhotoPresentationTimestampUs="0"/>'
+            .'<rdf:Description xmlns:Container="http://ns.google.com/photos/1.0/container/" xmlns:Item="http://ns.google.com/photos/1.0/container/item/">'
+            .'<Container:Directory><rdf:Seq><rdf:li rdf:parseType="Resource"><Container:Item Item:Mime="image/jpeg" Item:Semantic="Primary"/></rdf:li>'
+            .'<rdf:li rdf:parseType="Resource"><Container:Item Item:Mime="video/mp4" Item:Semantic="MotionPhoto" Item:Length="'.strlen($video).'"/></rdf:li>'
+            .'</rdf:Seq></Container:Directory></rdf:Description></rdf:RDF></x:xmpmeta>';
+
+        return self::withSegment(self::jpegBytes(), 0xE1, $xmp).$video;
+    }
+
+    /** EXIF APP1 that carries a complete embedded thumbnail JPEG (its own SOI..EOI). */
+    public static function withExifThumbnail(string $jpeg): string
+    {
+        return self::withSegment($jpeg, 0xE1, "Exif\0\0II\x2a\x00".pack('V', 8).pack('v', 0).pack('V', 0).self::jpegBytes(64, 48));
+    }
+
     public static function fromBytes(string $bytes, string $name): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'jf-photo-');

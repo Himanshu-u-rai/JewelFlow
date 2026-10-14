@@ -27,6 +27,10 @@ class CustomerProfilePhotoEncoder
         if ($info[0] < 1 || $info[1] < 1 || $info[0] * $info[1] > self::MAX_PIXELS) {
             $this->reject('Choose an image of no more than 20 megapixels.');
         }
+        // libjpeg decodes a cut-off JPEG without complaint and greys out the rest.
+        if ($info[2] === IMAGETYPE_JPEG && ! $this->jpegIsComplete((string) file_get_contents($file->getPathname()))) {
+            $this->reject('This photo looks incomplete or damaged, so it was not saved. Your existing photo is unchanged. Choose the photo again or take a new one.');
+        }
         $memoryLimit = ini_parse_quantity((string) ini_get('memory_limit'));
         if ($memoryLimit > 0 && memory_get_usage(true) + $info[0] * $info[1] * 8 + 16 * 1024 * 1024 > $memoryLimit) {
             $this->reject('This image needs more processing memory. Choose a smaller image or take another photo.');
@@ -138,6 +142,70 @@ class CustomerProfilePhotoEncoder
             $offset += 8 + $length + $padding;
         }
         return 1;
+    }
+
+    /**
+     * Walks the JPEG marker structure: segments by their lengths (so an EXIF
+     * thumbnail's own end marker is skipped with its segment), entropy-coded
+     * data up to the next real marker, every scan of a progressive image, until
+     * the end-of-image marker. Bytes after it (a Motion Photo's video, padding)
+     * are not part of the image and are ignored.
+     */
+    private function jpegIsComplete(string $bytes): bool
+    {
+        $size = strlen($bytes);
+        if (! str_starts_with($bytes, "\xFF\xD8")) {
+            return false;
+        }
+        $offset = 2;
+        $scans = 0;
+        while ($offset + 2 <= $size) {
+            if ($bytes[$offset] !== "\xFF") {
+                return false;
+            }
+            $marker = ord($bytes[$offset + 1]);
+            if ($marker === 0xFF) { // fill byte
+                $offset++;
+                continue;
+            }
+            if ($marker === 0xD9) {
+                return $scans > 0;
+            }
+            if ($marker === 0x01 || ($marker >= 0xD0 && $marker <= 0xD7)) {
+                $offset += 2;
+                continue;
+            }
+            if ($offset + 4 > $size) {
+                return false;
+            }
+            $length = unpack('n', substr($bytes, $offset + 2, 2))[1];
+            if ($length < 2 || $offset + 2 + $length > $size) {
+                return false;
+            }
+            $offset += 2 + $length;
+            if ($marker !== 0xDA) {
+                continue;
+            }
+            $scans++;
+            // Entropy-coded data: FF00 is a stuffed byte and FFD0-FFD7 restart markers; any other FFxx ends the scan.
+            while (true) {
+                $next = strpos($bytes, "\xFF", $offset);
+                if ($next === false || $next + 1 >= $size) {
+                    return false;
+                }
+                $code = ord($bytes[$next + 1]);
+                if ($code === 0x00 || ($code >= 0xD0 && $code <= 0xD7)) {
+                    $offset = $next + 2;
+                } elseif ($code === 0xFF) {
+                    $offset = $next + 1;
+                } else {
+                    $offset = $next;
+                    break;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function reject(string $message): never

@@ -261,6 +261,21 @@ class CustomerProfilePhotoTest extends TestCase
         $this->assertSame($old, $this->row($customer)->file_path);
     }
 
+    public function test_truncated_jpeg_is_refused_and_the_current_photo_is_kept(): void
+    {
+        [$user, , $customer] = $this->tenant();
+        $first = $this->upload($user, $customer)->assertOk();
+        $before = $this->row($customer)->only(['file_path', 'version', 'width', 'height', 'size_bytes']);
+        $jpeg = ProfilePhotoFixtures::jpegBytes();
+        $this->actingAs($user)->postJson($this->url($customer), [
+            'customer_photo' => ProfilePhotoFixtures::fromBytes(substr($jpeg, 0, intdiv(strlen($jpeg), 3)), 'cut.jpg'),
+            'customer_photo_version' => $first->json('photo.version'),
+        ])->assertUnprocessable()->assertJsonPath('errors.customer_photo.0', fn (string $m) => str_contains($m, 'incomplete or damaged'));
+        $this->assertSame($before, $this->row($customer)->only(['file_path', 'version', 'width', 'height', 'size_bytes']));
+        $this->assertSame([$before['file_path']], Storage::disk('local')->allFiles('customer-profile-photos'));
+        $this->actingAs($user)->get($first->json('photo.url'))->assertOk();
+    }
+
     public function test_false_storage_write_preserves_existing_photo(): void
     {
         [$user, , $customer] = $this->tenant();

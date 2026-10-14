@@ -164,4 +164,71 @@ class ProfilePhotoEncoderTest extends TestCase
         $this->assertStringNotContainsString('XMP ', $result['bytes']);
         imagedestroy($image);
     }
+
+    /** @return array<string, array{string}> */
+    public static function damagedJpegs(): array
+    {
+        $jpeg = ProfilePhotoFixtures::jpegBytes();
+        $progressive = ProfilePhotoFixtures::jpegBytes(progressive: true);
+        $sos = strpos($jpeg, "\xFF\xDA");
+
+        return [
+            // The preview found this one accepted and saved, the missing part grey.
+            'cut to a third of its bytes' => [substr($jpeg, 0, intdiv(strlen($jpeg), 3))],
+            'only the end-of-image marker missing' => [substr($jpeg, 0, -2)],
+            'cut inside the scan header' => [substr($jpeg, 0, $sos + 6)],
+            'cut right after the scan header' => [substr($jpeg, 0, $sos + 2 + unpack('n', substr($jpeg, $sos + 2, 2))[1])],
+            'progressive cut between scans' => [substr($progressive, 0, strrpos($progressive, "\xFF\xDA"))],
+            'progressive cut inside the last scan' => [substr($progressive, 0, -40)],
+            // A complete thumbnail inside EXIF has its own end marker; the main image still lacks one.
+            'main image cut, complete EXIF thumbnail' => [substr(ProfilePhotoFixtures::withExifThumbnail($jpeg), 0, -400)],
+        ];
+    }
+
+    #[DataProvider('damagedJpegs')]
+    public function test_incomplete_or_damaged_jpeg_is_rejected_with_a_useful_message(string $bytes): void
+    {
+        $upload = ProfilePhotoFixtures::fromBytes($bytes, 'damaged.jpg');
+        try {
+            $this->encoder()->encode($upload);
+            $this->fail('A JPEG without its complete image data was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('incomplete or damaged', $e->errors()['customer_photo'][0]);
+        }
+    }
+
+    /** @return array<string, array{string}> */
+    public static function completeJpegs(): array
+    {
+        $jpeg = ProfilePhotoFixtures::jpegBytes();
+
+        return [
+            'baseline' => [$jpeg],
+            'progressive' => [ProfilePhotoFixtures::jpegBytes(progressive: true)],
+            'motion photo with the video after the end marker' => [ProfilePhotoFixtures::motionPhoto()],
+            'EXIF thumbnail' => [ProfilePhotoFixtures::withExifThumbnail($jpeg)],
+            'zero padding after the end marker' => [$jpeg.str_repeat("\0", 512)],
+            'fill bytes before a marker' => [substr($jpeg, 0, 2)."\xFF\xFF\xFF".substr($jpeg, 3)],
+        ];
+    }
+
+    #[DataProvider('completeJpegs')]
+    public function test_complete_jpegs_including_camera_trailers_are_still_accepted_and_stripped(string $bytes): void
+    {
+        $result = $this->encoder()->encode(ProfilePhotoFixtures::fromBytes($bytes, 'camera.jpg'));
+        $info = getimagesizefromstring($result['bytes']);
+        $this->assertSame(['image/webp', 512, 384], [$info['mime'], $info[0], $info[1]]);
+        foreach (['Exif', 'EXIF', 'XMP', 'MotionPhoto', 'ftyp'] as $leftover) {
+            $this->assertStringNotContainsString($leftover, $result['bytes']);
+        }
+    }
+
+    public function test_a_motion_photo_with_exif_orientation_is_still_rotated(): void
+    {
+        $oriented = file_get_contents(($file = ProfilePhotoFixtures::oriented(6))->getPathname());
+        $result = $this->encoder()->encode(ProfilePhotoFixtures::fromBytes($oriented.pack('N', 24).'ftypmp42'.str_repeat("\xFF\xDA", 8), 'motion.jpg'));
+        $image = imagecreatefromstring($result['bytes']);
+        $this->assertSame([80, 120], [imagesx($image), imagesy($image)]);
+        unlink($file->getPathname());
+    }
 }
