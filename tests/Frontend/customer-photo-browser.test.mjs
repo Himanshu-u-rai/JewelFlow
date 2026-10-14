@@ -26,9 +26,10 @@ const gate = () => {
     return { promise: new Promise(resolve => { release = resolve; }), release: () => release() };
 };
 // Real candidate JS/CSS and native DOM; only HTTP/camera boundaries are synthetic.
-async function fixture(t, { stale = false, form = false, metadata, mutate } = {}) {
+async function fixture(t, { stale = false, form = false, metadata, mutate, cameras } = {}) {
     const page = await browser.newPage();
     t.after(() => page.close());
+    if (cameras) await page.addInitScript(fakeCameras, cameras);
     const state = { gets: 0, posts: 0, revision: null, selected: photo('v1') };
     await page.route('https://photo-review.test/**', async route => {
         const request = route.request();
@@ -56,7 +57,7 @@ function html(stale, form) {
 ${form ? '<input type="file" data-photo-form-file hidden><input data-photo-form-version value="v1" hidden><input data-photo-form-remove value="0" hidden><input id="unsaved-name" value="Unsaved customer">' : ''}
 <dialog data-photo-dialog><header><h2>Photo</h2><button data-photo-action="cancel">Close</button></header>
 <p data-photo-help></p><p data-photo-error tabindex="-1" hidden></p><video data-photo-video hidden></video><img data-photo-preview hidden>
-<div class="customer-photo-dialog__choices"><button data-photo-action="upload">Upload</button><button data-photo-action="capture" hidden>Capture</button><button data-photo-action="retake" hidden>Retake</button></div>
+<div class="customer-photo-dialog__choices"><button data-photo-action="upload">Upload</button><button class="btn customer-photo-icon customer-photo-switch" data-photo-action="switch" aria-label="Switch to front camera" hidden>switch</button><button data-photo-action="capture" hidden>Capture</button><button data-photo-action="retake" hidden>Retake</button></div>
 <footer><button data-photo-action="cancel">Cancel</button><button data-photo-action="confirm" hidden>Save</button></footer></dialog>
 </section><script type="module">${javascript}\ninitializeCustomerPhotos();</script>`;
 }
@@ -213,4 +214,88 @@ test('failed reconciliation blocks duplicate retries until current metadata is r
     await confirm(page); await errorShown(page);
     assert.equal(await version(page), 'v2');
     assert.equal(state.posts, 1, 'Checking metadata must not itself retry the mutation');
+});
+
+// Synthetic cameras: real MediaStreams from a canvas, one per request, slow to open like a phone.
+function fakeCameras({ available, inputs }) {
+    window.__tracks = [];
+    navigator.mediaDevices.enumerateDevices = async () => Array.from({ length: inputs }, (_, i) => ({ kind: 'videoinput', deviceId: 'cam' + i }));
+    navigator.mediaDevices.getUserMedia = async constraints => {
+        const wanted = constraints.video.facingMode;
+        await new Promise(resolve => setTimeout(resolve, 150));
+        if (wanted.exact && !available.includes(wanted.exact)) throw new DOMException('No such camera', 'OverconstrainedError');
+        const facing = wanted.exact ?? (available.includes(wanted.ideal) ? wanted.ideal : available[0]);
+        const canvas = Object.assign(document.createElement('canvas'), { width: 640, height: 480 });
+        const context = canvas.getContext('2d');
+        setInterval(() => { context.fillStyle = facing === 'user' ? '#c33' : '#3a3'; context.fillRect(0, 0, 640, 480); }, 50);
+        const stream = canvas.captureStream(10);
+        const track = stream.getVideoTracks()[0];
+        track.facing = facing;
+        // Phones report which way the opened camera faces.
+        const settings = track.getSettings.bind(track);
+        track.getSettings = () => ({ ...settings(), facingMode: facing });
+        window.__tracks.push(track);
+        return stream;
+    };
+}
+const live = page => page.evaluate(() => window.__tracks.filter(track => track.readyState === 'live').map(track => track.facing));
+const switchButton = page => page.locator('[data-photo-action="switch"]');
+async function cameraReady(page) {
+    await page.waitForFunction(() => {
+        const capture = document.querySelector('[data-photo-action="capture"]');
+        return !capture.hidden && !capture.disabled && document.querySelector('[data-photo-video]').videoWidth > 0;
+    });
+}
+
+test('the camera opens rear-first and switches both ways with one camera running', options, async t => {
+    const { page } = await fixture(t, { cameras: { available: ['environment', 'user'], inputs: 2 } });
+    await page.locator('#outer-camera').click(); await cameraReady(page);
+    assert.deepEqual(await live(page), ['environment']);
+    await switchButton(page).waitFor({ state: 'visible' });
+    assert.equal(await switchButton(page).getAttribute('aria-label'), 'Switch to front camera');
+    const box = await switchButton(page).boundingBox();
+    assert.ok(box.width >= 44 && box.height >= 44, `switch target is ${box.width}x${box.height}`);
+    await switchButton(page).click(); await cameraReady(page);
+    assert.deepEqual(await live(page), ['user']);
+    assert.equal(await switchButton(page).getAttribute('aria-label'), 'Switch to back camera');
+    await switchButton(page).click(); await cameraReady(page);
+    assert.deepEqual(await live(page), ['environment']);
+});
+
+test('retake keeps the selected camera and capture still previews', options, async t => {
+    const { page } = await fixture(t, { cameras: { available: ['environment', 'user'], inputs: 2 } });
+    await page.locator('#outer-camera').click(); await cameraReady(page);
+    await switchButton(page).click(); await cameraReady(page);
+    await page.locator('[data-photo-action="capture"]').click();
+    await page.locator('[data-photo-preview]').waitFor({ state: 'visible' });
+    assert.deepEqual(await live(page), [], 'the preview must not keep the camera on');
+    await page.locator('[data-photo-action="retake"]').click(); await cameraReady(page);
+    assert.deepEqual(await live(page), ['user']);
+});
+
+test('rapid switch taps and closing mid-switch leave no camera running', options, async t => {
+    const { page } = await fixture(t, { cameras: { available: ['environment', 'user'], inputs: 2 } });
+    await page.locator('#outer-camera').click(); await cameraReady(page);
+    await switchButton(page).click();
+    await switchButton(page).click({ force: true });
+    await switchButton(page).click({ force: true });
+    await page.locator('footer [data-photo-action="cancel"]').click();
+    await page.waitForTimeout(600);
+    assert.deepEqual(await live(page), []);
+    await page.locator('#outer-camera').click(); await cameraReady(page);
+    assert.equal((await live(page)).length, 1);
+});
+
+test('one camera hides switching; an unavailable other camera keeps this one usable', options, async t => {
+    const single = await fixture(t, { cameras: { available: ['user'], inputs: 1 } });
+    await single.page.locator('#outer-camera').click(); await cameraReady(single.page);
+    assert.deepEqual(await live(single.page), ['user'], 'a laptop opens its only camera despite the rear preference');
+    assert.equal(await switchButton(single.page).isVisible(), false);
+
+    const { page } = await fixture(t, { cameras: { available: ['user'], inputs: 2 } });
+    await page.locator('#outer-camera').click(); await cameraReady(page);
+    await switchButton(page).click(); await cameraReady(page);
+    assert.match(await page.locator('[data-photo-error]').innerText(), /other camera is unavailable.*Upload photo/i);
+    assert.deepEqual(await live(page), ['user']);
+    assert.equal(await page.locator('[data-photo-action="upload"]').last().isEnabled(), true);
 });

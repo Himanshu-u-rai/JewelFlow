@@ -12,22 +12,30 @@ export function photoFileError(file) {
     return file.size > 5 * 1024 * 1024 ? 'Choose an image no larger than 5 MB.' : '';
 }
 
+export function cameraSwitchError() {
+    return 'The other camera is unavailable, so this camera stays on. You can still use Upload photo.';
+}
+
 export class PhotoCamera {
     constructor(video, devices = globalThis.navigator?.mediaDevices) {
         this.video = video;
         this.devices = devices;
         this.stream = null;
         this.generation = 0;
+        // Customers are photographed by staff: the rear camera first. `ideal` lets a
+        // laptop or single-camera phone open whatever camera it has.
+        this.facing = 'environment';
     }
 
-    async start() {
+    /** Opens the camera facing `facing`; the current one is always released first. */
+    async start(facing = this.facing, exact = false) {
         this.stop();
         const generation = this.generation;
         if (!this.devices?.getUserMedia) throw new Error(cameraError());
         let stream;
         try {
             stream = await this.devices.getUserMedia({
-                video: { facingMode: { ideal: 'user' }, width: { ideal: 1600 }, height: { ideal: 1200 } }, audio: false,
+                video: { facingMode: exact ? { exact: facing } : { ideal: facing }, width: { ideal: 1600 }, height: { ideal: 1200 } }, audio: false,
             });
         } catch (error) {
             if (generation !== this.generation) return false;
@@ -38,6 +46,7 @@ export class PhotoCamera {
             return false;
         }
         this.stream = stream;
+        this.facing = stream.getVideoTracks?.()[0]?.getSettings?.().facingMode ?? facing;
         this.video.srcObject = stream;
         try {
             await this.video.play();
@@ -46,6 +55,28 @@ export class PhotoCamera {
             if (generation !== this.generation) return false;
             this.stop();
             throw error;
+        }
+    }
+
+    /**
+     * 'switched', 'unavailable' (the other camera could not open, so the previous
+     * one was reopened), or false when a later request or close superseded it.
+     */
+    async switchFacing() {
+        const previous = this.facing;
+        try {
+            return await this.start(previous === 'environment' ? 'user' : 'environment', true) && 'switched';
+        } catch (error) {
+            if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') throw error;
+            return await this.start(previous) && 'unavailable';
+        }
+    }
+
+    async canSwitch() {
+        try {
+            return (await this.devices?.enumerateDevices?.() ?? []).filter(device => device.kind === 'videoinput').length > 1;
+        } catch {
+            return false;
         }
     }
 
@@ -94,6 +125,8 @@ function initializePhoto(root) {
     let alive = true;
     let generation = 0;
     let needsReconcile = false;
+    let canSwitch = false;
+    let switching = false;
 
     const buttons = (action) => root.querySelectorAll(`[data-photo-action="${action}"]`);
     const show = (action, visible) => buttons(action).forEach(button => { button.hidden = !visible; });
@@ -113,6 +146,7 @@ function initializePhoto(root) {
         video.hidden = state !== 'camera';
         preview.hidden = state !== 'preview';
         show('capture', state === 'camera');
+        show('switch', state === 'camera' && canSwitch);
         show('retake', state === 'preview' && candidate?.name === 'camera-capture.jpg');
         show('confirm', state === 'preview' || state === 'remove');
         root.querySelector('[data-photo-action="confirm"]').textContent = state === 'remove'
@@ -167,17 +201,52 @@ function initializePhoto(root) {
             if (alive) status.textContent = 'The photo outcome is still unconfirmed. Refresh this page before retrying.';
         }
     };
+    const labelSwitch = () => buttons('switch').forEach(button => {
+        const label = camera.facing === 'user' ? 'Switch to back camera' : 'Switch to front camera';
+        button.setAttribute('aria-label', label);
+        button.title = label;
+        button.disabled = false;
+    });
     const startCamera = async (button) => {
         open(button);
         clearCandidate();
         view('camera');
         buttons('capture').forEach(button => { button.disabled = true; });
         try {
-            if (await camera.start()) buttons('capture').forEach(button => { button.disabled = false; });
+            if (!await camera.start()) return;
+            buttons('capture').forEach(button => { button.disabled = false; });
+            const switchable = await camera.canSwitch();
+            if (!dialog.open || !alive || mode !== 'camera') return;
+            canSwitch = switchable;
+            labelSwitch();
+            show('switch', canSwitch);
         } catch (error) {
             if (!dialog.open || !alive) return;
             view('choose');
             fail(cameraError(error));
+        }
+    };
+    // One switch at a time; closing the dialog meanwhile stops whichever camera opens.
+    const switchCamera = async () => {
+        if (switching || mode !== 'camera') return;
+        switching = true;
+        errorBox.hidden = true;
+        [...buttons('capture'), ...buttons('switch')].forEach(button => { button.disabled = true; });
+        status.textContent = 'Switching camera…';
+        try {
+            const result = await camera.switchFacing();
+            if (!result || !dialog.open || !alive) return;
+            status.textContent = '';
+            buttons('capture').forEach(button => { button.disabled = false; });
+            if (result === 'unavailable') fail(cameraSwitchError());
+        } catch (error) {
+            if (!dialog.open || !alive) return;
+            view('choose');
+            fail(cameraError(error));
+        } finally {
+            switching = false;
+            if (alive) labelSwitch();
+            if (alive && status.textContent === 'Switching camera…') status.textContent = '';
         }
     };
     const select = (file) => {
@@ -261,6 +330,7 @@ function initializePhoto(root) {
         if (!button || busy) return;
         switch (button.dataset.photoAction) {
             case 'camera': case 'retake': await startCamera(button); break;
+            case 'switch': await switchCamera(); break;
             case 'upload':
                 open(button); camera.stop(); clearCandidate(); view('choose'); picker.value = ''; picker.click(); break;
             case 'change': open(button); view('choose'); break;

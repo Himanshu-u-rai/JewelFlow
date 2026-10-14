@@ -105,14 +105,133 @@ test('an old preview failure cannot stop a newly acquired camera', async () => {
     f.camera.stop();
 });
 
-test('camera requests no microphone and a phone-facing camera when available', async () => {
+test('camera requests no microphone and prefers the rear camera, falling back on single-camera devices', async () => {
     requireModule();
     let constraints;
     const f = fixture(async value => { constraints = value; return { getTracks: () => [] }; });
     await f.camera.start();
     assert.equal(constraints.audio, false);
-    assert.equal(constraints.video.facingMode.ideal, 'user');
+    // `ideal`, not `exact`: a laptop or single-camera phone still opens its only camera.
+    assert.deepEqual(constraints.video.facingMode, { ideal: 'environment' });
     f.camera.stop();
+});
+
+/** A fake device set: every request gets its own stream; `log` records the order of opens and stops. */
+const cameras = ({ available = ['environment', 'user'], inputs = 2 } = {}) => {
+    const log = [];
+    const live = new Set();
+    const pending = [];
+    let hold = false;
+    const open = constraints => {
+        const wanted = constraints.video.facingMode;
+        const facing = wanted.exact ?? (available.includes(wanted.ideal) ? wanted.ideal : available[0]);
+        if (wanted.exact && !available.includes(wanted.exact)) {
+            log.push('refuse ' + wanted.exact);
+            return Promise.reject(Object.assign(new Error('no such camera'), { name: 'OverconstrainedError' }));
+        }
+        const track = { stop() { if (live.delete(stream)) log.push('stop ' + facing); }, getSettings: () => ({ facingMode: facing }) };
+        const stream = { facing, getTracks: () => [track], getVideoTracks: () => [track] };
+        log.push('open ' + facing);
+        live.add(stream);
+        return stream;
+    };
+    const devices = {
+        getUserMedia: constraints => hold
+            ? new Promise((resolve, reject) => pending.push(() => { try { resolve(open(constraints)); } catch (e) { reject(e); } }))
+            : Promise.resolve().then(() => open(constraints)),
+        enumerateDevices: async () => Array.from({ length: inputs }, (_, i) => ({ kind: 'videoinput', deviceId: 'cam' + i })),
+    };
+    const video = { srcObject: null, play: async () => {} };
+    return { devices, video, log, live, holdRequests: () => { hold = true; }, release: () => pending.splice(0).forEach(run => run()) };
+};
+
+test('switching releases the current camera before opening the other one, both ways', async () => {
+    requireModule();
+    const c = cameras();
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    assert.equal(await camera.start(), true);
+    assert.equal(camera.facing, 'environment');
+    assert.equal(await camera.switchFacing(), 'switched');
+    assert.equal(camera.facing, 'user');
+    assert.equal(await camera.switchFacing(), 'switched');
+    assert.equal(camera.facing, 'environment');
+    assert.deepEqual(c.log, ['open environment', 'stop environment', 'open user', 'stop user', 'open environment']);
+    assert.equal(c.live.size, 1);
+    camera.stop();
+    assert.equal(c.live.size, 0);
+});
+
+test('retake keeps the camera the user selected', async () => {
+    requireModule();
+    const c = cameras();
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    await camera.start();
+    await camera.switchFacing();
+    camera.stop(); // capture closes the live preview
+    await camera.start(); // retake
+    assert.equal(c.video.srcObject.facing, 'user');
+    camera.stop();
+});
+
+test('a missing other camera keeps the current one running and says so', async () => {
+    requireModule();
+    const c = cameras({ available: ['user'], inputs: 2 });
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    await camera.start();
+    assert.equal(await camera.switchFacing(), 'unavailable');
+    assert.equal(c.live.size, 1);
+    assert.equal(c.video.srcObject.facing, 'user');
+    assert.match(module.cameraSwitchError(), /other camera.*Upload photo/i);
+    camera.stop();
+});
+
+test('only devices with more than one camera offer switching', async () => {
+    requireModule();
+    assert.equal(await new module.PhotoCamera({}, cameras({ inputs: 1 }).devices).canSwitch(), false);
+    assert.equal(await new module.PhotoCamera({}, cameras({ inputs: 2 }).devices).canSwitch(), true);
+    assert.equal(await new module.PhotoCamera({}, { getUserMedia() {} }).canSwitch(), false);
+});
+
+test('closing the dialog while a switch is pending leaves no camera running', async () => {
+    requireModule();
+    const c = cameras();
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    await camera.start();
+    c.holdRequests();
+    const switching = camera.switchFacing();
+    camera.stop();
+    c.release();
+    assert.equal(await switching, false);
+    assert.equal(c.live.size, 0);
+    assert.equal(c.video.srcObject, null);
+});
+
+test('rapid switch taps end with exactly one running camera, the last one requested', async () => {
+    requireModule();
+    const c = cameras();
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    await camera.start();
+    c.holdRequests();
+    const first = camera.switchFacing();
+    const second = camera.switchFacing();
+    const third = camera.switchFacing();
+    c.release();
+    const results = [await first, await second, await third];
+    assert.equal(results.filter(Boolean).length, 1);
+    assert.equal(c.live.size, 1);
+    assert.equal(c.video.srcObject, [...c.live][0]);
+    assert.equal(c.video.srcObject.facing, camera.facing);
+    camera.stop();
+    assert.equal(c.live.size, 0);
+});
+
+test('a refused switch is reported, not retried behind the user’s back', async () => {
+    requireModule();
+    const c = cameras();
+    c.devices.getUserMedia = async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); };
+    const camera = new module.PhotoCamera(c.video, c.devices);
+    await assert.rejects(camera.switchFacing(), { name: 'NotAllowedError' });
+    assert.equal(c.live.size, 0);
 });
 
 test('client file feedback matches limits while server remains authoritative', () => {

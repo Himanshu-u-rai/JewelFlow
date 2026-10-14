@@ -56,6 +56,9 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
                         </button>
                     @endforeach
+                    <button type="button" class="btn btn-secondary customer-photo-icon customer-photo-switch" data-photo-action="switch" aria-label="Switch to front camera" title="Switch to front camera" hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1ZM9 12a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2M14.5 8v2.2h-2.2M9.5 17v-2.2h2.2" /></svg>
+                    </button>
                     <button type="button" class="btn btn-primary" data-photo-action="capture" hidden>Capture</button>
                     <button type="button" class="btn btn-secondary" data-photo-action="retake" hidden>Retake</button>
                 </div>
