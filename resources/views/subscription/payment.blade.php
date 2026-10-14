@@ -538,7 +538,7 @@
                     </div>
                 </dl>
 
-                @if(($plan->trial_days ?? 0) > 0)
+                @if(($plan->trial_days ?? 0) > 0 && \App\Models\Platform\PlatformSetting::trialsOffered())
                     <div class="sub-pay-trial-note">
                         {{ $plan->trial_days }}-day trial included
                     </div>

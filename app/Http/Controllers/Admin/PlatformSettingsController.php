@@ -22,6 +22,7 @@ class PlatformSettingsController extends Controller
             'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
             'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlows is temporarily down for maintenance. We\'ll be back shortly.'),
             'subscription_trial_days' => PlatformSetting::trialDays(),
+            'free_trials_offered'  => PlatformSetting::trialsOffered(),
             'active_trial_count'   => \App\Models\Platform\ShopSubscription::where('status', 'trial')->count(),
         ];
 
@@ -89,17 +90,55 @@ class PlatformSettingsController extends Controller
             $request
         );
 
-        // ── Free-trial length ─────────────────────────────────────────────
+        // ── Free trials: on/off, then length ─────────────────────────────
+        $offerMsg = $this->updateTrialAvailability($request);
         $trialMsg = $this->updateTrialLength($request);
 
         $msg = $maintenanceMode
             ? 'Settings saved. Maintenance mode is NOW ACTIVE — tenant traffic is blocked.'
             : 'Platform settings saved.';
-        if ($trialMsg) {
-            $msg .= ' ' . $trialMsg;
+        foreach ([$offerMsg, $trialMsg] as $fragment) {
+            if ($fragment) {
+                $msg .= ' ' . $fragment;
+            }
         }
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * "Offer free trials". Only a form that carries the field changes it (the
+     * switch posts a hidden 0 before its checkbox), so saving any other setting,
+     * or an older page without the switch, can never turn trials on or off.
+     */
+    private function updateTrialAvailability(Request $request): ?string
+    {
+        if (! $request->has('free_trials_offered')) {
+            return null;
+        }
+
+        $offered = $request->boolean('free_trials_offered');
+        $before  = PlatformSetting::trialsOffered();
+        if ($offered === $before) {
+            return null;
+        }
+
+        PlatformSetting::set('free_trials_offered', $offered ? 'true' : 'false');
+
+        $this->audit->log(
+            auth('platform_admin')->user(),
+            'admin.platform_settings.trial_availability_updated',
+            PlatformSetting::class,
+            null,
+            ['free_trials_offered' => $before],
+            ['free_trials_offered' => $offered],
+            $offered ? 'New free trials switched on' : 'New free trials switched off',
+            $request
+        );
+
+        return $offered
+            ? 'Free trials are on: eligible new accounts can start one.'
+            : 'Free trials are off: no new trial can be started. Existing trials keep their end dates.';
     }
 
     /**

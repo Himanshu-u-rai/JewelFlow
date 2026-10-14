@@ -192,7 +192,32 @@
         {{-- ── Free Trial ─────────────────────────────────────────────── --}}
         <div class="rounded-lg border border-slate-700 bg-slate-800/40 p-5 mb-6">
             <h4 class="font-semibold text-slate-100">Free Trial</h4>
-            <p class="text-sm text-slate-400 mt-1">
+            <div class="mt-4 flex items-start justify-between gap-4 rounded border border-slate-700 bg-slate-900/40 p-4">
+                <div>
+                    <label for="free_trials_toggle" class="font-medium text-slate-100">
+                        Offer free trials
+                        <span class="ml-2 text-xs font-bold rounded px-2 py-0.5 border {{ $settings['free_trials_offered'] ? 'bg-emerald-900 text-emerald-300 border-emerald-700' : 'bg-slate-800 text-slate-300 border-slate-600' }}">{{ $settings['free_trials_offered'] ? 'ON' : 'OFF' }}</span>
+                    </label>
+                    <p class="text-sm text-slate-400 mt-1">
+                        New Retail and Dhiran accounts that are eligible can start a self-service free trial.
+                        Off hides the offer and blocks new trials. Trials already running keep their end dates;
+                        paid plans are not affected.
+                    </p>
+                </div>
+                <div class="shrink-0">
+                    <input type="hidden" name="free_trials_offered" value="0">
+                    <input type="checkbox" name="free_trials_offered" value="1" id="free_trials_toggle"
+                           {{ $settings['free_trials_offered'] ? 'checked' : '' }}
+                           onchange="updateToggle(this)"
+                           class="admin-switch-input">
+                    <div id="free_trials_toggle_ui"
+                         onclick="document.getElementById('free_trials_toggle').click()"
+                         class="admin-switch {{ $settings['free_trials_offered'] ? 'is-on' : '' }}">
+                        <div class="admin-switch-thumb"></div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm text-slate-400 mt-4">
                 How many days a new shop gets a fully-writable free trial before it must subscribe.
             </p>
             @error('subscription_trial_days')
