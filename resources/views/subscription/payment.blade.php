@@ -264,17 +264,6 @@
             text-align: right;
         }
 
-        .sub-pay-trial-note {
-            background: var(--pay-warning-bg);
-            border: 1px solid var(--pay-warning-border);
-            color: var(--pay-warning-ink);
-            border-radius: var(--pay-radius-md);
-            padding: 10px 12px;
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
         .sub-pay-legal {
             border: 1px solid #e8dccb;
             border-radius: var(--pay-radius-md);
@@ -537,12 +526,6 @@
                         <dd>Razorpay</dd>
                     </div>
                 </dl>
-
-                @if(($plan->trial_days ?? 0) > 0 && \App\Models\Platform\PlatformSetting::trialsOffered())
-                    <div class="sub-pay-trial-note">
-                        {{ $plan->trial_days }}-day trial included
-                    </div>
-                @endif
 
                 <div class="sub-pay-legal">
                     <strong>Payment note</strong>

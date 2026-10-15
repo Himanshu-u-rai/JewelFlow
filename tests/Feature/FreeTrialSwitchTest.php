@@ -230,16 +230,22 @@ class FreeTrialSwitchTest extends TestCase
             ->assertSee(route('subscription.choose'), false);
     }
 
-    public function test_paid_checkout_does_not_promise_a_trial_while_trials_are_off(): void
+    /**
+     * A paid term is exactly its billing cycle (SubscriptionTerm never reads
+     * plan->trial_days), so the checkout must never say a trial is included —
+     * with trials on or off.
+     */
+    public function test_paid_checkout_never_promises_trial_days_the_paid_term_does_not_grant(): void
     {
         $plan = $this->plan();
         $plan->forceFill(['trial_days' => 14])->save();
         [, $user] = $this->owner();
         $session = ['pending_plan_id' => $plan->id, 'pending_billing_cycle' => 'yearly'];
 
-        $this->actingAs($user)->withSession($session)->get(route('subscription.payment'))->assertOk()->assertSee('trial included');
-
-        PlatformSetting::set('free_trials_offered', 'false');
-        $this->actingAs($user)->withSession($session)->get(route('subscription.payment'))->assertOk()->assertDontSee('trial included');
+        foreach (['true', 'false'] as $offered) {
+            PlatformSetting::set('free_trials_offered', $offered);
+            $this->actingAs($user)->withSession($session)->get(route('subscription.payment'))->assertOk()
+                ->assertDontSee('trial included')->assertDontSee('-day trial');
+        }
     }
 }
