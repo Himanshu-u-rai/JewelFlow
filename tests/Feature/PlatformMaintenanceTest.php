@@ -120,15 +120,17 @@ class PlatformMaintenanceTest extends TestCase
         $admin = $this->createPlatformAdmin();
         $admin->generateRecoveryCodes(); // success lands on the dashboard, not the codes prompt
         $this->maintenance(true);
+        \Illuminate\Support\Facades\Mail::fake();
         $fresh = function () { $this->app['auth']->forgetGuards(); return $this; };
         $turbo = ['Accept' => 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml'];
 
         $fresh()->post('/admin/login', ['mobile_number' => $admin->mobile_number, 'password' => 'password'])
             ->assertRedirect(route('admin.mfa.show'));
         $fresh()->get(route('admin.mfa.show'))->assertOk()->assertDontSee(self::MESSAGE);
-        \Illuminate\Support\Facades\Cache::put('admin-mfa-otp:' . $admin->id, \Illuminate\Support\Facades\Hash::make('123456'), now()->addMinutes(10));
+        // The code the admin was actually emailed, however it is stored.
+        $code = \Illuminate\Support\Facades\Mail::sent(\App\Mail\EmailOtpMail::class)->last()->otp;
 
-        $fresh()->post('/admin/mfa', ['otp' => '123456'], $turbo)->assertRedirect(route('admin.dashboard'));
+        $fresh()->post('/admin/mfa', ['otp' => $code], $turbo)->assertRedirect(route('admin.dashboard'));
         $fresh()->get(route('admin.dashboard'), $turbo)->assertOk()->assertDontSee(self::MESSAGE);
         $fresh()->get(route('admin.settings.index'))->assertOk();
         $fresh()->patch(route('admin.settings.update'), [
