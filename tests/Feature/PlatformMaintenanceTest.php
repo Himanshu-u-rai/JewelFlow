@@ -107,6 +107,69 @@ class PlatformMaintenanceTest extends TestCase
         $this->assertTrue(PlatformSetting::bool('maintenance_mode', false));
     }
 
+    /**
+     * Production, 15 Oct 2026 06:59 UTC: POST /admin/mfa 302 → GET /admin 503.
+     * MFA succeeded (audited), but the dashboard is the bare /admin path, which
+     * the admin/* exemption missed; Turbo then showed the maintenance page under
+     * the /admin/mfa address. Each request here starts from the session alone
+     * (guards forgotten), as a real browser request does, so an in-memory test
+     * login cannot stand in for a missing exemption.
+     */
+    public function test_the_real_login_and_mfa_flow_lands_on_the_dashboard_and_can_end_maintenance(): void
+    {
+        $admin = $this->createPlatformAdmin();
+        $admin->generateRecoveryCodes(); // success lands on the dashboard, not the codes prompt
+        $this->maintenance(true);
+        $fresh = function () { $this->app['auth']->forgetGuards(); return $this; };
+        $turbo = ['Accept' => 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml'];
+
+        $fresh()->post('/admin/login', ['mobile_number' => $admin->mobile_number, 'password' => 'password'])
+            ->assertRedirect(route('admin.mfa.show'));
+        $fresh()->get(route('admin.mfa.show'))->assertOk()->assertDontSee(self::MESSAGE);
+        \Illuminate\Support\Facades\Cache::put('admin-mfa-otp:' . $admin->id, \Illuminate\Support\Facades\Hash::make('123456'), now()->addMinutes(10));
+
+        $fresh()->post('/admin/mfa', ['otp' => '123456'], $turbo)->assertRedirect(route('admin.dashboard'));
+        $fresh()->get(route('admin.dashboard'), $turbo)->assertOk()->assertDontSee(self::MESSAGE);
+        $fresh()->get(route('admin.settings.index'))->assertOk();
+        $fresh()->patch(route('admin.settings.update'), [
+            'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'dhiran_enabled' => '1', 'maintenance_mode' => '0',
+        ])->assertRedirect();
+        $this->assertFalse(PlatformSetting::bool('maintenance_mode', false));
+    }
+
+    /**
+     * The production condition exactly: the maintenance check runs before the
+     * session is started, so no admin is known yet. (A feature test cannot show
+     * this: its session store and guards survive between requests, which let
+     * the old "signed-in admin" shortcut hide the missing /admin exemption.)
+     */
+    public function test_admin_paths_pass_the_check_before_any_session_is_read(): void
+    {
+        $this->maintenance(true);
+        $check = new \App\Http\Middleware\CheckMaintenanceMode();
+
+        foreach (['/admin', '/admin/mfa', '/admin/settings', '/super-admin', '/super-admin/login'] as $path) {
+            $response = $check->handle(\Illuminate\Http\Request::create('https://jewelflows.com' . $path), fn () => response('passed'));
+            $this->assertSame('passed', $response->getContent(), $path . ' was refused');
+        }
+        $tenant = $check->handle(\Illuminate\Http\Request::create('https://jewelflows.com/dashboard'), fn () => response('passed'));
+        $this->assertSame(503, $tenant->getStatusCode());
+    }
+
+    public function test_mfa_is_still_required_during_maintenance(): void
+    {
+        $admin = $this->createPlatformAdmin();
+        $this->maintenance(true);
+        $this->app['auth']->forgetGuards();
+        $this->post('/admin/login', ['mobile_number' => $admin->mobile_number, 'password' => 'password']);
+        $this->app['auth']->forgetGuards();
+
+        $this->get(route('admin.dashboard'))->assertRedirect(route('admin.mfa.show'));
+        $this->get(route('admin.settings.index'))->assertRedirect(route('admin.mfa.show'));
+        $this->post('/admin/mfa', ['otp' => '000000'])->assertSessionHasErrors('otp');
+        $this->assertTrue(PlatformSetting::bool('maintenance_mode', false));
+    }
+
     // ── tenants are refused, web ───────────────────────────────────────────
 
     public function test_tenant_web_pages_and_mutations_show_the_maintenance_page_and_change_nothing(): void
