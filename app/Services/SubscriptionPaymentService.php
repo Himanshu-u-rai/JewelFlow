@@ -957,6 +957,11 @@ class SubscriptionPaymentService
         if (! $authUser) {
             return 'You must be signed in to start a trial.';
         }
+        // Platform Settings → "Offer free trials". Checked here, in the one gate,
+        // so a plans page opened before the switch went off cannot still start one.
+        if (! \App\Models\Platform\PlatformSetting::trialsOffered()) {
+            return 'Free trials are not being offered at the moment. Choose a paid plan to continue.';
+        }
         if (! $plan) {
             return 'No trial plan is available for your business type.';
         }

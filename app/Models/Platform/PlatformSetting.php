@@ -59,6 +59,17 @@ class PlatformSetting extends Model
         return max(1, min(365, $days));
     }
 
+    /**
+     * Whether NEW self-service free trials are offered at all, for every product.
+     * Independent of trialDays(), of product availability and of eligibility:
+     * switching it off never touches trials already running, and switching it
+     * back on only reopens the offer to accounts the eligibility rules allow.
+     */
+    public static function trialsOffered(): bool
+    {
+        return static::bool('free_trials_offered', true);
+    }
+
     // ── Shop-type availability ─────────────────────────────────────────────
 
     public static function retailerEnabled(): bool
