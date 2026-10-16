@@ -222,6 +222,15 @@
         .repairs-table {
             min-width: 940px;
         }
+        /* The list shows one line per field; the full text is on hover and on the repair's page. */
+        .repairs-item-col > div,
+        .repairs-cust-col > div {
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .repairs-cust-col > div { max-width: 200px; }
         .repairs-kpi-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
         }
@@ -985,14 +994,14 @@
                                                 REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}
                                             </span>
                                         </td>
-                                        <td class="px-3 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">{{ $r->customer->name }}</div>
+                                        <td class="px-3 py-4 whitespace-nowrap repairs-cust-col">
+                                            <div class="text-sm font-medium text-gray-900" title="{{ $r->customer->name }}">{{ $r->customer->name }}</div>
                                             <div class="text-sm text-gray-500">{{ \App\Support\Mobile::forDisplay($r->customer->mobile) }}</div>
                                         </td>
                                         <td class="px-3 py-4 repairs-item-col">
-                                            <div class="text-sm font-medium text-gray-900">{{ $r->item_description }}</div>
+                                            <div class="text-sm font-medium text-gray-900" title="{{ $r->item_description }}">{{ $r->item_description }}</div>
                                             @if($r->description)
-                                                <div class="text-xs text-gray-500 mt-0.5">{{ Str::limit($r->description, 60) }}</div>
+                                                <div class="text-xs text-gray-500 mt-0.5" title="{{ $r->description }}">{{ $r->description }}</div>
                                             @endif
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap">
