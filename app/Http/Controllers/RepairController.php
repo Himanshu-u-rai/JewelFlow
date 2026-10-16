@@ -16,6 +16,13 @@ use Illuminate\Validation\ValidationException;
 
 class RepairController extends Controller
 {
+    /** Optional intake details, validated the same way on create and edit. */
+    private const INTAKE_FIELD_RULES = [
+        'item_quantity'    => 'nullable|integer|min:1|max:999',
+        'intake_condition' => 'nullable|string|max:500',
+        'due_date'         => 'nullable|date',
+    ];
+
     public function index(Request $request)
     {
         $shopId = auth()->user()->shop_id;
@@ -83,9 +90,7 @@ class RepairController extends Controller
             'gross_weight'    => 'required|numeric|min:0',
             'purity'          => 'nullable|numeric|min:0|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost'  => 'nullable|numeric|min:0',
-            'item_quantity'   => 'nullable|integer|min:1|max:999',
-            'intake_condition' => 'nullable|string|max:500',
-            'due_date'        => 'nullable|date',
+            ...self::INTAKE_FIELD_RULES,
             'image'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'image_base64'    => 'nullable|string',
         ]);
@@ -259,6 +264,9 @@ class RepairController extends Controller
             'purity'           => 'nullable|numeric|min:0|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost'   => 'nullable|numeric|min:0',
             'status'           => ['required', Rule::in(['received', 'in_repair', 'ready'])],
+            // Only keys present in the request reach update(): an older client that
+            // omits these keeps them; an emptied control (null) clears them.
+            ...self::INTAKE_FIELD_RULES,
             'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'image_base64'     => 'nullable|string',
             'remove_image'     => 'nullable|boolean',

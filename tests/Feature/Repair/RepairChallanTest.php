@@ -307,6 +307,106 @@ class RepairChallanTest extends TestCase
             ]);
     }
 
+    private function edit(User $owner, Shop $shop, Repair $repair, Customer $customer, array $fields)
+    {
+        return TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->put(self::ERP . '/repairs/' . $repair->id, array_merge([
+            'customer_id' => $customer->id, 'item_description' => 'Gold chain clasp', 'gross_weight' => 5.25, 'status' => 'received',
+        ], $fields)));
+    }
+
+    public function test_the_edit_form_offers_the_intake_fields_with_their_saved_values(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $repair = $this->receive($owner, $shop, $this->createCustomer($shop->id), [
+            'item_quantity' => 2, 'intake_condition' => 'Clasp bent', 'due_date' => '2026-11-03',
+        ]);
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(self::ERP . '/repairs/' . $repair->id . '/edit'))->assertOk()
+            ->assertSee('name="item_quantity"', false)->assertSee('value="2"', false)
+            ->assertSee('name="intake_condition"', false)->assertSee('Clasp bent')
+            ->assertSee('name="due_date"', false)->assertSee('value="2026-11-03"', false)
+            ->assertSee('Clear date');
+    }
+
+    public function test_corrections_on_edit_keep_the_intake_copy_and_show_as_changes(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id);
+        $repair = $this->receive($owner, $shop, $customer, [
+            'item_quantity' => 2, 'intake_condition' => 'Clasp bent', 'due_date' => '2026-11-03',
+        ]);
+        $intakeCopy = $repair->intake_snapshot;
+
+        $this->edit($owner, $shop, $repair, $customer, [
+            'item_quantity' => 3, 'intake_condition' => 'Clasp bent; second stone loose', 'due_date' => '2026-11-07',
+        ])->assertSessionHasNoErrors();
+        $repair = $repair->fresh();
+
+        $this->assertSame([3, 'Clasp bent; second stone loose', '2026-11-07'], [$repair->item_quantity, $repair->intake_condition, $repair->due_date->toDateString()]);
+        $this->assertSame($intakeCopy, $repair->intake_snapshot);
+        $this->challan($owner, $shop, $repair)->assertOk()->assertSeeInOrder([
+            'As received at intake', 'Quantity (pieces)', '2', 'Condition at receipt', 'Clasp bent', 'Expected ready by', '03 Nov 2026',
+            'Changed after intake', 'Quantity (pieces)', '3', 'Condition at receipt', 'Clasp bent; second stone loose', 'Expected ready by', '07 Nov 2026',
+        ]);
+    }
+
+    public function test_edit_can_clear_the_optional_intake_fields_on_purpose(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id);
+        $repair = $this->receive($owner, $shop, $customer, [
+            'item_quantity' => 2, 'intake_condition' => 'Clasp bent', 'due_date' => '2026-11-03',
+        ]);
+
+        // An emptied control submits an empty value: that is a deliberate clear.
+        $this->edit($owner, $shop, $repair, $customer, ['item_quantity' => '', 'intake_condition' => '', 'due_date' => ''])->assertSessionHasNoErrors();
+        $repair = $repair->fresh();
+
+        $this->assertNull($repair->item_quantity);
+        $this->assertNull($repair->intake_condition);
+        $this->assertNull($repair->due_date);
+        $this->challan($owner, $shop, $repair)->assertOk()->assertSeeInOrder([
+            'As received at intake', '2', 'Clasp bent', '03 Nov 2026',
+            'Changed after intake', 'Quantity (pieces)', 'Removed', 'Condition at receipt', 'Removed', 'Expected ready by', 'Removed',
+        ]);
+    }
+
+    public function test_edit_validates_the_intake_fields_like_creation(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id);
+        $repair = $this->receive($owner, $shop, $customer, ['item_quantity' => 2]);
+
+        $this->edit($owner, $shop, $repair, $customer, ['item_quantity' => 1000, 'intake_condition' => str_repeat('x', 501), 'due_date' => 'soon'])
+            ->assertSessionHasErrors(['item_quantity', 'intake_condition', 'due_date']);
+        $this->assertSame(2, $repair->fresh()->item_quantity);
+    }
+
+    public function test_requests_that_omit_the_intake_fields_leave_them_alone(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id);
+        $repair = $this->receive($owner, $shop, $customer, [
+            'item_quantity' => 2, 'intake_condition' => 'Clasp bent', 'due_date' => '2026-11-03',
+        ]);
+        $kept = fn () => [$repair->fresh()->item_quantity, $repair->fresh()->intake_condition, $repair->fresh()->due_date?->toDateString()];
+
+        // Web form or JSON client from before these fields existed.
+        $this->edit($owner, $shop, $repair, $customer, ['item_description' => 'Gold chain clasp (edited)'])->assertSessionHasNoErrors();
+        $this->assertSame([2, 'Clasp bent', '2026-11-03'], $kept());
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->putJson(self::ERP . '/repairs/' . $repair->id, [
+            'customer_id' => $customer->id, 'item_description' => 'Gold chain clasp', 'gross_weight' => 5.25, 'status' => 'in_repair',
+        ]))->assertOk();
+        $this->assertSame([2, 'Clasp bent', '2026-11-03'], $kept());
+
+        // The mobile app's status update, which never sends these fields.
+        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
+        \Laravel\Sanctum\Sanctum::actingAs($owner);
+        TenantContext::runFor($shop->id, fn () => $this->postJson('/api/mobile/repairs/' . $repair->id . '/status', ['status' => 'ready']))->assertOk();
+        $this->assertSame('ready', $repair->fresh()->status);
+        $this->assertSame([2, 'Clasp bent', '2026-11-03'], $kept());
+    }
+
     public function test_a_status_change_alone_is_shown_as_the_current_status_only(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
