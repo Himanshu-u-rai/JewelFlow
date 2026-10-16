@@ -23,9 +23,23 @@ class ImageOptimizer
     /** WebP quality. ~88 is visually lossless for jewellery (keeps shine/sparkle). */
     public const WEBP_QUALITY = 88;
 
+    // No image/gif: GIFs are stored as uploaded (see isGif()).
     private const RASTER_MIMES = [
-        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+        'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/bmp',
     ];
+
+    /**
+     * GIF bytes are never handed to GD. The server's libgd GIF decoder carries
+     * CVE-2026-9672 (malformed GIF: crash or possible code execution) with no
+     * fixed package available, so a GIF is stored exactly as uploaded and the
+     * browser decodes it. Judged by the bytes, not the claimed type: "GIF" is
+     * the signature imagecreatefromstring() itself uses to pick that decoder.
+     * Remove once the installed libgd carries the fix.
+     */
+    private static function isGif(string $bytes): bool
+    {
+        return str_starts_with($bytes, 'GIF');
+    }
 
     /**
      * Optimise an uploaded image to WebP and store it; return the stored path.
@@ -58,7 +72,7 @@ class ImageOptimizer
     {
         $directory = trim($directory, '/');
 
-        if (function_exists('imagewebp')) {
+        if (function_exists('imagewebp') && ! self::isGif($binary)) {
             try {
                 $image = @imagecreatefromstring($binary);
                 if ($image !== false) {
@@ -95,6 +109,9 @@ class ImageOptimizer
         $contents = $realPath ? @file_get_contents($realPath) : false;
         if ($contents === false) {
             throw new \RuntimeException('unreadable upload');
+        }
+        if (self::isGif($contents)) {
+            throw new \RuntimeException('GIF content is stored as uploaded');
         }
 
         $image = @imagecreatefromstring($contents);

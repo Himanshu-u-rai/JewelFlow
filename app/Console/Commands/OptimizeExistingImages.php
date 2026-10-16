@@ -149,8 +149,10 @@ class OptimizeExistingImages extends Command
             return ['action' => 'keep', 'path' => $path];
         }
 
-        // Already WebP and within bounds -> nothing to gain, keep as-is.
-        if (($info['mime'] ?? '') === 'image/webp' && max($info[0], $info[1]) <= ImageOptimizer::MAX_EDGE) {
+        // Already WebP and within bounds -> nothing to gain, keep as-is. GIFs are
+        // never decoded by GD (ImageOptimizer::isGif), so converting would only copy them.
+        if ((($info['mime'] ?? '') === 'image/webp' && max($info[0], $info[1]) <= ImageOptimizer::MAX_EDGE)
+            || ($info['mime'] ?? '') === 'image/gif') {
             $this->skipped++;
             return ['action' => 'keep', 'path' => $path];
         }
