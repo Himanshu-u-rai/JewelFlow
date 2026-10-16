@@ -48,11 +48,13 @@ PSQL() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" -c "$1"; 
 cfg() { ( cd "$DIR" && sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; '"$1" ); }
 cache_ok() { cfg 'exit($c["app"]["key"] && $c["database"]["connections"]["pgsql"]["password"] !== null ? 0 : 1);'; }
 cfgid() { cfg 'echo $c["app"]["env"]."|".$c["app"]["url"]."|".$c["database"]["connections"]["pgsql"]["database"];' 2>/dev/null; }
+# laravel/framework 12.70 adds the default mail.markdown.extensions (empty); while it is empty it is
+# left out of the comparison, so a real value there still counts as a change.
 # Section hashes of a cached configuration FILE, read by root (a pre-release copy is root-only).
 # On staging the sideways move drops the paused OTP work's configuration, so exactly those keys are
 # left out there: mobile_verification, services.fast2sms, services.whatsapp. Every other section,
 # and every other services key, must come out the same.
-config_hashes() { OTP_KEYS=$([ "$ENVN" = staging ] && echo 1 || echo 0) php -r '$c = require $argv[1]; if (getenv("OTP_KEYS") === "1") { unset($c["mobile_verification"], $c["services"]["fast2sms"], $c["services"]["whatsapp"]); } ksort($c); foreach ($c as $k => $v) { echo $k." ".hash("sha256", serialize($v))."\n"; }' "$1"; }
+config_hashes() { OTP_KEYS=$([ "$ENVN" = staging ] && echo 1 || echo 0) php -r '$c = require $argv[1]; if (getenv("OTP_KEYS") === "1") { unset($c["mobile_verification"], $c["services"]["fast2sms"], $c["services"]["whatsapp"]); } if (($c["mail"]["markdown"]["extensions"] ?? []) === []) { unset($c["mail"]["markdown"]["extensions"]); } ksort($c); foreach ($c as $k => $v) { echo $k." ".hash("sha256", serialize($v))."\n"; }' "$1"; }
 other_state() { printf '%s %s %s %s' "$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)" "$(sha256sum < "$OTHER/.env" | cut -c1-16)" "$(sha256sum < "$OTHER/bootstrap/cache/config.php" | cut -c1-16)" "$(sha256sum < "$OTHER/public/build/manifest.json" | cut -c1-16)"; }
 untracked() { G ls-files --others --exclude-standard -z | ( cd "$DIR" && xargs -0 -r sha256sum -- ) | sort -k2 | sha256sum | cut -d' ' -f1; }
 code() { local h=$1; shift; curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
