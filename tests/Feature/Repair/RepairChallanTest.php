@@ -86,8 +86,62 @@ class RepairChallanTest extends TestCase
         $page->assertOk()->assertSee('Print challan')->assertSee('Download PDF')->assertSee('Share challan')
             ->assertSee('data-filename="' . $ref . '-challan.pdf"', false)
             ->assertSee('Attach (📎) → Document', false)
-            ->assertDontSee('wa.me', false)->assertDontSee('api.whatsapp', false)
+            ->assertDontSee('api.whatsapp', false)
             ->assertSee(route('repairs.challan', $repair), false)->assertSee(route('repairs.challan.pdf', $repair), false);
+    }
+
+    private function repairPage(User $owner, Shop $shop, Repair $repair)
+    {
+        return TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(self::ERP . '/repairs/' . $repair->id));
+    }
+
+    public function test_whatsapp_customer_opens_the_saved_number_with_a_message_that_claims_no_attachment(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $shop->forceFill(['name' => 'Sona Jewels'])->save();
+        $customer = $this->createCustomer($shop->id, ['mobile' => '9812300077']);
+        $repair = $this->receive($owner, $shop, $customer);
+        $ref = 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT);
+
+        $message = "Hello from Sona Jewels. We have received your item for repair, reference {$ref}. Please keep this reference for collection.";
+        $this->assertDoesNotMatchRegularExpression('/pdf|attach|sent/i', $message);
+
+        $this->repairPage($owner, $shop, $repair)->assertOk()
+            ->assertSee('WhatsApp customer')
+            // Official click-to-chat: country code + national number, digits only.
+            ->assertSee('href="https://wa.me/919812300077?text=' . rawurlencode($message) . '"', false)
+            ->assertSee('the WhatsApp account on this device')
+            ->assertSee('Nothing is sent until you press Send')
+            ->assertSee('tap Download PDF, then in that chat tap Attach (📎) → Document', false);
+    }
+
+    public function test_a_legacy_formatted_saved_number_still_gets_the_same_link(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id, ['mobile' => '9812300077']);
+        $repair = $this->receive($owner, $shop, $customer);
+        Customer::withoutGlobalScopes()->whereKey($customer->id)->update(['mobile' => '+91 98123-00077']);
+
+        $this->repairPage($owner, $shop, $repair)->assertOk()->assertSee('https://wa.me/919812300077?text=', false);
+    }
+
+    public function test_no_whatsapp_link_is_guessed_for_a_number_that_is_not_a_clear_indian_mobile(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id, ['mobile' => '9812300077']);
+        $repair = $this->receive($owner, $shop, $customer);
+
+        foreach (['447911123456', '98123000999', '0222345678'] as $unclear) {
+            Customer::withoutGlobalScopes()->whereKey($customer->id)->update(['mobile' => $unclear]);
+            $this->repairPage($owner, $shop, $repair)->assertOk()
+                ->assertDontSee('wa.me/', false)
+                ->assertSee('is not a valid Indian mobile number, so WhatsApp cannot be opened from here');
+        }
+
+        Customer::withoutGlobalScopes()->whereKey($customer->id)->update(['mobile' => '']);
+        $this->repairPage($owner, $shop, $repair)->assertOk()
+            ->assertDontSee('wa.me/', false)
+            ->assertSee('No mobile number is saved for this customer');
     }
 
     public function test_the_web_intake_form_offers_and_saves_quantity_condition_and_expected_date(): void

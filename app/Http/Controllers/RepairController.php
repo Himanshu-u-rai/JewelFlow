@@ -193,7 +193,33 @@ class RepairController extends Controller
             return response()->json($this->serializeRepair($repair));
         }
 
-        return view('repairs.show', compact('repair'));
+        return view('repairs.show', compact('repair') + ['customerWhatsApp' => $this->customerWhatsApp($repair)]);
+    }
+
+    /**
+     * WhatsApp's official click-to-chat link to the customer's saved number,
+     * opened in the shop's own WhatsApp. Only a number Mobile::normalize accepts
+     * (an Indian mobile) gets a link; anything else is reported, never guessed.
+     *
+     * @return array{link: ?string, problem: ?string}
+     */
+    private function customerWhatsApp(Repair $repair): array
+    {
+        $saved = trim((string) $repair->customer?->mobile);
+        if ($saved === '') {
+            return ['link' => null, 'problem' => 'No mobile number is saved for this customer.'];
+        }
+        $national = \App\Support\Mobile::normalize($saved);
+        if ($national === null) {
+            return ['link' => null, 'problem' => "The saved number ({$saved}) is not a valid Indian mobile number, so WhatsApp cannot be opened from here. Check the customer's record."];
+        }
+
+        $shopName = \App\Models\Shop::query()->whereKey($repair->shop_id)->value('name');
+        $reference = 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT);
+        // Says nothing about a PDF: staff attach it themselves, or not.
+        $message = "Hello from {$shopName}. We have received your item for repair, reference {$reference}. Please keep this reference for collection.";
+
+        return ['link' => 'https://wa.me/' . \App\Support\Mobile::COUNTRY_CODE . $national . '?text=' . rawurlencode($message), 'problem' => null];
     }
 
     public function edit(Repair $repair)
