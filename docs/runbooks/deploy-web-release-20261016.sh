@@ -70,7 +70,11 @@ PSQL() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" -c "$1"; 
 cfg() { ( cd "$DIR" && sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; '"$1" ); }
 cache_ok() { cfg 'exit($c["app"]["key"] && $c["database"]["connections"]["pgsql"]["password"] !== null ? 0 : 1);'; }
 cfgid() { cfg 'echo $c["app"]["env"]."|".$c["app"]["url"]."|".$c["database"]["connections"]["pgsql"]["database"];' 2>/dev/null; }
-config_hashes() { cfg 'ksort($c); foreach ($c as $k => $v) { echo $k." ".hash("sha256", serialize($v))."\n"; }'; }
+# Section hashes of a cached configuration FILE, read by root (a pre-release copy is root-only).
+# On staging the sideways move drops the paused OTP work's configuration, so exactly those keys are
+# left out there: mobile_verification, services.fast2sms, services.whatsapp. Every other section,
+# and every other services key, must come out the same.
+config_hashes() { OTP_KEYS=$([ "$ENVN" = staging ] && echo 1 || echo 0) php -r '$c = require $argv[1]; if (getenv("OTP_KEYS") === "1") { unset($c["mobile_verification"], $c["services"]["fast2sms"], $c["services"]["whatsapp"]); } ksort($c); foreach ($c as $k => $v) { echo $k." ".hash("sha256", serialize($v))."\n"; }' "$1"; }
 other_state() { printf '%s %s %s %s' "$(git -c safe.directory='*' -C "$OTHER" rev-parse HEAD)" "$(sha256sum < "$OTHER/.env" | cut -c1-16)" "$(sha256sum < "$OTHER/bootstrap/cache/config.php" | cut -c1-16)" "$(sha256sum < "$OTHER/public/build/manifest.json" | cut -c1-16)"; }
 untracked() { G ls-files --others --exclude-standard -z | ( cd "$DIR" && xargs -0 -r sha256sum -- ) | sort -k2 | sha256sum | cut -d' ' -f1; }
 code() { local h=$1; shift; curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$h:443:127.0.0.1" "$@"; }
@@ -206,7 +210,7 @@ else
   done < <(G diff --name-only "$FROM" "$TARGET")
   [ "$UNWRITABLE" = 0 ] || fail "$UNWRITABLE changed path(s) not writable by $OWNER"
   install -m 600 "$DIR/.env" "$WORK/env.before" && install -m 600 "$DIR/bootstrap/cache/config.php" "$WORK/config.cache.before" && tar -C "$DIR/public" -czf "$WORK/build.before.tar.gz" build || fail "could not copy the pre-release .env, config cache and assets"
-  chmod 600 "$WORK/build.before.tar.gz"; config_hashes > "$WORK/config.before.hashes"
+  chmod 600 "$WORK/build.before.tar.gz"; config_hashes "$WORK/config.cache.before" > "$WORK/config.before.hashes"
   declare -p ENV_STAT CACHE_STAT BUILD_STAT UNTRACKED_BEFORE OTHER_STATE_BEFORE SETTINGS_BEFORE > "$WORK/state"
   ok "pre-release copies in $WORK (root only)"
   if [ "$MODE" = preflight ]; then echo "WEB RELEASE PREFLIGHT PASSED: $ENVN $FROM -> $TARGET; nothing was changed; evidence in $WORK"; exit 0; fi
@@ -247,9 +251,11 @@ chown -R "$BUILD_STAT" "$DIR/public/build" || fail "could not give the new asset
 PHASE=config
 cmp -s "$PRE/env.before" "$DIR/.env" && [ "$(stat -c '%U:%G %a' "$DIR/.env")" = "$ENV_STAT" ] || fail ".env changed (content, owner or mode)"
 CFG config:cache >/dev/null && ART route:cache >/dev/null && ART view:clear >/dev/null && ART view:cache >/dev/null || fail "caching failed"
+# artisan writes with www-data's umask; the cache keeps the mode it had before (it holds secrets).
+chmod "${CACHE_STAT##* }" "$DIR/bootstrap/cache/config.php" || fail "could not restore the config cache's mode"
 cache_ok || fail "the config cache has no application key or database password"
 [ "$(cfgid)" = "$ENVN|$APPURL|$DB" ] || fail "effective config after the release is '$(cfgid)'"
-SECTIONS=$(diff <(config_hashes) "$PRE/config.before.hashes" | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')
+SECTIONS=$(diff <(config_hashes "$DIR/bootstrap/cache/config.php") <(config_hashes "$PRE/config.cache.before") | awk '/^[<>]/ { print $2 }' | sort -u | tr '\n' ' ')
 [ -z "$SECTIONS" ] || fail "configuration changed: $SECTIONS"
 [ "$(stat -c '%U:%G %a' "$DIR/bootstrap/cache/config.php")" = "$CACHE_STAT" ] || fail "the config cache's ownership or mode changed (was $CACHE_STAT)"
 PHASE=migrate
