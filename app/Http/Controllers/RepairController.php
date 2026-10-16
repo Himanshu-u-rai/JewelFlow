@@ -83,6 +83,9 @@ class RepairController extends Controller
             'gross_weight'    => 'required|numeric|min:0',
             'purity'          => 'nullable|numeric|min:0|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost'  => 'nullable|numeric|min:0',
+            'item_quantity'   => 'nullable|integer|min:1|max:999',
+            'intake_condition' => 'nullable|string|max:500',
+            'due_date'        => 'nullable|date',
             'image'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'image_base64'    => 'nullable|string',
         ]);
@@ -110,6 +113,9 @@ class RepairController extends Controller
                 'gross_weight'     => $validated['gross_weight'],
                 'purity'           => $validated['purity'] ?? null,
                 'estimated_cost'   => $validated['estimated_cost'] ?? null,
+                'item_quantity'    => $validated['item_quantity'] ?? null,
+                'intake_condition' => $validated['intake_condition'] ?? null,
+                'due_date'         => $validated['due_date'] ?? null,
                 'status'           => 'received',
             ]);
         });
@@ -159,16 +165,21 @@ class RepairController extends Controller
         $this->authorize('update', $repair); // same shop check as the repair page
         $repair->loadMissing('customer');
         $shop = \App\Models\Shop::query()->findOrFail($repair->shop_id);
+        $current = $repair->intakeDetails();
+        $intake = $repair->intake_snapshot; // null: received before intake copies were kept
 
         return [
             'repair' => $repair,
             'shop' => $shop,
             'reference' => 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT),
             'terms' => trim((string) $shop->billingSettings()->value('terms_and_conditions')),
-            // created_at and updated_at are written together on create; a later
-            // edit, status change or delivery moves updated_at.
-            'changedAfterIntake' => $repair->updated_at && $repair->created_at
-                && $repair->updated_at->gt($repair->created_at->copy()->addMinute()),
+            'hasIntakeCopy' => $intake !== null,
+            'details' => $intake ?? $current,
+            'changes' => $intake === null ? [] : array_filter(
+                $current,
+                fn (?string $value, string $key) => ($intake[$key] ?? null) !== $value,
+                ARRAY_FILTER_USE_BOTH,
+            ),
             'forPdf' => false,
         ];
     }

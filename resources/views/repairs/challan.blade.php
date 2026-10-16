@@ -6,7 +6,14 @@
     $customer = $repair->customer;
     $mobile = $customer?->mobile ? \App\Support\Mobile::forDisplay($customer->mobile) : null;
     $shopAddress = collect([$shop->address, $shop->city, $shop->state, $shop->pincode])->filter()->implode(', ');
-    $statusLabels = ['received' => 'Received', 'in_repair' => 'In repair', 'ready' => 'Ready for collection', 'delivered' => 'Delivered'];
+    $statusLabels = ['in_repair' => 'In repair', 'ready' => 'Ready for collection', 'delivered' => 'Delivered'];
+    $statusLabel = $repair->status === 'received' ? null : ($statusLabels[$repair->status] ?? ucfirst(str_replace('_', ' ', $repair->status)));
+    $generatedAt = now()->timezone($tz)->format('d M Y, h:i A');
+    $labels = [
+        'item_description' => 'Item', 'item_quantity' => 'Quantity (pieces)', 'intake_condition' => 'Condition at receipt',
+        'metal' => 'Metal', 'purity' => 'Purity (as declared)', 'gross_weight' => 'Gross weight',
+        'description' => 'Work requested', 'due_date' => 'Expected ready by', 'estimated_cost' => 'Estimated charge',
+    ];
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -31,10 +38,10 @@
         th, td { border: 1px solid #555; padding: 5px 6px; text-align: left; vertical-align: top; }
         th { width: 34%; background: #f3f4f6; font-weight: 600; font-size: 10px; }
         td { overflow-wrap: anywhere; white-space: pre-line; }
-        .money td { font-weight: 600; }
         .note { font-size: 9.5px; color: #333; margin: 2px 0 0; }
         .notice { border: 1px solid #b45309; background: #fffbeb; padding: 5px 7px; margin-bottom: 8px; font-size: 10px; }
-        .write-in { border-bottom: 1px solid #888; height: 20px; }
+        .section { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .04em; margin: 2px 0 3px; }
+        .changes th, .changes td { border-color: #b45309; }
         .terms { font-size: 9px; color: #333; white-space: pre-line; border-top: 1px dashed #999; padding-top: 5px; margin-top: 14px; }
         .signs { display: flex; gap: 16px; margin-top: 22px; }
         .signs > div { flex: 1; text-align: center; font-size: 9.5px; }
@@ -62,44 +69,48 @@
 
     <div class="ref">
         <div><div class="label">Repair reference</div><strong>{{ $reference }}</strong></div>
-        <div style="text-align:right"><div class="label">Received on</div>{{ $repair->created_at?->timezone($tz)->format('d M Y, h:i A') }}</div>
+        <div style="text-align:right">
+            <div class="label">Intake date</div>{{ $repair->created_at?->timezone($tz)->format('d M Y, h:i A') }}
+            <div class="label" style="margin-top:3px">Copy generated</div>{{ $generatedAt }}
+        </div>
     </div>
 
-    @if($changedAfterIntake)
+    @unless($hasIntakeCopy)
         <div class="notice">
-            This repair record was changed after intake (last change {{ $repair->updated_at->timezone($tz)->format('d M Y') }}).
-            The details below are as recorded now and may differ from the first copy.
-            @if($repair->status !== 'received') Current status: {{ $statusLabels[$repair->status] ?? ucfirst(str_replace('_', ' ', $repair->status)) }}. @endif
+            This repair was received before JewelFlows kept an intake copy, so the details below are the current record and may include later changes.
+            @if($statusLabel) Current status: {{ $statusLabel }}. @endif
         </div>
-    @endif
+    @endunless
 
     <table>
         <tr><th>Customer</th><td>{{ $customer?->name ?? '—' }}@if($mobile)<br>{{ $mobile }}@endif</td></tr>
-        <tr><th>Item</th><td>{{ $repair->item_description }}</td></tr>
-        <tr><th>Metal</th><td>{{ \App\Models\Repair::METAL_LABELS[$repair->metal_type] ?? ucfirst((string) $repair->metal_type) }}</td></tr>
-        @if($repair->purity !== null)
-            <tr><th>Purity (as declared)</th><td>{{ $repair->purity_label }}</td></tr>
-        @endif
-        <tr><th>Gross weight</th><td>{{ number_format((float) $repair->gross_weight, 3) }} g</td></tr>
-        @if(filled($repair->description))
-            <tr><th>Work requested</th><td>{{ $repair->description }}</td></tr>
-        @endif
-        @if($repair->due_date)
-            <tr><th>Expected ready by</th><td>{{ $repair->due_date->format('d M Y') }}</td></tr>
-        @endif
     </table>
 
-    <table class="money">
-        @if($repair->estimated_cost !== null)
-            <tr><th>Estimated charge</th><td>₹{{ number_format((float) $repair->estimated_cost, 2) }}
-                <div class="note" style="font-weight:normal">This is an estimate, not a payment. The final amount is billed at collection.</div></td></tr>
-        @endif
-        <tr><th>Payment received</th><td>None recorded</td></tr>
+    <div class="section">{{ $hasIntakeCopy ? 'As received at intake' : 'Details as currently recorded' }}</div>
+    <table>
+        @foreach($labels as $key => $label)
+            @php $value = $details[$key] ?? null; @endphp
+            @if($value !== null || in_array($key, ['item_quantity', 'intake_condition'], true))
+                <tr><th>{{ $label }}</th><td>{{ $value ?? 'Not recorded' }}
+                    @if($key === 'estimated_cost')<div class="note">This is an estimate, not a payment. The final amount is billed at collection.</div>@endif
+                </td></tr>
+            @endif
+        @endforeach
     </table>
 
-    <div class="label">Pieces and condition at intake (write by hand)</div>
-    <div class="write-in"></div>
-    <div class="write-in"></div>
+    @if($hasIntakeCopy && ($changes || $statusLabel))
+        <div class="section">Changed after intake <span class="small">(current record when this copy was generated)</span></div>
+        <table class="changes">
+            @foreach($changes as $key => $value)
+                <tr><th>{{ $labels[$key] ?? $key }}</th><td>{{ $value ?? 'Removed' }}</td></tr>
+            @endforeach
+            @if($statusLabel)
+                <tr><th>Current status</th><td>{{ $statusLabel }}</td></tr>
+            @endif
+        </table>
+    @endif
+
+    <p class="note"><strong>Payments:</strong> JewelFlows repair records do not track advances, so this challan does not show any amount paid. Keep the shop's separate receipt for any advance.</p>
 
     @if($terms !== '')
         <div class="terms"><strong>Shop terms</strong>
@@ -112,8 +123,7 @@
     </div>
 
     <div class="foot">
-        Bring this challan when you collect the item. Reference {{ $reference }}.<br>
-        Printed {{ now()->timezone($tz)->format('d M Y, h:i A') }}
+        Bring this challan when you collect the item. Reference {{ $reference }}.
     </div>
 </div>
 </body>

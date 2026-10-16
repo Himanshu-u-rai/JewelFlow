@@ -2,9 +2,11 @@
 # ============================================================================
 # Repair intake challan release (staging first; production only after owner
 # approval): print page, PDF download and device sharing of the existing repair's
-# challan. No migration, no dependency or lock-file change, no .env change.
+# challan. One additive migration (three nullable columns on repairs; existing
+# rows stay NULL), no dependency or lock-file change, no .env change.
 # Derived from deploy-security-20261016.sh (same gates, window and smoke), plus a
-# smoke check that the challan routes are registered.
+# smoke check that the challan routes are registered. Rollback: prefer a code
+# rollback that keeps the columns; the migration's down() drops them and their data.
 #
 #   deploy-repair-challan.sh <preflight|release|resume> <staging|production> \
 #       <from-sha> <target-sha> <bundle> <assets.tar.gz> <assets-sha256>
@@ -18,6 +20,7 @@ ENVN=${2:?env}; FROM=${3:?from-sha}; TARGET=${4:?target-sha}; BUNDLE=${5:?bundle
 BRANCH=feature/repair-challan; REF=refs/remotes/challanrelease/$BRANCH
 PROD_BASE=c68f0f932035370e72cf126da88d724aa3815665
 MIGRATION=2026_10_11_000001_create_customer_profile_photos_table
+CHALLAN_MIGRATION=2026_10_16_000001_add_intake_details_to_repairs_table
 OTP_MIGRATIONS=(2026_10_09_000001_add_login_mobile_verification 2026_10_10_000001_add_platform_admin_login_code_challenges)
 STAGING_DIR=/var/www/jewelflow-staging
 case "$MODE" in preflight|release|resume) ;; *) echo "unknown mode: $MODE"; exit 64 ;; esac
@@ -27,7 +30,7 @@ case "$ENVN" in
   *) echo "unknown environment: $ENVN"; exit 64 ;;
 esac
 HOSTN=${HOSTS[0]}
-COUNTED=(shops users customers invoices invoice_items invoice_payments cash_transactions karigar_invoices stock_purchases shop_billing_settings loyalty_transactions report_exports platform_admins quick_bills quick_bill_payments product_recognitions platform_settings)
+COUNTED=(shops users customers repairs invoices invoice_items invoice_payments cash_transactions karigar_invoices stock_purchases shop_billing_settings loyalty_transactions report_exports platform_admins quick_bills quick_bill_payments product_recognitions platform_settings)
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 WORK=/root/repair-challan-release/$ENVN-$MODE-$STAMP
 mkdir -p "$WORK" && chmod 700 /root/repair-challan-release "$WORK"
@@ -132,7 +135,8 @@ G fetch --quiet "$BTMP/candidate.bundle" "+refs/heads/$BRANCH:$REF"; FETCHED=$?;
 G merge-base --is-ancestor "$PROD_BASE" "$TARGET" || fail "target does not descend from production's $PROD_BASE"
 MIG_DIFF=$(G diff --name-status "$FROM" "$TARGET" -- database/migrations | tr '\t' ' ' | sort | tr '\n' ';')
 G merge-base --is-ancestor "$FROM" "$TARGET" || fail "target does not descend from the deployed commit"
-[ -z "$MIG_DIFF" ] || fail "the target changes a migration: $MIG_DIFF"
+[ -z "$MIG_DIFF" ] || [ "$MIG_DIFF" = "A database/migrations/$CHALLAN_MIGRATION.php;" ] || fail "the target changes migrations other than adding $CHALLAN_MIGRATION: $MIG_DIFF"
+G show "$TARGET:database/migrations/$CHALLAN_MIGRATION.php" >/dev/null 2>&1 || fail "the target has no $CHALLAN_MIGRATION"
 [ "$(recorded "$MIGRATION")" = 1 ] || fail "$MIGRATION is not recorded (the photo release is a prerequisite)"
 [ -z "$(G diff --name-only "$FROM" "$TARGET" -- composer.json composer.lock package.json package-lock.json vite.config.js)" ] || fail "the target changes a dependency or lock file: not this script"
 DEP_DIFF=$(G diff --name-only "$FROM" "$TARGET" -- composer.lock package-lock.json | tr '\n' ' ')
@@ -237,11 +241,19 @@ if [ "$ENVN" = production ] && [ "$(recorded "$MIGRATION")" = 0 ]; then
   ART migrate --force --no-interaction >/dev/null || fail "migrate failed"
 fi
 [ "$(recorded "$MIGRATION")" = 1 ] && [ "$(PSQL "select to_regclass('public.customer_profile_photos') is not null")" = t ] || fail "the photo table or its migration row is missing after the migration step"
+if [ "$(recorded "$CHALLAN_MIGRATION")" = 0 ]; then
+  PENDING=$(ART migrate:status --pending 2>&1 | grep -oE '[0-9]{4}_[0-9]{2}_[0-9]{2}_[0-9]{6}_[a-z0-9_]+' | sort -u | tr '\n' ' ')
+  [ "$PENDING" = "$CHALLAN_MIGRATION " ] || fail "pending migrations are not exactly $CHALLAN_MIGRATION: $PENDING"
+  ART migrate --force --no-interaction >/dev/null || fail "migrate failed"
+  # Additive only: no existing repair gets a value it was never given.
+  [ "$(PSQL "select count(*) from repairs where item_quantity is not null or intake_condition is not null or intake_snapshot is not null")" = 0 ] || fail "existing repairs carry intake values right after the migration"
+fi
+[ "$(recorded "$CHALLAN_MIGRATION")" = 1 ] && [ "$(PSQL "select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'repairs' and column_name in ('item_quantity','intake_condition','intake_snapshot') and is_nullable = 'YES'")" = 3 ] || fail "the challan migration row or its three nullable columns are missing"
 grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is still pending"
 while IFS= read -r f; do [ -e "$DIR/$f" ] || continue; sudo -u www-data test -r "$DIR/$f" || fail "www-data cannot read $f"; done < <(G diff --name-only "$FROM" "$TARGET")
 [ -z "$(find "$DIR/storage" "$DIR/bootstrap/cache" -user root ! -path "$DIR/bootstrap/cache/config.php" 2>/dev/null | head -1)" ] || [ "$OWNER" = root ] || fail "a root-owned file appeared under storage or bootstrap/cache"
 systemctl reload "$FPM" || fail "$FPM reload failed"
-ok "checked out $TARGET; assets in place; .env and configuration unchanged; photo migration recorded and its table present; caches rebuilt; $FPM reloaded"
+ok "checked out $TARGET; assets in place; .env and configuration unchanged; photo migration recorded and its table present; challan migration recorded, its three nullable columns present; caches rebuilt; $FPM reloaded"
 [ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed inside the window"
 [ "$(settings)" = "$SETTINGS_BEFORE" ] || fail "platform settings changed inside the window: $(settings)"
 PHASE=up

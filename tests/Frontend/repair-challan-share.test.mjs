@@ -13,7 +13,7 @@ const requireModule = () => assert.ok(available, 'Challan sharing is not impleme
 const URL_PDF = '/repairs/7/challan/pdf';
 const NAME = 'REP-007-challan.pdf';
 
-function setup({ shareImpl, canShare = () => true, withShare = true, ok = true } = {}) {
+function setup({ shareImpl, canShare = () => true, withShare = true, ok = true, redirected = false, contentType = 'application/pdf', body = '%PDF-1.4 fake' } = {}) {
     const calls = { fetch: [], share: [] };
     const nav = withShare ? {
         canShare: (data) => canShare(data),
@@ -21,7 +21,11 @@ function setup({ shareImpl, canShare = () => true, withShare = true, ok = true }
     } : {};
     const fetchImpl = async (url, options) => {
         calls.fetch.push({ url, options });
-        return { ok, status: ok ? 200 : 403, blob: async () => new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }) };
+        return {
+            ok, redirected, status: ok ? 200 : 403,
+            headers: { get: (name) => (name.toLowerCase() === 'content-type' ? contentType : null) },
+            blob: async () => new Blob([body], { type: contentType }),
+        };
     };
     const share = available ? module.createChallanSharer({ url: URL_PDF, filename: NAME, nav, fetchImpl }) : null;
     return { share, calls };
@@ -48,11 +52,14 @@ test('opening the share menu is reported as that, never as delivery', async () =
     assert.doesNotMatch(text, /\b(sent successfully|delivered|message sent)\b/i);
 });
 
-test('cancelling the share menu says nothing was sent', async () => {
+test('a closed share menu claims nothing either way and points to the download', async () => {
     requireModule();
     const { share } = setup({ shareImpl: () => { throw Object.assign(new Error('x'), { name: 'AbortError' }); } });
     assert.equal(await share(), 'cancelled');
-    assert.match(module.MESSAGES.cancelled, /nothing was sent/i);
+    // The OS reports a cancel the same way whether or not the target app sent anything.
+    assert.doesNotMatch(module.MESSAGES.cancelled, /nothing was sent|not sent/i);
+    assert.match(module.MESSAGES.cancelled, /cancelled or unavailable/i);
+    assert.match(module.MESSAGES.cancelled, /download the pdf/i);
 });
 
 test('a browser without file sharing gets the download route and WhatsApp attach steps, not a chat link', async () => {
@@ -87,4 +94,45 @@ test('when the tap expires while the PDF downloads, the next tap shares the prep
     assert.equal(await share(), 'shared');
     assert.equal(calls.fetch.length, 1, 'the PDF is fetched once');
     assert.equal(calls.share.length, 2);
+});
+
+test('an expired session (redirected to the sign-in page) is never shared as a PDF', async () => {
+    requireModule();
+    const { share, calls } = setup({ redirected: true, contentType: 'text/html; charset=UTF-8', body: '<!DOCTYPE html><title>Login</title>' });
+    assert.equal(await share(), 'failed');
+    assert.equal(calls.share.length, 0);
+});
+
+test('an HTML or error body is never shared, even when it claims to be a PDF', async () => {
+    requireModule();
+    for (const response of [
+        { contentType: 'text/html; charset=UTF-8', body: '<html>Server Error</html>' },
+        { contentType: 'application/json', body: '{"message":"Unauthenticated."}' },
+        { contentType: 'application/pdf', body: '<!DOCTYPE html><title>Login</title>' },
+    ]) {
+        const { share, calls } = setup(response);
+        assert.equal(await share(), 'failed', response.body);
+        assert.equal(calls.share.length, 0, response.body);
+    }
+});
+
+test('after a failed download the next tap tries again instead of sharing a stale file', async () => {
+    requireModule();
+    let attempt = 0;
+    const calls = { share: [] };
+    const nav = { canShare: () => true, share: async (data) => { calls.share.push(data); } };
+    const fetchImpl = async () => {
+        attempt += 1;
+        const good = attempt > 1;
+        return {
+            ok: good, redirected: false, status: good ? 200 : 500,
+            headers: { get: () => (good ? 'application/pdf' : 'text/html') },
+            blob: async () => new Blob([good ? '%PDF-1.4 ok' : 'error'], { type: good ? 'application/pdf' : 'text/html' }),
+        };
+    };
+    const share = module.createChallanSharer({ url: URL_PDF, filename: NAME, nav, fetchImpl });
+    assert.equal(await share(), 'failed');
+    assert.equal(await share(), 'shared');
+    assert.equal(attempt, 2);
+    assert.equal(calls.share.length, 1);
 });

@@ -141,6 +141,18 @@
                             <dt>Gross weight</dt>
                             <dd>{{ number_format((float) $repair->gross_weight, 3) }} g</dd>
                         </div>
+                        <div>
+                            <dt>Quantity (pieces)</dt>
+                            <dd>{{ $repair->item_quantity ?? 'Not recorded' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Expected ready by</dt>
+                            <dd>{{ $repair->due_date?->format('d M Y') ?? 'Not recorded' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Condition at receipt</dt>
+                            <dd style="white-space:pre-line">{{ $repair->intake_condition ?: 'Not recorded' }}</dd>
+                        </div>
                     </dl>
                 </section>
 

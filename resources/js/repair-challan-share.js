@@ -6,7 +6,7 @@
 export const MESSAGES = {
     preparing: 'Preparing the PDF…',
     shared: 'Share menu used. JewelFlows cannot see whether the message was sent: check the chat.',
-    cancelled: 'Sharing cancelled. Nothing was sent.',
+    cancelled: 'Sharing cancelled or unavailable. You can download the PDF instead.',
     ready: 'PDF ready. Tap “Share now” to open the share menu.',
     failed: 'The PDF could not be prepared. Use Download PDF instead.',
     unsupported: 'This browser cannot share files. Download the PDF, then in WhatsApp open the customer’s chat, tap Attach (📎) → Document and choose the downloaded file.',
@@ -22,8 +22,13 @@ export function createChallanSharer({ url, filename, nav = globalThis.navigator,
         if (!file) {
             try {
                 const response = await fetchImpl(url, { credentials: 'same-origin', headers: { Accept: 'application/pdf' } });
-                if (!response.ok) return 'failed';
-                file = new File([await response.blob()], filename, { type: 'application/pdf' });
+                // A lapsed session redirects to the sign-in page (200, HTML): only a
+                // real PDF may reach the share menu, never a login or error page.
+                if (!response.ok || response.redirected) return 'failed';
+                if (!/^application\/pdf\b/i.test(response.headers?.get('content-type') ?? '')) return 'failed';
+                const blob = await response.blob();
+                if ((await blob.slice(0, 5).text()) !== '%PDF-') return 'failed';
+                file = new File([blob], filename, { type: 'application/pdf' });
             } catch {
                 return 'failed';
             }

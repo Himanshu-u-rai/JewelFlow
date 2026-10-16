@@ -58,6 +58,8 @@ class Repair extends Model
         'estimated_cost',
         'final_cost',
         'status',
+        'item_quantity',
+        'intake_condition',
     ];
 
     protected $casts = [
@@ -66,6 +68,8 @@ class Repair extends Model
         'estimated_cost' => 'decimal:2',
         'final_cost' => 'decimal:2',
         'due_date' => 'date',
+        'item_quantity' => 'integer',
+        'intake_snapshot' => 'array',
     ];
 
     /**
@@ -75,6 +79,9 @@ class Repair extends Model
      * to reimplement the karat-vs-millesimal formatting.
      */
     protected $appends = ['purity_label'];
+
+    /** The challan's copy of the intake details; the app's JSON carries the live fields. */
+    protected $hidden = ['intake_snapshot'];
 
     /** Display labels for each metal type. */
     public const METAL_LABELS = [
@@ -160,6 +167,14 @@ class Repair extends Model
             if (empty($repair->repair_number) && !empty($repair->shop_id)) {
                 $repair->repair_number = BusinessIdentifierService::nextCounter((int) $repair->shop_id, BusinessIdentifierService::KEY_REPAIR);
             }
+            // ponytail: one write-once copy of the challan's details, not a versioning system.
+            $repair->intake_snapshot = $repair->intakeDetails();
+        });
+
+        static::updating(function (self $repair): void {
+            if ($repair->isDirty('intake_snapshot') && $repair->getRawOriginal('intake_snapshot') !== null) {
+                throw new \DomainException('The intake copy of a repair is written once and cannot be changed.');
+            }
         });
 
         static::saving(function (self $repair): void {
@@ -167,6 +182,28 @@ class Repair extends Model
                 throw new \DomainException('A repair cannot be marked delivered without a linked invoice. Use the Bill flow.');
             }
         });
+    }
+
+    /**
+     * The challan's item details as display strings (null = not recorded).
+     * Stored once at intake in intake_snapshot; the challan compares it with
+     * the current values to list later changes apart.
+     *
+     * @return array<string, ?string>
+     */
+    public function intakeDetails(): array
+    {
+        return [
+            'item_description' => $this->item_description,
+            'item_quantity'    => $this->item_quantity !== null ? (string) $this->item_quantity : null,
+            'intake_condition' => filled($this->intake_condition) ? $this->intake_condition : null,
+            'metal'            => self::METAL_LABELS[$this->metal_type] ?? ucfirst((string) $this->metal_type),
+            'purity'           => $this->purityLabel(),
+            'gross_weight'     => $this->gross_weight !== null ? number_format((float) $this->gross_weight, 3) . ' g' : null,
+            'description'      => filled($this->description) ? $this->description : null,
+            'due_date'         => $this->due_date?->format('d M Y'),
+            'estimated_cost'   => $this->estimated_cost !== null ? '₹' . number_format((float) $this->estimated_cost, 2) : null,
+        ];
     }
 
     public function customer()

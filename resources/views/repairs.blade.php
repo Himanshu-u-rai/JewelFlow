@@ -861,6 +861,34 @@
                             </div>
                         </div>
 
+                        <!-- Quantity + Expected ready by row -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="r-form-group">
+                                <label for="item_quantity" class="r-label">Quantity (pieces) <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
+                                <input type="number" step="1" min="1" max="999" name="item_quantity" id="item_quantity" placeholder="e.g., 2" class="r-input">
+                                @error('item_quantity')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div class="r-form-group">
+                                <label for="due_date" class="r-label">Expected ready by <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
+                                <input type="date" name="due_date" id="due_date" class="r-input">
+                                @error('due_date')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Condition at receipt -->
+                        <div class="r-form-group">
+                            <label for="intake_condition" class="r-label">Condition at receipt <span style="color:var(--muted);font-weight:normal">(optional, printed on the customer's challan)</span></label>
+                            <textarea name="intake_condition" id="intake_condition" rows="2" maxlength="500"
+                                      placeholder="e.g., Clasp bent, one stone missing, scratches on the back"
+                                      class="r-textarea"></textarea>
+                            @error('intake_condition')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
 
                         <!-- Item Photo -->
                         <div class="r-form-group">
