@@ -17,6 +17,14 @@ class Customer extends Model
     /** @var array<int, string> */
     protected static array $mobileColumns = ['mobile'];
 
+    // Web-only photo relation must not alter existing mobile/customer serialization.
+    protected $hidden = ['profilePhoto'];
+
+    public function profilePhoto()
+    {
+        return $this->hasOne(CustomerProfilePhoto::class);
+    }
+
     /**
      * MASTERS PART 3: `is_active` is deliberately NOT fillable. Lifecycle is
      * changed only by the explicit archive/reactivate endpoints (which use

@@ -14,7 +14,7 @@
     </x-page-header>
 
     <div class="content-inner customers-create-page">
-        <form method="POST" action="{{ route('customers.store') }}" class="customers-create-form-card">
+        <form method="POST" action="{{ route('customers.store') }}" class="customers-create-form-card" enctype="multipart/form-data">
             @csrf
 
             <div class="customers-create-card-head">
@@ -24,6 +24,8 @@
                 </div>
                 <span class="customers-create-required">Required fields marked *</span>
             </div>
+
+            <x-customer-photo mode="form" />
 
             <div class="customers-create-form-grid">
                 <div class="customers-create-field">

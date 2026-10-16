@@ -196,17 +196,12 @@
                     <tbody class="bg-white divide-y divide-slate-100" id="customers-tbody">
                         @forelse($customers as $customer)
                             @php
-                                $first = strtoupper(substr($customer->first_name ?? '', 0, 1));
-                                $last = strtoupper(substr($customer->last_name ?? '', 0, 1));
-                                $initials = trim($first . $last) !== '' ? $first . $last : 'CU';
                                 $searchText = strtolower(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '') . ' ' . ($customer->mobile ?? '')));
                             @endphp
                             <tr class="customers-table-row hover:bg-slate-50/70 transition-colors" data-search="{{ $searchText }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <div class="customers-table-avatar w-10 h-10 inline-flex items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-semibold text-sm">
-                                            {{ $initials }}
-                                        </div>
+                                        <x-customer-avatar :customer="$customer" />
                                         <div class="customers-table-identity">
                                             <div class="customers-table-name text-sm font-semibold text-slate-900">
                                                 {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
@@ -318,15 +313,10 @@
 
             <div class="customers-mobile-cards customers-mobile-cards--directory">
                 @forelse($customers as $customer)
-                    @php
-                        $first = strtoupper(substr($customer->first_name ?? '', 0, 1));
-                        $last = strtoupper(substr($customer->last_name ?? '', 0, 1));
-                        $initials = trim($first . $last) !== '' ? $first . $last : 'CU';
-                    @endphp
                     <article class="customers-mobile-card">
                         <div class="customers-mobile-card__top">
                             <div class="customers-mobile-card__identity">
-                                <span class="customers-mobile-avatar">{{ $initials }}</span>
+                                <x-customer-avatar :customer="$customer" />
                                 <span>
                                     <span class="customers-mobile-card__title">
                                         {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}

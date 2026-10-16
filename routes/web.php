@@ -554,6 +554,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/inventory/items/{item}', [ItemController::class, 'destroy'])->middleware('can:inventory.delete')->name('inventory.items.destroy');
 
     // ======= CUSTOMERS =======
+    Route::middleware(['realm:erp', 'edition:retailer,manufacturer'])->group(function () {
+        Route::get('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'show'])->middleware('can:customers.view')->name('customers.photo.show');
+        Route::post('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'store'])->middleware('can:customers.edit')->name('customers.photo.store');
+        Route::delete('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'destroy'])->middleware('can:customers.edit')->name('customers.photo.destroy');
+    });
     // Staff: view + create (needed for POS). Edit = owner + manager. Delete = owner only.
     // The ERP customer screens are retailer/manufacturer-only. edition:retailer,
     // manufacturer keeps a Dhiran-ONLY shop out of the ERP customer UI (Dhiran has
@@ -1118,6 +1123,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::get('/loans/{loan}/payments/{payment}/receipt', [\App\Http\Controllers\DhiranController::class, 'paymentReceipt'])->middleware('can:dhiran.view')->name('payment-receipt');
 
             // Borrowers (Dhiran customer profiles) — view permission. Shop-scoped.
+            Route::get('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'show'])->middleware('can:dhiran.view')->name('borrowers.photo.show');
+            Route::post('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'store'])->middleware('can:dhiran.create')->name('borrowers.photo.store');
+            Route::delete('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'destroy'])->middleware('can:dhiran.create')->name('borrowers.photo.destroy');
             Route::get('/borrowers', [\App\Http\Controllers\DhiranController::class, 'borrowers'])->middleware('can:dhiran.view')->name('borrowers.index');
             Route::get('/borrowers/{customer}', [\App\Http\Controllers\DhiranController::class, 'borrowerProfile'])->middleware('can:dhiran.view')->name('borrowers.show');
 
