@@ -60,7 +60,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // 00099' slips past a uniqueness check and lands on the index as a
         // duplicate. The mobile API has the same customer/staff uniqueness rules
         // as the web forms, so it needs the same rewrite. See the middleware.
-        $middleware->api(append: [
+        // Platform maintenance covers the mobile API (and its already-issued
+        // tokens) too: prepended, so it refuses before auth or idempotency run.
+        $middleware->api(prepend: [
+            \App\Http\Middleware\CheckMaintenanceMode::class,
+        ], append: [
             \App\Http\Middleware\CanonicaliseMobileInput::class,
         ]);
 
