@@ -51,8 +51,8 @@ class RepairMetalTypeTest extends TestCase
         // Backward compatibility: no metal_type sent -> defaults to gold, karat purity.
         [$response, $shop] = $this->postRepair(['purity' => 22]);
 
-        $response->assertRedirect(route('repairs.index'));
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $response->assertRedirect(route('repairs.show', $repair)); // the repair's page offers its challan
 
         $this->assertSame('gold', $repair->metal_type);
         $this->assertEqualsWithDelta(22.0, (float) $repair->purity, 0.001);
@@ -63,8 +63,8 @@ class RepairMetalTypeTest extends TestCase
     {
         [$response, $shop] = $this->postRepair(['metal_type' => 'gold', 'purity' => 18]);
 
-        $response->assertRedirect(route('repairs.index'));
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $response->assertRedirect(route('repairs.show', $repair)); // the repair's page offers its challan
         $this->assertSame('gold', $repair->metal_type);
         $this->assertSame('18K', $repair->purityLabel());
     }
@@ -74,8 +74,8 @@ class RepairMetalTypeTest extends TestCase
         // 925 would be rejected by the old gold-only max:24 — now valid for silver.
         [$response, $shop] = $this->postRepair(['metal_type' => 'silver', 'purity' => 925]);
 
-        $response->assertRedirect(route('repairs.index'));
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $response->assertRedirect(route('repairs.show', $repair)); // the repair's page offers its challan
         $this->assertSame('silver', $repair->metal_type);
         $this->assertEqualsWithDelta(925.0, (float) $repair->purity, 0.001);
         // No karat suffix for non-gold.
@@ -86,8 +86,8 @@ class RepairMetalTypeTest extends TestCase
     {
         [$response, $shop] = $this->postRepair(['metal_type' => 'platinum', 'purity' => 950]);
 
-        $response->assertRedirect(route('repairs.index'));
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $response->assertRedirect(route('repairs.show', $repair)); // the repair's page offers its challan
         $this->assertSame('platinum', $repair->metal_type);
         $this->assertSame('950', $repair->purityLabel());
     }
@@ -96,8 +96,8 @@ class RepairMetalTypeTest extends TestCase
     {
         [$response, $shop] = $this->postRepair(['metal_type' => 'other']); // no purity
 
-        $response->assertRedirect(route('repairs.index'));
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $response->assertRedirect(route('repairs.show', $repair)); // the repair's page offers its challan
         $this->assertSame('other', $repair->metal_type);
         $this->assertNull($repair->purity);
         $this->assertNull($repair->purityLabel());

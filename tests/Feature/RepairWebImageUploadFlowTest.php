@@ -38,13 +38,13 @@ class RepairWebImageUploadFlowTest extends TestCase
             'image' => UploadedFile::fake()->image('repair-photo.png', 128, 128),
         ]);
 
-        $response->assertRedirect(route('repairs.index'));
-        $response->assertSessionHas('success', 'Repair item received successfully!');
-
         $repair = Repair::withoutTenant()
             ->where('shop_id', $shop->id)
             ->latest('id')
             ->firstOrFail();
+
+        $response->assertRedirect(route('repairs.show', $repair));
+        $response->assertSessionHas('success', 'Repair item received. Print, download or share the challan for the customer below.');
 
         $this->assertNotNull($repair->image_path);
         $this->assertSame($repair->image_path, $repair->image);

@@ -83,6 +83,37 @@
 
         <div class="repairs-show-layout">
             <main class="repairs-show-main">
+                @php($challanRef = 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT))
+                {{-- Intake challan: read-only receipt for the customer. Printing, downloading
+                     or sharing it never changes the repair, its number or any payment. --}}
+                <section class="repairs-show-card" data-challan-share-box aria-labelledby="repair-challan-heading">
+                    <header class="repairs-show-card-head">
+                        <div>
+                            <span class="repairs-show-label">Customer challan</span>
+                            <h2 id="repair-challan-heading">Intake receipt {{ $challanRef }}</h2>
+                        </div>
+                    </header>
+                    <div style="display:flex; flex-wrap:wrap; gap:.5rem; padding:0 1rem 1rem;">
+                        <a href="{{ route('repairs.challan', $repair) }}" target="_blank" rel="noopener" class="repairs-show-action">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+                            <span>Print challan</span>
+                        </a>
+                        <a href="{{ route('repairs.challan.pdf', $repair) }}" class="repairs-show-action" data-turbo="false">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                            <span>Download PDF</span>
+                        </a>
+                        <button type="button" class="repairs-show-action" data-challan-share
+                                data-url="{{ route('repairs.challan.pdf', $repair) }}" data-filename="{{ $challanRef }}-challan.pdf">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.7 10.7l6.6-3.4M8.7 13.3l6.6 3.4M18 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zm12 7a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                            <span data-challan-share-label>Share challan</span>
+                        </button>
+                    </div>
+                    <p data-challan-share-status role="status" aria-live="polite" style="padding:0 1rem; margin:0 0 .5rem; font-size:.85rem;"></p>
+                    <p data-challan-share-fallback hidden style="padding:0 1rem 1rem; margin:0; font-size:.85rem;">
+                        To send it on WhatsApp: tap Download PDF, open the customer’s chat in WhatsApp, tap Attach (📎) → Document and choose {{ $challanRef }}-challan.pdf. You send the message yourself.
+                    </p>
+                </section>
+
                 <section class="repairs-show-card repairs-show-card--details">
                     <header class="repairs-show-card-head">
                         <div>

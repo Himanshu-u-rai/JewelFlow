@@ -64,7 +64,7 @@ class RepairImagePrivacyTest extends TestCase
             'customer_id' => $customer->id, 'item_description' => 'Chain', 'description' => 'Fix lock',
             'gross_weight' => 8.5, 'purity' => 22, 'estimated_cost' => 450,
             'image' => UploadedFile::fake()->image('photo.png', 64, 64),
-        ])->assertRedirect(route('repairs.index'));
+        ])->assertRedirect();
 
         $repair = Repair::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
         Storage::disk('local')->assertExists($repair->image_path);

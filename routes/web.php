@@ -666,6 +666,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->middleware('can:repairs.create')->name('repairs.store');
     Route::get('/repairs/{repair}/image', [\App\Http\Controllers\RepairController::class, 'image'])->middleware('can:repairs.view')->name('repairs.image');
     Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->middleware('can:repairs.view')->name('repairs.show');
+    // Intake challan: a read-only receipt of the existing repair (print page and PDF).
+    Route::get('/repairs/{repair}/challan', [\App\Http\Controllers\RepairController::class, 'challan'])->middleware('can:repairs.view')->name('repairs.challan');
+    Route::get('/repairs/{repair}/challan/pdf', [\App\Http\Controllers\RepairController::class, 'challanPdf'])->middleware('can:repairs.view')->name('repairs.challan.pdf');
     Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->middleware('can:repairs.edit')->name('repairs.edit');
     Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->middleware('can:repairs.edit')->name('repairs.update');
     Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->middleware('can:repairs.edit')->name('repairs.status');

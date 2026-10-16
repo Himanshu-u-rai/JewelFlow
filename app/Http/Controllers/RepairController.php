@@ -121,7 +121,56 @@ class RepairController extends Controller
             ], 201);
         }
 
-        return redirect()->route('repairs.index')->with('success', 'Repair item received successfully!');
+        return redirect()->route('repairs.show', $repair)->with('success', 'Repair item received. Print, download or share the challan for the customer below.');
+    }
+
+    /**
+     * Intake challan: what was recorded for this repair, for the customer to keep
+     * and bring back at collection. Read-only: printing or downloading it again
+     * never creates a repair, uses a number, records a payment or moves the status.
+     */
+    public function challan(Repair $repair)
+    {
+        return view('repairs.challan', $this->challanData($repair));
+    }
+
+    public function challanPdf(Repair $repair)
+    {
+        $data = $this->challanData($repair);
+        $pdf = new \App\Services\Reporting\Render\ChromiumPdfService(
+            (string) config('reporting.chromium_path'),
+            (int) config('reporting.chromium_timeout_seconds', 60),
+        );
+        abort_unless($pdf->isAvailable(), 503, 'PDF download is unavailable right now. Use Print challan instead.');
+
+        $bytes = $pdf->convert(view('repairs.challan', $data + ['forPdf' => true])->render());
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            // The reference only: no customer name in a file that gets forwarded.
+            'Content-Disposition' => 'attachment; filename="' . $data['reference'] . '-challan.pdf"',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function challanData(Repair $repair): array
+    {
+        $this->authorize('update', $repair); // same shop check as the repair page
+        $repair->loadMissing('customer');
+        $shop = \App\Models\Shop::query()->findOrFail($repair->shop_id);
+
+        return [
+            'repair' => $repair,
+            'shop' => $shop,
+            'reference' => 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT),
+            'terms' => trim((string) $shop->billingSettings()->value('terms_and_conditions')),
+            // created_at and updated_at are written together on create; a later
+            // edit, status change or delivery moves updated_at.
+            'changedAfterIntake' => $repair->updated_at && $repair->created_at
+                && $repair->updated_at->gt($repair->created_at->copy()->addMinute()),
+            'forPdf' => false,
+        ];
     }
 
     public function show(Request $request, Repair $repair)
