@@ -5,6 +5,7 @@ import flatpickr from 'flatpickr';
 import Alpine from 'alpinejs';
 import { registerHistoricalManual } from './historical-manual';
 import { initializeCustomerPhotos } from './customer-photo';
+import { showFlashes, toastSettings } from './toast';
 import { initializeChallanShare } from './repair-challan-share';
 
 initializeCustomerPhotos();
@@ -108,17 +109,23 @@ function presentToast(toast) {
     }
 }
 
-window.showToast = function(message, durationOrTone = 4000) {
+window.showToast = function(message, durationOrTone = 4000, duration) {
     const toast = document.getElementById('global-toast');
     if (!toast) {
         console.warn('Cannot show toast: #global-toast element not found.');
         return;
     }
 
-    toastDuration = typeof durationOrTone === 'number' ? durationOrTone : 4000;
+    const settings = toastSettings(durationOrTone, duration);
+    toastDuration = settings.duration;
     window.clearTimeout(toastTimer);
     toastTimer = null;
 
+    if (settings.tone) {
+        toast.dataset.tone = settings.tone;
+    } else {
+        delete toast.dataset.tone;
+    }
     toast.textContent = message;
     toast.setAttribute('aria-hidden', 'false');
     presentToast(toast);
@@ -181,24 +188,7 @@ registerHistoricalManual(Alpine);
 Alpine.start();
 
 function showFlashToasts() {
-    const success = document.querySelector('meta[name="flash-success"]');
-    if (success) {
-        window.showToast(success.content);
-        success.remove();
-    }
-    const error = document.querySelector('meta[name="flash-error"]');
-    if (error) {
-        window.showToast(error.content);
-        error.remove();
-    }
-    // A warning explains why the user was sent somewhere else (no return policy
-    // yet, for one). The layouts always emitted it; nothing read it. It tells
-    // the user what to do next, so it stays up twice as long as a confirmation.
-    const warning = document.querySelector('meta[name="flash-warning"]');
-    if (warning) {
-        window.showToast(warning.content, 8000);
-        warning.remove();
-    }
+    showFlashes(document, window.showToast);
 }
 
 function initAjaxDeletes() {
@@ -236,10 +226,10 @@ function initAjaxDeletes() {
             .then(res => res.json().then(data => ({ ok: res.ok, data })))
             .then(({ ok, data }) => {
                 if (!ok) {
-                    window.showToast(data.message || 'Something went wrong.');
+                    window.showToast(data.message || 'Something went wrong.', 'error');
                     return;
                 }
-                window.showToast(data.message || 'Deleted successfully.');
+                window.showToast(data.message || 'Deleted successfully.', 'success');
 
                 if (redirectUrl) {
                     Turbo.visit(redirectUrl);
@@ -255,7 +245,7 @@ function initAjaxDeletes() {
                 }
             })
             .catch(() => {
-                window.showToast('Network error. Please try again.');
+                window.showToast('Network error. Please try again.', 'error');
             });
         });
     });
