@@ -136,3 +136,19 @@ test('after a failed download the next tap tries again instead of sharing a stal
     assert.equal(attempt, 2);
     assert.equal(calls.share.length, 1);
 });
+
+test('the Share button is shown only where a PDF can go to the share menu', () => {
+    requireModule();
+    const cases = [
+        ['no share API (desktop Linux Chrome)', {}, true],
+        ['share without canShare', { share: async () => {} }, true],
+        ['canShare says no to PDFs', { share: async () => {}, canShare: () => false }, true],
+        ['canShare throws', { share: async () => {}, canShare: () => { throw new Error('x'); } }, true],
+        ['phone that shares PDFs', { share: async () => {}, canShare: ({ files }) => files[0].type === 'application/pdf' }, false],
+    ];
+    for (const [name, nav, staysHidden] of cases) {
+        const button = { hidden: true };
+        module.revealChallanShare({ querySelectorAll: () => [button] }, nav);
+        assert.equal(button.hidden, staysHidden, name);
+    }
+});

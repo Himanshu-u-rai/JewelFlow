@@ -47,15 +47,32 @@ export function createChallanSharer({ url, filename, nav = globalThis.navigator,
     };
 }
 
+/**
+ * Share buttons render hidden; show them only where a PDF can go to the share menu,
+ * so a desktop browser never offers a button that can only refuse.
+ */
+export function revealChallanShare(doc = document, nav = globalThis.navigator) {
+    let canSharePdf = false;
+    try {
+        canSharePdf = typeof nav?.share === 'function' && typeof nav?.canShare === 'function'
+            && nav.canShare({ files: [new File([''], 'challan.pdf', { type: 'application/pdf' })] });
+    } catch {
+        canSharePdf = false;
+    }
+    if (!canSharePdf) return;
+    doc.querySelectorAll('[data-challan-share]').forEach((button) => { button.hidden = false; });
+}
+
 /** Delegated, so it keeps working across Turbo page loads; bound once. */
 export function initializeChallanShare(doc = document) {
     const sharers = new WeakMap();
+    revealChallanShare(doc);
+    doc.addEventListener('turbo:load', () => revealChallanShare(doc));
     doc.addEventListener('click', async (event) => {
         const button = event.target.closest?.('[data-challan-share]');
         if (!button || button.disabled) return;
         const box = button.closest('[data-challan-share-box]') ?? doc;
         const status = box.querySelector('[data-challan-share-status]');
-        const fallback = box.querySelector('[data-challan-share-fallback]');
         if (!sharers.has(button)) {
             sharers.set(button, createChallanSharer({ url: button.dataset.url, filename: button.dataset.filename }));
         }
@@ -64,7 +81,6 @@ export function initializeChallanShare(doc = document) {
         const result = await sharers.get(button)(button);
         button.disabled = false;
         if (status) status.textContent = MESSAGES[result] ?? MESSAGES.failed;
-        if (fallback) fallback.hidden = !(result === 'unsupported' || result === 'failed');
         const label = button.querySelector('[data-challan-share-label]');
         if (label) label.textContent = result === 'ready' ? 'Share now' : 'Share challan';
     });

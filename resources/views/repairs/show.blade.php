@@ -102,7 +102,8 @@
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
                             <span>Download PDF</span>
                         </a>
-                        <button type="button" class="repairs-show-action" data-challan-share
+                        {{-- Hidden until the browser shows it can hand a PDF to its share menu (repair-challan-share.js). --}}
+                        <button type="button" class="repairs-show-action" data-challan-share hidden
                                 data-url="{{ route('repairs.challan.pdf', $repair) }}" data-filename="{{ $challanRef }}-challan.pdf">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.7 10.7l6.6-3.4M8.7 13.3l6.6 3.4M18 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zm12 7a3 3 0 100-6 3 3 0 000 6z"/></svg>
                             <span data-challan-share-label>Share challan</span>
@@ -116,15 +117,13 @@
                     </div>
                     <p style="padding:0 1rem; margin:0 0 .5rem; font-size:.85rem;">
                         @if($customerWhatsApp['link'])
-                            WhatsApp customer opens a chat with {{ \App\Support\Mobile::forDisplay($repair->customer?->mobile) }} in the WhatsApp account on this device, with a short message filled in. Nothing is sent until you press Send. To include the challan, tap Download PDF, then in that chat tap Attach (📎) → Document and choose {{ $challanRef }}-challan.pdf.
+                            WhatsApp customer opens a chat with {{ \App\Support\Mobile::forDisplay($repair->customer?->mobile) }} in the WhatsApp account on this device, with a short message filled in. Nothing is sent until you press Send.
                         @else
                             {{ $customerWhatsApp['problem'] }}
                         @endif
+                        To send the challan on WhatsApp, tap Download PDF, then in the chat tap Attach (📎) → Document and choose {{ $challanRef }}-challan.pdf.
                     </p>
                     <p data-challan-share-status role="status" aria-live="polite" style="padding:0 1rem; margin:0 0 .5rem; font-size:.85rem;"></p>
-                    <p data-challan-share-fallback hidden style="padding:0 1rem 1rem; margin:0; font-size:.85rem;">
-                        To send it on WhatsApp: tap Download PDF, open the customer’s chat in WhatsApp, tap Attach (📎) → Document and choose {{ $challanRef }}-challan.pdf. You send the message yourself.
-                    </p>
                 </section>
 
                 <section class="repairs-show-card repairs-show-card--details">

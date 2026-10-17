@@ -88,6 +88,24 @@ class RepairChallanTest extends TestCase
             ->assertSee('Attach (📎) → Document', false)
             ->assertDontSee('api.whatsapp', false)
             ->assertSee(route('repairs.challan', $repair), false)->assertSee(route('repairs.challan.pdf', $repair), false);
+        // Share starts hidden: only a browser that can hand a PDF to its share menu shows it.
+        $this->assertMatchesRegularExpression('/<button[^>]*data-challan-share(?!-)[^>]*\shidden[\s>]/', (string) $page->getContent());
+        // One set of attach instructions, not a second copy that opens after a refused share.
+        $page->assertDontSee('data-challan-share-fallback', false);
+        $this->assertSame(1, substr_count((string) $page->getContent(), 'Attach (📎) → Document'));
+    }
+
+    public function test_attach_instructions_stay_when_there_is_no_usable_number(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id, ['mobile' => '9812300077']);
+        $repair = $this->receive($owner, $shop, $customer);
+        $ref = 'REP-' . str_pad((string) $repair->repair_number, 3, '0', STR_PAD_LEFT);
+        Customer::withoutGlobalScopes()->whereKey($customer->id)->update(['mobile' => '']);
+
+        $this->repairPage($owner, $shop, $repair)->assertOk()
+            ->assertDontSee('wa.me/', false)
+            ->assertSeeInOrder(['No mobile number is saved for this customer.', 'tap Download PDF, then in the chat tap Attach (📎) → Document and choose ' . $ref . '-challan.pdf'], false);
     }
 
     private function repairPage(User $owner, Shop $shop, Repair $repair)
@@ -112,7 +130,7 @@ class RepairChallanTest extends TestCase
             ->assertSee('href="https://wa.me/919812300077?text=' . rawurlencode($message) . '"', false)
             ->assertSee('the WhatsApp account on this device')
             ->assertSee('Nothing is sent until you press Send')
-            ->assertSee('tap Download PDF, then in that chat tap Attach (📎) → Document', false);
+            ->assertSee('tap Download PDF, then in the chat tap Attach (📎) → Document', false);
     }
 
     public function test_a_legacy_formatted_saved_number_still_gets_the_same_link(): void

@@ -15829,6 +15829,10 @@ input::-webkit-calendar-picker-indicator {
     gap: 8px;
 }
 
+.repairs-show-action[hidden] {
+    display: none;
+}
+
 .repairs-show-action,
 .repairs-edit-back,
 .repairs-edit-button {
