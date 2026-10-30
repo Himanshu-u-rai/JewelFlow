@@ -1029,7 +1029,7 @@ class BulkImportService
         }
 
         if (str_contains($message, 'Shop is in')) {
-            return 'This shop is not allowed to import right now (read-only or suspended).';
+            return \App\Support\NotAvailable::unlessOwner('This shop is not allowed to import right now (read-only or suspended).');
         }
 
         return $message;

@@ -124,7 +124,7 @@ class StaffController extends Controller
         }
 
         if ($staff->role?->name === 'owner') {
-            abort(403, 'The shop owner account cannot be managed from staff management.');
+            abort(403, \App\Support\NotAvailable::MESSAGE); // the owner's account is not managed from staff management
         }
     }
 

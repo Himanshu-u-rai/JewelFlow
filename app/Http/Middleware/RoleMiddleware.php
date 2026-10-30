@@ -29,7 +29,7 @@ class RoleMiddleware
 
         // Check if user's role matches any of the allowed roles
         if (!in_array($userRoleName, $roles)) {
-            abort(403, 'Unauthorized - You do not have permission to access this page.');
+            abort(403, \App\Support\NotAvailable::MESSAGE);
         }
 
         return $next($request);

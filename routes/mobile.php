@@ -23,15 +23,16 @@ Route::post('/auth/login', [AuthController::class, 'login'])
 
 // A repair photo, by the expiring signed link the authenticated API hands out (the app loads images without headers).
 Route::get('/repairs/{repair}/image', [RepairController::class, 'image'])
-    ->middleware(['signed', 'throttle:240,1'])->whereNumber('repair')->name('mobile.repairs.image');
+    ->middleware(['signed', 'throttle:240,1'])->name('mobile.repairs.image');
 
 // --- Authenticated ---
 Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1', 'shopaccess.open'])
     ->group(function () {
 
         // Auth — self-management for the authenticated user; no role/permission gate.
-        Route::post('/auth/logout', [AuthController::class, 'logout']);
-        Route::get('/auth/me', [AuthController::class, 'me']);
+        // Named: every gate lets these through (App\Support\SelfServiceRoutes).
+        Route::post('/auth/logout', [AuthController::class, 'logout'])->name('mobile.auth.logout');
+        Route::get('/auth/me', [AuthController::class, 'me'])->name('mobile.auth.me');
 
         // Bootstrap — tenant/shop capabilities, config, feature flags.
         // Available to every authenticated mobile user (the mobile app boot-loads it).
@@ -49,28 +50,34 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-sale')
             ->name('mobile.shop-access.update');
 
-        // Dashboard — minimal read-only summary. Use reports.view since this surfaces KPIs.
+        // Dashboard — as the web dashboard: today's rates, counts and notices for
+        // everyone; money figures (revenue, profit, trend) only with reports.view.
         Route::get('/dashboard', [DashboardController::class, 'index'])
-            ->middleware(['throttle:api-pos-read', 'can:reports.view']);
+            ->middleware(['throttle:api-pos-read']);
 
         // Items
         Route::get('/items/search', [ItemController::class, 'search'])
             ->middleware(['throttle:api-pos-read', 'can:inventory.view']);
+        // The shop's tag codes, so the scanner can trust a read that matches one.
+        // The scanner serves stock (inventory.view) and the counter (sales.pos,
+        // as the web POS's tag lookup): lookup-item allows either.
+        Route::get('/items/barcodes', [ItemController::class, 'barcodes'])
+            ->middleware(['throttle:api-pos-read', 'can:lookup-item']);
+        // Any code a shop's tags carry, including supplier QR codes that hold a
+        // link (slashes), must reach the lookup.
         Route::get('/items/barcode/{barcode}', [ItemController::class, 'findByBarcode'])
-            ->middleware(['throttle:api-pos-read', 'can:inventory.view']);
+            ->where('barcode', '.*')
+            ->middleware(['throttle:api-pos-read', 'can:lookup-item']);
         Route::get('/items/retailer-pricing-meta', [ItemController::class, 'retailerPricingMeta'])
             ->middleware(['throttle:api-pos-read', 'can:inventory.view']);
         Route::post('/items', [ItemController::class, 'store'])
             ->middleware(['throttle:api-pos-sale', 'can:inventory.create']);
         Route::get('/items/{item}', [ItemController::class, 'show'])
-            ->middleware(['throttle:api-pos-read', 'can:inventory.view'])
-            ->whereNumber('item');
+            ->middleware(['throttle:api-pos-read', 'can:inventory.view']);
         Route::put('/items/{item}', [ItemController::class, 'update'])
-            ->middleware(['throttle:api-pos-sale', 'can:inventory.edit'])
-            ->whereNumber('item');
+            ->middleware(['throttle:api-pos-sale', 'can:inventory.edit']);
         Route::patch('/items/{item}', [ItemController::class, 'update'])
-            ->middleware(['throttle:api-pos-sale', 'can:inventory.edit'])
-            ->whereNumber('item');
+            ->middleware(['throttle:api-pos-sale', 'can:inventory.edit']);
 
         // Lookup data for item registration — read-only, inventory.view to scope.
         Route::get('/categories', [ItemController::class, 'categories'])
@@ -89,22 +96,22 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->name('mobile.vendors.store');
         Route::get('/vendors/{vendor}', [VendorController::class, 'show'])
             ->middleware(['throttle:api-pos-read', 'can:vendors.view'])
-            ->whereNumber('vendor')
             ->name('mobile.vendors.show');
         Route::put('/vendors/{vendor}', [VendorController::class, 'update'])
             ->middleware(['throttle:api-pos-sale', 'can:vendors.manage'])
-            ->whereNumber('vendor')
             ->name('mobile.vendors.update');
         Route::patch('/vendors/{vendor}', [VendorController::class, 'update'])
-            ->middleware(['throttle:api-pos-sale', 'can:vendors.manage'])
-            ->whereNumber('vendor');
+            ->middleware(['throttle:api-pos-sale', 'can:vendors.manage']);
+        // Archive / Reactivate, as the web (vendors.manage).
+        Route::patch('/vendors/{vendor}/archive', [VendorController::class, 'archive'])
+            ->middleware(['throttle:api-pos-sale', 'can:vendors.manage']);
+        Route::patch('/vendors/{vendor}/reactivate', [VendorController::class, 'reactivate'])
+            ->middleware(['throttle:api-pos-sale', 'can:vendors.manage']);
         Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])
             ->middleware(['throttle:api-pos-sale', 'can:vendors.manage'])
-            ->whereNumber('vendor')
             ->name('mobile.vendors.destroy');
         Route::get('/vendors/{vendor}/ledger', [VendorController::class, 'ledger'])
             ->middleware(['throttle:api-pos-read', 'can:vendors.ledger'])
-            ->whereNumber('vendor')
             ->name('mobile.vendors.ledger');
 
         // Customers — view/create/edit gated by respective permissions.
@@ -120,6 +127,18 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-sale', 'can:customers.create']);
         Route::put('/customers/{customer}', [CustomerController::class, 'update'])
             ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
+        // Customer profile photo: the website's controller and service (validation,
+        // compression, private storage, version check). The app fetches the file with
+        // its token in the Authorization header; nothing private goes in a URL.
+        Route::get('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'show'])
+            ->middleware(['throttle:api-pos-read', 'can:customers.view'])
+            ->name('mobile.customers.photo.show');
+        Route::post('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'store'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit'])
+            ->name('mobile.customers.photo.store');
+        Route::delete('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'destroy'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit'])
+            ->name('mobile.customers.photo.destroy');
         Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])
             ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
         Route::post('/customers/{customer}/kyc-documents', [CustomerController::class, 'uploadKycDocument'])
@@ -138,16 +157,20 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // Repairs
         // Server-driven metal types + metal-aware purity presets, so the mobile
         // app renders the right purity scale without hardcoding values. Declared
-        // before /repairs/{repair} (which is whereNumber-constrained anyway).
+        // before /repairs/{repair} (whose id is numeric anyway: App\Support\RouteIds).
         Route::get('/repairs/options', [RepairController::class, 'options'])
             ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::get('/repairs', [RepairController::class, 'index'])
             ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::get('/repairs/{repair}', [RepairController::class, 'show'])
-            ->middleware(['throttle:api-pos-read', 'can:repairs.view'])
-            ->whereNumber('repair');
+            ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::post('/repairs', [RepairController::class, 'store'])
             ->middleware(['throttle:api-pos-sale', 'can:repairs.create']);
+        Route::put('/repairs/{repair}', [RepairController::class, 'update'])
+            ->middleware(['throttle:api-pos-sale', 'can:repairs.edit']);
+        // The same challan PDF the website renders; the app sends its token in the header.
+        Route::get('/repairs/{repair}/challan/pdf', [\App\Http\Controllers\RepairController::class, 'challanPdf'])
+            ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::post('/repairs/{repair}/status', [RepairController::class, 'updateStatus'])
             ->middleware(['throttle:api-pos-sale', 'can:repairs.edit']);
         Route::post('/repairs/{repair}/deliver', [RepairController::class, 'deliver'])
@@ -170,8 +193,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/invoices/{invoice}/template', [InvoiceController::class, 'template'])
             ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
         Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])
-            ->middleware(['throttle:api-pos-sale', 'can:sales.create'])
-            ->whereNumber('invoice');
+            ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
 
         // Quick Bills. quickbill.enabled returns JSON 403 {error:quick_bill_disabled}
         // when the owner has turned the feature off for the shop.
@@ -240,4 +262,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-read', 'can:pricing.update']);
         Route::post('/pricing/today', [PricingController::class, 'saveToday'])
             ->middleware(['throttle:api-pos-sale', 'can:pricing.update']);
+        // Rates by purity + same-day override (web: settings.pricing.overrides.store) — owner only, checked in the controller.
+        Route::get('/pricing/purity-rates', [PricingController::class, 'purityRates'])
+            ->middleware(['throttle:api-pos-read', 'can:pricing.update']);
+        Route::post('/pricing/purity-rates/{profile}/override', [PricingController::class, 'overridePurityRate'])            ->middleware(['throttle:api-pos-sale', 'can:pricing.update']);
     });

@@ -150,8 +150,8 @@ class IdempotentReplayAuthorizationTest extends TestCase
         $replay = $this->send($staff, 'POST', '/api/mobile/v1/cashbook', 'xr01-cash-key', $this->cashPayload());
 
         $this->assertRefusedWithoutReplay($replay, '2500');
-        $this->assertSame('You do not have permission to access Cash Book.', $replay->json('errors.0.message'),
-            'the same stable message Cash Book has always given');
+        $this->assertSame(\App\Support\NotAvailable::MESSAGE, $replay->json('errors.0.message'),
+            'the same stable message a fresh refusal gives');
         $this->assertSame(1, $this->cashRows((int) $shop->id), 'no second cash row');
     }
 
@@ -163,7 +163,7 @@ class IdempotentReplayAuthorizationTest extends TestCase
         $fresh = $this->send($staff, 'POST', '/api/mobile/v1/cashbook', 'xr01-cash-fresh', $this->cashPayload());
 
         $fresh->assertStatus(403);
-        $this->assertSame('You do not have permission to access Cash Book.', $fresh->json('errors.0.message'));
+        $this->assertSame(\App\Support\NotAvailable::MESSAGE, $fresh->json('errors.0.message'));
         $this->assertSame(0, $this->cashRows((int) $shop->id));
         $this->assertNull(IdempotencyKey::where('key', 'xr01-cash-fresh')->first(), 'refused before any claim is staked');
     }

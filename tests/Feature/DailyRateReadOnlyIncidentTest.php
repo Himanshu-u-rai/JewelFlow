@@ -287,6 +287,30 @@ class DailyRateReadOnlyIncidentTest extends TestCase
      * ADMINISTRATOR HOLD. Guards the transport contract — a mobile client must
      * get JSON, never an HTML login redirect. Independent of which lock fired.
      */
+    /**
+     * Only the owner is told the shop is read-only (owner rule 2026-10-30/31);
+     * anyone else whose write is refused gets the plain message.
+     */
+    public function test_a_read_only_refusal_does_not_explain_itself_to_staff(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $this->makeAdministrativeReadOnly($shop->id);
+        $role = (new Role())->forceFill(['name' => 'manager', 'display_name' => 'Manager', 'shop_id' => $shop->id]);
+        $role->save();
+        $role->permissions()->sync(Permission::query()->whereIn('name', ['pricing.update', 'settings.view', 'settings.edit'])->pluck('id'));
+        $manager = User::factory()->create(['shop_id' => $shop->id, 'role_id' => $role->id, 'is_active' => true]);
+        $rates = ['gold_24k_rate_per_gram' => 5500, 'silver_999_rate_per_kg' => 92000];
+
+        $this->actingAs($manager)->postJson(route('settings.pricing.save-rates'), ['context' => 'modal'] + $rates)
+            ->assertStatus(403)->assertExactJson(['message' => \App\Support\NotAvailable::MESSAGE]);
+        $this->actingAs($manager)->from(route('dashboard'))->post(route('settings.pricing.save-rates'), ['context' => 'modal'] + $rates)
+            ->assertRedirect(route('dashboard'))->assertSessionHas('error', \App\Support\NotAvailable::MESSAGE);
+
+        Sanctum::actingAs($manager, ['*']);
+        $this->postJson('/api/mobile/pricing/today', $rates)
+            ->assertStatus(403)->assertExactJson(['message' => \App\Support\NotAvailable::MESSAGE]);
+    }
+
     public function test_administrative_read_only_mobile_request_remains_json_and_is_not_redirected(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

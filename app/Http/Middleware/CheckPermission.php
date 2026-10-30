@@ -28,7 +28,7 @@ class CheckPermission
         }
 
         if (!$user->hasPermission($permission)) {
-            abort(403, 'You do not have permission to access this resource.');
+            abort(403, \App\Support\NotAvailable::MESSAGE);
         }
 
         return $next($request);

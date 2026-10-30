@@ -8,8 +8,13 @@
                 </svg>
             </div>
             <h1 style="font-size:28px;font-weight:700;color:#101828;margin-bottom:8px;">Access Restricted</h1>
+            @php
+                // The refusal's own message when it has one (plan or turned-off reasons reach the owner only).
+                $reason = trim((string) ($exception?->getMessage() ?? ''));
+                $reason = in_array($reason, ['', 'This action is unauthorized.', 'Forbidden', 'Unauthorized.'], true) ? null : $reason;
+            @endphp
             <p style="font-size:15px;color:#475569;line-height:1.6;margin-bottom:24px;">
-                You don't have permission to view this page. This area may require a different account or role.
+                {{ $reason ?? \App\Support\NotAvailable::MESSAGE }}
             </p>
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
                 <a href="{{ url()->previous() !== url()->current() ? url()->previous() : url('/') }}"

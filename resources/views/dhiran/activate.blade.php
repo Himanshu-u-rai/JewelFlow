@@ -59,7 +59,7 @@
                     </button>
                 </form>
                 @else
-                <p class="da-feature-card-desc">Only an owner/admin can activate the Dhiran module.</p>
+                <p class="da-feature-card-desc">{{ \App\Support\NotAvailable::MESSAGE }}</p>
                 @endcan
             </div>
         </div>

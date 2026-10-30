@@ -110,22 +110,31 @@ class CapabilityResolverTest extends TestCase
     {
         $resolver = new CapabilityResolver();
 
-        // Empty feature set — every gated feature absent.
+        // Empty feature set — every gated feature absent. A silent plan never
+        // blocks; the user still needs the permission the web route asks for.
         [$shop, $user] = $this->buildTenant(
             features: [],
-            permissions: ['cash.view'],
+            permissions: ['cash.view', 'reports.view', 'inventory.view', 'catalog.manage'],
             roleName: 'staff',
         );
 
         $caps = $resolver->resolve($shop, $user);
 
-        $this->assertTrue($caps->dashboard, 'dashboard is always-on');
-        $this->assertTrue($caps->scanner, 'scanner is always-on');
-        $this->assertTrue($caps->purchases, 'purchases is always-on');
-        $this->assertTrue($caps->catalog, 'catalog defaults to true when plan has no catalog keys');
+        $this->assertTrue($caps->dashboard, 'dashboard money figures: plan-silent, reports.view held');
+        $this->assertTrue($caps->scanner, 'scanner: plan-silent, inventory.view held');
+        $this->assertTrue($caps->purchases, 'purchases: plan-silent, inventory.view held');
+        $this->assertTrue($caps->catalog, 'catalog defaults to on when plan has no catalog keys, catalog.manage held');
         // Cash Book is NOT purely always-on: it is role+permission gated. A staff
         // user with cash.view is still denied (see the dedicated matrix test).
         $this->assertFalse($caps->cashbook, 'cashbook is denied for staff even with cash.view');
+
+        // Without the permissions the same silent plan still does not block: the
+        // reason is the permission, never the plan.
+        [$shop2, $user2] = $this->buildTenant(features: [], permissions: [], roleName: 'staff2');
+        $caps2 = $resolver->resolve($shop2, $user2);
+        $this->assertFalse($caps2->catalog);
+        $this->assertSame('permission', $resolver->reasons()['catalog']['reason']);
+        $this->assertSame('permission', $resolver->reasons()['dashboard']['reason']);
     }
 
     /**
@@ -160,6 +169,81 @@ class CapabilityResolverTest extends TestCase
         $caps = $resolver->resolve($shop, $user);
         $this->assertFalse($caps->cashbook, 'staff denied even with permission');
         $this->assertFalse($caps->cashbook_create, 'staff denied even with permission');
+    }
+
+    /**
+     * The app shows "Add item" on the stock page only to someone the server
+     * would let add stock (POST /items is gated on inventory.create).
+     */
+    public function test_items_create_follows_the_create_items_permission(): void
+    {
+        $resolver = new CapabilityResolver();
+
+        [$shop, $user] = $this->buildTenant([], [], 'owner');
+        $this->assertTrue($resolver->resolve($shop, $user)->items_create, 'owner');
+
+        [$shop, $user] = $this->buildTenant([], ['inventory.view', 'inventory.create'], 'staff');
+        $this->assertTrue($resolver->resolve($shop, $user)->items_create, 'staff with Create Items');
+
+        [$shop, $user] = $this->buildTenant([], ['inventory.view'], 'staff');
+        $this->assertFalse($resolver->resolve($shop, $user)->items_create, 'staff who can only view stock');
+    }
+
+    /**
+     * The app shows Approve / Reject on a pending return only to someone the
+     * server would let do it (both routes are gated on returns.approve, as on the web).
+     */
+    public function test_returns_approve_follows_the_approve_returns_permission(): void
+    {
+        $resolver = new CapabilityResolver();
+
+        [$shop, $user] = $this->buildTenant([], [], 'owner');
+        $this->assertTrue($resolver->resolve($shop, $user)->returns_approve, 'owner');
+
+        [$shop, $user] = $this->buildTenant([], ['sales.view', 'returns.approve'], 'staff');
+        $this->assertTrue($resolver->resolve($shop, $user)->returns_approve, 'staff with Approve Returns');
+
+        [$shop, $user] = $this->buildTenant([], ['sales.view', 'returns.create'], 'staff');
+        $this->assertFalse($resolver->resolve($shop, $user)->returns_approve, 'staff who can only create returns');
+    }
+
+    /**
+     * Status, delivery and edit on a repair are all gated on repairs.edit (web and
+     * app routes); the app shows them only to someone who has it.
+     */
+    public function test_repairs_edit_follows_the_edit_repairs_permission(): void
+    {
+        $resolver = new CapabilityResolver();
+
+        [$shop, $user] = $this->buildTenant([], [], 'owner');
+        $this->assertTrue($resolver->resolve($shop, $user)->repairs_edit, 'owner');
+
+        [$shop, $user] = $this->buildTenant([], ['repairs.view', 'repairs.edit'], 'staff');
+        $this->assertTrue($resolver->resolve($shop, $user)->repairs_edit, 'staff with Edit Repairs');
+
+        [$shop, $user] = $this->buildTenant([], ['repairs.view'], 'staff');
+        $this->assertFalse($resolver->resolve($shop, $user)->repairs_edit, 'staff who can only view repairs');
+    }
+
+    /**
+     * Suppliers follow the web's vendor permissions: seeing them needs vendors.view
+     * (it was plan-only, so a user without it saw the menu and got refused);
+     * adding / editing / archiving needs vendors.manage.
+     */
+    public function test_suppliers_follow_the_view_and_manage_vendor_permissions(): void
+    {
+        $resolver = new CapabilityResolver();
+
+        [$shop, $user] = $this->buildTenant([], [], 'owner');
+        $this->assertTrue($resolver->resolve($shop, $user)->suppliers, 'owner');
+        $this->assertTrue($resolver->resolve($shop, $user)->suppliers_manage, 'owner');
+
+        [$shop, $user] = $this->buildTenant([], ['vendors.view'], 'staff');
+        $this->assertTrue($resolver->resolve($shop, $user)->suppliers, 'staff who can view suppliers');
+        $this->assertFalse($resolver->resolve($shop, $user)->suppliers_manage, 'staff who can only view suppliers');
+
+        [$shop, $user] = $this->buildTenant([], ['sales.view'], 'staff');
+        $this->assertFalse($resolver->resolve($shop, $user)->suppliers, 'staff without supplier access');
     }
 
     /**

@@ -33,6 +33,8 @@ class EnsureShopAccessOpen
             'mobile.bootstrap',
             'mobile.shop-access.show',
             'mobile.shop-access.update',
+            ...\App\Support\SelfServiceRoutes::SIGN_OUT,
+            ...\App\Support\SelfServiceRoutes::OWN_SESSION,
         )) {
             return $next($request);
         }

@@ -55,9 +55,12 @@ class BootstrapController extends Controller
                 min_mobile_version: (string) config('mobile.min_mobile_version', '1.0.0'),
                 api_version: (string) config('mobile.api_version', 'mobile-v1'),
                 environment: (string) config('app.env', 'production'),
+                making_charge_modes: (bool) config('features.making_charge_modes', false),
             ),
             pricing: $this->pricingStatus($shop),
             shop_access: ShopAccessData::forShopUser($shop, $user),
+            // Filled by resolve() above: why each capability that is off is off.
+            capability_reasons: $shop ? $this->resolver->reasons() : [],
         );
     }
 

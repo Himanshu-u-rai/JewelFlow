@@ -142,7 +142,7 @@
                         <section class="invoices-edit-card invoices-edit-empty">
                             <p class="invoices-edit-kicker">No action available</p>
                             <h2>This finalized invoice is locked.</h2>
-                            <p>You do not have permission to create a reversal for this invoice.</p>
+                            <p>{{ \App\Support\NotAvailable::MESSAGE }}</p>
                             <a href="{{ route('invoices.show', $invoice) }}" class="invoices-edit-button invoices-edit-button--secondary">View invoice</a>
                         </section>
                     @endcan

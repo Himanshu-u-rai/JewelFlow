@@ -52,6 +52,8 @@ $authMiddleware = [
     'account.active',
     'shop.exists',
     'rate.shop:600,1',
+    // Closing the shop blocks staff here too, as on the legacy routes and the web.
+    'shopaccess.open',
 ];
 
 // ─── PUT /uploads/{token} — raw bytes, NO envelope, NO idempotency ─────────
@@ -73,6 +75,7 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
         // ─── M7: Session governance ────────────────────────────────────
         // Read-only session endpoints (no idempotency required).
         Route::get('/sessions', [SessionController::class, 'index'])
+            ->middleware('can:settings.view')
             ->name('mobile.v1.sessions.index');
         Route::get('/sessions/me', [SessionController::class, 'me'])
             ->name('mobile.v1.sessions.me');
@@ -94,7 +97,7 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
                 ->name('mobile.v1.notifications.read_all');
             Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
-                ->whereNumber('id')
+                ->where('id', \App\Support\RouteIds::PATTERN)
                 ->name('mobile.v1.notifications.read');
         });
 
@@ -138,15 +141,14 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.job_orders.show');
 
         // ─── M8: Returns read endpoints ────────────────────────────────
-        // returns.approve covers viewing too for owners/managers; staff
-        // with returns.approve can read. For general staff read access,
-        // we gate on sales.view which all sales staff have.
+        // The web's permissions: the list needs returns.view; one return opens
+        // with returns.view, or returns.approve (the web's approve-review page).
         Route::get('/returns', [ReturnController::class, 'index'])
-            ->middleware('can:sales.view')
+            ->middleware('can:returns.view')
             ->name('mobile.v1.returns.index');
 
         Route::get('/returns/{returnOrder}', [ReturnController::class, 'show'])
-            ->middleware('can:sales.view')
+            ->middleware('can:view-return')
             ->name('mobile.v1.returns.show');
 
         // ─── M10: Reference price read endpoints ───────────────────────
@@ -164,6 +166,8 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.cashbook.index');
         Route::get('/cashbook/drawer-check', [CashBookController::class, 'drawerContext'])
             ->name('mobile.v1.cashbook.drawer_context');
+        Route::get('/cashbook/accounts', [CashBookController::class, 'accounts'])
+            ->name('mobile.v1.cashbook.accounts');
 
         // ─── Mutation routes (idempotency-protected) ───────────────────
         Route::middleware(['mobile.idempotency'])->group(function () {
@@ -201,14 +205,17 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
                 ->middleware('can:customers.edit')
                 ->name('mobile.v1.customers.update');
 
-            // M8 — return create + approve
+            // M8 — return create (web: returns.create) + approve
             Route::post('/returns', [ReturnController::class, 'store'])
-                ->middleware('can:sales.create')
+                ->middleware('can:returns.create')
                 ->name('mobile.v1.returns.store');
 
             Route::post('/returns/{returnOrder}/approve', [ReturnController::class, 'approve'])
                 ->middleware('can:returns.approve')
                 ->name('mobile.v1.returns.approve');
+            Route::post('/returns/{returnOrder}/reject', [ReturnController::class, 'reject'])
+                ->middleware('can:returns.approve')
+                ->name('mobile.v1.returns.reject');
 
             // M9 — karigar job-order issue + receipt
             Route::post('/job-orders', [JobOrderController::class, 'store'])
@@ -231,7 +238,6 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
                 ->name('mobile.v1.installments.discard_draft');
 
             Route::post('/installments/{plan}/pay', [InstallmentController::class, 'pay'])
-                ->whereNumber('plan')
                 ->middleware('can:sales.create')
                 ->name('mobile.v1.installments.pay');
 
@@ -243,7 +249,6 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.installments.index');
 
         Route::get('/installments/{plan}', [InstallmentController::class, 'show'])
-            ->whereNumber('plan')
             ->middleware('can:sales.view')
             ->name('mobile.v1.installments.show');
     });

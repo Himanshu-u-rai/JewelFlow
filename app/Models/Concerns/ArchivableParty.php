@@ -109,6 +109,13 @@ trait ArchivableParty
             if ($value === null || $value === '' || $value === []) {
                 return;
             }
+            // Only a whole number that fits an id can name a record; anything
+            // else (text, a list, 20 digits) would fail inside the database.
+            if (filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                $fail('The selected ' . static::partyLabel() . ' was not found.');
+
+                return;
+            }
 
             $party = static::withoutTenant()
                 ->where('shop_id', $shopId)

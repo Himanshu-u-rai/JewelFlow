@@ -230,7 +230,7 @@ class SubscriptionController extends Controller
     private function abortUnlessOwner(): void
     {
         if (! Auth::user()?->isShopOwner()) {
-            abort(403, 'Unauthorized - You do not have permission to access this page.');
+            abort(403, \App\Support\NotAvailable::MESSAGE);
         }
     }
 

@@ -277,7 +277,7 @@ class ExchangeController extends Controller
         if ($validated['valuation_basis_source'] === ExchangeOrder::BASIS_MANUAL_OVERRIDE) {
             if (!auth()->user()->can('exchanges.override_rate')) {
                 return back()->withInput()->withErrors([
-                    'valuation_basis_source' => 'Manual rate override requires the "Override Exchange Rate Basis" permission.',
+                    'valuation_basis_source' => \App\Support\NotAvailable::MESSAGE,
                 ]);
             }
             $overrideRate = (float) ($validated['gold_rate_per_gram_override'] ?? 0);

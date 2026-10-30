@@ -79,9 +79,7 @@ class ExchangeService
         $user = \App\Models\User::find($userId);
         $hasOverridePermission = $user && $user->can('exchanges.override_rate');
         if ($basisSource !== $defaultBasis && !$hasOverridePermission) {
-            throw new LogicException(
-                "Non-default valuation basis ('{$basisSource}') requires the 'Override Exchange Rate Basis' permission. Shop default is '{$defaultBasis}'."
-            );
+            throw new LogicException(\App\Support\NotAvailable::MESSAGE);
         }
         $approvedByOwner = $hasOverridePermission;
 
@@ -390,7 +388,7 @@ class ExchangeService
         if ($basisSource === ExchangeOrder::BASIS_MANUAL_OVERRIDE) {
             $user = \App\Models\User::find($userId);
             if (!$user || !$user->can('exchanges.override_rate')) {
-                throw new LogicException("Manual rate override requires the 'Override Exchange Rate Basis' permission.");
+                throw new LogicException(\App\Support\NotAvailable::MESSAGE);
             }
         }
 

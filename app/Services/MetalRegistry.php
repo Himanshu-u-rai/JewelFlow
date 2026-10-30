@@ -365,6 +365,12 @@ final class MetalRegistry
      */
     public static function isSupported(string $metalType): bool
     {
+        // A yes/no question: an empty metal type is simply not supported. It must
+        // not throw, or a form's own rules crash before "required" can answer.
+        if (trim($metalType) === '') {
+            return false;
+        }
+
         return self::tierFor($metalType) !== self::TIER_3;
     }
 

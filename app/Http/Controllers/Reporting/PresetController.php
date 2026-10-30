@@ -152,7 +152,7 @@ class PresetController extends Controller
         $user = $request->user();
         abort_unless($user !== null, 403);
         abort_unless($user->can($definition->permissions->export), 403);
-        abort_unless($user->isOwner() || $user->isManager(), 403, 'Only an owner or manager can manage export presets.');
+        abort_unless($user->isOwner() || $user->isManager(), 403, \App\Support\NotAvailable::MESSAGE); // owner or manager
 
         return $definition;
     }

@@ -15,5 +15,11 @@ class BootstrapData extends Data
         public AppConfigData $config,
         public PricingStatusData $pricing,
         public ShopAccessData $shop_access,
+        /**
+         * Why each capability that is off is off: {key: {reason: 'plan'|'permission'|'role'|'disabled'}}.
+         * The app tells only the owner (plan, turned off); staff just see "Not available".
+         * @var array<string, array<string, string>>
+         */
+        public array $capability_reasons = [],
     ) {}
 }

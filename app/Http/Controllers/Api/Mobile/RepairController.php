@@ -37,6 +37,30 @@ class RepairController extends Controller
                 ->whereDate('due_date', '<', now()->toDateString());
         }
 
+        // Search: item, customer name or mobile, or the challan number
+        // ("REP-012", "012", "12"). Within this shop only (shop_id above).
+        if ($request->filled('search')) {
+            $search = mb_substr(trim((string) $request->input('search')), 0, 100);
+            $number = preg_match('/^(?:rep-?)?0*(\d+)$/i', $search, $m) ? (int) $m[1] : null;
+            $query->where(function ($q) use ($search, $number) {
+                $q->where('item_description', 'ilike', "%{$search}%")
+                    ->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('first_name', 'ilike', "%{$search}%")
+                            ->orWhere('last_name', 'ilike', "%{$search}%")
+                            ->orWhere('mobile', 'like', "%{$search}%");
+                    });
+                if ($number !== null) {
+                    $q->orWhere('repair_number', $number);
+                }
+            });
+        }
+
+        // One customer's repairs (customer page). The shop_id condition above
+        // still applies, so another shop's customer id returns nothing.
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', (int) $request->input('customer_id'));
+        }
+
         $repairs = $query->orderBy('created_at', 'desc')
             ->paginate($request->input('per_page', 20));
         $repairs->setCollection(
@@ -77,7 +101,7 @@ class RepairController extends Controller
             ->where('shop_id', (int) $request->user()->shop_id)
             ->findOrFail($repair);
 
-        return response()->json($this->serializeRepair($repairModel));
+        return response()->json($this->serializeRepair($repairModel, true));
     }
 
     public function store(Request $request): JsonResponse
@@ -107,6 +131,9 @@ class RepairController extends Controller
             'gross_weight' => 'required|numeric|min:0.001',
             'purity' => $purityRule,
             'estimated_cost' => 'required|numeric|min:0',
+            // Optional intake details, same rules as the website; older app builds omit them.
+            'item_quantity' => 'nullable|integer|min:1|max:999',
+            'intake_condition' => 'nullable|string|max:500',
             'image_base64' => 'nullable|string',
         ]);
 
@@ -131,6 +158,8 @@ class RepairController extends Controller
                 'gross_weight' => $validated['gross_weight'],
                 'purity' => $validated['purity'] ?? null,
                 'estimated_cost' => $validated['estimated_cost'],
+                'item_quantity' => $validated['item_quantity'] ?? null,
+                'intake_condition' => $validated['intake_condition'] ?? null,
                 'status' => 'received',
             ]);
         });
@@ -163,8 +192,85 @@ class RepairController extends Controller
             'image_path' => $resolvedImagePath,
             'image_url' => $repair->signedImageUrl(),
             'message' => 'Repair created successfully.',
-            'repair' => $this->serializeRepair($repair),
+            'repair' => $this->serializeRepair($repair, true),
         ], 201);
+    }
+
+    /**
+     * Correct a repair's recorded details. Partial: only the keys the app sends
+     * change (a key sent as null clears an optional value), so an older build that
+     * never sends the intake fields cannot erase them. The intake copy is never
+     * touched; the challan lists corrections apart. Status has its own endpoint.
+     */
+    public function update(int $repair, Request $request): JsonResponse
+    {
+        $shopId = (int) $request->user()->shop_id;
+        $model = Repair::with('customer:id,first_name,last_name,mobile')->where('shop_id', $shopId)->findOrFail($repair);
+
+        if ($model->status === 'delivered') {
+            return response()->json(['message' => 'Delivered repairs cannot be edited.'], 422);
+        }
+
+        $metalType = $request->input('metal_type', $model->metal_type ?? Repair::DEFAULT_METAL_TYPE);
+        $validated = $request->validate([
+            'item_description' => 'sometimes|required|string|max:255',
+            'description' => 'sometimes|nullable|string|max:1000',
+            'metal_type' => ['sometimes', 'required', Rule::in(Repair::METAL_TYPES)],
+            'gross_weight' => 'sometimes|required|numeric|min:0.001',
+            'purity' => 'sometimes|nullable|numeric|min:1|max:' . Repair::maxPurityFor($metalType),
+            'estimated_cost' => 'sometimes|required|numeric|min:0',
+            'item_quantity' => 'sometimes|nullable|integer|min:1|max:999',
+            'intake_condition' => 'sometimes|nullable|string|max:500',
+            'due_date' => 'sometimes|nullable|date',
+            // As the web edit form: status either way (delivery has its own flow),
+            // another customer (the current one may stay even if archived), the photo.
+            'status' => ['sometimes', 'required', Rule::in(['received', 'in_repair', 'ready'])],
+            'customer_id' => ['sometimes', 'required', Customer::activeOrCurrentExistsRule($shopId, (int) $model->customer_id)],
+            'image_base64' => 'sometimes|nullable|string',
+            'remove_image' => 'sometimes|boolean',
+        ]);
+
+        // The old photo is deleted only once the change is saved (a copy remembers its path).
+        $before = clone $model;
+        $photoChanged = false;
+        if (! empty($validated['image_base64'])) {
+            $newPath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
+            $validated['image_path'] = $newPath;
+            $validated['image'] = $newPath;
+            $photoChanged = true;
+        } elseif (! empty($validated['remove_image']) && $model->resolveImagePath()) {
+            $validated['image_path'] = null;
+            $validated['image'] = null;
+            $photoChanged = true;
+        }
+        unset($validated['image_base64'], $validated['remove_image']);
+
+        // As the web: the customer check shares the write's transaction, so a
+        // customer archived mid-request cannot be attached.
+        DB::transaction(function () use ($model, $validated, $shopId) {
+            if (isset($validated['customer_id'])) {
+                Customer::lockActiveOrFail($shopId, (int) $validated['customer_id'], 'customer_id', (int) $model->customer_id);
+            }
+            $model->update($validated);
+        });
+        if ($photoChanged) {
+            $before->deleteImageFile();
+        }
+
+        AuditLog::create([
+            'shop_id' => $shopId,
+            'user_id' => (int) $request->user()->id,
+            'action' => 'repair_updated',
+            'model_type' => 'repair',
+            'model_id' => (int) $model->id,
+            'description' => 'Repair details corrected from mobile app.',
+            'data' => ['source' => 'mobile_app', 'repair_number' => $model->repair_number, 'fields' => array_keys($validated)],
+        ]);
+
+        return response()->json([
+            'message' => 'Repair updated.',
+            'repair' => $this->serializeRepair($model->fresh('customer:id,first_name,last_name,mobile'), true),
+        ]);
     }
 
     public function updateStatus(Repair $repair, Request $request): JsonResponse
@@ -249,7 +355,7 @@ class RepairController extends Controller
         }
 
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0|' . \App\Support\MoneyLimit::RULE,
             'include_gst' => 'nullable|boolean',
             'gst_rate' => 'nullable|numeric|min:0|max:100',
             'payment_mode' => ['nullable', Rule::in(['cash', 'upi', 'bank', 'wallet', 'other'])],
@@ -407,13 +513,31 @@ class RepairController extends Controller
         );
     }
 
-    private function serializeRepair(Repair $repair): array
+    private function serializeRepair(Repair $repair, bool $withChallan = false): array
     {
         $resolvedImagePath = $repair->resolveImagePath();
         $payload = $repair->toArray();
         $payload['image'] = $resolvedImagePath;
         $payload['image_path'] = $resolvedImagePath;
         $payload['image_url'] = $repair->signedImageUrl();
+
+        if ($withChallan) {
+            // What the challan shows, from the same model methods as the website.
+            $summary = $repair->challanSummary();
+            $whatsApp = $repair->customerWhatsApp();
+            $payload['challan'] = [
+                'reference' => $repair->reference(),
+                'pdf_filename' => $repair->reference() . '-challan.pdf',
+                'has_intake_copy' => $summary['has_intake_copy'],
+                'legacy_notice' => $summary['has_intake_copy'] ? null
+                    : 'This repair was received before JewelFlows kept an intake copy, so these are the current details and may include later changes.',
+                'labels' => Repair::INTAKE_LABELS,
+                'intake' => $summary['details'],
+                'changes' => $summary['changes'],
+                'current_status_label' => $repair->challanStatusLabel(),
+                'whatsapp' => ['url' => $whatsApp['link'], 'problem' => $whatsApp['problem']],
+            ];
+        }
 
         return $payload;
     }

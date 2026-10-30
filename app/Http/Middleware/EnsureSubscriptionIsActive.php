@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Shop;
 use App\Services\PlatformAuditService;
+use App\Support\NotAvailable;
 use App\Support\SubscriptionRecovery;
 use Closure;
 use Illuminate\Http\Request;
@@ -25,9 +26,10 @@ class EnsureSubscriptionIsActive
             'subscription.payment.initiate', 'subscription.payment.callback',
             'subscription.status',
             'shops.choose-type', 'shops.create', 'shops.store',
-            'login', 'register', 'logout',
+            'login', 'register',
             'catalog.public.show', 'catalog.public.collection.show',
             'translations.show',
+            ...\App\Support\SelfServiceRoutes::SIGN_OUT,
         ];
         if ($request->routeIs($bypassRouteNames)) {
             return $next($request);
@@ -78,17 +80,18 @@ class EnsureSubscriptionIsActive
         // the platform is not enforcing.
         if ($shop->access_mode === 'read_only' && $shop->suspensionIsAdministrative()) {
             if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                $user = $request->user();
                 if ($request->expectsJson() || $request->is('api/*')) {
-                    return response()->json(['message' => 'Shop is in read-only mode. Write operations are not allowed.'], Response::HTTP_FORBIDDEN);
+                    return response()->json(['message' => NotAvailable::unlessOwner('Shop is in read-only mode. Write operations are not allowed.', $user)], Response::HTTP_FORBIDDEN);
                 }
                 if ($request->routeIs('settings.pricing.save-rates')) {
                     return redirect()->route('dashboard')->with(
                         'error',
-                        'Today’s rates were not saved because this shop is in read-only mode. Extend or reactivate the subscription first.'
+                        NotAvailable::unlessOwner('Today’s rates were not saved because this shop is in read-only mode. Extend or reactivate the subscription first.', $user)
                     );
                 }
 
-                return back()->withErrors(['message' => 'Shop is in read-only mode. Write operations are not allowed.']);
+                return back()->withErrors(['message' => NotAvailable::unlessOwner('Shop is in read-only mode. Write operations are not allowed.', $user)]);
             }
         }
 

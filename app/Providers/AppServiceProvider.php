@@ -80,6 +80,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Record ids in links: an impossible id is a 404, never a database error.
+        \Illuminate\Support\Facades\Route::patterns(array_fill_keys(\App\Support\RouteIds::NAMES, \App\Support\RouteIds::PATTERN));
+
         // Platform admins act across shops and are not on the web guard, so the
         // BelongsToShop scope would collapse to 1=0. A provider binder (route
         // files' Route::bind() is dropped by route:cache) under its own name, so
@@ -142,12 +145,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('mobile-cashbook-write', fn ($user) => \App\Http\Controllers\Api\Mobile\V1\CashBookController::allows($user, 'cash.create')
             ? \Illuminate\Auth\Access\Response::allow()
             : \Illuminate\Auth\Access\Response::deny(\App\Http\Controllers\Api\Mobile\V1\CashBookController::DENIED));
+        // A scanned tag is looked up for stock (inventory.view) or for a sale, as
+        // the web POS's /api/item-by-barcode (sales.pos).
+        Gate::define('lookup-item', fn ($user) => $user->hasPermission('inventory.view') || $user->hasPermission('sales.pos')
+            ? \Illuminate\Auth\Access\Response::allow()
+            : \Illuminate\Auth\Access\Response::deny(\App\Support\NotAvailable::MESSAGE));
+        // One return opens for whoever may view returns or approve them, as the
+        // web's returns/{id} (returns.view) and approve-review (returns.approve).
+        Gate::define('view-return', fn ($user) => $user->hasPermission('returns.view') || $user->hasPermission('returns.approve')
+            ? \Illuminate\Auth\Access\Response::allow()
+            : \Illuminate\Auth\Access\Response::deny(\App\Support\NotAvailable::MESSAGE));
         Gate::define('revoke-mobile-session', function ($user, \App\Models\MobileDeviceSession $session) {
-            if (! $user->isOwner() && ! $user->can('returns.approve')) {
-                return \Illuminate\Auth\Access\Response::deny('You do not have permission to revoke sessions.');
+            // The web's "Sign out this device" rule: staff.manage, and only an
+            // owner signs out an owner's phone.
+            // Refused plainly, never saying why (App\Support\NotAvailable).
+            if (! $user->isOwner() && ! $user->can('staff.manage')) {
+                return \Illuminate\Auth\Access\Response::deny(\App\Support\NotAvailable::MESSAGE);
             }
             if (! $user->isOwner() && $session->user?->isOwner()) {
-                return \Illuminate\Auth\Access\Response::deny("Only an owner can revoke another owner's session.");
+                return \Illuminate\Auth\Access\Response::deny(\App\Support\NotAvailable::MESSAGE);
             }
 
             return \Illuminate\Auth\Access\Response::allow();

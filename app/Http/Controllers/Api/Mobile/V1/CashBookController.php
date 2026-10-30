@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\CashDrawerCheck;
 use App\Models\CashTransaction;
+use App\Models\ShopPaymentMethod;
 use App\Models\User;
 use App\Reporting\LedgerService;
 use App\Reporting\ReportPeriod;
@@ -34,7 +35,7 @@ class CashBookController extends Controller
 
     private const MODES = ['cash', 'upi', 'bank', 'card', 'wallet', 'other'];
 
-    public const DENIED = 'You do not have permission to access Cash Book.';
+    public const DENIED = \App\Support\NotAvailable::MESSAGE;
 
     /**
      * Cash Book's policy: owner or manager AND the permission. Stricter than a
@@ -110,6 +111,9 @@ class CashBookController extends Controller
                 $query->where('payment_mode', $modeFilter);
             }
         }
+        if ($request->filled('payment_method_id')) {
+            $query->where('payment_method_id', (int) $request->input('payment_method_id'));
+        }
         if ($request->filled('search')) {
             // Cap the search term: it feeds an unbounded ilike, so bound the
             // input defensively (mobile is a public-facing surface).
@@ -120,7 +124,13 @@ class CashBookController extends Controller
             });
         }
 
+        $filtered = clone $query;
         $paginator = $query->cursorPaginate((int) min(50, max(1, (int) $request->input('per_page', 20))));
+
+        // A total for each day on this page (same filters), and the web's
+        // snapshot strip (today's in / out, this month's) from the same query.
+        $pageDays = collect($paginator->items())->map(fn ($t) => $t->created_at->toDateString())->unique()->values()->all();
+        $snapshot = CashTransaction::snapshot($shopId);
 
         return response()->json([
             'money_on_hand' => [
@@ -133,6 +143,9 @@ class CashBookController extends Controller
                     'closing'  => $perMode->totalClosing,
                 ],
             ],
+            'today'      => ['date' => now()->toDateString(), 'money_in' => $snapshot['today_in'], 'money_out' => $snapshot['today_out']],
+            'month'      => ['money_in' => $snapshot['month_in'], 'money_out' => $snapshot['month_out']],
+            'day_totals' => array_values(CashTransaction::dayTotals($filtered, $pageDays)),
             'ledger'     => $paginator->map(fn ($t) => $this->presentTxn($t))->values(),
             'pagination' => [
                 'next_cursor' => $paginator->nextCursor()?->encode(),
@@ -157,6 +170,7 @@ class CashBookController extends Controller
             'amount'       => 'required|numeric|min:0.01',
             'source_type'  => 'required|string|max:100',
             'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
+            'payment_method_id' => 'nullable|integer',
             'description'  => 'nullable|string|max:500',
         ]);
 
@@ -171,12 +185,14 @@ class CashBookController extends Controller
 
         $shopId = (int) $request->user()->shop_id;
         $userId = (int) $request->user()->id;
+        $mode = $validated['payment_mode'] ?? 'cash';
+        $account = CashTransaction::resolveAccount($shopId, $mode, $validated['payment_method_id'] ?? null);
         SubscriptionGateService::assertShopWritable($shopId);
 
         // S3-10. The money row and the audit row that explains it are ONE unit.
         // See the transaction note above storeDrawerCheck for why a half-written
         // pair here is permanent rather than merely untidy.
-        $txn = DB::transaction(function () use ($shopId, $userId, $validated) {
+        $txn = DB::transaction(function () use ($shopId, $userId, $validated, $mode, $account) {
             $txn = CashTransaction::record([
                 'shop_id'      => $shopId,
                 'user_id'      => $userId,
@@ -184,7 +200,9 @@ class CashBookController extends Controller
                 'amount'       => $validated['amount'],
                 'source_type'  => $validated['source_type'],
                 'source_id'    => null,
-                'payment_mode' => $validated['payment_mode'] ?? 'cash',
+                'payment_mode' => $mode,
+                'payment_method_id' => $account?->id,
+                'payment_method_label_snapshot' => $account?->account_label,
                 'description'  => $validated['description'] ?? null,
             ]);
 
@@ -208,6 +226,16 @@ class CashBookController extends Controller
      *
      * Today's expected cash in hand + recent drawer counts (read-only).
      */
+    /** The shop's accounts, for the entry form's "Which account?" and the account filter. */
+    public function accounts(Request $request): JsonResponse
+    {
+        $this->authorizeCashbook($request, 'cash.view');
+
+        return response()->json([
+            'payment_methods' => ShopPaymentMethod::groupedActiveForShop((int) $request->user()->shop_id),
+        ]);
+    }
+
     public function drawerContext(Request $request): JsonResponse
     {
         $this->authorizeCashbook($request, 'cash.view');
@@ -334,6 +362,8 @@ class CashBookController extends Controller
             'type'         => (string) $t->type,
             'amount'       => (float) $t->amount,
             'payment_mode' => $t->payment_mode ?: 'cash', // NULL → cash, defensive
+            // The account as it was named that day (null before 2026-10-25 and for sales).
+            'payment_method_label' => $t->payment_method_label_snapshot,
             'source_type'  => $t->source_type,
             'invoice_number' => $t->invoice?->invoice_number,
             'description'  => $t->description,

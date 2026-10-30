@@ -27,7 +27,7 @@ class ShopAccessController extends Controller
         if (! $user->isOwner()) {
             return response()->json([
                 'error' => 'forbidden',
-                'message' => 'Only the shop owner can change shop access.',
+                'message' => \App\Support\NotAvailable::MESSAGE, // owner only
             ], 403);
         }
 

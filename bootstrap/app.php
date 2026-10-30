@@ -102,6 +102,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register middleware aliases
         $middleware->alias([
+            // `can:` names the missing permission (a subclass of Authorize, so the
+            // priority list above still runs it before EnsureIdempotency).
+            'can' => \App\Http\Middleware\AuthorizeWithReason::class,
             'nocache' => \App\Http\Middleware\NoCache::class,
             'shop.exists' => \App\Http\Middleware\EnsureShopExists::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
@@ -157,6 +160,11 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($isMobileV1($request)) {
                 return $envelopeError('unauthorized', 'Authentication required.', 401, $request);
             }
+            // The app's API never answers with the website's login page, whatever the
+            // Accept header: a PDF or photo download must not become a saved login page.
+            if ($request->is('api/mobile/*')) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
         });
 
         // ─── JSON-shaped permission denials for API requests ─────────────────
@@ -166,12 +174,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // errors/403.blade.php view.
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) use ($isMobileV1, $envelopeError) {
             if ($isMobileV1($request)) {
-                return $envelopeError('permission_denied', $e->getMessage() ?: 'You do not have permission to perform this action.', 403, $request);
+                return $envelopeError('permission_denied', $e->getMessage() ?: \App\Support\NotAvailable::MESSAGE, 403, $request);
             }
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'permission_denied',
-                    'message' => $e->getMessage() ?: 'You do not have permission to perform this action.',
+                    'message' => $e->getMessage() ?: \App\Support\NotAvailable::MESSAGE,
                 ], 403);
             }
         });
@@ -189,7 +197,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e->getStatusCode() === 403 && $request->expectsJson()) {
                 return response()->json([
                     'error' => 'permission_denied',
-                    'message' => $e->getMessage() ?: 'You do not have permission to perform this action.',
+                    'message' => $e->getMessage() ?: \App\Support\NotAvailable::MESSAGE,
                 ], 403);
             }
         });

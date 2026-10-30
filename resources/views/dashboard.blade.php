@@ -4394,7 +4394,8 @@
                 @endif
             </div>
 
-            @if($isRetailer ?? false)
+            {{-- Money figures need View Reports, as the reports themselves (and the app). --}}
+            @if(($isRetailer ?? false) && auth()->user()->can('reports.view'))
                 <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-revenue" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
@@ -4432,10 +4433,10 @@
         </div>
 
         @php
-            $warnings = [];
-            if ($openRepairs > 8) $warnings[] = 'Repair backlog is high (' . $openRepairs . ')';
-            if ($stock < $lowStockThreshold) $warnings[] = 'Low stock: only ' . $stock . ' item(s) in stock';
-            if (($isRetailer ?? false) && ($overdueEmis ?? 0) > 0) $warnings[] = $overdueEmis . ' EMI plan(s) are overdue';
+            $warnings = array_column(\App\Services\DashboardMetricsService::warnings(
+                compact('openRepairs', 'stock', 'overdueEmis') + ['isRetailer' => $isRetailer ?? false],
+                (int) $lowStockThreshold,
+            ), 'message');
         @endphp
 
         @if(count($warnings) > 0)
@@ -4571,6 +4572,7 @@
             </div>
         @endif
 
+        @can('reports.view')
         <div class="dash-main-grid">
             <div class="dash-block dash-panel-pad">
                 @php
@@ -4814,8 +4816,10 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         <div class="dash-list-grid">
+            @can('sales.view')
             <div class="dash-block dash-table-card overflow-hidden dash-recent-card">
                 <div class="dash-list-head">
                     <div class="dash-list-title">
@@ -4867,7 +4871,9 @@
                     </div>
                 @endif
             </div>
+            @endcan
 
+            @can('repairs.view')
             <div class="dash-block dash-table-card overflow-hidden dash-recent-card">
                 <div class="dash-list-head">
                     <div class="dash-list-title">
@@ -4929,7 +4935,9 @@
                     </div>
                 @endif
             </div>
+            @endcan
 
+            @can('reports.view')
             <div class="dash-block dash-table-card overflow-hidden dash-top-customers dash-recent-card">
                 <div class="dash-list-head">
                     <div class="dash-list-title">
@@ -4986,6 +4994,7 @@
                     </div>
                 @endif
             </div>
+            @endcan
         </div>
     </div>
 </x-app-layout>

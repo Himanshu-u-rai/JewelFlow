@@ -139,7 +139,8 @@ class QuickBillToggleTest extends TestCase
     {
         [, $shop] = $this->createManufacturerTenant();
         $this->ensurePrefs($shop->id); // starts enabled
-        $cashier = $this->makeUser($shop, 'cashier');
+        // May edit settings (else the route refuses outright), yet the field is owner-only.
+        $cashier = $this->makeUser($shop, 'cashier', ['settings.edit']);
 
         // Cashier submits an attempt to disable; the owner-only field is ignored.
         $this->actingAs($cashier)
@@ -254,14 +255,17 @@ class QuickBillToggleTest extends TestCase
         $resolver = app(CapabilityResolver::class);
 
         $cashierNoSales = $this->makeUser($shop, 'cashier');
-        $cashierWithSales = $this->makeUser($shop, 'clerk', ['sales.pos']);
+        $cashierWithSales = $this->makeUser($shop, 'clerk', ['sales.view', 'sales.create']);
 
+        // The web's quick-bill routes: the list needs sales.view, a new bill sales.create.
         [$noSales, $withSales] = TenantContext::runFor($shop->id, fn () => [
-            $resolver->resolve($shop->fresh(), $cashierNoSales)->quick_bill,
-            $resolver->resolve($shop->fresh(), $cashierWithSales)->quick_bill,
+            $resolver->resolve($shop->fresh(), $cashierNoSales),
+            $resolver->resolve($shop->fresh(), $cashierWithSales),
         ]);
 
-        $this->assertFalse($noSales, 'enabled feature still gated by sales.pos permission');
-        $this->assertTrue($withSales);
+        $this->assertFalse($noSales->quick_bill, 'enabled feature still gated by sales.view');
+        $this->assertFalse($noSales->quick_bill_create, 'and a new bill by sales.create');
+        $this->assertTrue($withSales->quick_bill);
+        $this->assertTrue($withSales->quick_bill_create);
     }
 }

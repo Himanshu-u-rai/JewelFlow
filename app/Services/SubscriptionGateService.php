@@ -25,15 +25,16 @@ class SubscriptionGateService
         // Hard access-mode blocks are preserved exactly: a suspended or
         // read-only shop can never write, regardless of editions.
         $accessMode = (string) ($shop->access_mode ?: ($shop->is_active ? 'active' : 'suspended'));
+        // The audit keeps the reason; only the owner is told it.
         if ($accessMode === 'suspended') {
             $reason = 'Shop is suspended. Write operations are blocked.';
             self::auditBlockedWrite($shopId, 'suspended', $reason);
-            throw new LogicException($reason);
+            throw new LogicException(\App\Support\NotAvailable::unlessOwner($reason));
         }
         if ($accessMode === 'read_only') {
             $reason = 'Shop is in read-only mode. Write operations are blocked.';
             self::auditBlockedWrite($shopId, 'read_only', $reason);
-            throw new LogicException($reason);
+            throw new LogicException(\App\Support\NotAvailable::unlessOwner($reason));
         }
 
         if (!self::shouldEnforceNow()) {
@@ -46,7 +47,7 @@ class SubscriptionGateService
         }
 
         self::auditBlockedWrite($shopId, $status, $reason);
-        throw new LogicException($reason);
+        throw new LogicException(\App\Support\NotAvailable::unlessOwner($reason));
     }
 
     private static function shouldEnforceNow(): bool

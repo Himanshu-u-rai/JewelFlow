@@ -171,7 +171,8 @@ class ShopAccessTest extends TestCase
     {
         [, $shop] = $this->createManufacturerTenant();
         $this->ensurePrefs($shop->id); // starts open
-        $manager = $this->makeUser($shop, 'manager');
+        // May edit settings (else the route refuses outright), yet the field is owner-only.
+        $manager = $this->makeUser($shop, 'manager', ['settings.edit']);
 
         $this->actingAs($manager)
             ->patch(route('settings.update.preferences'), $this->prefPayload(['shop_access_enabled' => '0']))
@@ -266,7 +267,7 @@ class ShopAccessTest extends TestCase
     public function test_reopening_restores_access(): void
     {
         [, $shop] = $this->createManufacturerTenant();
-        $cashier = $this->makeUser($shop, 'cashier');
+        $cashier = $this->makeUser($shop, 'cashier', ['sales.view']); // may open Quick Bills when open
 
         $this->setShopAccess($shop->id, false);
         $this->actingAs($cashier->fresh())->get(route('quick-bills.index'))->assertRedirect(route('dashboard'));
@@ -295,8 +296,8 @@ class ShopAccessTest extends TestCase
     {
         [, $shopA] = $this->createManufacturerTenant();
         [, $shopB] = $this->createManufacturerTenant();
-        $cashierA = $this->makeUser($shopA, 'cashier');
-        $cashierB = $this->makeUser($shopB, 'cashier');
+        $cashierA = $this->makeUser($shopA, 'cashier', ['sales.view']);
+        $cashierB = $this->makeUser($shopB, 'cashier', ['sales.view']);
 
         $this->setShopAccess($shopA->id, false);
 
@@ -368,6 +369,7 @@ class ShopAccessTest extends TestCase
         [, $shop] = $this->createManufacturerTenant();
         $session = $this->makeScanSession($shop->id);
         $this->setShopAccess($shop->id, true);
+        $this->createItem($shop->id, null, ['barcode' => 'X-1', 'status' => 'in_stock']);
 
         $this->postJson('/api/scan', ['token' => $session->token, 'barcode' => 'X-1'])
             ->assertOk()
@@ -383,6 +385,7 @@ class ShopAccessTest extends TestCase
         [, $shop] = $this->createManufacturerTenant();
         // URL minted while open, then the owner closes the shop.
         $session = $this->makeScanSession($shop->id);
+        $this->createItem($shop->id, null, ['barcode' => 'OK-1', 'status' => 'in_stock']);
         $this->postJson('/api/scan', ['token' => $session->token, 'barcode' => 'OK-1'])->assertOk();
 
         $this->setShopAccess($shop->id, false);
@@ -569,7 +572,8 @@ class ShopAccessTest extends TestCase
             ->assertStatus(403)
             ->assertExactJson([
                 'error' => 'forbidden',
-                'message' => 'Only the shop owner can change shop access.',
+                // A refusal never says why (owner rule 2026-10-30).
+                'message' => \App\Support\NotAvailable::MESSAGE,
             ]);
 
         $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled, 'non-owner must not close shop');

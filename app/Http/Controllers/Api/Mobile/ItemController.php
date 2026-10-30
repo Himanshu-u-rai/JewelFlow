@@ -41,6 +41,22 @@ class ItemController extends Controller
         return response()->json($results);
     }
 
+    /**
+     * Every barcode this shop has issued (sold tags too: they still identify
+     * their item). The app keeps the list to accept a single read from a
+     * smudged tag when it matches one of these — a misread practically never
+     * lands exactly on a code the shop actually uses.
+     */
+    public function barcodes(Request $request): JsonResponse
+    {
+        $codes = Item::query()
+            ->where('shop_id', (int) $request->user()->shop_id)
+            ->whereNotNull('barcode')
+            ->pluck('barcode');
+
+        return response()->json(['barcodes' => $codes]);
+    }
+
     public function findByBarcode(string $barcode, Request $request): JsonResponse
     {
         $item = Item::query()
@@ -52,7 +68,15 @@ class ItemController extends Controller
             return response()->json(['message' => 'Item not found.'], 404);
         }
 
-        return response()->json($this->itemPayload($request, $item));
+        $payload = $this->itemPayload($request, $item);
+        // At the counter (sales.pos without inventory.view) the tag shows what the
+        // web POS lookup shows, cost price included (owner 2026-10-31); who
+        // supplied the piece stays with stock access.
+        if (! $request->user()->can('inventory.view')) {
+            unset($payload['vendor_id'], $payload['karigar_id']);
+        }
+
+        return response()->json($payload);
     }
 
     public function show(Item $item, Request $request): JsonResponse
@@ -96,6 +120,11 @@ class ItemController extends Controller
             'image_base64'    => 'nullable|string',
             'image_upload_id' => 'nullable|string|max:80',
             'remove_image'    => 'nullable|boolean',
+            // Gallery edit, as on the web form: remove some (by URL or path), add new ones; 4 at most.
+            'remove_images'   => 'nullable|array|max:4',
+            'remove_images.*' => 'string',
+            'images_base64'   => 'nullable|array|max:4',
+            'images_base64.*' => 'string',
         ];
 
         if ($isRetailer) {
@@ -181,6 +210,9 @@ class ItemController extends Controller
                 'hallmark_charges' => array_key_exists('hallmark_charges', $validated) ? $validated['hallmark_charges'] : $item->hallmark_charges,
                 'rhodium_charges' => array_key_exists('rhodium_charges', $validated) ? $validated['rhodium_charges'] : $item->rhodium_charges,
                 'other_charges' => array_key_exists('other_charges', $validated) ? $validated['other_charges'] : $item->other_charges,
+                // The making mode travels with the edit, as the web edit form sends it.
+                'making_charge_type' => array_key_exists('making_charge_type', $validated) ? $validated['making_charge_type'] : $item->making_charge_type,
+                'making_charge_value' => array_key_exists('making_charge_value', $validated) ? $validated['making_charge_value'] : $item->making_charge_value,
             ];
 
             try {
@@ -228,10 +260,41 @@ class ItemController extends Controller
             $clearImage = true;
         }
 
-        // Drop the transport-only fields so they don't leak into the model update.
-        unset($validated['image_base64'], $validated['image_upload_id'], $validated['remove_image']);
+        // Gallery edit (web parity, ItemController::update): drop the chosen photos, add the new
+        // ones after them; the first photo left is the main one.
+        $currentGallery = $item->image_gallery;
+        $finalGallery = null;
+        if (! empty($validated['remove_images']) || ! empty($validated['images_base64'])) {
+            $removeNames = array_map(
+                fn ($ref) => basename((string) (parse_url((string) $ref, PHP_URL_PATH) ?: $ref)),
+                $validated['remove_images'] ?? [],
+            );
+            $remaining = array_values(array_filter($currentGallery, fn ($path) => ! in_array(basename($path), $removeNames, true)));
+            if (count($remaining) + count($validated['images_base64'] ?? []) > 4) {
+                $message = 'An item can have up to 4 images.';
+                return response()->json(['message' => $message, 'errors' => ['images_base64' => [$message]]], 422);
+            }
+            $added = [];
+            foreach ($validated['images_base64'] ?? [] as $base64) {
+                $path = $this->storeBase64ItemImage((string) $base64);
+                if ($path === null) {
+                    Storage::disk('public')->delete($added);
+                    return response()->json(['message' => 'Invalid image format. Allowed: JPEG, PNG, WebP.'], 422);
+                }
+                $added[] = $path;
+            }
+            $finalGallery = array_values(array_unique(array_merge($remaining, $added)));
+        } elseif ($newImagePath !== null || $clearImage) {
+            // Single-photo edit (older apps): the new main photo replaces the old one in the
+            // carousel too, so a deleted file never stays listed there.
+            $rest = array_values(array_filter($currentGallery, fn ($path) => $path !== $item->image));
+            $finalGallery = $newImagePath !== null ? array_merge([$newImagePath], $rest) : $rest;
+        }
 
-        DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage) {
+        // Drop the transport-only fields so they don't leak into the model update.
+        unset($validated['image_base64'], $validated['image_upload_id'], $validated['remove_image'], $validated['remove_images'], $validated['images_base64']);
+
+        DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage, $finalGallery) {
             // MASTERS PART 3: same guard as the web edit form.
             Vendor::lockActiveOrFail(
                 (int) $item->shop_id,
@@ -292,25 +355,20 @@ class ItemController extends Controller
                 }
             }
 
-            if ($newImagePath !== null) {
-                $updates['image'] = $newImagePath;
-            } elseif ($clearImage) {
-                $updates['image'] = null;
+            if ($finalGallery !== null) {
+                $updates['image'] = $finalGallery[0] ?? null;
+                $updates['images'] = $finalGallery ?: null;
             }
 
             if (! empty($updates)) {
                 $item->update($updates);
             }
 
-            // Clean up the replaced image from disk AFTER the row update commits,
-            // so a failed update never orphans the previous file.
-            if (
-                ($newImagePath !== null || $clearImage)
-                && $previousImage
-                && $previousImage !== $newImagePath
-                && Storage::disk('public')->exists($previousImage)
-            ) {
-                Storage::disk('public')->delete($previousImage);
+            // Clean up removed photos from disk AFTER the row update, so a failed
+            // update never orphans a file the item still points at.
+            if ($finalGallery !== null) {
+                $gone = array_diff(array_filter(array_merge($item->getOriginal('images') ?? [], [$previousImage])), $finalGallery);
+                Storage::disk('public')->delete(array_values($gone));
             }
 
             AuditLog::create([
@@ -433,6 +491,8 @@ class ItemController extends Controller
                 'hallmark_date'   => 'nullable|date',
                 'image_base64'    => 'nullable|string',
                 'image_upload_id' => 'nullable|string|max:80',
+                'images_base64'   => 'nullable|array|max:4',
+                'images_base64.*' => 'string',
             ];
 
             $validated = $request->validate($rules);
@@ -463,9 +523,21 @@ class ItemController extends Controller
         }
 
         $imagePath = null;
+        $imagePaths = [];
         $storeUploadToConsume = null;
 
-        if (! empty($validated['image_upload_id'])) {
+        if (! empty($validated['images_base64'])) {
+            // Several photos, as on the web form: first = main photo, all = carousel.
+            foreach ($validated['images_base64'] as $base64) {
+                $path = $this->storeBase64ItemImage((string) $base64);
+                if ($path === null) {
+                    Storage::disk('public')->delete($imagePaths);
+                    return response()->json(['message' => 'Invalid image format. Allowed: JPEG, PNG, WebP.'], 422);
+                }
+                $imagePaths[] = $path;
+            }
+            $imagePath = $imagePaths[0];
+        } elseif (! empty($validated['image_upload_id'])) {
             // Preferred path: client used the M6 presigned-upload flow.
             $upload = PendingUpload::where('upload_token', $validated['image_upload_id'])
                 ->where('shop_id', $shopId)
@@ -508,7 +580,7 @@ class ItemController extends Controller
 
         $netMetalWeight = $pricingPayload['net_metal_weight'] ?? ($validated['gross_weight'] - ($validated['stone_weight'] ?? 0));
 
-        $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath) {
+        $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath, $imagePaths) {
             // MASTERS PART 3: same guard as the web create form.
             Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
             // MASTERS PART 6 (correction): same race-safe check for the karigar.
@@ -548,6 +620,7 @@ class ItemController extends Controller
                 'source' => 'purchased',
                 'status' => 'in_stock',
                 'image' => $imagePath,
+                'images' => $imagePaths ?: null,
                 'pricing_review_required' => false,
                 'pricing_review_notes' => null,
             ]);
@@ -606,6 +679,8 @@ class ItemController extends Controller
                 'silver' => $this->purityProfileOptions($purityProfiles->get('silver', collect())),
             ],
             'resolved_rates' => $this->buildRetailerResolvedRateMap($shop, $purityProfiles),
+            // The app shows "Fixed ₹ / % of metal / ₹ per gram" exactly when the web item form does.
+            'making_charge_modes' => (bool) config('features.making_charge_modes', false),
         ]);
     }
 
@@ -686,6 +761,23 @@ class ItemController extends Controller
         }
 
         return $resolvedRates;
+    }
+
+    /** Save one base64 photo under items/; null when the bytes are not a JPEG, PNG or WebP image. */
+    private function storeBase64ItemImage(string $base64): ?string
+    {
+        $data = base64_decode($base64, true);
+        if ($data === false) {
+            return null;
+        }
+        $extension = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][(new \finfo(FILEINFO_MIME_TYPE))->buffer($data)] ?? null;
+        if ($extension === null) {
+            return null;
+        }
+        $path = 'items/' . Str::ulid() . '.' . $extension;
+        Storage::disk('public')->put($path, $data);
+
+        return $path;
     }
 
     private function retailerPricingBlockedResponse(string $message): JsonResponse

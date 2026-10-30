@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NotAvailable;
 use App\Support\SubscriptionRecovery;
 use Closure;
 use Illuminate\Http\Request;
@@ -26,9 +27,10 @@ class EnsureAccountIsActive
             'subscription.payment.initiate', 'subscription.payment.callback',
             'subscription.status',
             'shops.choose-type', 'shops.create', 'shops.store',
-            'login', 'register', 'logout',
+            'login', 'register',
             'catalog.public.show', 'catalog.public.collection.show',
             'translations.show',
+            ...\App\Support\SelfServiceRoutes::SIGN_OUT,
         ];
         if ($request->routeIs($bypassRouteNames)) {
             return $next($request);
@@ -93,7 +95,7 @@ class EnsureAccountIsActive
         }
 
         if ($accessMode === 'read_only' && !$this->isReadOperation($request)) {
-            return $this->deny($request, 'Shop is in read-only mode. Writes are blocked by platform policy.', Response::HTTP_LOCKED);
+            return $this->deny($request, NotAvailable::unlessOwner('Shop is in read-only mode. Writes are blocked by platform policy.', $request->user()), Response::HTTP_LOCKED);
         }
 
         return $next($request);
