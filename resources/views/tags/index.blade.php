@@ -56,38 +56,40 @@
             • "Select All" loads the full list of matching IDs provided by the server ($allMatchingIds)
               so it spans every page of results, not just the visible one.
         --}}
+        {{-- GET: the print page only reads, so it survives refresh, new tabs and
+             browsers that open new tabs without the form body. No CSRF token,
+             so nothing secret ends up in the address bar. --}}
         <form
-            method="POST"
+            method="GET"
             action="{{ route('tags.print') }}"
             id="print-form"
             data-enhance-selects="true"
             data-enhance-selects-variant="compact"
+            data-turbo="false"
             target="_blank"
             x-data="tagPrint({
                 storeKey:        '{{ $storeKey }}',
                 allMatchingIds:  {{ Js::from($allMatchingIds) }},
-                labelSize:       'medium',
-                includeBarcodeImage: true,
-                printFormat:     'standard',
-                foldedSize:      '95x12'
             })"
             @submit="injectHiddenInputs"
         >
-            @csrf
 
-            {{-- Hidden inputs for label options --}}
-            <input type="hidden" name="label_size"            :value="labelSize">
-            <input type="hidden" name="include_barcode_image" :value="includeBarcodeImage ? 1 : 0">
-            <input type="hidden" name="print_format"          :value="printFormat">
-            {{-- Only submit folded_size when actually using folded format — empty string fails the `in` validation rule --}}
-            <template x-if="printFormat === 'folded'">
-                <input type="hidden" name="folded_size" :value="foldedSize">
+            {{-- Hidden inputs for tag options --}}
+            <input type="hidden" name="print_format" :value="printFormat">
+            <input type="hidden" name="tag_size"     :value="printFormat === 'folded' ? foldedSize : flatSize">
+            <input type="hidden" name="codes"        :value="codes">
+            <template x-if="(printFormat === 'folded' ? foldedSize : flatSize) === 'custom'">
+                <div>
+                    <input type="hidden" name="custom_length" :value="customLength">
+                    <input type="hidden" name="custom_height" :value="customHeight">
+                    <input type="hidden" name="custom_end" :value="customEnd" :disabled="printFormat !== 'folded'">
+                </div>
             </template>
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
             <div class="flex flex-wrap items-center gap-3 mb-4">
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Print Method</label>
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tag type</label>
                     <div class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
                         <button type="button"
                                 @click="printFormat = 'standard'"
@@ -96,7 +98,7 @@
                                 :class="printFormat === 'standard'
                                     ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
-                            Standard
+                            Label
                         </button>
                         <button type="button"
                                 @click="printFormat = 'folded'"
@@ -105,32 +107,58 @@
                                 :class="printFormat === 'folded'
                                     ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
-                            Folded
+                            Jewellery tag
                         </button>
                     </div>
                 </div>
 
+                @php($selectClass = 'border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500')
+                @php($numClass = 'w-20 border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500')
+
                 <div class="flex items-center gap-2" x-show="printFormat === 'standard'">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Label Size</label>
-                    <select x-model="labelSize" class="border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500">
-                        <option value="small">Small (25×50mm)</option>
-                        <option value="medium">Medium (40×70mm)</option>
-                        <option value="large">Large (50×90mm)</option>
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
+                    <select x-model="flatSize" class="{{ $selectClass }}">
+                        @foreach(\App\Http\Controllers\TagPrintController::FLAT_SIZES as $key => $s)
+                            <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm</option>
+                        @endforeach
+                        <option value="custom">Custom size…</option>
                     </select>
                 </div>
 
                 <div class="flex items-center gap-2" x-show="printFormat === 'folded'">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Folded Size</label>
-                    <select x-model="foldedSize" class="border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500">
-                        <option value="95x12">95x12 mm</option>
-                        <option value="95x15">95x15 mm</option>
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
+                    <select x-model="foldedSize" class="{{ $selectClass }}">
+                        @foreach(\App\Http\Controllers\TagPrintController::FOLDED_SIZES as $key => $s)
+                            <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm (ends {{ $s['end'] }} mm)</option>
+                        @endforeach
+                        <option value="custom">Custom size…</option>
                     </select>
                 </div>
 
-                <label class="inline-flex items-center gap-2 text-sm text-slate-700 px-3 py-1.5 bg-white border border-slate-200 shadow-sm cursor-pointer rounded-lg">
-                    <input type="checkbox" x-model="includeBarcodeImage" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
-                    <span>Print scannable barcode image</span>
-                </label>
+                {{-- Custom: measure the shop's own tag with a ruler. --}}
+                <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700"
+                     x-show="(printFormat === 'folded' ? foldedSize : flatSize) === 'custom'">
+                    <label class="inline-flex items-center gap-1">
+                        <span x-text="printFormat === 'folded' ? 'Total length' : 'Width'"></span>
+                        <input type="number" min="15" max="200" step="0.5" x-model="customLength" class="{{ $numClass }}"> mm
+                    </label>
+                    <label class="inline-flex items-center gap-1">Height
+                        <input type="number" min="6" max="100" step="0.5" x-model="customHeight" class="{{ $numClass }}"> mm
+                    </label>
+                    <label class="inline-flex items-center gap-1" x-show="printFormat === 'folded'">Each printable end
+                        <input type="number" min="8" max="100" step="0.5" x-model="customEnd" class="{{ $numClass }}"> mm
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codes</label>
+                    <select x-model="codes" class="{{ $selectClass }}">
+                        <option value="both">QR + barcode (recommended)</option>
+                        <option value="qr">QR only</option>
+                        <option value="barcode">Barcode only</option>
+                        <option value="none">Text only</option>
+                    </select>
+                </div>
 
                 <button type="submit"
                     class="inline-flex items-center gap-2 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
@@ -231,14 +259,24 @@
      * so items from other pages are included even if their checkboxes
      * are not currently in the DOM.
      */
-    function tagPrint({ storeKey, allMatchingIds, labelSize, includeBarcodeImage, printFormat, foldedSize }) {
+    // Tag options a shop sets once for its printer, remembered on this computer.
+    const TAG_OPTIONS_KEY = 'tag_print_options';
+    const savedTagOptions = (() => {
+        try { return JSON.parse(localStorage.getItem(TAG_OPTIONS_KEY) || '{}') || {}; } catch (_) { return {}; }
+    })();
+
+    function tagPrint({ storeKey, allMatchingIds }) {
         return {
             storeKey,
             allMatchingIds,
-            labelSize,
-            includeBarcodeImage,
-            printFormat,
-            foldedSize,
+            printFormat: 'folded',
+            foldedSize: '95x12',
+            flatSize: '50x25',
+            codes: 'both',
+            customLength: '',
+            customHeight: '',
+            customEnd: '',
+            ...savedTagOptions,
 
             // Restore persisted selection; filter out any IDs that are
             // no longer in the current result set (e.g. item sold since).
@@ -257,6 +295,13 @@
                 this.$watch('selected', val => {
                     try { localStorage.setItem(this.storeKey, JSON.stringify(val)); } catch (_) {}
                 });
+                // Remember the tag options for next time.
+                const keys = ['printFormat', 'foldedSize', 'flatSize', 'codes', 'customLength', 'customHeight', 'customEnd'];
+                keys.forEach(k => this.$watch(k, () => {
+                    try {
+                        localStorage.setItem(TAG_OPTIONS_KEY, JSON.stringify(Object.fromEntries(keys.map(x => [x, this[x]]))));
+                    } catch (_) {}
+                }));
             },
 
             isSelected(id) {

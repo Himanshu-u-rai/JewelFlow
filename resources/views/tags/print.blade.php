@@ -2,409 +2,216 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Print Labels — {{ $shop->name ?? 'JewelFlows' }}</title>
+    <title>Print Tags — {{ $shop->name ?? 'JewelFlows' }}</title>
+    @php
+        /*
+         * Every size here is in millimetres, worked out from the tag the shop
+         * chose, so small tags stay readable and nothing spills onto the
+         * blank tail of a folded tag. The QR and the barcode carry the same
+         * code: whichever survives a smudge still scans.
+         */
+        $mm = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') . 'mm';
+        $pt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') . 'pt';
+        $L = (float) $tag['length'];
+        $H = (float) $tag['height'];
+        $pad = $H < 14 ? 0.6 : 1.0;
+        // Text that fills the given height with n lines, never below 4.5 pt (≈1.6 mm caps).
+        $fontFor = fn (float $height, int $lines) => max(4.5, min(9.0, ($height / $lines) / 1.18 / 0.3528));
+        $inner = $H - 2 * $pad;
+
+        // Shrinks one line's text until it fits the width (≈0.56 em per character).
+        $fit = fn (string $text, float $widthMm, float $font) => max(3.5, min($font, $widthMm / max(1, mb_strlen($text) * 0.56) / 0.3528));
+
+        if ($tag['folded']) {
+            $E = (float) $tag['end'];
+            $qr = $tag['qr'] ? $inner : 0;
+            $textW = $E - 2 * $pad - ($qr > 0 ? $qr + $pad : 0);
+            $frontFont = $fontFor($inner, 4);
+            $backFont = $fontFor($inner, 4);
+            $barcodeH = $inner - ($backFont * 0.3528 * 1.25);
+        } else {
+            $shopFont = max(4.5, min(8.0, $H * 0.22));
+            $body = $inner - $shopFont * 0.3528 * 1.25;
+            $showBarcode = $tag['barcode'] && (! $tag['qr'] || $H >= 20);
+            $barcodeH = $showBarcode ? max(4.0, $body * 0.38) : 0;
+            $topH = $body - ($showBarcode ? $barcodeH + 0.6 : 0);
+            $qr = $tag['qr'] ? min($topH, $L * 0.42) : 0;
+            $flatFont = $fontFor($topH, 4);
+        }
+    @endphp
     <style>
-        @page { margin: 5mm; }
+        @page { size: {{ $mm($L) }} {{ $mm($H) }}; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; background: #fff; }
+        body { font-family: Arial, Helvetica, sans-serif; background: #f1f5f9; color: #000; }
 
-        .label-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4mm;
-            padding: 2mm;
-        }
+        .sheet { display: flex; flex-wrap: wrap; gap: 4mm; padding: 4mm; }
+        .tag { background: #fff; overflow: hidden; outline: 0.2mm dashed #94a3b8; }
+        .end, .flat { padding: {{ $mm($pad) }}; overflow: hidden; }
+        .folded { display: flex; justify-content: space-between; }
+        .tail { flex: 1; }
+        .front { display: flex; gap: {{ $mm($pad) }}; align-items: center; }
+        .back { display: flex; flex-direction: column; justify-content: space-between; }
+        .lines { min-width: 0; flex: 1; line-height: 1.18; }
+        .lines div, .row { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+        .code { font-weight: 700; }
+        .row { display: flex; justify-content: space-between; gap: 1mm; line-height: 1.18; }
+        .shop { font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.25; }
+        .flat-top { display: flex; gap: {{ $mm($pad) }}; align-items: center; }
 
-        .label {
-            border: 1px solid #333;
-            padding: 2mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            page-break-inside: avoid;
-            overflow: hidden;
-        }
+        /* QR: a white margin is the tag itself; pixels stay square and sharp. */
+        .js-qr { flex: none; }
+        .js-qr img, .js-qr canvas { width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+        .js-barcode { display: block; width: 100%; }
+        .code-error { color: #b91c1c; font-weight: 700; }
 
-        /* Standard sizes: width x height */
-        .label.small  { width: 50mm; height: 25mm; }
-        .label.medium { width: 70mm; height: 40mm; }
-        .label.large  { width: 90mm; height: 50mm; }
-
-        /* Folded sizes: width x height */
-        .folded-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2mm;
-            padding: 2mm;
-        }
-
-        .folded-label {
-            border: 1px solid #222;
-            display: flex;
-            overflow: hidden;
-            page-break-inside: avoid;
-            background: #fff;
-        }
-
-        .folded-label.size-95x12 { width: 95mm; height: 12mm; }
-        .folded-label.size-95x15 { width: 95mm; height: 15mm; }
-
-        .folded-half {
-            width: 50%;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 0.8mm 1mm;
-            overflow: hidden;
-        }
-
-        .folded-left {
-            border-right: 0.5px dashed #999;
-            align-items: center;
-            text-align: center;
-        }
-
-        .folded-right {
-            text-align: left;
-            align-items: flex-start;
-        }
-
-        .folded-truncate {
-            width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .folded-shop-name {
-            font-weight: 700;
-            color: #111;
-            letter-spacing: 0.2px;
-            line-height: 1.05;
-        }
-
-        .folded-barcode-area {
-            flex: 1;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 0;
-        }
-
-        .folded-barcode-svg {
-            width: 100%;
-            max-width: 100%;
-            display: block;
-            flex: 1;
-            min-height: 0;
-        }
-
-        .folded-barcode-value {
-            font-family: 'Courier New', monospace;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            color: #111;
-            text-align: center;
-            line-height: 1;
-            margin-top: 0.2mm;
-        }
-
-        .folded-code {
-            font-weight: 700;
-            color: #111;
-            line-height: 1;
-        }
-
-        .folded-name {
-            color: #111;
-            line-height: 1.05;
-        }
-
-        .folded-price {
-            font-weight: 700;
-            color: #111;
-            line-height: 1;
-        }
-
-        .folded-label.size-95x12 .folded-shop-name,
-        .folded-label.size-95x12 .folded-code,
-        .folded-label.size-95x12 .folded-name,
-        .folded-label.size-95x12 .folded-price,
-        .folded-label.size-95x12 .folded-barcode-value {
-            font-size: 6pt;
-        }
-
-        .folded-label.size-95x12 .folded-price { font-size: 8pt; }
-        .folded-label.size-95x12 .folded-barcode-value { font-size: 5.5pt; }
-
-        .folded-label.size-95x15 .folded-shop-name,
-        .folded-label.size-95x15 .folded-code,
-        .folded-label.size-95x15 .folded-name,
-        .folded-label.size-95x15 .folded-price,
-        .folded-label.size-95x15 .folded-barcode-value {
-            font-size: 7pt;
-        }
-
-        .folded-label.size-95x15 .folded-price { font-size: 10pt; }
-        .folded-label.size-95x15 .folded-barcode-value { font-size: 6.5pt; }
-
-        /* Standard label: shop name */
-        .shop-name {
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.2;
-            padding-bottom: 1mm;
-            border-bottom: 0.5px solid #999;
-        }
-
-        .label.small  .shop-name { font-size: 7pt; }
-        .label.medium .shop-name { font-size: 10pt; }
-        .label.large  .shop-name { font-size: 12pt; }
-
-        /* Standard label: barcode */
-        .barcode-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1mm 0;
-            min-height: 0;
-        }
-
-        .barcode-svg {
-            width: 100%;
-            max-width: 100%;
-            flex: 1;
-            display: block;
-        }
-
-        .barcode-text {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            letter-spacing: 0.8px;
-            color: #111;
-            text-align: center;
-            white-space: nowrap;
-            margin-top: 0.5mm;
-        }
-
-        .label.small  .barcode-text { font-size: 6.5pt; }
-        .label.medium .barcode-text { font-size: 8pt; }
-        .label.large  .barcode-text { font-size: 9pt; }
-
-        /* Barcode-off fallback */
-        .barcode-text-only {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            letter-spacing: 1px;
-            color: #111;
-            text-align: center;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .label.small  .barcode-text-only { font-size: 8pt; }
-        .label.medium .barcode-text-only { font-size: 11pt; }
-        .label.large  .barcode-text-only { font-size: 13pt; }
-
-        /* Barcode error */
-        .barcode-error {
-            color: #b91c1c;
-            font-size: 6pt;
-            font-family: 'Courier New', monospace;
-            text-align: center;
-            padding: 1mm 0;
-        }
-
-        /* Standard details line */
-        .details-line {
-            text-align: center;
-            color: #666;
-            border-top: 0.5px solid #999;
-            padding-top: 1mm;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .label.small  .details-line { font-size: 5.5pt; }
-        .label.medium .details-line { font-size: 7pt; }
-        .label.large  .details-line { font-size: 8pt; }
-
-        .hallmark-badge {
-            display: inline-block;
-            background: #333;
-            color: #fff;
-            padding: 0.3mm 1mm;
-            font-weight: bold;
-            vertical-align: baseline;
-        }
-
-        .label.small  .hallmark-badge { font-size: 4.5pt; }
-        .label.medium .hallmark-badge { font-size: 5.5pt; }
-        .label.large  .hallmark-badge { font-size: 6pt; }
+        .toolbar { padding: 10px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 13px; color: #475569; }
+        .toolbar button { padding: 8px 20px; border: 0; cursor: pointer; font-size: 14px; border-radius: 6px; }
 
         @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .no-print { display: none !important; }
+            body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .toolbar { display: none !important; }
+            .sheet { display: block; padding: 0; }
+            /* Tag printers feed one tag per page, page = tag. */
+            .tag { outline: none; page-break-after: always; break-after: page; }
         }
     </style>
 </head>
 <body>
-    @php
-        $isFoldedPrint = ($printFormat ?? 'standard') === 'folded';
-        $requestedFoldedSize = $foldedSize ?? '95x12';
-        $activeFoldedSize = in_array($requestedFoldedSize, ['95x12', '95x15'], true) ? $requestedFoldedSize : '95x12';
-    @endphp
-
-    <div class="no-print" style="padding:10px;background:#f5f5f5;border-bottom:1px solid #ddd;text-align:center;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
-        <button onclick="window.print()" style="padding:8px 24px;background:#0d9488;color:white;border:none;cursor:pointer;font-size:14px;">
-            Print Labels
-        </button>
-        <button onclick="window.close()" style="padding:8px 24px;background:#e5e7eb;color:#333;border:none;cursor:pointer;font-size:14px;">
-            Close
-        </button>
-        <span style="color:#555;font-size:13px;">
-            {{ $items->count() }} label(s)
-            &middot; Format: {{ $isFoldedPrint ? 'Folded' : 'Standard' }}
-            &middot; Size: {{ $isFoldedPrint ? $activeFoldedSize . ' mm' : ucfirst($labelSize) }}
-            &middot; Barcode: {{ $includeBarcodeImage ? 'On' : 'Off' }}
+    <div class="toolbar">
+        <button onclick="window.print()" style="background:#0d9488;color:#fff;">Print tags</button>
+        <button onclick="window.close()" style="background:#e5e7eb;color:#333;">Close</button>
+        <span>
+            {{ $items->count() }} tag(s) ·
+            {{ $tag['folded'] ? 'Jewellery tag' : 'Label' }} {{ rtrim(rtrim(number_format($L, 1), '0'), '.') }}×{{ rtrim(rtrim(number_format($H, 1), '0'), '.') }} mm
+            @if($tag['folded']) (ends {{ rtrim(rtrim(number_format($E, 1), '0'), '.') }} mm) @endif
+            · {{ $tag['qr'] && $tag['barcode'] ? 'QR + barcode' : ($tag['qr'] ? 'QR' : ($tag['barcode'] ? 'Barcode' : 'Text only')) }}
         </span>
-        <span id="barcode-error-summary" style="color:#b91c1c;font-size:13px;display:none;">
-            Some barcodes could not be rendered - check items with a red warning.
-        </span>
+        <span>Set the printer's paper size to the tag size and margins to none.</span>
+        @php
+            // Code 128 needs about 11 bar widths per character (+ start/check/stop).
+            // Below ~0.25 mm per bar a 203 dpi tag printer (0.125 mm dots) blurs it.
+            $longest = $items->max(fn ($i) => mb_strlen((string) $i->barcode)) ?: 1;
+            $barSpace = ($tag['folded'] ? (float) $tag['end'] : $L) - 2 * $pad;
+            $barMm = $barSpace / (11 * ($longest + 3) + 2);
+        @endphp
+        @if($tag['barcode'] && $barMm < 0.25)
+            <span style="color:#b45309;font-weight:600;">
+                Barcode bars are very fine at this size ({{ number_format($barMm, 2) }} mm) — it may not scan from a 203 dpi printer.
+                @if($tag['qr']) The QR on the same tag will scan. @else Choose QR + barcode, or a bigger size. @endif
+            </span>
+        @endif
+        <span id="code-error-summary" style="color:#b91c1c;display:none;">Some codes could not be drawn — see tags marked in red.</span>
     </div>
 
-    @if($isFoldedPrint)
-        <div class="folded-grid">
-            @foreach($items as $item)
-                @php
-                    $foldedName = $item->design ?: trim(($item->category ?? '') . ($item->sub_category ? ' / ' . $item->sub_category : ''));
-                    if ($foldedName === '') {
-                        $foldedName = 'Item';
-                    }
-                @endphp
-                <div class="folded-label size-{{ $activeFoldedSize }}">
-                    <div class="folded-half folded-left">
-                        <div class="folded-shop-name folded-truncate">{{ $shop->name ?? 'JewelFlows' }}</div>
-                        <div class="folded-barcode-area">
-                            @if($includeBarcodeImage)
-                                <svg class="folded-barcode-svg js-barcode"
-                                     data-barcode="{{ $item->barcode }}"
-                                     data-size="{{ $activeFoldedSize }}"
-                                     data-mode="folded"
-                                     aria-label="Barcode {{ $item->barcode }}"></svg>
-                            @endif
-                            <div class="folded-barcode-value folded-truncate">{{ $item->barcode }}</div>
+    <div class="sheet">
+        @foreach($items as $item)
+            @php
+                $code = (string) $item->barcode;
+                $purity = (string) ($item->purity_label ?? '');
+                $gross = 'G ' . number_format((float) $item->gross_weight, 3);
+                $stone = (float) $item->stone_weight > 0 ? 'L ' . number_format((float) $item->stone_weight, 3) : '';
+                $netW = 'N ' . number_format((float) $item->net_metal_weight, 3);
+                // Flat labels have room for purity beside the gross weight.
+                $weights = trim(($purity ? $purity . '  ' : '') . $gross);
+                $net = trim(($stone ? $stone . '  ' : '') . $netW);
+                $name = $item->design ?: trim(($item->category ?? '') . ($item->sub_category ? ' ' . $item->sub_category : ''));
+                $price = (float) $item->selling_price > 0 ? '₹' . number_format((float) $item->selling_price, 0) : '';
+            @endphp
+
+            @if($tag['folded'])
+                <div class="tag folded" style="width: {{ $mm($L) }}; height: {{ $mm($H) }};">
+                    {{-- Front end: QR + one fact per line (code, G, L, N), like a shop's own tags --}}
+                    @php($frontLinesText = array_values(array_filter([$code, $gross, $stone, $netW])))
+                    <div class="end front" style="width: {{ $mm($E) }};">
+                        @if($tag['qr'])
+                            <div class="js-qr" data-code="{{ $code }}" style="width: {{ $mm($qr) }}; height: {{ $mm($qr) }};" aria-label="QR {{ $code }}"></div>
+                        @endif
+                        <div class="lines">
+                            @foreach($frontLinesText as $i => $line)
+                                <div @class(['code' => $i === 0]) style="font-size: {{ $pt($fit($line, $textW, $fontFor($inner, count($frontLinesText)))) }};">{{ $line }}</div>
+                            @endforeach
                         </div>
                     </div>
-                    <div class="folded-half folded-right">
-                        <div class="folded-code folded-truncate">{{ $item->barcode }}</div>
-                        <div class="folded-name folded-truncate">{{ $foldedName }}</div>
-                        <div class="folded-price folded-truncate">Rs {{ number_format((float) $item->selling_price, 2) }}</div>
+                    <div class="tail"></div>
+                    {{-- Back end: barcode + purity and price --}}
+                    <div class="end back" style="width: {{ $mm($E) }}; font-size: {{ $pt($backFont) }};">
+                        @if($tag['barcode'])
+                            <svg class="js-barcode" data-barcode="{{ $code }}" style="height: {{ $mm($barcodeH) }};" aria-label="Barcode {{ $code }}"></svg>
+                            <div class="row"><span class="code">{{ $purity }}</span><span class="code">{{ $price }}</span></div>
+                        @else
+                            <div class="lines">
+                                <div class="code" style="font-size: 1.3em;">{{ $price }}</div>
+                                <div>{{ $name }}</div>
+                                <div>{{ $shop->name ?? '' }}</div>
+                            </div>
+                        @endif
                     </div>
                 </div>
-            @endforeach
-        </div>
-    @else
-        <div class="label-grid">
-            @foreach($items as $item)
-            @php
-                // purity_label accessor handles both retailer (karat scale: 22 → "22K")
-                // and manufacturer (percentage scale: 91.67 → "22K") correctly.
-                $purityLabel = $item->purity_label;
-
-                $segments = array_filter([
-                    $item->design ?: null,
-                    $purityLabel,
-                    number_format((float) $item->gross_weight, 3) . 'g',
-                ]);
-                $detailsText = implode(' | ', $segments);
-            @endphp
-            <div class="label {{ $labelSize }}">
-
-                {{-- 1. Shop name - always visible, scales with label size --}}
-                <div class="shop-name">{{ $shop->name ?? 'JewelFlows' }}</div>
-
-                {{-- 2. Barcode - dominant centre area --}}
-                <div class="barcode-area">
-                    @if($includeBarcodeImage)
-                        <svg class="barcode-svg js-barcode"
-                             data-barcode="{{ $item->barcode }}"
-                             data-size="{{ $labelSize }}"
-                             data-mode="standard"
-                             aria-label="Barcode {{ $item->barcode }}"></svg>
-                    @endif
-                    <div class="{{ $includeBarcodeImage ? 'barcode-text' : 'barcode-text-only' }}">{{ $item->barcode }}</div>
-                </div>
-
-                {{-- 3. Details line - design, karat, weight --}}
-                <div class="details-line">
-                    {{ $detailsText }}
-                    @if($item->huid)
-                        &nbsp;<span class="hallmark-badge">BIS</span> {{ $item->huid }}
+            @else
+                <div class="tag flat" style="width: {{ $mm($L) }}; height: {{ $mm($H) }};">
+                    <div class="shop" style="font-size: {{ $pt($shopFont) }};">{{ $shop->name ?? 'JewelFlows' }}</div>
+                    <div class="flat-top" style="height: {{ $mm($topH) }}; font-size: {{ $pt($flatFont) }};">
+                        @if($tag['qr'])
+                            <div class="js-qr" data-code="{{ $code }}" style="width: {{ $mm($qr) }}; height: {{ $mm($qr) }};" aria-label="QR {{ $code }}"></div>
+                        @endif
+                        <div class="lines">
+                            <div class="code">{{ $code }}</div>
+                            <div>{{ $weights }}</div>
+                            <div>{{ $net }}</div>
+                            <div class="code">{{ $price }}</div>
+                        </div>
+                    </div>
+                    @if($showBarcode)
+                        <svg class="js-barcode" data-barcode="{{ $code }}" style="height: {{ $mm($barcodeH) }}; margin-top: 0.6mm;" aria-label="Barcode {{ $code }}"></svg>
                     @endif
                 </div>
-            </div>
-            @endforeach
-        </div>
+            @endif
+        @endforeach
+    </div>
+
+    {{-- Both libraries are served locally: printing works offline. --}}
+    @if($tag['qr'])
+        <script src="{{ asset('js/qrcode.min.js') }}"></script>
     @endif
-
-    @if($includeBarcodeImage)
-    {{--
-        JsBarcode served locally from public/js/jsbarcode.min.js.
-        No CDN dependency - works offline and is not affected by CDN outages.
-    --}}
-    <script src="{{ asset('js/jsbarcode.min.js') }}"></script>
+    @if($tag['barcode'])
+        <script src="{{ asset('js/jsbarcode.min.js') }}"></script>
+    @endif
     <script>
     (() => {
-        const standardOptionsBySize = {
-            small:  { width: 1.2, height: 35, fontSize: 0, margin: 0 },
-            medium: { width: 1.5, height: 55, fontSize: 0, margin: 0 },
-            large:  { width: 1.8, height: 75, fontSize: 0, margin: 0 },
+        let failed = false;
+        const fail = (el, code) => {
+            const div = document.createElement('div');
+            div.className = 'code-error';
+            div.textContent = 'Code error: ' + code;
+            el.replaceWith(div);
+            failed = true;
         };
 
-        const foldedOptionsBySize = {
-            '95x12': { width: 0.85, height: 15, fontSize: 0, margin: 0 },
-            '95x15': { width: 1.05, height: 21, fontSize: 0, margin: 0 },
-        };
-
-        let anyError = false;
-
-        document.querySelectorAll('.js-barcode').forEach(svg => {
-            const code = (svg.dataset.barcode || '').trim();
-            if (!code) return;
-
-            const mode = (svg.dataset.mode || 'standard').toLowerCase();
-            const size = (svg.dataset.size || 'medium').toLowerCase();
-            const options = mode === 'folded'
-                ? (foldedOptionsBySize[size] || foldedOptionsBySize['95x12'])
-                : (standardOptionsBySize[size] || standardOptionsBySize.medium);
-
+        // QR: high error correction (Q) so a smudged or scratched corner still reads.
+        document.querySelectorAll('.js-qr').forEach(el => {
+            const code = (el.dataset.code || '').trim();
+            if (!code || typeof QRCode === 'undefined') return;
             try {
-                JsBarcode(svg, code, { format: 'CODE128', displayValue: false, ...options });
-            } catch (_) {
-                const errDiv = document.createElement('div');
-                errDiv.className = 'barcode-error';
-                errDiv.textContent = 'Barcode error: ' + code;
-                svg.replaceWith(errDiv);
-                anyError = true;
-            }
+                new QRCode(el, { text: code, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.Q });
+            } catch (_) { fail(el, code); }
         });
 
-        if (anyError) {
-            const summary = document.getElementById('barcode-error-summary');
-            if (summary) summary.style.display = 'inline';
-        }
+        // Barcode: Code 128, drawn once and scaled to the end's width (viewBox).
+        document.querySelectorAll('.js-barcode').forEach(svg => {
+            const code = (svg.dataset.barcode || '').trim();
+            if (!code || typeof JsBarcode === 'undefined') return;
+            try {
+                JsBarcode(svg, code, { format: 'CODE128', displayValue: false, width: 2, height: 60, margin: 10 });
+                const w = svg.getAttribute('width'), h = svg.getAttribute('height');
+                svg.setAttribute('viewBox', '0 0 ' + parseFloat(w) + ' ' + parseFloat(h));
+                svg.setAttribute('preserveAspectRatio', 'none');
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+            } catch (_) { fail(svg, code); }
+        });
+
+        if (failed) document.getElementById('code-error-summary').style.display = 'inline';
     })();
     </script>
-    @endif
-
 </body>
 </html>
