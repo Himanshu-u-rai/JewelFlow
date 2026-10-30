@@ -20,6 +20,7 @@ use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use LogicException;
 use Tests\Feature\Traits\CreatesTestTenant;
@@ -172,6 +173,106 @@ class InvoiceDueCollectionTest extends TestCase
             ->assertJsonPath('emi_plan.status', 'active');
     }
 
+    // ── web retries (Codex review 2026-10-31, finding 3) ─────────────────
+
+    public function test_a_form_resubmitted_after_a_lost_response_records_the_payment_once(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+        $key = (string) Str::uuid();
+
+        $first = $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 3000]], $key);
+        $first->assertRedirect(route('invoices.show', $invoice))->assertSessionHas('success');
+
+        // The browser never saw that answer and sends the same form again.
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 3000]], $key)
+            ->assertRedirect(route('invoices.show', $invoice))
+            ->assertSessionHas('success', session('success'));
+
+        $this->assertEqualsWithDelta(3000, $this->paidOn($invoice), 0.01);
+        $this->assertSame(1, $this->cashCount($invoice));
+        $this->assertSame(1, $this->auditCount($invoice));
+    }
+
+    public function test_separate_partial_payments_from_fresh_forms_are_all_recorded(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 2000]])->assertSessionHasNoErrors();
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 2000]])->assertSessionHasNoErrors();
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 2000]])->assertSessionHasNoErrors();
+
+        $this->assertEqualsWithDelta(6000, $this->paidOn($invoice), 0.01);
+        $this->assertSame(3, $this->cashCount($invoice));
+    }
+
+    public function test_the_same_form_sent_with_different_amounts_is_refused(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+        $key = (string) Str::uuid();
+
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 3000]], $key)->assertSessionHasNoErrors();
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 1000]], $key)->assertSessionHasErrors('payments');
+
+        $this->assertEqualsWithDelta(3000, $this->paidOn($invoice), 0.01);
+        $this->assertSame(1, $this->cashCount($invoice));
+    }
+
+    public function test_a_submission_without_its_request_key_is_refused(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 3000]], null, false)->assertSessionHasErrors('idempotency_key');
+
+        $this->assertSame(0.0, $this->paidOn($invoice));
+    }
+
+    public function test_a_refused_attempt_leaves_its_key_free_for_the_corrected_form(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+        $key = (string) Str::uuid();
+
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 12000]], $key)->assertSessionHasErrors('payments');
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 4000]], $key)->assertSessionHasNoErrors();
+
+        $this->assertEqualsWithDelta(4000, $this->paidOn($invoice), 0.01);
+    }
+
+    public function test_a_replay_still_needs_the_permission_and_never_reaches_an_emi_bill(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+        $key = (string) Str::uuid();
+        $this->postWeb($owner, $invoice, [['mode' => 'cash', 'amount' => 3000]], $key)->assertSessionHasNoErrors();
+
+        $viewer = $this->staff($shop->id, ['sales.view'], '9000001002');
+        $this->postWeb($viewer, $invoice, [['mode' => 'cash', 'amount' => 3000]], $key)->assertForbidden();
+
+        $emiBill = $this->dueInvoice($shop->id, 8000);
+        $this->activePlan($emiBill, 8000);
+        $this->postWeb($owner, $emiBill, [['mode' => 'cash', 'amount' => 1000]], $key)
+            ->assertSessionHasErrors(['payments' => InstallmentPlan::COLLECT_THROUGH_PLAN]);
+
+        $this->assertEqualsWithDelta(3000, $this->paidOn($invoice), 0.01);
+        $this->assertSame(0.0, $this->paidOn($emiBill));
+    }
+
+    public function test_the_invoice_page_gives_each_form_its_own_request_key(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->dueInvoice($shop->id, 10000);
+
+        preg_match('/name="idempotency_key" value="([0-9a-f-]{36})"/', $this->showAs($owner, $invoice)->getContent(), $first);
+        preg_match('/name="idempotency_key" value="([0-9a-f-]{36})"/', $this->showAs($owner, $invoice)->getContent(), $second);
+
+        $this->assertNotEmpty($first[1] ?? null, 'the form carries a request key');
+        $this->assertNotSame($first[1], $second[1] ?? null, 'a fresh page is a fresh collection');
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private function dueInvoice(int $shopId, float $total): Invoice
@@ -262,12 +363,28 @@ class InvoiceDueCollectionTest extends TestCase
     }
 
     /** {invoice}-bound routes need the tenant the real request would resolve (see StoreCreditRedemptionTest). */
-    private function postWeb(User $actor, Invoice $invoice, array $payments)
+    /** One form submission; each rendered form carries its own request key unless one is given. */
+    private function postWeb(User $actor, Invoice $invoice, array $payments, ?string $key = null, bool $withKey = true)
     {
         $this->actingAs($actor);
         TenantContext::set((int) $actor->shop_id);
 
-        return $this->post(route('invoices.payments.store', $invoice), ['payments' => $payments]);
+        $body = ['payments' => $payments];
+        if ($withKey) {
+            $body['idempotency_key'] = $key ?? (string) Str::uuid();
+        }
+
+        return $this->post(route('invoices.payments.store', $invoice), $body);
+    }
+
+    private function cashCount(Invoice $invoice): int
+    {
+        return CashTransaction::withoutTenant()->where('invoice_id', $invoice->id)->count();
+    }
+
+    private function auditCount(Invoice $invoice): int
+    {
+        return AuditLog::withoutTenant()->where('action', 'invoice_payment_recorded')->where('model_id', $invoice->id)->count();
     }
 
     private function showAs(User $actor, Invoice $invoice)

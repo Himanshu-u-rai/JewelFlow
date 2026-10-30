@@ -7,7 +7,11 @@ use App\Models\CashTransaction;
 use App\Models\InstallmentPlan;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
+use App\Models\InvoicePaymentClaim;
 use App\Models\ShopPaymentMethod;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -95,6 +99,91 @@ class InvoiceDueService
                 ]);
             }
         }
+    }
+
+    /**
+     * Record a collection at most once per request key: the web form's twin of the
+     * app endpoint's durable claim (same table, same (invoice_id, key) identity,
+     * same rules). The claim is staked inside the payment transaction BEFORE any
+     * business check, so a resubmission after a lost response, or a concurrent
+     * identical submission, finds the committed claim and replays it instead of
+     * charging again. A refused attempt rolls its claim back, freeing the key.
+     *
+     * @return array{outcome: 'recorded'|'replayed'|'conflict', body: array{total?: float, payment_ids?: int[]}}
+     */
+    public function collectOnce(Invoice $invoice, array $payments, int $userId, string $source, string $key, string $requestHash): array
+    {
+        $claim = $this->findClaim($invoice, $key);
+        if ($claim !== null) {
+            return $this->replay($claim, $requestHash);
+        }
+
+        try {
+            $body = DB::transaction(function () use ($invoice, $payments, $userId, $source, $key, $requestHash) {
+                $locked = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+                $claim = InvoicePaymentClaim::create([
+                    'invoice_id' => (int) $locked->id,
+                    'shop_id' => (int) $locked->shop_id,
+                    'user_id' => $userId,
+                    'key' => $key,
+                    'request_hash' => $requestHash,
+                    'response_status' => 201,
+                    'response_body' => null,
+                ]);
+
+                $result = $this->collect($locked, $payments, $userId, $source);
+                $body = ['source' => $source, 'total' => $result['total'], 'payment_ids' => $result['payment_ids']];
+                $claim->update(['response_body' => $body]);
+
+                return $body;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Lost the race to a concurrent submission of the same form. Only our
+            // own index proves that; anything else is a real error.
+            if (! str_contains($e->getMessage(), 'invoice_payment_claims_invoice_key_unique')) {
+                throw $e;
+            }
+            $winner = $this->findClaim($invoice, $key);
+            if ($winner === null) {
+                throw $e;
+            }
+
+            return $this->replay($winner, $requestHash);
+        }
+
+        return ['outcome' => 'recorded', 'body' => $body];
+    }
+
+    /** A replay answers with the original result only for the same payload. */
+    private function replay(InvoicePaymentClaim $claim, string $requestHash): array
+    {
+        if (! hash_equals((string) $claim->request_hash, $requestHash)) {
+            return ['outcome' => 'conflict', 'body' => []];
+        }
+
+        return ['outcome' => 'replayed', 'body' => (array) $claim->response_body];
+    }
+
+    /**
+     * Fails closed: a lookup error or a claim from another shop is a refusal,
+     * never "no claim" (which would mean "take the payment again").
+     */
+    private function findClaim(Invoice $invoice, string $key): ?InvoicePaymentClaim
+    {
+        try {
+            $claim = InvoicePaymentClaim::query()->where('invoice_id', $invoice->id)->where('key', $key)->first();
+        } catch (\Throwable $e) {
+            Log::error('collectOnce: payment claim lookup failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+            abort(503, 'The payment could not be checked right now. Please try again.');
+        }
+
+        if ($claim !== null && (int) $claim->shop_id !== (int) $invoice->shop_id) {
+            Log::error('collectOnce: payment claim shop mismatch', ['invoice_id' => $invoice->id, 'claim_shop_id' => (int) $claim->shop_id]);
+            abort(409, 'This payment could not be verified. Please contact support before retrying.');
+        }
+
+        return $claim;
     }
 
     /**

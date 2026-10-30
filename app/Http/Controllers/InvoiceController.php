@@ -9,7 +9,6 @@ use App\Models\ShopPaymentMethod;
 use App\Services\InvoiceAccountingService;
 use App\Services\InvoiceDueService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use LogicException;
 
 class InvoiceController extends Controller
@@ -137,18 +136,28 @@ class InvoiceController extends Controller
     {
         $this->authorize('update', $invoice);
 
+        // Each rendered form carries its own key: a resubmission of the same form
+        // (lost response, double click, browser retry) is recorded once.
+        $key = (string) $request->validate([
+            'idempotency_key' => 'required|string|max:100',
+        ], [
+            'idempotency_key.required' => 'This form has expired. Reload the page and enter the payment again.',
+        ])['idempotency_key'];
+        $requestHash = hash('sha256', 'web|' . $request->path() . '|' . json_encode($request->input('payments')));
+
         $shopId = (int) $invoice->shop_id;
         $payments = $request->validate(InvoiceDueService::rules($shopId))['payments'];
         $dues->validatePaymentMethods($payments, $shopId);
 
-        $total = DB::transaction(function () use ($invoice, $payments, $dues) {
-            $locked = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            return $dues->collect($locked, $payments, (int) auth()->id(), 'web')['total'];
-        });
+        $result = $dues->collectOnce($invoice, $payments, (int) auth()->id(), 'web', $key, $requestHash);
+        if ($result['outcome'] === 'conflict') {
+            return back()->withErrors([
+                'payments' => 'This form was already used for a different payment. Reload the page to record another payment.',
+            ]);
+        }
 
         return redirect()->route('invoices.show', $invoice)
-            ->with('success', '₹' . number_format($total, 2) . ' received on ' . $invoice->invoice_number . '.');
+            ->with('success', '₹' . number_format((float) ($result['body']['total'] ?? 0), 2) . ' received on ' . $invoice->invoice_number . '.');
     }
 
     public function edit(Invoice $invoice)

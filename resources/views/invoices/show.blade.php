@@ -412,6 +412,8 @@
                                           },
                                       }">
                                     @csrf
+                                    {{-- One key per rendered form: sending this form again records the payment once. --}}
+                                    <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
                                     <template x-for="(row, i) in rows" :key="i">
                                         <div class="invoice-show-collect-row">
                                             <label>
