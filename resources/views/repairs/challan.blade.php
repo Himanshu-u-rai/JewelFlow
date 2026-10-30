@@ -6,14 +6,9 @@
     $customer = $repair->customer;
     $mobile = $customer?->mobile ? \App\Support\Mobile::forDisplay($customer->mobile) : null;
     $shopAddress = collect([$shop->address, $shop->city, $shop->state, $shop->pincode])->filter()->implode(', ');
-    $statusLabels = ['in_repair' => 'In repair', 'ready' => 'Ready for collection', 'delivered' => 'Delivered'];
-    $statusLabel = $repair->status === 'received' ? null : ($statusLabels[$repair->status] ?? ucfirst(str_replace('_', ' ', $repair->status)));
+    $statusLabel = $repair->challanStatusLabel();
     $generatedAt = now()->timezone($tz)->format('d M Y, h:i A');
-    $labels = [
-        'item_description' => 'Item', 'item_quantity' => 'Quantity (pieces)', 'intake_condition' => 'Condition at receipt',
-        'metal' => 'Metal', 'purity' => 'Purity (as declared)', 'gross_weight' => 'Gross weight',
-        'description' => 'Work requested', 'due_date' => 'Expected ready by', 'estimated_cost' => 'Estimated charge',
-    ];
+    $labels = \App\Models\Repair::INTAKE_LABELS;
 @endphp
 <!DOCTYPE html>
 <html lang="en">

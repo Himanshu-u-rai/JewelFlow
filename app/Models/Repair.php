@@ -184,6 +184,78 @@ class Repair extends Model
         });
     }
 
+    /** Labels for the challan's item details, in the order the challan lists them. */
+    public const INTAKE_LABELS = [
+        'item_description' => 'Item', 'item_quantity' => 'Quantity (pieces)', 'intake_condition' => 'Condition at receipt',
+        'metal' => 'Metal', 'purity' => 'Purity (as declared)', 'gross_weight' => 'Gross weight',
+        'description' => 'Work requested', 'due_date' => 'Expected ready by', 'estimated_cost' => 'Estimated charge',
+    ];
+
+    /** The customer-facing reference, e.g. REP-007. */
+    public function reference(): string
+    {
+        return 'REP-' . str_pad((string) $this->repair_number, 3, '0', STR_PAD_LEFT);
+    }
+
+    /** Status shown on a challan; null while the item is simply "received". */
+    public function challanStatusLabel(): ?string
+    {
+        if ($this->status === 'received') {
+            return null;
+        }
+
+        return ['in_repair' => 'In repair', 'ready' => 'Ready for collection', 'delivered' => 'Delivered'][$this->status]
+            ?? ucfirst(str_replace('_', ' ', (string) $this->status));
+    }
+
+    /**
+     * What a challan shows: the intake copy (or, for repairs received before
+     * intake copies existed, the current record) and the fields changed since.
+     * Shared by the web challan/PDF and the mobile API.
+     *
+     * @return array{has_intake_copy: bool, details: array<string, ?string>, changes: array<string, ?string>}
+     */
+    public function challanSummary(): array
+    {
+        $current = $this->intakeDetails();
+        $intake = $this->intake_snapshot;
+
+        return [
+            'has_intake_copy' => $intake !== null,
+            'details' => $intake ?? $current,
+            'changes' => $intake === null ? [] : array_filter(
+                $current,
+                fn (?string $value, string $key) => ($intake[$key] ?? null) !== $value,
+                ARRAY_FILTER_USE_BOTH,
+            ),
+        ];
+    }
+
+    /**
+     * WhatsApp's official click-to-chat link to the customer's saved number,
+     * opened in the shop's own WhatsApp. Only a number Mobile::normalize accepts
+     * (an Indian mobile) gets a link; anything else is reported, never guessed.
+     *
+     * @return array{link: ?string, problem: ?string}
+     */
+    public function customerWhatsApp(): array
+    {
+        $saved = trim((string) $this->customer?->mobile);
+        if ($saved === '') {
+            return ['link' => null, 'problem' => 'No mobile number is saved for this customer.'];
+        }
+        $national = \App\Support\Mobile::normalize($saved);
+        if ($national === null) {
+            return ['link' => null, 'problem' => "The saved number ({$saved}) is not a valid Indian mobile number, so WhatsApp cannot be opened from here. Check the customer's record."];
+        }
+
+        $shopName = Shop::query()->whereKey($this->shop_id)->value('name');
+        // Says nothing about a PDF: staff attach it themselves, or not.
+        $message = "Hello from {$shopName}. We have received your item for repair, reference {$this->reference()}. Please keep this reference for collection.";
+
+        return ['link' => 'https://wa.me/' . \App\Support\Mobile::COUNTRY_CODE . $national . '?text=' . rawurlencode($message), 'problem' => null];
+    }
+
     /**
      * The challan's item details as display strings (null = not recorded).
      * Stored once at intake in intake_snapshot; the challan compares it with
