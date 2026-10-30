@@ -203,7 +203,9 @@ class CustomerContextTest extends TestCase
         // Same shape as the context endpoint's customer object.
         $this->assertSame(
             ['id', 'first_name', 'last_name', 'name', 'mobile', 'customer_code', 'loyalty_points',
-             'email', 'address', 'date_of_birth', 'anniversary_date', 'wedding_date', 'notes', 'member_since'],
+             'email', 'address', 'date_of_birth', 'anniversary_date', 'wedding_date', 'notes', 'member_since',
+             // The app refetches the private profile photo only when this changes.
+             'photo_version'],
             array_keys($body['customer'])
         );
         $this->assertSame('Asha', $body['customer']['first_name']);

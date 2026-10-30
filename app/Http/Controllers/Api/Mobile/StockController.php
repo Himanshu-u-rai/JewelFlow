@@ -31,6 +31,9 @@ class StockController extends Controller
         if ($request->filled('category')) {
             $query->where('category', 'ilike', $request->category);
         }
+        if ($request->filled('sub_category')) {
+            $query->where('sub_category', 'ilike', $request->sub_category);
+        }
 
         // Filter by purity
         $allowedPurities = [14, 18, 22, 24];
