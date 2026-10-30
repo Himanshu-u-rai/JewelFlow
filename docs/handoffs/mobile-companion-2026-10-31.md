@@ -117,7 +117,9 @@ The app's invoice payment now writes a cash book row for every money mode, not o
   plus an index.
   - Additive.
   - Existing rows keep NULL (intentional, no backfill).
-  - The restrict FK means a payment account referenced by cash rows cannot be hard-deleted. Review the delete path in `PaymentMethodController`.
+  - **Account deletion is already guarded (corrected; the first version of this handoff asked you to review it).** `PaymentMethodController::destroy` refuses with an error message, and deletes nothing, when the account is referenced by any invoice payment, karigar payment, quick-bill payment, job-order advance, or cash book row. The cash book check was added in `f939a52`.
+    - Tests: `CashEntryAccountTest::test_an_account_used_by_a_cash_entry_cannot_be_deleted` (a UPI cash-book entry from the app; the web delete is refused and the account survives), and `PaymentMethodSettingsTest::test_method_used_in_a_transaction_cannot_be_deleted` (a karigar payment).
+    - Not tested directly: cash rows written by invoice or EMI collection (same column, same check), and the restrict FK itself, which is the database backstop behind the guard.
   - Rolling back the code without the migration is safe. Rolling back the migration drops the recorded accounts.
 - **Constitution:** `assertShopLockForDate` is called by the new due-collection path.
   - Ledger rows are created with `record()` (create-time `forceFill`).
@@ -160,3 +162,41 @@ No staging or production test was run in this period.
 4. Pending owner decisions:
    - Should the app get EMI screens?
    - Should the item editor keep the stored price when weight, purity and charges are unchanged?
+
+## 9. Codex review fix: web Record payment retries (2026-10-31, `07bf055d`)
+
+**Defect:** `InvoiceController::storePayment` had no request identity. A form sent again after a lost response, a double click, or concurrent identical submissions recorded the payment again.
+
+**Fix:**
+- Each rendered form carries its own `idempotency_key` (required; a missing key is refused with "This form has expired…").
+- `InvoiceDueService::collectOnce` reuses the app endpoint's durable claim: the same `invoice_payment_claims` table and the same `(invoice_id, key)` identity.
+  - The claim is staked inside the payment transaction before any business check.
+  - The lookup fails closed: a database error or a claim from another shop is refused, never treated as "no claim".
+  - A payload-hash check refuses a different payment sent on the same form.
+  - A concurrent loser on `invoice_payment_claims_invoice_key_unique` replays the winner.
+- A refused attempt (over the due, locked day, EMI bill) rolls its claim back, so the corrected form can be sent.
+- Unchanged: `can:sales.create` and the policy, the financial lock, and the EMI rules. A fresh page is a fresh key, so separate partial collections are all recorded.
+- The app endpoint was not modified in this fix. Its claim code and the race-harness result (5/5) stand.
+
+**Red before, green after** (`InvoiceDueCollectionTest`, 7 new tests, run against the code at `4d428a2`):
+
+| Test | Before | After |
+|---|---|---|
+| Form resubmitted after a lost response | failed: paid 6,000 instead of 3,000 (double charge) | passes |
+| Same form, different amount | failed: not refused | passes |
+| Submission without its key | failed: accepted | passes |
+| Page gives each form its own key | failed: no key on the page | passes |
+| Separate partial payments from fresh forms; refused attempt frees its key; replay still needs the permission and never reaches an EMI bill | passed (guards that must keep holding) | pass |
+
+**Real concurrency (after the fix):** `web-pay-race.sh` ran on the local demo database against a 4-worker local server (`PHP_CLI_SERVER_WORKERS=4`), signed in as the demo owner. Every request reached the payment code (each redirect target was the invoice page, not the login page).
+
+| Scenario | Overlap | Result |
+|---|---|---|
+| 3 identical submissions of one form at once | 75 ms | +1 payment, 1 claim |
+| The same form again after its answer was lost | — | no change |
+| 2 submissions of the same form with another amount | 64 ms | no change |
+| A fresh form | — | +1 payment |
+
+There is no before-fix concurrency run; the before-fix defect is shown by the sequential double charge above.
+
+**Full suite on `07bf055d`** (clean tree, `php8.2 artisan test`, local PostgreSQL test DB): **3816 passed, 1 skipped, 0 failed** (19,727 assertions). Targeted before that: `InvoiceDueCollectionTest|InvoicePayment|StoreCredit` 64 passed.
