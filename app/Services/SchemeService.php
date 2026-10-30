@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CashTransaction;
 use App\Models\Customer;
+use App\Models\InstallmentPlan;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\Scheme;
@@ -246,6 +247,10 @@ class SchemeService
 
             if ($lockedInvoice->status !== Invoice::STATUS_FINALIZED) {
                 throw new LogicException('Scheme redemption is allowed only on finalized invoices.');
+            }
+
+            if (InstallmentPlan::activeFor($lockedInvoice)) {
+                throw new LogicException(InstallmentPlan::COLLECT_THROUGH_PLAN);
             }
 
             $lockedEnrollment = SchemeEnrollment::query()

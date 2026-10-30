@@ -358,6 +358,103 @@
                     </section>
                 </section>
 
+                {{-- Record payment: money received later against the due (twin of the
+                     app's Record payment). A bill on EMI is collected through its plan. --}}
+                @if($invoice->status === \App\Models\Invoice::STATUS_FINALIZED && $outstandingAmount > 0)
+                    @if($emiMeta['collect_through_plan'] ?? false)
+                        <section class="invoice-show-collect" aria-labelledby="invoice-collect-heading">
+                            <div>
+                                <h2 id="invoice-collect-heading">Collect the due</h2>
+                                <p>{{ \App\Models\InstallmentPlan::COLLECT_THROUGH_PLAN }}</p>
+                            </div>
+                            <a href="{{ route('installments.show', $emiMeta['plan_id']) }}" class="invoice-show-collect-link">Open EMI plan</a>
+                        </section>
+                    @else
+                        @can('sales.create')
+                            @php
+                                $payModes = ['cash' => 'Cash'];
+                                if ($paymentAccounts->contains('type', 'upi')) { $payModes['upi'] = 'UPI'; }
+                                if ($paymentAccounts->contains('type', 'bank')) { $payModes['bank'] = 'Bank'; }
+                                $payModes['other'] = 'Other';
+                                // Starts empty, as the app's screen: nothing is recorded by default.
+                                $payRows = collect(old('payments', [[]]))
+                                    ->map(fn ($r) => [
+                                        'mode' => $r['mode'] ?? 'cash',
+                                        'amount' => (string) ($r['amount'] ?? ''),
+                                        'payment_method_id' => (string) ($r['payment_method_id'] ?? ''),
+                                        'reference' => (string) ($r['reference'] ?? ''),
+                                    ])->values();
+                                $payErrors = collect($errors->getMessages())
+                                    ->filter(fn ($m, $key) => in_array($key, ['payments', 'amount', 'status'], true) || str_starts_with($key, 'payments.'))
+                                    ->flatten();
+                            @endphp
+                            <section class="invoice-show-collect" aria-labelledby="invoice-collect-heading">
+                                <div>
+                                    <h2 id="invoice-collect-heading">Record payment</h2>
+                                    <p>Money received now against this bill. Due: ₹{{ number_format($outstandingAmount, 2) }}.</p>
+                                </div>
+                                @if($payErrors->isNotEmpty())
+                                    <ul class="invoice-show-collect-errors" role="alert">
+                                        @foreach($payErrors as $message)<li>{{ $message }}</li>@endforeach
+                                    </ul>
+                                @endif
+                                <form method="POST" action="{{ route('invoices.payments.store', $invoice) }}" data-turbo-frame="_top"
+                                      x-data="{
+                                          due: {{ round($outstandingAmount, 2) }},
+                                          accounts: @js($paymentAccounts),
+                                          rows: @js($payRows),
+                                          needsAccount(row) { return row.mode === 'upi' || row.mode === 'bank'; },
+                                          options(row) { return this.accounts.filter(a => a.type === row.mode); },
+                                          entered() { return this.rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0); },
+                                          add() {
+                                              const left = Math.max(0, this.due - this.entered());
+                                              this.rows.push({ mode: 'cash', amount: left > 0 ? left.toFixed(2) : '', payment_method_id: '', reference: '' });
+                                          },
+                                      }">
+                                    @csrf
+                                    <template x-for="(row, i) in rows" :key="i">
+                                        <div class="invoice-show-collect-row">
+                                            <label>
+                                                <span>Paid by</span>
+                                                <select :name="`payments[${i}][mode]`" x-model="row.mode">
+                                                    @foreach($payModes as $value => $label)
+                                                        <option value="{{ $value }}">{{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                            <label x-show="needsAccount(row)" x-cloak>
+                                                <span x-text="row.mode === 'upi' ? 'UPI account' : 'Bank account'"></span>
+                                                <select :name="`payments[${i}][payment_method_id]`" x-model="row.payment_method_id" :disabled="!needsAccount(row)" :required="needsAccount(row)">
+                                                    <option value="">Select account</option>
+                                                    <template x-for="acc in options(row)" :key="acc.id">
+                                                        <option :value="String(acc.id)" x-text="acc.label"></option>
+                                                    </template>
+                                                </select>
+                                            </label>
+                                            <label>
+                                                <span>Amount (₹)</span>
+                                                <input type="number" step="0.01" min="0.01" :max="due" inputmode="decimal" :name="`payments[${i}][amount]`" x-model="row.amount" required>
+                                            </label>
+                                            <label>
+                                                <span>Reference</span>
+                                                <input type="text" maxlength="100" :name="`payments[${i}][reference]`" x-model="row.reference" placeholder="Optional: UTR, cheque no.">
+                                            </label>
+                                            <button type="button" class="invoice-show-collect-secondary" x-show="rows.length > 1" x-cloak @click="rows.splice(i, 1)">Remove</button>
+                                        </div>
+                                    </template>
+                                    <div class="invoice-show-collect-actions">
+                                        <button type="button" class="invoice-show-collect-secondary" x-show="entered() < due - 0.005" @click="add()">Add another payment mode</button>
+                                        <button type="submit" class="invoice-show-collect-submit" data-turbo-submits-with="Recording…"
+                                                :disabled="entered() <= 0 || entered() > due + 0.005"
+                                                x-text="entered() > 0 ? 'Record ₹' + entered().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Record payment'">Record payment</button>
+                                    </div>
+                                    <small x-show="entered() > due + 0.005" x-cloak>More than the due of ₹{{ number_format($outstandingAmount, 2) }}.</small>
+                                </form>
+                            </section>
+                        @endcan
+                    @endif
+                @endif
+
                 {{-- Apply Store Credit — only when the customer has wallet credit and
                      the finalized invoice still has an outstanding balance (M12). --}}
                 @can('sales.create')

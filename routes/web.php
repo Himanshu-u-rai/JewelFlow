@@ -569,6 +569,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/customers', [CustomerController::class, 'store'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.store');
     Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.quick-store');
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware(['edition:retailer,manufacturer', 'can:customers.view'])->name('customers.show');
+    Route::get('/customers/{customer}/history', [CustomerController::class, 'history'])->middleware(['edition:retailer,manufacturer', 'can:customers.view'])->name('customers.history');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.edit');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.update');
     Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.verify-compliance');
@@ -904,6 +905,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Route gate is the lower 'sales.create' so cashiers can FINALIZE drafts;
     // the cancel/void branch is separately gated 'sales.void' inside update().
     Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.create')->name('invoices.update');
+    // Money received later against the due; same permission as the app's twin.
+    Route::post('/invoices/{invoice}/payments', [\App\Http\Controllers\InvoiceController::class, 'storePayment'])->middleware('can:sales.create')->name('invoices.payments.store');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('can:sales.view')->name('invoices.show');
     // S3-04: 'nocache' because the printed document now carries the signature
     // bytes inline.
@@ -1048,7 +1051,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // --- Tag / Label Printing (inventory-level view permission) ---
     Route::get('/tags', [TagPrintController::class, 'index'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.index');
-    Route::post('/tags/print', [TagPrintController::class, 'print'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.print');
+    // Read-only page: GET so refresh, new tabs and Back work (POST kept for old forms).
+    Route::match(['get', 'post'], '/tags/print', [TagPrintController::class, 'print'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.print');
 
     // --- Retailer Reports & Analytics (reports.view; catalog.manage for catalog management) ---
     Route::get('/report/stock-aging', [RetailerDashboardController::class, 'stockAging'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.stock-aging');

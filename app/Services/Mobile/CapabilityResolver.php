@@ -15,37 +15,90 @@ use App\Models\User;
  */
 class CapabilityResolver
 {
+    /** Why each capability resolved off, keyed by capability (filled by resolve()). */
+    private array $reasons = [];
+
+    /** The reasons behind the last resolve(): {key: {reason, permission?}}. */
+    public function reasons(): array
+    {
+        return $this->reasons;
+    }
+
     /**
-     * Resolve the capability flags for the given shop/user pair.
+     * Resolve the capability flags for the given shop/user pair. Each flag asks
+     * for the permission the web's twin route asks for (web leads), and every
+     * flag that comes out off records why.
      */
     public function resolve(Shop $shop, User $user): CapabilitiesData
     {
+        $this->reasons = [];
         $planFeatures = $this->planFeatures($shop);
+        $gate = fn (string $key, ?string $planFeature, ?string $permission, bool $default = true) =>
+            $this->flag($key, $planFeatures, $planFeature, $user, $permission, $default);
 
         // Owner-controlled per-shop toggle. Default true (no row / null = enabled).
         $quickBillEnabled = $shop->preferences?->quick_bill_enabled ?? true;
+        $quickBill = fn (string $key, string $permission) => $quickBillEnabled
+            ? $gate($key, null, $permission)
+            : $this->off($key, ['reason' => 'disabled']);
 
         return new CapabilitiesData(
-            items:        $this->gate($planFeatures, 'inventory', $user, 'inventory.view'),
-            stock:        $this->gate($planFeatures, 'inventory', $user, 'inventory.view'),
-            customers:    $this->gate($planFeatures, 'customers', $user, 'customers.view'),
-            suppliers:    $this->gate($planFeatures, 'vendors', $user, null, true),
-            purchases:    $this->gate($planFeatures, null, $user, null, true),
-            pos:          $this->gate($planFeatures, 'pos', $user, 'sales.pos'),
-            quick_bill:   $quickBillEnabled && $this->gate($planFeatures, null, $user, 'sales.pos', true),
-            invoice:      $this->gate($planFeatures, 'invoices', $user, 'sales.view'),
-            repairs:      $this->gate($planFeatures, 'repairs', $user, 'repairs.view'),
-            expenses:     $this->gate($planFeatures, null, $user, 'cash.view', true),
+            items:        $gate('items', 'inventory', 'inventory.view'),
+            stock:        $gate('stock', 'inventory', 'inventory.view'),
+            customers:    $gate('customers', 'customers', 'customers.view'),
+            suppliers:    $gate('suppliers', 'vendors', 'vendors.view'),
+            purchases:    $gate('purchases', null, 'inventory.view'),
+            pos:          $gate('pos', 'pos', 'sales.pos'),
+            // The web: quick-bills list = sales.view, create = sales.create.
+            quick_bill:   $quickBill('quick_bill', 'sales.view'),
+            invoice:      $gate('invoice', 'invoices', 'sales.view'),
+            repairs:      $gate('repairs', 'repairs', 'repairs.view'),
+            expenses:     $gate('expenses', null, 'cash.view'),
             catalog:      $this->catalogGate($planFeatures, $user),
-            dashboard:    $this->gate($planFeatures, null, $user, null, true),
-            scanner:      $this->gate($planFeatures, null, $user, null, true),
-            schemes:      $this->gate($planFeatures, 'schemes', $user, null),
-            loyalty:      $this->gate($planFeatures, 'loyalty', $user, null),
-            installments: $this->gate($planFeatures, 'installments', $user, null),
-            cashbook:        $this->cashbookGate($user, 'cash.view'),
-            cashbook_create: $this->cashbookGate($user, 'cash.create'),
+            // Money figures (revenue, profit, trends); rates and notices need nothing.
+            dashboard:    $gate('dashboard', null, 'reports.view'),
+            // The scanner looks tags up for stock or for a sale (the lookup-item gate:
+            // inventory.view or sales.pos, as the web POS's tag lookup).
+            scanner:      $user->can('lookup-item') ? true : $this->off('scanner', ['reason' => 'permission']),
+            schemes:      $gate('schemes', 'schemes', null),
+            loyalty:      $gate('loyalty', 'loyalty', null),
+            installments: $gate('installments', 'installments', 'sales.view'),
+            cashbook:        $this->cashbookGate('cashbook', $user, 'cash.view'),
+            cashbook_create: $this->cashbookGate('cashbook_create', $user, 'cash.create'),
+            items_create:    $gate('items_create', 'inventory', 'inventory.create'),
+            returns_approve: $gate('returns_approve', null, 'returns.approve'),
+            repairs_edit:    $gate('repairs_edit', 'repairs', 'repairs.edit'),
+            suppliers_manage: $gate('suppliers_manage', 'vendors', 'vendors.manage'),
+            devices:         $gate('devices', null, 'settings.view'),
+            quick_bill_create: $quickBill('quick_bill_create', 'sales.create'),
+            customers_create:  $gate('customers_create', 'customers', 'customers.create'),
+            repairs_create:    $gate('repairs_create', 'repairs', 'repairs.create'),
+            items_edit:        $gate('items_edit', 'inventory', 'inventory.edit'),
+            pricing:           $gate('pricing', null, 'pricing.update'),
+            invoice_payment:   $gate('invoice_payment', 'invoices', 'sales.create'),
         );
     }
+
+    /** Plan, then permission; an off flag records which of the two said no. */
+    private function flag(string $key, array $planFeatures, ?string $planFeature, User $user, ?string $permission, bool $default): bool
+    {
+        if (! $this->planAllows($planFeatures, $planFeature, $default)) {
+            return $this->off($key, ['reason' => 'plan']);
+        }
+        if ($permission !== null && ! $this->userAllows($user, $permission)) {
+            return $this->off($key, ['reason' => 'permission']); // never which one: staff are not told why
+        }
+
+        return true;
+    }
+
+    private function off(string $key, array $reason): bool
+    {
+        $this->reasons[$key] = $reason;
+
+        return false;
+    }
+
 
     /**
      * Load the active subscription plan features for a shop.
@@ -61,33 +114,6 @@ class CapabilityResolver
     }
 
     /**
-     * Apply the plan-feature AND user-permission gate for a single capability.
-     *
-     * @param array<string, mixed> $planFeatures
-     * @param string|null $planFeature    Plan feature key; null means "always-on" (unless $defaultWhenMissing is false).
-     * @param string|null $permission     RBAC permission name; null means no permission gate.
-     * @param bool $defaultWhenMissing    If the plan feature key is absent, default to this (true = available to all plans).
-     */
-    private function gate(
-        array $planFeatures,
-        ?string $planFeature,
-        User $user,
-        ?string $permission,
-        bool $defaultWhenMissing = true
-    ): bool {
-        $planOk = $this->planAllows($planFeatures, $planFeature, $defaultWhenMissing);
-        if (! $planOk) {
-            return false;
-        }
-
-        if ($permission === null) {
-            return true;
-        }
-
-        return $this->userAllows($user, $permission);
-    }
-
-    /**
      * Mobile Cash Book capability gate — mirrors CashBookController::authorizeCashbook
      * exactly (single source of truth for the product rule). Only an owner or a
      * manager qualifies, and they must additionally hold the permission. A
@@ -95,28 +121,36 @@ class CapabilityResolver
      * permission; an owner with the permission revoked is denied too. Plan-feature
      * independent — Cash Book is always-on per plan.
      */
-    private function cashbookGate(User $user, string $permission): bool
+    private function cashbookGate(string $key, User $user, string $permission): bool
     {
-        return ($user->isOwner() || $user->isManager())
-            && $user->hasPermission($permission);
+        if (! $user->isOwner() && ! $user->isManager()) {
+            return $this->off($key, ['reason' => 'role']);
+        }
+        if (! $user->hasPermission($permission)) {
+            return $this->off($key, ['reason' => 'permission']);
+        }
+
+        return true;
     }
 
     /**
-     * Catalog is enabled if either whatsapp_catalog OR public_catalog plan
-     * feature is on. If neither key is present at all, default to true
-     * (always-on per spec).
+     * Catalog is on the plan if either whatsapp_catalog OR public_catalog plan
+     * feature is on (neither key present = always on), and the user needs
+     * catalog.manage, as every web and app catalog route.
      */
     private function catalogGate(array $planFeatures, User $user): bool
     {
         $hasAny = array_key_exists('whatsapp_catalog', $planFeatures)
             || array_key_exists('public_catalog', $planFeatures);
 
-        if (! $hasAny) {
-            return true; // always-on default
+        $planOk = ! $hasAny
+            || (bool) ($planFeatures['whatsapp_catalog'] ?? false)
+            || (bool) ($planFeatures['public_catalog'] ?? false);
+        if (! $planOk) {
+            return $this->off('catalog', ['reason' => 'plan']);
         }
 
-        return (bool) ($planFeatures['whatsapp_catalog'] ?? false)
-            || (bool) ($planFeatures['public_catalog'] ?? false);
+        return $this->flag('catalog', $planFeatures, null, $user, 'catalog.manage', true);
     }
 
     /**

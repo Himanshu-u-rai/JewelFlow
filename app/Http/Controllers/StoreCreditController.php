@@ -92,6 +92,9 @@ class StoreCreditController extends Controller
         if ($invoice->status !== Invoice::STATUS_FINALIZED) {
             return back()->withErrors(['store_credit' => 'Only finalized invoices can receive payments.']);
         }
+        if (\App\Models\InstallmentPlan::activeFor($invoice)) {
+            return back()->withErrors(['store_credit' => \App\Models\InstallmentPlan::COLLECT_THROUGH_PLAN]);
+        }
         if (!$invoice->customer_id) {
             return back()->withErrors(['store_credit' => 'Invoice has no customer to charge credit from.']);
         }
@@ -147,7 +150,7 @@ class StoreCreditController extends Controller
     {
         $user = auth()->user();
         if (!$user || !method_exists($user, 'isOwner') || !$user->isOwner()) {
-            abort(403, 'Only the shop owner can adjust store credit.');
+            abort(403, \App\Support\NotAvailable::MESSAGE); // owner only
         }
     }
 

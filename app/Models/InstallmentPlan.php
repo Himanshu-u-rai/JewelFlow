@@ -9,6 +9,13 @@ class InstallmentPlan extends Model
 {
     use BelongsToShop;
 
+    /**
+     * A bill on an active plan is paid only through the plan: money taken on
+     * the invoice itself lowers the invoice due but not remaining_amount, so
+     * the EMI page would ask for it again.
+     */
+    public const COLLECT_THROUGH_PLAN = 'This bill is on EMI. Collect the due through its EMI plan.';
+
     protected $fillable = [
         'invoice_id',
         'customer_id',
@@ -53,6 +60,16 @@ class InstallmentPlan extends Model
     public function payments()
     {
         return $this->hasMany(InstallmentPayment::class, 'plan_id');
+    }
+
+    /** The invoice's active plan, if its due is being paid by EMI. */
+    public static function activeFor(Invoice $invoice): ?self
+    {
+        return static::withoutTenant()
+            ->where('shop_id', $invoice->shop_id)
+            ->where('invoice_id', $invoice->id)
+            ->where('status', 'active')
+            ->first();
     }
 
     public function scopeActive($query)

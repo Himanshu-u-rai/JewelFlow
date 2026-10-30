@@ -28729,6 +28729,142 @@ input[type="date"] {
     font-weight: 600;
 }
 
+/* Record payment: money received later against an invoice's due. */
+.invoice-show-collect {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--invoice-show-line-soft);
+    border-radius: 14px;
+    background: var(--invoice-show-surface);
+}
+
+.invoice-show-collect h2 {
+    margin: 0;
+    color: var(--invoice-show-ink);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.invoice-show-collect p {
+    margin: 4px 0 0;
+    color: var(--invoice-show-muted);
+    font-size: 13px;
+}
+
+.invoice-show-collect form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.invoice-show-collect-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+
+.invoice-show-collect-row + .invoice-show-collect-row {
+    padding-top: 12px;
+    border-top: 1px dashed var(--invoice-show-line-soft);
+}
+
+.invoice-show-collect label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    color: var(--invoice-show-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.invoice-show-collect input,
+.invoice-show-collect select {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--invoice-show-line-soft);
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 0 10px;
+    color: var(--invoice-show-ink);
+    font-size: 14px;
+}
+
+.invoice-show-collect small {
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.invoice-show-collect-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.invoice-show-collect-submit,
+.invoice-show-collect-secondary,
+.invoice-show-collect-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.invoice-show-collect-submit,
+.invoice-show-collect-link {
+    border: 1px solid var(--invoice-show-ink);
+    background: var(--invoice-show-ink);
+    color: #ffffff;
+}
+
+.invoice-show-collect-link {
+    align-self: flex-start;
+}
+
+.invoice-show-collect-submit {
+    margin-left: auto;
+}
+
+.invoice-show-collect-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.invoice-show-collect-secondary {
+    border: 1px solid var(--invoice-show-line-soft);
+    background: #ffffff;
+    color: var(--invoice-show-ink);
+}
+
+@media (max-width: 480px) {
+    .invoice-show-collect-actions > button,
+    .invoice-show-collect-link {
+        flex: 1 1 100%;
+        align-self: stretch;
+    }
+}
+
+.invoice-show-collect-errors {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 13px;
+    list-style: none;
+}
+
 .invoice-show-page .invoice-show-preview {
     margin-top: 0 !important;
 }

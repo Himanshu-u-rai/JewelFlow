@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\InstallmentPlan;
+use App\Models\ShopPaymentMethod;
 use App\Services\InvoiceAccountingService;
+use App\Services\InvoiceDueService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 class InvoiceController extends Controller
@@ -86,11 +89,14 @@ class InvoiceController extends Controller
             ->where('invoice_id', $invoice->id)
             ->first();
         $hasInstallmentPlan = $installmentPlan !== null;
+        // An active plan collects this bill's due; no direct payment or store credit.
+        $collectThroughPlan = (bool) $installmentPlan?->isActive();
 
         $emiMeta = [
             'is_retailer' => (bool) ($shop?->isRetailer()),
             'has_plan'    => $hasInstallmentPlan,
             'plan_id'     => $installmentPlan?->id,
+            'collect_through_plan' => $collectThroughPlan,
             'outstanding' => $outstandingAmount,
             'eligible'    => (bool) ($shop?->isRetailer())
                 && $invoice->status === Invoice::STATUS_FINALIZED
@@ -103,13 +109,46 @@ class InvoiceController extends Controller
         $storeCreditAvailable = 0.0;
         if ($invoice->customer_id
             && $invoice->status === Invoice::STATUS_FINALIZED
-            && $outstandingAmount > 0) {
+            && $outstandingAmount > 0
+            && !$collectThroughPlan) {
             $storeCreditAvailable = app(\App\Services\StoreCreditService::class)
                 ->balance((int) $invoice->shop_id, (int) $invoice->customer_id);
         }
         $storeCreditApplicable = round(min($outstandingAmount, $storeCreditAvailable), 2);
 
-        return view('invoices.show', compact('invoice', 'emiMeta', 'outstandingAmount', 'storeCreditAvailable', 'storeCreditApplicable'));
+        // Accounts for the Record payment form: UPI / bank are offered only when one is set up.
+        $paymentAccounts = ShopPaymentMethod::query()
+            ->where('shop_id', $invoice->shop_id)
+            ->active()
+            ->whereIn('type', [ShopPaymentMethod::TYPE_UPI, ShopPaymentMethod::TYPE_BANK])
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (ShopPaymentMethod $m) => ['id' => (int) $m->id, 'type' => (string) $m->type, 'label' => (string) $m->account_label])
+            ->values();
+
+        return view('invoices.show', compact('invoice', 'emiMeta', 'outstandingAmount', 'storeCreditAvailable', 'storeCreditApplicable', 'paymentAccounts'));
+    }
+
+    /**
+     * Money received later against a finalized invoice's due. The app's twin is
+     * POST /api/mobile/invoices/{invoice}/payments; both go through InvoiceDueService.
+     */
+    public function storePayment(Request $request, Invoice $invoice, InvoiceDueService $dues)
+    {
+        $this->authorize('update', $invoice);
+
+        $shopId = (int) $invoice->shop_id;
+        $payments = $request->validate(InvoiceDueService::rules($shopId))['payments'];
+        $dues->validatePaymentMethods($payments, $shopId);
+
+        $total = DB::transaction(function () use ($invoice, $payments, $dues) {
+            $locked = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            return $dues->collect($locked, $payments, (int) auth()->id(), 'web')['total'];
+        });
+
+        return redirect()->route('invoices.show', $invoice)
+            ->with('success', '₹' . number_format($total, 2) . ' received on ' . $invoice->invoice_number . '.');
     }
 
     public function edit(Invoice $invoice)
