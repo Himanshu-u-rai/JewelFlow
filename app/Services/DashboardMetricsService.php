@@ -178,10 +178,37 @@ class DashboardMetricsService
             'topCustomers',
             'reorderAlertCount',
             'reorderAlerts',
+            'allReorderAlerts',
             'isRetailer',
             'todaysRevenue',
             'todaysProfit',
             'overdueEmis'
         );
+    }
+
+    /**
+     * The dashboard's warning chips: the website shows the messages, the app's
+     * Shop notices page lists them by key. One rule for both.
+     *
+     * @return list<array{key: string, count: int, message: string}>
+     */
+    public static function warnings(array $metrics, int $lowStockThreshold): array
+    {
+        $openRepairs = (int) ($metrics['openRepairs'] ?? 0);
+        $stock = (int) ($metrics['stock'] ?? 0);
+        $overdueEmis = (int) ($metrics['overdueEmis'] ?? 0);
+
+        $warnings = [];
+        if ($openRepairs > 8) {
+            $warnings[] = ['key' => 'repair_backlog', 'count' => $openRepairs, 'message' => "Repair backlog is high ({$openRepairs})"];
+        }
+        if ($stock < $lowStockThreshold) {
+            $warnings[] = ['key' => 'low_stock', 'count' => $stock, 'message' => "Low stock: only {$stock} item(s) in stock"];
+        }
+        if (($metrics['isRetailer'] ?? false) && $overdueEmis > 0) {
+            $warnings[] = ['key' => 'overdue_emis', 'count' => $overdueEmis, 'message' => "{$overdueEmis} EMI plan(s) are overdue"];
+        }
+
+        return $warnings;
     }
 }

@@ -38,4 +38,16 @@ class CustomerOpeningBalance extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+
+    /**
+     * A customer's net opening money balance (web customer page and the app):
+     * positive = customer owes the shop (Dr), negative = shop owes the customer (Cr).
+     */
+    public static function netFor(int $shopId, int $customerId): float
+    {
+        return (float) self::where('shop_id', $shopId)
+            ->where('customer_id', $customerId)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'receivable' THEN amount ELSE -amount END), 0) as net")
+            ->value('net');
+    }
 }

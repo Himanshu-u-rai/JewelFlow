@@ -6,6 +6,7 @@ use App\Data\Mobile\VendorData;
 use App\Data\Mobile\VendorLedgerData;
 use App\Data\Mobile\VendorLedgerEntryData;
 use App\Data\Mobile\VendorLedgerSummaryData;
+use App\Http\Concerns\ArchivesParties;
 use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Vendor;
@@ -18,6 +19,8 @@ use Spatie\LaravelData\DataCollection;
 
 class VendorController extends Controller
 {
+    use ArchivesParties;
+
     /**
      * Paginated, searchable, filterable list of vendors for the current shop.
      * Shop scoping is enforced automatically by the BelongsToShop global scope
@@ -27,33 +30,55 @@ class VendorController extends Controller
     {
         $validated = $request->validate([
             'search'   => 'nullable|string|max:255',
-            'status'   => 'nullable|in:active,inactive,all',
+            'status'   => 'nullable|in:active,archived,inactive,all',
             'sort'     => 'nullable|in:recent,name,updated',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 20);
-        $status  = $validated['status'] ?? 'all';
+        // As the web list: Active by default; 'inactive' stays an alias of 'archived'.
+        $status  = match ($validated['status'] ?? 'active') {
+            'archived', 'inactive' => 'archived',
+            'all' => 'all',
+            default => 'active',
+        };
         $sort    = $validated['sort'] ?? 'recent';
 
-        $query = Vendor::query()
-            ->withCount(['items' => fn ($q) => $q->where('status', 'in_stock')]);
+        $search = $validated['search'] ?? null;
+        $applySearch = function ($q) use ($search) {
+            if (! empty($search)) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('contact_person', 'ilike', "%{$search}%")
+                        ->orWhere('mobile', 'like', "%{$search}%")
+                        ->orWhere('gst_number', 'ilike', "%{$search}%");
+                });
+            }
 
-        if (! empty($validated['search'])) {
-            $search = $validated['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('contact_person', 'ilike', "%{$search}%")
-                    ->orWhere('mobile', 'like', "%{$search}%")
-                    ->orWhere('gst_number', 'ilike', "%{$search}%");
-            });
-        }
+            return $q;
+        };
+
+        $query = $applySearch(Vendor::query()
+            ->withCount(['items' => fn ($q) => $q->where('status', 'in_stock')]));
 
         if ($status === 'active') {
             $query->active();
-        } elseif ($status === 'inactive') {
-            $query->inactive();
+        } elseif ($status === 'archived') {
+            $query->archived();
         }
+
+        // The web list's status tab counts (under the same search) and its
+        // Total / Active / GST figures (whole directory).
+        $counts = $applySearch(Vendor::query())->selectRaw('
+            count(*) filter (where is_active IS TRUE) as active,
+            count(*) filter (where is_active IS FALSE) as archived,
+            count(*) as "all"
+        ')->first();
+        $stats = Vendor::query()->selectRaw("
+            count(*) as total,
+            count(*) filter (where is_active IS TRUE) as active,
+            count(*) filter (where gst_number is not null and gst_number <> '') as gst
+        ")->first();
 
         match ($sort) {
             'name'    => $query->orderBy('name'),
@@ -75,6 +100,8 @@ class VendorController extends Controller
                 'total'        => $paginator->total(),
                 'last_page'    => $paginator->lastPage(),
             ],
+            'counts' => ['active' => (int) $counts->active, 'archived' => (int) $counts->archived, 'all' => (int) $counts->all],
+            'stats'  => ['total' => (int) $stats->total, 'active' => (int) $stats->active, 'gst' => (int) $stats->gst],
         ]);
     }
 
@@ -87,7 +114,43 @@ class VendorController extends Controller
             ->where('shop_id', (int) $request->user()->shop_id)
             ->findOrFail($id);
 
-        return response()->json(VendorData::fromModel($vendor, (int) $vendor->items_count));
+        // The web vendor page's "In-Stock Items": the latest 10 tagged to this supplier.
+        $items = $vendor->items()->where('status', 'in_stock')->latest()->take(10)
+            ->get(['id', 'barcode', 'category', 'gross_weight', 'huid', 'selling_price'])
+            ->map(fn (Item $i) => [
+                'id' => (int) $i->id,
+                'barcode' => $i->barcode,
+                'category' => $i->category,
+                'gross_weight' => (float) $i->gross_weight,
+                'huid' => $i->huid,
+                'selling_price' => (float) $i->selling_price,
+            ])->all();
+
+        return response()->json(VendorData::fromModel($vendor, (int) $vendor->items_count)->toArray() + ['items' => $items]);
+    }
+
+    /** PATCH /vendors/{id}/archive — the web's Archive (shared action; history is kept). */
+    public function archive(int $id, Request $request): JsonResponse
+    {
+        return $this->setActive($id, $request, false);
+    }
+
+    /** PATCH /vendors/{id}/reactivate — the web's Reactivate. */
+    public function reactivate(int $id, Request $request): JsonResponse
+    {
+        return $this->setActive($id, $request, true);
+    }
+
+    private function setActive(int $id, Request $request, bool $active): JsonResponse
+    {
+        $vendor = Vendor::where('shop_id', (int) $request->user()->shop_id)->findOrFail($id);
+        $this->authorize('delete', $vendor);
+
+        if (! $this->setPartyActive($request, $vendor, $active)) {
+            return response()->json(['message' => $active ? 'This supplier is already active.' : 'This supplier is already archived.'], 409);
+        }
+
+        return response()->json(VendorData::fromModel($vendor->fresh()->loadCount(['items' => fn ($q) => $q->where('status', 'in_stock')])));
     }
 
     public function store(Request $request): JsonResponse

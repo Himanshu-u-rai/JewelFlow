@@ -42,6 +42,11 @@ class ScanController extends Controller
             ], 404);
         }
 
+        // Already connected by this user: nothing to record (the app checks in
+        // every few seconds; one audit row per connection, not per check).
+        $alreadyConnected = $session->mobile_connected_at !== null
+            && (int) $session->connected_user_id === (int) $request->user()->id;
+
         // Record this device as a connected scanner. Multiple scanners may feed
         // one session; this column tracks the most recent connector for display.
         // Per-scan ownership is recorded on each scan_event (posted_by_user_id).
@@ -51,18 +56,20 @@ class ScanController extends Controller
             'device_install_id'   => $validated['device_install_id'] ?? $session->device_install_id,
         ])->save();
 
-        $this->logAuditSafely(
-            $request,
-            action: 'mobile_scan_connected',
-            modelType: 'ScanSession',
-            modelId: (int) $session->id,
-            description: 'Mobile scanner connected to POS session.',
-            data: [
-                'source' => 'mobile_app',
-                'session_id' => $session->id,
-                'token_prefix' => substr($session->token, 0, 8),
-            ],
-        );
+        if (! $alreadyConnected) {
+            $this->logAuditSafely(
+                $request,
+                action: 'mobile_scan_connected',
+                modelType: 'ScanSession',
+                modelId: (int) $session->id,
+                description: 'Mobile scanner connected to POS session.',
+                data: [
+                    'source' => 'mobile_app',
+                    'session_id' => $session->id,
+                    'token_prefix' => substr($session->token, 0, 8),
+                ],
+            );
+        }
 
         return response()->json([
             'session_id'   => $session->id,
@@ -102,6 +109,12 @@ class ScanController extends Controller
             return response()->json([
                 'message' => 'Invalid or expired scan session.',
             ], 404);
+        }
+
+        // Refuse at once what the POS could not put in the cart, so the phone
+        // never shows "added" for a sold or unknown barcode.
+        if ($problem = ScanEvent::stockProblem((int) $session->shop_id, (string) $request->barcode)) {
+            return response()->json(['message' => $problem], 422);
         }
 
         // Attribute every scan to the sending user + token (multi-scanner truth).

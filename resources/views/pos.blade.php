@@ -2651,8 +2651,11 @@
                     mobileConnected = true;
                     setScanStatus('active', 'Connected');
                     updateActionButton();
-                } else if (!data.mobile_connected && !mobileConnected) {
+                } else if (!data.mobile_connected) {
+                    // Also when the phone disconnects: stop showing "Connected".
+                    mobileConnected = false;
                     setScanStatus('waiting', 'Scan QR to Connect');
+                    updateActionButton();
                 }
 
                 // Connected-scanner roster (multi-scanner: who is feeding this cart)
@@ -2794,7 +2797,11 @@
         document.getElementById('scanModal').classList.remove('active');
         if (scanToken) {
             const expireUrl = EXPIRE_URL_TEMPLATE.replace('__TOKEN__', encodeURIComponent(scanToken));
-            navigator.sendBeacon(expireUrl);
+            // A beacon sends no headers: carry the CSRF token in the body, or
+            // the server refuses it (419) and the phone stays "connected".
+            const form = new FormData();
+            form.append('_token', CSRF);
+            navigator.sendBeacon(expireUrl, form);
             scanToken = null;
         }
         expiresAt = null;

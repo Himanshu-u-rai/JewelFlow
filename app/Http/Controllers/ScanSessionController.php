@@ -281,6 +281,11 @@ class ScanSessionController extends Controller
             ], 403);
         }
 
+        // Same rule as the app: only an in-stock item of the shop can go in the cart.
+        if ($problem = ScanEvent::stockProblem((int) $session->shop_id, (string) $request->barcode)) {
+            return response()->json(['message' => $problem], 422);
+        }
+
         // Debounce: ignore same barcode scanned within last 2 seconds.
         // Wrapped in a transaction with a lock so two simultaneous POSTs for the
         // same barcode can't both pass the existence check.

@@ -152,4 +152,17 @@ class Invoice extends Model
 
         return $invoice;
     }
+
+    /**
+     * What a customer has spent: finished (finalized) bills only — drafts are not
+     * sales and a fully returned bill is cancelled. Same figure on the web
+     * customer page and the app.
+     */
+    public static function spentByCustomer(int $shopId, int $customerId): float
+    {
+        return (float) self::where('shop_id', $shopId)
+            ->where('customer_id', $customerId)
+            ->where('status', self::STATUS_FINALIZED)
+            ->sum('total');
+    }
 }

@@ -118,7 +118,7 @@
                     <div class="customers-show-retailer-stat">
                         <span>Loyalty Points</span>
                         <strong>{{ number_format($customer->loyalty_points ?? 0) }}</strong>
-                        <small>Worth ₹{{ number_format(($customer->loyalty_points ?? 0) * 0.25, 2) }}</small>
+                        <small>Worth ₹{{ number_format($loyaltyWorth, 2) }}</small>
                     </div>
                     <div class="customers-show-retailer-stat">
                         <span>Member Since</span>
@@ -306,6 +306,8 @@
                                 <h2>Recent Invoices</h2>
                                 <p>Latest customer billing activity.</p>
                             </div>
+                            {{-- Everything this customer bought or brought in (as the app's history). --}}
+                            <a href="{{ route('customers.history', $customer) }}" class="text-sm font-semibold text-indigo-600 hover:underline">Full history</a>
                         </div>
                         <div class="customers-show-retailer-invoices">
                             @forelse($invoices as $invoice)

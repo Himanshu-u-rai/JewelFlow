@@ -43,6 +43,9 @@ class ScanSessionParallelTest extends TestCase
     public function test_parallel_scan_session_tokens_poll_and_post_independently(): void
     {
         [$user] = $this->createTenant();
+        // Only an in-stock item of the shop can be scanned into the cart.
+        $this->createItem($user->shop_id, null, ['barcode' => 'PARALLEL-FIRST', 'status' => 'in_stock']);
+        $this->createItem($user->shop_id, null, ['barcode' => 'PARALLEL-SECOND', 'status' => 'in_stock']);
 
         $first = $this->actingAs($user)->postJson('/scan-session/create')->assertOk()->json('token');
         $second = $this->actingAs($user)->postJson('/scan-session/create')->assertOk()->json('token');

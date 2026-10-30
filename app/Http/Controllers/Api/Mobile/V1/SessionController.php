@@ -71,7 +71,7 @@ class SessionController extends Controller
                 'mobile' => $user->mobile_number,
                 'role'   => $roleName,
             ],
-            'session' => $session ? $this->presentSession($session, $session->id) : null,
+            'session' => $session ? $this->presentSession($session, $token->id) : null,
         ]);
     }
 
@@ -142,8 +142,9 @@ class SessionController extends Controller
     /**
      * GET /api/mobile/v1/sessions
      *
-     * Returns all active (not logged-out) sessions for the current shop.
-     * Gate: returns.approve (owner/manager). Staff can only see their own.
+     * Returns all active (not logged-out) sessions for the current shop —
+     * the web's Settings > Devices tab, so it needs settings.view (route).
+     * returns.approve (or owner) sees everyone's; others only their own.
      */
     public function index(Request $request): JsonResponse
     {
@@ -176,7 +177,7 @@ class SessionController extends Controller
      * DELETE /api/mobile/v1/sessions/{session}
      *
      * Revoke a specific session. The next request from that device gets
-     * 401 session_revoked. Gate: returns.approve or owner.
+     * 401 session_revoked. Gate: staff.manage (as the web), owner's phone owner-only.
      */
     public function destroy(Request $request, MobileDeviceSession $session): JsonResponse
     {
@@ -297,7 +298,9 @@ class SessionController extends Controller
             'device_name'   => $s->device_name,
             'platform'      => $s->platform,
             'app_version'   => $s->app_version,
+            'ip_address'    => $s->ip_address,
             'is_current'    => $s->token_id !== null && $s->token_id === $currentTokenId,
+            'can_sign_out'  => Gate::allows('revoke-mobile-session', $s),
             'is_locked'     => $s->locked_at !== null,
             'locked_at'     => optional($s->locked_at)->toIso8601String(),
             'logged_in_at'  => optional($s->logged_in_at)->toIso8601String(),

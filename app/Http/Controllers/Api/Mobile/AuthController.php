@@ -106,15 +106,20 @@ class AuthController extends Controller
             $user->tokens()->where('name', 'mobile-app')->delete();
         });
 
+        // The phone describes itself; clip to the columns so a long device
+        // name can never fail the sign-in.
+        $clip = fn (string $key, int $max) => is_string($v = $request->input($key)) && $v !== ''
+            ? mb_substr($v, 0, $max) : null;
+
         // Create the new session row FIRST, then mint the token and bind it.
         $session = MobileDeviceSession::create([
             'shop_id'      => $user->shop_id,
             'user_id'      => $user->id,
-            'device_uuid'  => $request->input('device_uuid'),
-            'device_name'  => $request->input('device_name'),
-            'platform'     => $request->input('platform'),
-            'app_version'  => $request->input('app_version'),
-            'os_version'   => $request->input('os_version'),
+            'device_uuid'  => $clip('device_uuid', 36),
+            'device_name'  => $clip('device_name', 100),
+            'platform'     => $clip('platform', 20),
+            'app_version'  => $clip('app_version', 20),
+            'os_version'   => $clip('os_version', 30),
             'ip_address'   => $request->ip(),
             'logged_in_at' => now(),
         ]);

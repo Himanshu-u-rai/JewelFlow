@@ -335,10 +335,11 @@ class CustomerController extends Controller
             ->take(5)
             ->get();
 
-        // Total spent — separate aggregate so it covers ALL invoices, not just the 5 shown.
-        $totalSpent = Invoice::where('shop_id', $shopId)
-            ->where('customer_id', $customer->id)
-            ->sum('total');
+        // Total spent across ALL finished bills, not just the 5 shown (shared with the app).
+        $totalSpent = Invoice::spentByCustomer((int) $shopId, (int) $customer->id);
+
+        // Loyalty points' worth at the shop's own point value (as checkout redeems them).
+        $loyaltyWorth = app(\App\Services\LoyaltyService::class)->pointsToRupees((int) ($customer->loyalty_points ?? 0), (int) $shopId);
 
         // Whether the customer can be safely deleted.
         $hasRepairs = $customer->repairs()->exists();
@@ -346,15 +347,42 @@ class CustomerController extends Controller
         // Opening money balance seeded at existing-shop onboarding (never a fake
         // invoice, so it never touched sales/GST). Net: positive = customer owes
         // the shop (receivable), negative = shop owes the customer (payable).
-        $openingBalance = (float) \App\Models\CustomerOpeningBalance::where('shop_id', $shopId)
-            ->where('customer_id', $customer->id)
-            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'receivable' THEN amount ELSE -amount END), 0) as net")
-            ->value('net');
+        $openingBalance = \App\Models\CustomerOpeningBalance::netFor((int) $shopId, (int) $customer->id);
 
         return view('customers.show', compact(
             'customer', 'isRetailer', 'goldBalance', 'transactions',
-            'loyaltyTransactions', 'invoices', 'totalSpent', 'hasRepairs', 'openingBalance'
+            'loyaltyTransactions', 'invoices', 'totalSpent', 'hasRepairs', 'openingBalance', 'loyaltyWorth'
         ));
+    }
+
+    /**
+     * Everything one customer bought or brought in — the app's history page, on
+     * the web: invoices, quick bills, repairs. Each tab needs its own list's
+     * permission (as /invoices, /quick-bills, /repairs); quick bills also need
+     * the feature switched on.
+     */
+    public function history(Request $request, Customer $customer)
+    {
+        $this->authorize('view', $customer);
+
+        $user = auth()->user();
+        $shopId = (int) $user->shop_id;
+        $tabs = array_filter([
+            'invoices'    => $user->can('sales.view'),
+            'quick-bills' => $user->can('sales.view') && ($user->shop?->preferences?->quick_bill_enabled ?? true),
+            'repairs'     => $user->can('repairs.view'),
+        ]);
+        $tab = (string) $request->query('tab', array_key_first($tabs) ?? 'invoices');
+        abort_unless(isset($tabs[$tab]), 403);
+
+        $rows = match ($tab) {
+            'invoices'    => Invoice::where('shop_id', $shopId)->where('customer_id', $customer->id),
+            'quick-bills' => \App\Models\QuickBill::where('shop_id', $shopId)->where('customer_id', $customer->id),
+            'repairs'     => \App\Models\Repair::where('shop_id', $shopId)->where('customer_id', $customer->id),
+        };
+        $rows = $rows->latest()->paginate(20)->withQueryString();
+
+        return view('customers.history', compact('customer', 'tabs', 'tab', 'rows'));
     }
 
     public function edit(Customer $customer)

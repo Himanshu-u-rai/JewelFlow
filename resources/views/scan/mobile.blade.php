@@ -410,6 +410,12 @@
                     document.getElementById('statusBadge').textContent = '✓ Sent';
                     document.getElementById('statusBadge').className = 'scanner-badge';
                     setTimeout(() => setStatus('Point camera at a barcode to scan'), 2000);
+                } else {
+                    // Refused (not in stock, shop closed…): say why instead of hanging on "Sending".
+                    setStatus('✗ ' + (data.message || 'Not sent: ' + barcode), 'error');
+                    document.getElementById('statusBadge').textContent = '● Ready';
+                    document.getElementById('statusBadge').className = 'scanner-badge';
+                    setTimeout(() => setStatus('Point camera at a barcode to scan'), 3000);
                 }
 
             } catch(err) {

@@ -5110,7 +5110,8 @@
                                     @endif
                                 </div>
 
-                                @can('staff.manage')
+                                {{-- staff.manage, and only an owner signs out an owner's phone (the server's rule). --}}
+                                @can('revoke-mobile-session', $session)
                                     <div class="mt-3 flex justify-end">
                                         <form method="POST" action="{{ route('settings.devices.destroy', $session) }}" data-turbo-frame="_top"
                                               onsubmit="return confirm('{{ __('Sign out :device? Whoever is using this phone will need to sign in again.', ['device' => $deviceName]) }}')">

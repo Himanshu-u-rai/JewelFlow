@@ -40,7 +40,23 @@ class CustomerController extends Controller
         // Customer uses the BelongsToShop global scope, so this is auto-scoped to
         // the authenticated user's shop (TenantContext set by the `tenant`
         // middleware) — no cross-tenant rows can be returned.
-        $query = Customer::query()->orderByDesc('updated_at');
+        $query = Customer::query()->with('profilePhoto:id,customer_id,version');
+
+        // Sort and KYC filter run here, across every customer: the app pages
+        // through the result, so sorting or filtering on the phone only ever saw
+        // the first page. Unknown values fall back to the old behaviour.
+        match ((string) $request->query('sort', '')) {
+            'name' => $query->orderBy('first_name')->orderBy('last_name')->orderBy('id'),
+            'loyalty' => $query->orderByDesc('loyalty_points')->orderBy('first_name')->orderBy('id'),
+            default => $query->orderByDesc('updated_at')->orderByDesc('id'),
+        };
+
+        // KYC here means a PAN on file (Customer::complianceStatus()).
+        match ((string) $request->query('kyc', '')) {
+            'verified' => $query->whereNotNull('pan')->where('pan', '<>', ''),
+            'pending' => $query->where(fn ($q) => $q->whereNull('pan')->orWhere('pan', '')),
+            default => null,
+        };
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -58,6 +74,9 @@ class CustomerController extends Controller
 
         $paginated->getCollection()->transform(function ($customer) {
             $arr = $customer->toArray();
+            unset($arr['profile_photo']);
+            // The app refetches the private photo only when this changes.
+            $arr['photo_version'] = $customer->profilePhoto?->version;
             $arr['kyc_status'] = $customer->complianceStatus();
             return $arr;
         });
@@ -169,11 +188,8 @@ class CustomerController extends Controller
             ->where('customer_id', $customer->id)
             ->count();
 
-        $lifetimeSpend = (float) Invoice::query()
-            ->where('shop_id', $shopId)
-            ->where('customer_id', $customer->id)
-            ->where('status', '!=', 'cancelled')
-            ->sum('total');
+        // Finished bills only — the same figure as the web customer page.
+        $lifetimeSpend = Invoice::spentByCustomer((int) $shopId, (int) $customer->id);
 
         $totalRepairs = Repair::query()
             ->where('shop_id', $shopId)
@@ -240,6 +256,11 @@ class CustomerController extends Controller
                 'lifetime_spend' => $lifetimeSpend,
                 'total_repairs' => $totalRepairs,
                 'open_repairs' => $openRepairs,
+                // As the web customer page: + customer owes the shop (Dr), − shop owes the customer (Cr).
+                'opening_balance' => \App\Models\CustomerOpeningBalance::netFor((int) $shopId, (int) $customer->id),
+                // Points' worth at the shop's own point value (as checkout redeems them).
+                'loyalty_points_value' => app(\App\Services\LoyaltyService::class)
+                    ->pointsToRupees((int) ($customer->loyalty_points ?? 0), (int) $shopId),
             ],
             'timeline' => $timeline,
             'loyalty_history' => $loyaltyHistory,
@@ -462,6 +483,7 @@ class CustomerController extends Controller
             'wedding_date' => optional($customer->wedding_date)?->toDateString(),
             'notes' => $customer->notes,
             'member_since' => optional($customer->created_at)?->toDateString(),
+            'photo_version' => $customer->profilePhoto()->value('version'),
         ];
     }
 
