@@ -13,5 +13,7 @@ class AppConfigData extends Data
         public string $min_mobile_version,
         public string $api_version,
         public string $environment,
+        // "Fixed ₹ / % of metal / ₹ per gram" making on item and quick bill forms (features.making_charge_modes).
+        public bool $making_charge_modes = false,
     ) {}
 }

@@ -59,6 +59,50 @@ class ShopPaymentMethod extends Model
         return $this->belongsTo(Shop::class);
     }
 
+    /**
+     * The shop's switched-on accounts by kind, for the app's account pickers
+     * (POS checkout, cash book entry).
+     *
+     * @return array{upi: list<array>, bank: list<array>, wallet: list<array>}
+     */
+    public static function groupedActiveForShop(int $shopId): array
+    {
+        $grouped = array_fill_keys(self::TYPES, []);
+
+        $methods = self::query()
+            ->where('shop_id', $shopId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'type', 'name', 'upi_id', 'bank_name', 'account_number', 'wallet_id']);
+
+        foreach ($methods as $method) {
+            if (! isset($grouped[$method->type])) {
+                continue;
+            }
+
+            $base = [
+                'id' => (int) $method->id,
+                'type' => (string) $method->type,
+                'name' => (string) $method->name,
+                'account_label' => (string) $method->account_label,
+            ];
+
+            if ($method->type === self::TYPE_UPI) {
+                $base['upi_id'] = $method->upi_id;
+            } elseif ($method->type === self::TYPE_BANK) {
+                $base['bank_name'] = $method->bank_name;
+                $base['account_number'] = $method->account_number;
+            } else {
+                $base['wallet_id'] = $method->wallet_id;
+            }
+
+            $grouped[$method->type][] = $base;
+        }
+
+        return $grouped;
+    }
+
     /** Short label shown in POS payment row and dropdowns. */
     public function getAccountLabelAttribute(): string
     {

@@ -3,8 +3,9 @@
         $invoice      = $returnOrder->invoice;
         $customer     = $returnOrder->customer ?? $invoice?->customer;
         $customerName = $customer ? trim($customer->first_name . ' ' . $customer->last_name) : null;
-        $selections   = $returnOrder->pending_data['selections'] ?? [];
-        $refundTotal  = collect($selections)->sum(fn ($s) => (float) ($s['refund_total'] ?? 0));
+        // Worked out from the invoice lines (ReturnService::review), as in the app.
+        $selections   = $review['lines'] ?? [];
+        $refundTotal  = (float) ($review['estimated_refund'] ?? 0);
         $settlement   = $returnOrder->refund_settlement ?? $returnOrder->pending_data['refund_settlement'] ?? null;
         $settlementLabel = match ($settlement) {
             'cash'         => 'Cash',
@@ -147,12 +148,12 @@
                                 <tr>
                                     <td class="px-4 py-3 font-semibold text-slate-900">
                                         {{ $sel['barcode'] ?? '#' . $itemId }}
-                                        @if(!empty($sel['design']) || !empty($sel['category']))
-                                            <span class="block text-xs font-normal text-slate-500">{{ $sel['design'] ?? $sel['category'] ?? '' }}</span>
+                                        @if(!empty($sel['name']))
+                                            <span class="block text-xs font-normal text-slate-500">{{ $sel['name'] }}</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">{{ ucfirst(str_replace('_', ' ', (string) ($sel['condition'] ?? '—'))) }}</td>
-                                    <td class="px-4 py-3 text-slate-700">{{ ucfirst(str_replace('_', ' ', (string) ($sel['disposition'] ?? '—'))) }}</td>
+                                    <td class="px-4 py-3 text-slate-700">{{ ucfirst(str_replace('_', ' ', (string) ($sel['outcome'] ?? '—'))) }}</td>
                                     <td class="px-4 py-3 text-right font-semibold text-rose-700">
                                         @if(isset($sel['refund_total']))
                                             ₹{{ number_format((float) $sel['refund_total'], 2) }}
@@ -185,17 +186,13 @@
                 @php
                     $lineIdx = $loop->index;
                     $invoiceItemId = $sel['invoice_item_id'] ?? null;
-                    $selLineTotal = (float)($sel['line_total'] ?? 0);
-                    $selGst = (float)($sel['gst_amount'] ?? 0);
-                    $selDiscount = (float)($sel['allocated_discount'] ?? 0);
-                    $selRoundOff = (float)($sel['allocated_round_off'] ?? 0);
-                    $maxRefundable = $selLineTotal + $selGst - $selDiscount + $selRoundOff;
+                    $maxRefundable = (float) ($sel['max_refundable'] ?? 0);
                 @endphp
                 <div class="border border-slate-200 rounded-lg p-4">
                     <div class="text-sm font-medium text-slate-800 mb-2">
                         {{ $sel['barcode'] ?? '#' . $selIdx }}
-                        @if(!empty($sel['design']) || !empty($sel['category']))
-                            <span class="text-slate-500 font-normal"> — {{ $sel['design'] ?? $sel['category'] ?? '' }}</span>
+                        @if(!empty($sel['name']))
+                            <span class="text-slate-500 font-normal"> — {{ $sel['name'] }}</span>
                         @endif
                         @if(isset($sel['refund_total']))
                             <span class="text-slate-500 font-normal"> — Current refund: ₹{{ number_format((float)$sel['refund_total'], 2) }}</span>

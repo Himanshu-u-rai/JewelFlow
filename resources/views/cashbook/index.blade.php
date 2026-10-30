@@ -36,7 +36,16 @@
         @php
             $todayNet = $stats['today_in'] - $stats['today_out'];
             $monthNet = $stats['month_in'] - $stats['month_out'];
-            $hasActiveFilters = request()->hasAny(['search', 'type', 'from_date', 'payment_mode', 'to_date']);
+            $hasActiveFilters = request()->hasAny(['search', 'type', 'from_date', 'payment_mode', 'payment_method_id', 'to_date']);
+            // Day headings in the list: "Today · In ₹… · Out ₹…".
+            $dayHeading = function (string $day) use ($dayTotals) {
+                $date = \Carbon\Carbon::parse($day);
+                $label = $date->isToday() ? 'Today' : ($date->isYesterday() ? 'Yesterday' : $date->format('d M Y'));
+                $t = $dayTotals[$day] ?? ['money_in' => 0, 'money_out' => 0];
+
+                return [$label, 'In ₹' . number_format($t['money_in'], 2), 'Out ₹' . number_format($t['money_out'], 2)];
+            };
+            $accountList = collect($accounts)->flatten(1);
 
             // Money on Hand window label (matches the per-mode panel's date range).
             $moneyRangeLabel = (request('from_date') || request('to_date'))
@@ -60,6 +69,9 @@
             }
             if (request('payment_mode') && isset($paymentModeLabels[request('payment_mode')])) {
                 $activeFilters[] = 'Mode: ' . $paymentModeLabels[request('payment_mode')];
+            }
+            if ($pickedAccount = $accountList->firstWhere('id', (int) request('payment_method_id'))) {
+                $activeFilters[] = 'Account: ' . $pickedAccount['name'];
             }
             if (request('from_date') || request('to_date')) {
                 $activeFilters[] = 'Date: ' . (request('from_date') ?: 'start') . ' to ' . (request('to_date') ?: 'today');
@@ -224,13 +236,30 @@
                     </div>
                     <div class="cb-filter-field">
                         <span class="cb-filter-label">Mode</span>
-                        <select name="payment_mode" class="cb-input">
+                        <select name="payment_mode" class="cb-input" id="cb-filter-mode" onchange="cbFilterAccounts()">
                             <option value="">All Modes</option>
                             @foreach($paymentModeLabels as $val => $label)
                                 <option value="{{ $val }}" {{ request('payment_mode') === $val ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
+                    @if($accountList->isNotEmpty())
+                        <div class="cb-filter-field" id="cb-filter-account-field">
+                            <span class="cb-filter-label">Account</span>
+                            <select name="payment_method_id" class="cb-input" id="cb-filter-account">
+                                <option value="">All Accounts</option>
+                                @foreach($accounts as $kind => $list)
+                                    @if(count($list))
+                                        <optgroup label="{{ $paymentModeLabels[$kind] }}" data-kind="{{ $kind }}">
+                                            @foreach($list as $account)
+                                                <option value="{{ $account['id'] }}" {{ (int) request('payment_method_id') === $account['id'] ? 'selected' : '' }}>{{ $account['account_label'] }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div class="cb-filter-field">
                         <span class="cb-filter-label">From Date</span>
                         <input type="date" name="from_date" value="{{ request('from_date') }}" class="cb-input">
@@ -265,6 +294,12 @@
                         </thead>
                         <tbody>
                             @forelse($transactions as $tx)
+                                @if($loop->first || $tx->created_at->toDateString() !== $transactions[$loop->index - 1]->created_at->toDateString())
+                                    @php [$dayLabel, $dayIn, $dayOut] = $dayHeading($tx->created_at->toDateString()); @endphp
+                                    <tr class="cb-day-row">
+                                        <td colspan="7"><strong>{{ $dayLabel }}</strong><span class="cb-day-in">{{ $dayIn }}</span><span class="cb-day-out">{{ $dayOut }}</span></td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td class="cb-muted">{{ $tx->created_at->format('d M Y, h:i A') }}</td>
                                     <td>
@@ -274,11 +309,14 @@
                                             <span class="cb-pill cb-pill--out">Cash Out</span>
                                         @endif
                                     </td>
-                                    <td>{{ ucfirst(str_replace('_', ' ', $tx->source_type ?? 'Unknown')) }}</td>
+                                    <td>{{ \App\Models\CashTransaction::sourceLabel($tx->source_type, $tx->type) }}</td>
                                     <td class="cb-mono">{{ $tx->invoice?->invoice_number ?? '-' }}</td>
                                     <td class="cb-desc">{{ $tx->description ?: '-' }}</td>
                                     <td>
                                         <span class="cb-mode">{{ ucfirst($tx->payment_mode ?: 'cash') }}</span>
+                                        @if($tx->payment_method_label_snapshot)
+                                            <span class="cb-desc">{{ $tx->payment_method_label_snapshot }}</span>
+                                        @endif
                                     </td>
                                     <td class="text-right">
                                         <span class="cb-amount {{ $tx->type === 'in' ? 'cb-amount--in' : 'cb-amount--out' }}">
@@ -306,6 +344,10 @@
                 {{-- Mobile card list --}}
                 <div class="cb-mobile-list">
                     @forelse($transactions as $tx)
+                        @if($loop->first || $tx->created_at->toDateString() !== $transactions[$loop->index - 1]->created_at->toDateString())
+                            @php [$dayLabel, $dayIn, $dayOut] = $dayHeading($tx->created_at->toDateString()); @endphp
+                            <p class="cb-day-head"><strong>{{ $dayLabel }}</strong><span class="cb-day-in">{{ $dayIn }}</span><span class="cb-day-out">{{ $dayOut }}</span></p>
+                        @endif
                         <article class="cb-mobile-card">
                             <div class="cb-mobile-head">
                                 <div>
@@ -323,7 +365,7 @@
                             <dl class="cb-mobile-grid">
                                 <div>
                                     <dt>Source</dt>
-                                    <dd>{{ ucfirst(str_replace('_', ' ', $tx->source_type ?? 'Unknown')) }}</dd>
+                                    <dd>{{ \App\Models\CashTransaction::sourceLabel($tx->source_type, $tx->type) }}</dd>
                                 </div>
                                 <div>
                                     <dt>Invoice</dt>
@@ -331,7 +373,7 @@
                                 </div>
                                 <div>
                                     <dt>Mode</dt>
-                                    <dd>{{ ucfirst($tx->payment_mode ?: 'cash') }}</dd>
+                                    <dd>{{ ucfirst($tx->payment_mode ?: 'cash') }}{{ $tx->payment_method_label_snapshot ? ' · ' . $tx->payment_method_label_snapshot : '' }}</dd>
                                 </div>
                                 <div>
                                     <dt>Description</dt>
@@ -1124,6 +1166,11 @@
         }
 
         .cb-table-wrap { overflow-x: auto; }
+        .cb-table tbody tr.cb-day-row td { background: #f3f5f8; font-size: 12px; color: #4a4334; padding-top: 8px; padding-bottom: 8px; }
+        .cb-day-head { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 14px 2px 6px; font-size: 13px; color: #4a4334; }
+        .cb-day-row strong, .cb-day-head strong { margin-right: 12px; }
+        .cb-day-in { color: #047857; margin-right: 12px; }
+        .cb-day-out { color: #b42318; }
         .cb-table {
             width: 100%;
             border-collapse: collapse;
@@ -1656,4 +1703,33 @@
             }
         }
     </style>
+
+    <script>
+        // Account filter follows Mode, as in the app: every account with "All Modes",
+        // only that kind for UPI / Bank / Wallet, hidden for Cash / Card / Other.
+        window.cbFilterAccounts = function () {
+            const mode = document.getElementById('cb-filter-mode');
+            const field = document.getElementById('cb-filter-account-field');
+            const select = document.getElementById('cb-filter-account');
+            if (!mode || !field || !select) return;
+
+            let shown = 0;
+            select.querySelectorAll('optgroup').forEach((group) => {
+                const show = mode.value === '' || group.dataset.kind === mode.value;
+                group.style.display = show ? '' : 'none';
+                group.disabled = !show;
+                shown += show ? 1 : 0;
+            });
+            if (select.selectedOptions[0]?.parentElement?.disabled) select.value = '';
+            field.style.display = shown ? '' : 'none';
+            select.disabled = shown === 0;
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.cbFilterAccounts, { once: true });
+        } else {
+            window.cbFilterAccounts();
+        }
+        document.addEventListener('turbo:load', window.cbFilterAccounts);
+    </script>
 </x-app-layout>

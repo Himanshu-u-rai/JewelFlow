@@ -123,7 +123,11 @@ class ReturnService
         $selIds = array_map('intval', array_keys($selections));
         sort($selIds);
         $allRestock = collect($selections)->every(fn ($s) => ($s['disposition'] ?? 'restocked') === 'restocked');
-        if ($selIds === $allLineIds && $allRestock && !$forExchange) {
+        // createFullReturn() resolves every line from policy and has no override
+        // support, so a refund adjusted by the approver (or at create) must take
+        // the line-by-line path, which applies + audits it and still cancels the
+        // invoice once every line is returned.
+        if ($selIds === $allLineIds && $allRestock && !$forExchange && empty($lineOverrides)) {
             return $this->createFullReturn($invoice, $reason, $userId, false, $refundSettlement);
         }
 
@@ -593,6 +597,106 @@ class ReturnService
      *
      * Demonstrated in tests/Feature/Security/ReturnApprovalAtomicityTest.
      */
+    /**
+     * What an approver reviews for a pending return — shared by the web's
+     * "Review Pending Return" page and the app. Worked out from the invoice
+     * lines (pending_data keeps only each line's condition / disposition /
+     * reason): barcode and name, the refund the shop's policy gives now, the
+     * most that can be refunded (the manual-refund limit applyLineOverride()
+     * enforces), and why approval is needed.
+     *
+     * @return array{approval_reason: ?string, estimated_refund: float, settlement: ?string,
+     *   submitted_by: ?string, submitted_at: ?string, lines: list<array>}
+     */
+    public function review(ReturnOrder $returnOrder): array
+    {
+        $invoice = Invoice::withoutTenant()->with(['items.item', 'shop.preferences'])->findOrFail($returnOrder->invoice_id);
+        $policy = $invoice->shop?->preferences;
+        $basis = $this->policyResolver->basisFromPolicy($policy);
+        $selections = $returnOrder->pending_data['selections'] ?? [];
+
+        $lines = [];
+        $refundTotals = [];
+        foreach ($selections as $invoiceItemId => $sel) {
+            $line = $invoice->items->firstWhere('id', (int) $invoiceItemId);
+            if (! $line) {
+                continue;
+            }
+            $refundTotals[$line->id] = $this->policyResolver->resolve($line, $invoice, $basis, $policy)->refundTotal;
+            $lines[] = [
+                'invoice_item_id' => (int) $line->id,
+                'barcode'         => $line->item?->barcode,
+                'name'            => $line->item?->design ?: $line->item?->category,
+                'condition'       => $sel['condition'] ?? null,
+                'outcome'         => $sel['disposition'] ?? null,
+                'reason'          => $sel['reason'] ?? null,
+                'refund_total'    => round((float) $refundTotals[$line->id], 2),
+                'max_refundable'  => round((float) $line->line_total + (float) $line->gst_amount
+                    - (float) $line->allocated_discount + (float) $line->allocated_round_off, 2),
+            ];
+        }
+
+        return [
+            'approval_reason'  => app(ReturnApprovalService::class)->checkRequired($invoice, $selections, $refundTotals, $policy),
+            'estimated_refund' => round(array_sum($refundTotals), 2),
+            'settlement'       => $returnOrder->refund_settlement,
+            'submitted_by'     => $returnOrder->createdBy?->name,
+            'submitted_at'     => optional($returnOrder->created_at)->toIso8601String(),
+            'lines'            => $lines,
+        ];
+    }
+
+    /**
+     * The approver's optional per-line refund adjustments, as posted by the web
+     * review page and the app (one rule set for both).
+     */
+    public const APPROVER_LINE_RULES = [
+        'lines'                             => 'nullable|array',
+        'lines.*.invoice_item_id'           => 'required_with:lines|integer',
+        'lines.*.override_making_charges'   => 'nullable|boolean',
+        'lines.*.override_stone_charges'    => 'nullable|boolean',
+        'lines.*.override_gst'              => 'nullable|boolean',
+        'lines.*.override_waive_restocking' => 'nullable|boolean',
+        'lines.*.override_wear_loss_pct'    => 'nullable|numeric|min:0|max:25',
+        'lines.*.override_manual_total'     => 'nullable|numeric|min:0',
+        'lines.*.override_reason'           => 'nullable|string|min:5|max:500',
+    ];
+
+    /**
+     * Validated `lines` rows → the overrides approveReturn() takes, keyed by
+     * invoice_item_id. A row with no adjustment is skipped; a manual refund
+     * total makes it a 'manual' override, anything else 'component'.
+     */
+    public static function approverLineOverrides(array $lines, int $approverId): array
+    {
+        $overrides = [];
+        foreach ($lines as $row) {
+            $hasOverride = isset($row['override_making_charges'])   ||
+                          isset($row['override_stone_charges'])    ||
+                          isset($row['override_gst'])              ||
+                          isset($row['override_waive_restocking']) ||
+                          (isset($row['override_wear_loss_pct']) && $row['override_wear_loss_pct'] !== null) ||
+                          isset($row['override_manual_total']);
+            if ($hasOverride && isset($row['invoice_item_id'])) {
+                $itemId = (int) $row['invoice_item_id'];
+                $hasManualTotal = isset($row['override_manual_total']) && $row['override_manual_total'] !== null;
+                $overrides[$itemId] = [
+                    'mode'                      => $hasManualTotal ? 'manual' : 'component',
+                    'override_making_charges'   => isset($row['override_making_charges']) ? (bool) $row['override_making_charges'] : null,
+                    'override_stone_charges'    => isset($row['override_stone_charges']) ? (bool) $row['override_stone_charges'] : null,
+                    'override_gst'              => isset($row['override_gst']) ? (bool) $row['override_gst'] : null,
+                    'override_waive_restocking' => isset($row['override_waive_restocking']) ? (bool) $row['override_waive_restocking'] : null,
+                    'override_wear_loss_pct'    => isset($row['override_wear_loss_pct']) ? (float) $row['override_wear_loss_pct'] : null,
+                    'override_manual_total'     => $hasManualTotal ? (float) $row['override_manual_total'] : null,
+                    'override_reason'           => $row['override_reason'] ?? null,
+                    'override_by_user_id'       => $approverId,
+                ];
+            }
+        }
+
+        return $overrides;
+    }
+
     public function approveReturn(ReturnOrder $returnOrder, int $approverId, array $approverLineOverrides = []): ReturnOrder
     {
         if ($returnOrder->status !== ReturnOrder::STATUS_PENDING_APPROVAL) {

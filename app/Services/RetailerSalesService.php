@@ -274,6 +274,7 @@ class RetailerSalesService
                         'source_id'    => $invoice->id,
                         'invoice_id'   => $invoice->id,
                         'payment_mode' => $mode,
+                        ...CashTransaction::accountColumns($attrs['payment_method_id']),
                         'description'  => "Sale ({$mode}) - Invoice {$invoice->invoice_number}",
                     ]);
                 }

@@ -1094,7 +1094,7 @@
                         </svg>
                     </span>
                     <div class="qb-stat__body">
-                        <div class="qb-stat__label">Today's value</div>
+                        <div class="qb-stat__label">Today's sales</div>
                         <div class="qb-stat__value is-money">₹{{ number_format((float) $stats['today_total'], 2) }}</div>
                     </div>
                 </div>

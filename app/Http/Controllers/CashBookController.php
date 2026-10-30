@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CashTransaction;
 use App\Models\CashDrawerCheck;
+use App\Models\ShopPaymentMethod;
 use App\Models\AuditLog;
 use App\Reporting\LedgerService;
 use App\Reporting\ReportPeriod;
@@ -55,6 +56,13 @@ class CashBookController extends Controller
             }
         }
 
+        // Which of the shop's accounts (UPI / bank / wallet); rows before
+        // 2026-10-25 carry none and only show under the mode filter.
+        if ($request->filled('payment_method_id')) {
+            $query->where('payment_method_id', (int) $request->input('payment_method_id'));
+        }
+        $accounts = ShopPaymentMethod::groupedActiveForShop((int) $shopId);
+
         // Search — cap the term defensively (feeds an unbounded ilike).
         if ($request->filled('search')) {
             $search = mb_substr((string) $request->input('search'), 0, 100);
@@ -64,7 +72,15 @@ class CashBookController extends Controller
             });
         }
 
+        $filtered = clone $query;
         $transactions = $query->paginate(25)->withQueryString();
+
+        // A total for each day on this page, over the same filters (so a day
+        // split across pages still adds up); shown as the list's day headings.
+        $dayTotals = CashTransaction::dayTotals(
+            $filtered,
+            $transactions->getCollection()->map(fn ($t) => $t->created_at->toDateString())->unique()->values()->all(),
+        );
 
         // Per-mode "Money on Hand" over the same date window as the table,
         // via the canonical reporting balance engine (LedgerService) — computed
@@ -85,46 +101,20 @@ class CashBookController extends Controller
             ->get();
 
         // Stats — 2 aggregate queries instead of 4.
-        $today = now()->toDateString();
-
-        // Opening-balance rows must not inflate the income stat cards: they are a
-        // starting position, not a day/month movement. (The "Money on Hand" figure
-        // above still counts them, correctly, via LedgerService as opening.)
-        $todayStats = CashTransaction::where('shop_id', $shopId)
-            ->whereDate('created_at', $today)
-            ->whereRaw('is_opening IS NOT TRUE')
-            ->selectRaw("
-                SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END) as today_in,
-                SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END) as today_out
-            ")
-            ->first();
-
-        $monthStats = CashTransaction::where('shop_id', $shopId)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->whereRaw('is_opening IS NOT TRUE')
-            ->selectRaw("
-                SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END) as month_in,
-                SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END) as month_out
-            ")
-            ->first();
-
-        $stats = [
-            'today_in'  => (float) ($todayStats->today_in  ?? 0),
-            'today_out' => (float) ($todayStats->today_out ?? 0),
-            'month_in'  => (float) ($monthStats->month_in  ?? 0),
-            'month_out' => (float) ($monthStats->month_out ?? 0),
-        ];
+        // Today's / this month's in and out (the snapshot strip); shared with the app.
+        $stats = CashTransaction::snapshot((int) $shopId);
 
         return view('cashbook.index', compact(
             'transactions', 'stats', 'perMode', 'modeFilter',
-            'expectedCashToday', 'recentDrawerChecks'
+            'expectedCashToday', 'recentDrawerChecks', 'accounts', 'dayTotals'
         ));
     }
 
     public function create()
     {
-        return view('cashbook.create');
+        return view('cashbook.create', [
+            'accounts' => ShopPaymentMethod::groupedActiveForShop((int) auth()->user()->shop_id),
+        ]);
     }
 
     public function store(Request $request)
@@ -134,6 +124,7 @@ class CashBookController extends Controller
             'amount'       => 'required|numeric|min:0.01',
             'source_type'  => 'required|string|max:100',
             'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
+            'payment_method_id' => 'nullable|integer',
             'description'  => 'nullable|string|max:500',
         ]);
 
@@ -147,6 +138,8 @@ class CashBookController extends Controller
 
         $shopId = auth()->user()->shop_id;
         $userId = auth()->id();
+        $mode = $validated['payment_mode'] ?? 'cash';
+        $account = CashTransaction::resolveAccount((int) $shopId, $mode, $validated['payment_method_id'] ?? null);
         SubscriptionGateService::assertShopWritable((int) $shopId);
 
         $transaction = CashTransaction::record([
@@ -156,7 +149,9 @@ class CashBookController extends Controller
             'amount'       => $validated['amount'],
             'source_type'  => $validated['source_type'],
             'source_id'    => null,
-            'payment_mode' => $validated['payment_mode'] ?? 'cash',
+            'payment_mode' => $mode,
+            'payment_method_id' => $account?->id,
+            'payment_method_label_snapshot' => $account?->account_label,
             'description'  => $validated['description'] ?? null,
         ]);
 

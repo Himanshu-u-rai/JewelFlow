@@ -469,14 +469,12 @@ class ReturnsController extends Controller
 
         $returnOrder->load(['invoice.customer', 'createdBy', 'lineItems.invoiceItem', 'lineItems.item']);
 
-        // Compute why approval was required
-        $approvalService = app(\App\Services\Returns\ReturnApprovalService::class);
-        $shopPolicy = auth()->user()->shop?->preferences;
-        $selections = $returnOrder->pending_data['selections'] ?? [];
-        $lineRefundTotals = $returnOrder->pending_data['line_refund_totals'] ?? [];
-        $approvalReason = $approvalService->checkRequired($returnOrder->invoice, $selections, $lineRefundTotals, $shopPolicy);
+        // Items, refunds, limits and why approval is needed, worked out from the
+        // invoice lines — the same review the app shows (ReturnService::review).
+        $review = $this->returnService->review($returnOrder);
+        $approvalReason = $review['approval_reason'];
 
-        return view('returns.approve', compact('returnOrder', 'approvalReason'));
+        return view('returns.approve', compact('returnOrder', 'approvalReason', 'review'));
     }
 
     public function redisposeItem(Request $request, \App\Models\Item $item)
@@ -759,42 +757,9 @@ class ReturnsController extends Controller
                 ->with('error', 'This return is not awaiting approval.');
         }
 
-        $validated = $request->validate([
-            'lines'                             => 'nullable|array',
-            'lines.*.invoice_item_id'           => 'required_with:lines|integer',
-            'lines.*.override_making_charges'   => 'nullable|boolean',
-            'lines.*.override_stone_charges'    => 'nullable|boolean',
-            'lines.*.override_gst'              => 'nullable|boolean',
-            'lines.*.override_waive_restocking' => 'nullable|boolean',
-            'lines.*.override_wear_loss_pct'    => 'nullable|numeric|min:0|max:25',
-            'lines.*.override_manual_total'     => 'nullable|numeric|min:0',
-            'lines.*.override_reason'           => 'nullable|string|min:5|max:500',
-        ]);
-
-        $approverLineOverrides = [];
-        foreach ($validated['lines'] ?? [] as $row) {
-            $hasOverride = isset($row['override_making_charges'])   ||
-                          isset($row['override_stone_charges'])    ||
-                          isset($row['override_gst'])              ||
-                          isset($row['override_waive_restocking']) ||
-                          (isset($row['override_wear_loss_pct']) && $row['override_wear_loss_pct'] !== null) ||
-                          isset($row['override_manual_total']);
-            if ($hasOverride && isset($row['invoice_item_id'])) {
-                $itemId = (int) $row['invoice_item_id'];
-                $hasManualTotal = isset($row['override_manual_total']) && $row['override_manual_total'] !== null;
-                $approverLineOverrides[$itemId] = [
-                    'mode'                      => $hasManualTotal ? 'manual' : 'component',
-                    'override_making_charges'   => isset($row['override_making_charges']) ? (bool) $row['override_making_charges'] : null,
-                    'override_stone_charges'    => isset($row['override_stone_charges']) ? (bool) $row['override_stone_charges'] : null,
-                    'override_gst'              => isset($row['override_gst']) ? (bool) $row['override_gst'] : null,
-                    'override_waive_restocking' => isset($row['override_waive_restocking']) ? (bool) $row['override_waive_restocking'] : null,
-                    'override_wear_loss_pct'    => isset($row['override_wear_loss_pct']) ? (float) $row['override_wear_loss_pct'] : null,
-                    'override_manual_total'     => $hasManualTotal ? (float) $row['override_manual_total'] : null,
-                    'override_reason'           => $row['override_reason'] ?? null,
-                    'override_by_user_id'       => auth()->id(),
-                ];
-            }
-        }
+        // Shared with the app's approve (Api\Mobile\V1\ReturnController).
+        $validated = $request->validate(ReturnService::APPROVER_LINE_RULES);
+        $approverLineOverrides = ReturnService::approverLineOverrides($validated['lines'] ?? [], (int) auth()->id());
 
         try {
             $settled = $this->returnService->approveReturn($returnOrder, (int) auth()->id(), $approverLineOverrides);

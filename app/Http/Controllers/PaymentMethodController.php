@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashTransaction;
 use App\Models\InvoicePayment;
 use App\Models\JobOrder;
 use App\Models\KarigarPayment;
@@ -53,7 +54,8 @@ class PaymentMethodController extends Controller
         $inUse = InvoicePayment::where('payment_method_id', $method->id)->exists()
             || KarigarPayment::withoutTenant()->where('payment_method_id', $method->id)->exists()
             || QuickBillPayment::where('payment_method_id', $method->id)->exists()
-            || JobOrder::withoutTenant()->where('advance_payment_method_id', $method->id)->exists();
+            || JobOrder::withoutTenant()->where('advance_payment_method_id', $method->id)->exists()
+            || CashTransaction::withoutTenant()->where('payment_method_id', $method->id)->exists();
 
         if ($inUse) {
             return back()->with('error', "Cannot delete \"{$method->name}\" — it has been used in past transactions.");

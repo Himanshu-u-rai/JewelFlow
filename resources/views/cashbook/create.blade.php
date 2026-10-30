@@ -105,7 +105,7 @@
                         <label for="payment_mode" class="cbf-label">Payment mode *</label>
                         @php $oldMode = old('payment_mode', 'cash'); @endphp
                         <div class="cbf-select">
-                            <select name="payment_mode" id="payment_mode" class="cbf-input" required>
+                            <select name="payment_mode" id="payment_mode" class="cbf-input" required onchange="handleModeChange()">
                                 <option value="cash"   {{ $oldMode === 'cash'   ? 'selected' : '' }}>Cash (drawer)</option>
                                 <option value="upi"    {{ $oldMode === 'upi'    ? 'selected' : '' }}>UPI</option>
                                 <option value="bank"   {{ $oldMode === 'bank'   ? 'selected' : '' }}>Bank</option>
@@ -116,6 +116,22 @@
                         </div>
                         <p class="cbf-help">Cash affects drawer balance. Other modes stay tracked separately.</p>
                         @error('payment_mode') <p class="cbf-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Which of the shop's accounts (as on POS): shown for UPI / bank / wallet when the shop has one. --}}
+                    <div class="cbf-field" id="account_field">
+                        <label for="payment_method_id" class="cbf-label">Which account? *</label>
+                        <div class="cbf-select">
+                            <select name="payment_method_id" id="payment_method_id" class="cbf-input">
+                                <option value="">Choose the account</option>
+                                @foreach($accounts as $kind => $list)
+                                    @foreach($list as $account)
+                                        <option value="{{ $account['id'] }}" data-kind="{{ $kind }}" {{ (int) old('payment_method_id') === $account['id'] ? 'selected' : '' }}>{{ $account['account_label'] }}</option>
+                                    @endforeach
+                                @endforeach
+                            </select>
+                        </div>
+                        @error('payment_method_id') <p class="cbf-error">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="cbf-field cbf-field--full">
@@ -702,12 +718,34 @@
             }
         };
 
+        // Show only the accounts of the chosen kind; hide the field when there are none.
+        window.handleModeChange = function() {
+            const mode = document.getElementById('payment_mode');
+            const field = document.getElementById('account_field');
+            const select = document.getElementById('payment_method_id');
+            if (!mode || !field || !select) return;
+
+            const matching = Array.from(select.options).filter((opt) => opt.dataset.kind === mode.value);
+            Array.from(select.options).forEach((opt) => {
+                if (!opt.dataset.kind) return;
+                opt.hidden = opt.dataset.kind !== mode.value;
+                opt.disabled = opt.hidden;
+            });
+            if (select.selectedOptions[0]?.disabled) select.value = '';
+            if (matching.length === 1) select.value = matching[0].value;
+
+            field.classList.toggle('cbf-hidden', matching.length === 0);
+            select.required = matching.length > 0;
+            select.disabled = matching.length === 0;
+        };
+
         function initCashbookEntryForm() {
             const form = document.querySelector('[data-cashbook-entry-form]');
             if (!form) return;
 
             const checkedType = form.querySelector('input[name="type"]:checked');
             window.handleTypeChange(checkedType ? checkedType.value : 'in');
+            window.handleModeChange();
         }
 
         if (document.readyState === 'loading') {

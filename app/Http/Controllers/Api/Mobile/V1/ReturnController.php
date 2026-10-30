@@ -243,8 +243,12 @@ class ReturnController extends Controller
             ], 409);
         }
 
+        // The web review page's optional per-line refund adjustments (same rules).
+        $validated = $request->validate(ReturnService::APPROVER_LINE_RULES);
+        $overrides = ReturnService::approverLineOverrides($validated['lines'] ?? [], (int) $request->user()->id);
+
         try {
-            $settled = $this->returns->approveReturn($returnOrder, (int) $request->user()->id);
+            $settled = $this->returns->approveReturn($returnOrder, (int) $request->user()->id, $overrides);
         } catch (\LogicException $e) {
             return response()->json([
                 'errors' => [['code' => 'approval_failed', 'message' => $e->getMessage()]],
@@ -256,9 +260,48 @@ class ReturnController extends Controller
         return response()->json($this->presentFull($settled));
     }
 
+    /**
+     * POST /api/mobile/v1/returns/{returnOrder}/reject — the web's "Reject
+     * Return": cancels a pending return with the approver's reason.
+     */
+    public function reject(Request $request, ReturnOrder $returnOrder): JsonResponse
+    {
+        abort_if($returnOrder->shop_id !== (int) $request->user()->shop_id, 404);
+
+        if ($returnOrder->status !== ReturnOrder::STATUS_PENDING_APPROVAL) {
+            return response()->json([
+                'errors' => [['code' => 'return_not_pending', 'message' => "Return is in '{$returnOrder->status}' state. Only pending_approval returns can be rejected."]],
+            ], 409);
+        }
+
+        $validated = $request->validate(['rejection_reason' => 'required|string|min:5|max:500']);
+
+        try {
+            $this->returns->rejectReturn($returnOrder, (int) $request->user()->id, $validated['rejection_reason']);
+        } catch (\LogicException $e) {
+            return response()->json([
+                'errors' => [['code' => 'rejection_failed', 'message' => $e->getMessage()]],
+            ], 422);
+        }
+
+        $rejected = $returnOrder->fresh(['customer:id,first_name,last_name', 'createdBy:id,name']);
+
+        return response()->json($this->presentFull($rejected));
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // Presentation helpers
     // ────────────────────────────────────────────────────────────────────
+
+    /**
+     * What the web's "Review Pending Return" page shows, for a return waiting
+     * for approval (null otherwise): why approval is needed, the submitted
+     * items with their estimated refund, settlement, who submitted it.
+     */
+    private function presentReview(ReturnOrder $ro): ?array
+    {
+        return $ro->status === ReturnOrder::STATUS_PENDING_APPROVAL ? $this->returns->review($ro) : null;
+    }
 
     private function presentSummary(ReturnOrder $ro): array
     {
@@ -322,6 +365,9 @@ class ReturnController extends Controller
         $base['approved_by']  = $ro->approvedBy ? ['id' => $ro->approvedBy->id, 'name' => $ro->approvedBy->name] : null;
         $base['created_by']   = $ro->createdBy ? ['id' => $ro->createdBy->id, 'name' => $ro->createdBy->name] : null;
         $base['updated_at']   = optional($ro->updated_at)->toIso8601String();
+        $base['review']       = $this->presentReview($ro);
+        // Why a cancelled return was closed ("Rejected by approver: …"), as the web shows.
+        $base['cancellation_reason'] = $ro->cancellation_reason;
 
         return $base;
     }

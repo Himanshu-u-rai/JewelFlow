@@ -54,12 +54,14 @@ class QuickBillController extends Controller
             'total_count' => QuickBill::query()->count(),
             'issued_count' => QuickBill::query()->where('status', QuickBill::STATUS_ISSUED)->count(),
             'draft_count' => QuickBill::query()->where('status', QuickBill::STATUS_DRAFT)->count(),
+            // Money totals count issued bills only: a draft is not a sale yet and
+            // nobody owes its amount (owner decision 2026-10-25; same in the app API).
             'today_total' => QuickBill::query()
                 ->whereDate('bill_date', today())
-                ->where('status', '!=', QuickBill::STATUS_VOID)
+                ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('total_amount'),
             'outstanding_total' => QuickBill::query()
-                ->where('status', '!=', QuickBill::STATUS_VOID)
+                ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('due_amount'),
             'shop_id' => $shopId,
         ];

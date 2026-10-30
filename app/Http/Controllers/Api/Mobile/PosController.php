@@ -94,7 +94,7 @@ class PosController extends Controller
                 'other',
                 'emi',
             ],
-            'payment_methods' => $this->groupedPaymentMethodsForShop($shopId),
+            'payment_methods' => ShopPaymentMethod::groupedActiveForShop($shopId),
             'customer' => $customer ? [
                 'id' => (int) $customer->id,
                 'name' => (string) $customer->name,
@@ -952,59 +952,6 @@ class PosController extends Controller
         ]);
     }
 
-    private function groupedPaymentMethodsForShop(int $shopId): array
-    {
-        $methods = ShopPaymentMethod::query()
-            ->where('shop_id', $shopId)
-            ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get([
-                'id',
-                'type',
-                'name',
-                'upi_id',
-                'bank_name',
-                'account_number',
-                'wallet_id',
-            ]);
-
-        $grouped = [
-            ShopPaymentMethod::TYPE_UPI => [],
-            ShopPaymentMethod::TYPE_BANK => [],
-            ShopPaymentMethod::TYPE_WALLET => [],
-        ];
-
-        foreach ($methods as $method) {
-            if (!isset($grouped[$method->type])) {
-                continue;
-            }
-
-            $base = [
-                'id' => (int) $method->id,
-                'type' => (string) $method->type,
-                'name' => (string) $method->name,
-                'account_label' => (string) $method->account_label,
-            ];
-
-            if ($method->type === ShopPaymentMethod::TYPE_UPI) {
-                $base['upi_id'] = $method->upi_id;
-            } elseif ($method->type === ShopPaymentMethod::TYPE_BANK) {
-                $base['bank_name'] = $method->bank_name;
-                $base['account_number'] = $method->account_number;
-            } elseif ($method->type === ShopPaymentMethod::TYPE_WALLET) {
-                $base['wallet_id'] = $method->wallet_id;
-            }
-
-            $grouped[$method->type][] = $base;
-        }
-
-        return [
-            'upi' => $grouped[ShopPaymentMethod::TYPE_UPI],
-            'bank' => $grouped[ShopPaymentMethod::TYPE_BANK],
-            'wallet' => $grouped[ShopPaymentMethod::TYPE_WALLET],
-        ];
-    }
 
     private function validateMobilePosPaymentMethods(array $payments, int $shopId): void
     {

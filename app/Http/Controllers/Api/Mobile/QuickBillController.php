@@ -24,6 +24,11 @@ class QuickBillController extends Controller
             $query->where('status', $request->string('status')->toString());
         }
 
+        // One customer's quick bills (customer page); the shop scope still applies.
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', (int) $request->input('customer_id'));
+        }
+
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $query->where(function ($builder) use ($search): void {
@@ -64,14 +69,15 @@ class QuickBillController extends Controller
             'total_count' => QuickBill::query()->where('shop_id', $shopId)->count(),
             'issued_count' => QuickBill::query()->where('shop_id', $shopId)->where('status', QuickBill::STATUS_ISSUED)->count(),
             'draft_count' => QuickBill::query()->where('shop_id', $shopId)->where('status', QuickBill::STATUS_DRAFT)->count(),
+            // Issued bills only, as on the web list: a draft is not a sale yet.
             'today_total' => QuickBill::query()
                 ->where('shop_id', $shopId)
                 ->whereDate('bill_date', today())
-                ->where('status', '!=', QuickBill::STATUS_VOID)
+                ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('total_amount'),
             'outstanding_total' => QuickBill::query()
                 ->where('shop_id', $shopId)
-                ->where('status', '!=', QuickBill::STATUS_VOID)
+                ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('due_amount'),
         ];
 
