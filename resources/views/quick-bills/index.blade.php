@@ -1130,10 +1130,7 @@
                         <label class="qb-field">
                             <span class="qb-field__label">Search</span>
                             <span class="qb-input-wrap">
-                                <svg class="qb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <circle cx="11" cy="11" r="8"/>
-                                    <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                                </svg>
+                                <x-icon name="search" class="qb-input-icon" />
                                 <input class="qb-control has-icon" type="text" name="search" value="{{ request('search') }}" placeholder="Bill number, customer or mobile" data-suggest="quick-bills" autocomplete="off">
                             </span>
                         </label>
@@ -1171,17 +1168,11 @@
                         <input type="hidden" name="from_date" value="{{ request('from_date') }}">
                         <input type="hidden" name="to_date" value="{{ request('to_date') }}">
                         <label class="qb-input-wrap">
-                            <svg class="qb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                            </svg>
+                            <x-icon name="search" class="qb-input-icon" />
                             <input class="qb-control has-icon" type="text" name="search" value="{{ request('search') }}" placeholder="Search quick bills" data-suggest="quick-bills" autocomplete="off" aria-label="Search quick bills">
                         </label>
                         <button type="submit" class="qb-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                            </svg>
+                            <x-icon name="search" />
                             <span>Search</span>
                         </button>
                     </form>
@@ -1263,9 +1254,7 @@
                                                     View
                                                 </a>
                                                 <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action is-print">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
-                                                    </svg>
+                                                    <x-icon name="printer" />
                                                     Print
                                                 </a>
                                             </div>
@@ -1315,9 +1304,7 @@
                                         View
                                     </a>
                                     <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action is-print">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
-                                        </svg>
+                                        <x-icon name="printer" />
                                         Print
                                     </a>
                                 </div>
