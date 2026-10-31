@@ -1,5 +1,6 @@
 @import "flatpickr/dist/flatpickr.min.css";
 @import "./customer-photo.css";
+@import "./tables.css";
 
 @tailwind base;
 @tailwind components;
@@ -5159,13 +5160,13 @@ body.admin-shell {
 }
 
 /* Data tables */
-.content-inner .overflow-x-auto table {
+.content-inner .overflow-x-auto table:not(.jf-table) {
     border-collapse: separate;
     border-spacing: 0;
     min-width: 100%;
 }
 
-.content-inner .overflow-x-auto thead th {
+.content-inner .overflow-x-auto table:not(.jf-table) thead th {
     font-size: 11px !important;
     letter-spacing: 0.12em !important;
     text-transform: uppercase;
@@ -5176,17 +5177,17 @@ body.admin-shell {
     white-space: nowrap;
 }
 
-.content-inner .overflow-x-auto tbody td {
+.content-inner .overflow-x-auto table:not(.jf-table) tbody td {
     vertical-align: middle;
     line-height: 1.45;
     color: var(--jf-text);
 }
 
-.content-inner .overflow-x-auto tbody tr {
+.content-inner .overflow-x-auto table:not(.jf-table) tbody tr {
     transition: background-color 120ms ease;
 }
 
-.content-inner .overflow-x-auto tbody tr:hover {
+.content-inner .overflow-x-auto table:not(.jf-table) tbody tr:hover {
     background: var(--app-row-hover) !important;
 }
 
@@ -5233,7 +5234,7 @@ body.admin-shell {
         gap: 10px;
     }
 
-    .content-inner .overflow-x-auto table {
+    .content-inner .overflow-x-auto table:not(.jf-table) {
         min-width: 760px;
     }
 }
@@ -13896,20 +13897,14 @@ input::-webkit-calendar-picker-indicator {
     border-spacing: 0;
     background: transparent;
 }
-
-.customers-index-page .customers-data-table thead,
 .customers-show-page .customers-show-data-table thead {
     background: #f8fafc !important;
     border-bottom: 1px solid #e5e7eb !important;
 }
-
-.customers-index-page .customers-data-table thead.border-b,
 .customers-show-page .customers-show-data-table thead.border-b {
     border-bottom-width: 1px !important;
     border-bottom-color: #e5e7eb !important;
 }
-
-.customers-index-page .customers-data-table thead th,
 .customers-show-page .customers-show-data-table thead th {
     background: #f8fafc !important;
     color: #475569 !important;
@@ -13921,23 +13916,15 @@ input::-webkit-calendar-picker-indicator {
     padding-top: 13px !important;
     padding-bottom: 13px !important;
 }
-
-.customers-index-page .customers-data-table tbody,
 .customers-show-page .customers-show-data-table tbody {
     background: #fff;
 }
-
-.customers-index-page .customers-data-table tbody tr:nth-child(even),
 .customers-show-page .customers-show-data-table tbody tr:nth-child(even) {
     background: #f8fbff;
 }
-
-.customers-index-page .customers-data-table tbody tr:hover,
 .customers-show-page .customers-show-data-table tbody tr:hover {
     background: #edf5ff !important;
 }
-
-.customers-index-page .customers-data-table tbody td,
 .customers-show-page .customers-show-data-table tbody td {
     border-bottom: 1px solid #edf2f7 !important;
     color: var(--cust-text);
@@ -13947,8 +13934,6 @@ input::-webkit-calendar-picker-indicator {
     padding-top: 14px !important;
     padding-bottom: 14px !important;
 }
-
-.customers-index-page .customers-data-table tbody tr:last-child td,
 .customers-show-page .customers-show-data-table tbody tr:last-child td {
     border-bottom: 0 !important;
 }
@@ -14338,8 +14323,6 @@ input::-webkit-calendar-picker-indicator {
         border-top: 1px solid var(--cust-line-soft);
         background: #fbfcfd;
     }
-
-    .customers-index-page .customers-data-table thead th,
     .customers-show-page .customers-show-data-table thead th {
         font-size: 11px !important;
         text-transform: none !important;
@@ -14347,8 +14330,6 @@ input::-webkit-calendar-picker-indicator {
         padding-top: 10px !important;
         padding-bottom: 10px !important;
     }
-
-    .customers-index-page .customers-data-table tbody td,
     .customers-show-page .customers-show-data-table tbody td {
         font-size: 12px !important;
         padding-top: 10px !important;
@@ -16737,20 +16718,14 @@ input::-webkit-calendar-picker-indicator {
     border-spacing: 0;
     background: transparent;
 }
-
-.repairs-management-page .repairs-data-table thead,
 .repairs-report-page .repairs-report-table thead {
     background: #f8fafc !important;
     border-bottom: 1px solid #e5e7eb !important;
 }
-
-.repairs-management-page .repairs-data-table thead.border-b,
 .repairs-report-page .repairs-report-table thead.border-b {
     border-bottom-width: 1px !important;
     border-bottom-color: #e5e7eb !important;
 }
-
-.repairs-management-page .repairs-data-table thead th,
 .repairs-report-page .repairs-report-table thead th {
     background: #f8fafc !important;
     color: #475569 !important;
@@ -16760,29 +16735,19 @@ input::-webkit-calendar-picker-indicator {
     padding-top: 13px !important;
     padding-bottom: 13px !important;
 }
-
-.repairs-management-page .repairs-data-table tbody,
 .repairs-report-page .repairs-report-table tbody {
     background: #ffffff;
 }
-
-.repairs-management-page .repairs-data-table tbody tr:nth-child(even),
 .repairs-report-page .repairs-report-table tbody tr:nth-child(even) {
     background: #f8fbff;
 }
-
-.repairs-management-page .repairs-data-table tbody tr:hover,
 .repairs-report-page .repairs-report-table tbody tr:hover {
     background: #edf5ff !important;
 }
-
-.repairs-management-page .repairs-data-table tbody td,
 .repairs-report-page .repairs-report-table tbody td {
     border-bottom: 1px solid #edf2f7 !important;
     vertical-align: middle;
 }
-
-.repairs-management-page .repairs-data-table tbody tr:last-child td,
 .repairs-report-page .repairs-report-table tbody tr:last-child td {
     border-bottom: 0 !important;
 }
@@ -16812,16 +16777,12 @@ input::-webkit-calendar-picker-indicator {
     .repairs-report-page .repairs-report-table-card {
         border-radius: 14px;
     }
-
-    .repairs-management-page .repairs-data-table thead th,
     .repairs-report-page .repairs-report-table thead th {
         font-size: 10px !important;
         letter-spacing: 0.06em;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
     }
-
-    .repairs-management-page .repairs-data-table tbody td,
     .repairs-report-page .repairs-report-table tbody td {
         font-size: 12px !important;
         padding-top: 10px !important;
@@ -16887,28 +16848,20 @@ input::-webkit-calendar-picker-indicator {
     overflow-y: hidden;
     background: #ffffff;
 }
-
-.invoices-index-page .invoices-data-table,
 .invoice-show-page .invoice-show-data-table {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
     background: transparent;
 }
-
-.invoices-index-page .invoices-data-table thead,
 .invoice-show-page .invoice-show-data-table thead {
     background: #f8fafc !important;
     border-bottom: 1px solid #e5e7eb !important;
 }
-
-.invoices-index-page .invoices-data-table thead.border-b,
 .invoice-show-page .invoice-show-data-table thead.border-b {
     border-bottom-width: 1px !important;
     border-bottom-color: #e5e7eb !important;
 }
-
-.invoices-index-page .invoices-data-table thead th,
 .invoice-show-page .invoice-show-data-table thead th {
     background: #f8fafc !important;
     color: #475569 !important;
@@ -16918,29 +16871,19 @@ input::-webkit-calendar-picker-indicator {
     padding-top: 13px !important;
     padding-bottom: 13px !important;
 }
-
-.invoices-index-page .invoices-data-table tbody,
 .invoice-show-page .invoice-show-data-table tbody {
     background: #ffffff;
 }
-
-.invoices-index-page .invoices-data-table tbody tr:nth-child(even),
 .invoice-show-page .invoice-show-data-table tbody tr:nth-child(even) {
     background: #f8fbff;
 }
-
-.invoices-index-page .invoices-data-table tbody tr:hover,
 .invoice-show-page .invoice-show-data-table tbody tr:hover {
     background: #edf5ff !important;
 }
-
-.invoices-index-page .invoices-data-table tbody td,
 .invoice-show-page .invoice-show-data-table tbody td {
     border-bottom: 1px solid #edf2f7 !important;
     vertical-align: middle;
 }
-
-.invoices-index-page .invoices-data-table tbody tr:last-child td,
 .invoice-show-page .invoice-show-data-table tbody tr:last-child td {
     border-bottom: 0 !important;
 }
@@ -17030,9 +16973,6 @@ input::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 1024px) {
-    .invoices-index-page .invoices-data-table {
-        min-width: 980px;
-    }
 
     .invoice-show-page .invoice-show-data-table--sales,
     .invoice-show-page .invoice-show-data-table--repair {
@@ -17061,16 +17001,12 @@ input::-webkit-calendar-picker-indicator {
     .invoices-edit-page .invoices-edit-card {
         border-radius: 14px;
     }
-
-    .invoices-index-page .invoices-data-table thead th,
     .invoice-show-page .invoice-show-data-table thead th {
         font-size: 10px !important;
         letter-spacing: 0.06em;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
     }
-
-    .invoices-index-page .invoices-data-table tbody td,
     .invoice-show-page .invoice-show-data-table tbody td {
         font-size: 12px !important;
         padding-top: 10px !important;
@@ -17464,110 +17400,6 @@ input::-webkit-calendar-picker-indicator {
     border-radius: 0 0 14px 14px !important;
     background: #ffffff;
     -webkit-overflow-scrolling: touch;
-}
-
-.invoices-index-page .invoices-data-table {
-    width: 100% !important;
-    min-width: 1040px !important;
-    border-collapse: collapse;
-    table-layout: fixed;
-    background: #ffffff;
-}
-
-.invoices-index-page .invoices-data-table thead,
-.invoices-index-page .invoices-data-table thead.border-b {
-    background: #f8fafc !important;
-    border-bottom: 1px solid var(--invoice-border-soft) !important;
-}
-
-.invoices-index-page .invoices-data-table thead th {
-    padding-top: 14px !important;
-    padding-right: 12px !important;
-    padding-bottom: 14px !important;
-    padding-left: 12px !important;
-    color: #475569 !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0 !important;
-    line-height: 1.2;
-    text-transform: none !important;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(1),
-.invoices-index-page .invoices-data-table tbody td:nth-child(1) {
-    width: 100px;
-    padding-left: 18px !important;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(2),
-.invoices-index-page .invoices-data-table tbody td:nth-child(2) {
-    width: 94px;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(3),
-.invoices-index-page .invoices-data-table tbody td:nth-child(3) {
-    width: 150px;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(4),
-.invoices-index-page .invoices-data-table tbody td:nth-child(4),
-.invoices-index-page .invoices-data-table thead th:nth-child(5),
-.invoices-index-page .invoices-data-table tbody td:nth-child(5),
-.invoices-index-page .invoices-data-table thead th:nth-child(6),
-.invoices-index-page .invoices-data-table tbody td:nth-child(6),
-.invoices-index-page .invoices-data-table thead th:nth-child(7),
-.invoices-index-page .invoices-data-table tbody td:nth-child(7) {
-    width: 98px;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(8),
-.invoices-index-page .invoices-data-table tbody td:nth-child(8) {
-    width: 88px;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(9),
-.invoices-index-page .invoices-data-table tbody td:nth-child(9) {
-    width: 90px;
-}
-
-.invoices-index-page .invoices-data-table thead th:nth-child(10),
-.invoices-index-page .invoices-data-table tbody td:nth-child(10) {
-    width: 108px;
-    padding-right: 18px !important;
-}
-
-.invoices-index-page .invoices-data-table tbody tr,
-.invoices-index-page .invoices-data-table tbody tr:nth-child(even) {
-    background: #ffffff !important;
-}
-
-.invoices-index-page .invoices-data-table tbody tr:hover {
-    background: #f8fafc !important;
-}
-
-.invoices-index-page .invoices-data-table tbody td {
-    padding-top: 16px !important;
-    padding-right: 12px !important;
-    padding-bottom: 16px !important;
-    padding-left: 12px !important;
-    border-bottom: 1px solid #edf2f7 !important;
-    color: var(--invoice-text);
-    font-size: 15px !important;
-    font-weight: 450;
-    vertical-align: middle;
-}
-
-.invoices-index-page .invoices-data-table tbody td,
-.invoices-index-page .invoices-data-table tbody td * {
-    min-width: 0;
-}
-
-.invoices-index-page .invoices-data-table tbody td .text-sm {
-    font-size: 15px !important;
-}
-
-.invoices-index-page .invoices-data-table tbody td .text-xs {
-    font-size: 12.5px !important;
 }
 
 .invoices-index-page .invoice-inline-actions {

@@ -952,13 +952,13 @@
                     </div>
 
                     <div class="overflow-auto repairs-table-shell repairs-data-table-shell" style="height:560px;padding-bottom:12px">
-                        <table class="w-full repairs-table repairs-data-table">
-                            <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:1;background:#f9fafb">
+                        <table class="w-full repairs-table jf-table jf-table--sticky-end">
+                            <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:1">
                                 <tr>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repair #</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purity</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -992,7 +992,7 @@
                                                 <div class="text-xs text-gray-500 mt-0.5" title="{{ $r->description }}">{{ $r->description }}</div>
                                             @endif
                                         </td>
-                                        <td class="px-3 py-4 whitespace-nowrap">
+                                        <td class="px-3 py-4 whitespace-nowrap text-right">
                                             <div class="text-sm text-gray-900">{{ number_format($r->gross_weight, 3) }} g</div>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap">
@@ -1013,8 +1013,8 @@
                                                 <x-icon :name="$statusBadge[1]" class="w-3 h-3 mr-1" />{{ $statusBadge[2] }}
                                             </span>
                                         </td>
-                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-center">
-                                            <div class="flex items-center justify-center gap-2 repairs-action-row">
+                                        <td class="px-3 py-4 text-sm text-center repairs-action-cell">
+                                            <div class="jf-table-actions jf-table-actions--center repairs-action-row">
                                                 <a href="{{ route('repairs.show', $r) }}"
                                                    class="btn btn-primary btn-xs">
                                                     <x-icon name="eye" class="w-3 h-3 mr-1" />
@@ -1054,7 +1054,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                                        <td colspan="7" class="jf-table-empty">
                                             <x-icon name="settings" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                             <div class="text-sm font-medium">No repairs registered yet</div>
                                             <div class="text-xs mt-1">Receive an item to get started</div>
@@ -1062,7 +1062,7 @@
                                     </tr>
                                 @endforelse
                                 <tr id="repairsNoMatchRow" style="display:none">
-                                    <td colspan="7" class="px-6 py-8 text-center text-gray-400 text-sm">No repairs match your search.</td>
+                                    <td colspan="7" class="jf-table-empty">No repairs match your search.</td>
                                 </tr>
                             </tbody>
                         </table>

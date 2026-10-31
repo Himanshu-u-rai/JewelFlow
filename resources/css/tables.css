@@ -1,0 +1,208 @@
+/*
+ * Shared data-table pattern (Retail, Dhiran, platform admin).
+ *
+ * Opt-in and scoped: nothing here applies unless a <table> carries .jf-table, so unrelated screens, print documents and
+ * editable entry grids (POS, invoice, historical entry) are untouched. Cell selectors use child combinators so they win over
+ * the per-cell Tailwind utilities the existing tables carry (px-6 py-3 text-xs tracking-[0.2em] ...) and over the older global
+ * ".content-inner table" padding rule by specificity, without !important: a table is migrated by adding classes, not by
+ * rewriting every cell. The older global "Data tables" block in app.css excludes .jf-table (table:not(.jf-table)).
+ *
+ *   <div class="jf-table-wrap">              scroll container: the table scrolls inside it, never the page
+ *     <table class="jf-table">               header, cell, separator, hover and focus pattern
+ *       numbers: right-aligned cells (.text-right or .jf-num) get tabular figures and never wrap
+ *       actions: <div class="jf-table-actions"> wraps inside its cell instead of widening the column
+ *       empty:   <td colspan="N" class="jf-table-empty">
+ *
+ * Palette stays per product through the custom properties below (Retail slate, Dhiran warm, admin dark).
+ */
+
+.jf-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+.jf-table {
+    /* values are the pattern the inventory, repairs and invoices tables had already converged on */
+    --jf-t-head-bg: #f8fafc;
+    --jf-t-head-fg: #475569;
+    --jf-t-head-line: #e5e7eb;
+    --jf-t-row-line: #edf2f7;
+    --jf-t-zebra: #f8fbff;
+    --jf-t-hover: #edf5ff;
+    --jf-t-surface: #ffffff;
+    --jf-t-focus: #b45309;
+    --jf-t-muted: #64748b;
+    --jf-t-pad-x: 12px;
+    --jf-t-head-pad-y: 12px;
+    --jf-t-pad-y: 14px;
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.jf-table > thead,
+.jf-table > thead.border-b {
+    background: var(--jf-t-head-bg);
+    border-bottom: 1px solid var(--jf-t-head-line);
+}
+
+.jf-table > thead > tr > th {
+    padding: var(--jf-t-head-pad-y) var(--jf-t-pad-x);
+    background: var(--jf-t-head-bg);
+    color: var(--jf-t-head-fg);
+    border-bottom: 1px solid var(--jf-t-head-line);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.jf-table > tbody > tr > td {
+    padding: var(--jf-t-pad-y) var(--jf-t-pad-x);
+    border-bottom: 1px solid var(--jf-t-row-line);
+    line-height: 1.45;
+    vertical-align: middle;
+}
+
+/* Tailwind's divide-y puts a second line on every row; the cell borders above are the separators */
+.jf-table > tbody > tr { border-top-width: 0 !important; transition: background-color 120ms ease; }
+.jf-table > tbody > tr:nth-child(even) { background: var(--jf-t-zebra); }
+.jf-table > tbody > tr:last-child > td { border-bottom: 0; }
+
+/* the first and last cells get a little more room so content does not sit on the card edge */
+.jf-table > thead > tr > th:first-child,
+.jf-table > tbody > tr > td:first-child { padding-left: calc(var(--jf-t-pad-x) + 8px); }
+.jf-table > thead > tr > th:last-child,
+.jf-table > tbody > tr > td:last-child { padding-right: calc(var(--jf-t-pad-x) + 8px); }
+
+/* a selection checkbox column stays narrow */
+.jf-table > thead > tr > th:has(> input[type="checkbox"]),
+.jf-table > tbody > tr > td:has(> input[type="checkbox"]) {
+    width: 1%;
+    padding-left: 12px;
+    padding-right: 4px;
+}
+
+.jf-table > tbody > tr:hover,
+.jf-table > tbody > tr:focus-within { background: var(--jf-t-hover); }
+/* no hover tint on a row that only carries an empty or "no match" message */
+.jf-table > tbody > tr:has(> .jf-table-empty):hover { background: transparent; }
+
+.jf-table a:focus-visible,
+.jf-table button:focus-visible,
+.jf-table select:focus-visible,
+.jf-table input:focus-visible,
+.jf-table summary:focus-visible {
+    outline: 2px solid var(--jf-t-focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* a header without an alignment class starts at the left like its cells (browsers centre <th> by default); :where() keeps this at
+   zero specificity so text-right / text-center on a header still win */
+:where(.jf-table > thead > tr > th) { text-align: start; }
+
+/* numbers: amounts, weights, counts line up on the right and are never wrapped or truncated */
+.jf-table > thead > tr > th.text-right,
+.jf-table > thead > tr > th.jf-num { text-align: right; }
+.jf-table > tbody > tr > td.text-right,
+.jf-table > tbody > tr > td.jf-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* action cells: controls wrap inside the cell instead of widening the column; touch screens get larger targets */
+.jf-table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px 8px;
+}
+.jf-table-actions--center { justify-content: center; }
+.jf-table-actions > form { display: inline-flex; margin: 0; }
+@media (pointer: coarse) {
+    .jf-table-actions > a,
+    .jf-table-actions > button,
+    .jf-table-actions > form > button,
+    .jf-table-actions > form > select { min-height: 40px; }
+}
+
+/* .jf-table--sticky-end: a wide table keeps its last (action) column pinned at the right edge of the scroll container, so the
+   actions stay visible while the other columns scroll; nothing is hidden or removed */
+.jf-table--sticky-end > thead > tr > th:last-child,
+.jf-table--sticky-end > tbody > tr > td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    box-shadow: -10px 0 10px -10px rgba(15, 23, 42, 0.22);
+}
+.jf-table--sticky-end > thead > tr > th:last-child { background: var(--jf-t-head-bg); z-index: 2; }
+.jf-table--sticky-end > tbody > tr > td:last-child { background: var(--jf-t-surface); }
+.jf-table--sticky-end > tbody > tr:nth-child(even) > td:last-child { background: var(--jf-t-zebra-solid, var(--jf-t-zebra)); }
+.jf-table--sticky-end > tbody > tr:hover > td:last-child,
+.jf-table--sticky-end > tbody > tr:focus-within > td:last-child { background: var(--jf-t-hover-solid, var(--jf-t-hover)); }
+
+/* empty and no-match states */
+.jf-table > tbody > tr > td.jf-table-empty {
+    padding: 48px 16px;
+    text-align: center;
+    color: var(--jf-t-muted);
+    font-size: 14px;
+}
+.jf-table .jf-table-empty svg {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 12px;
+    color: #cbd5e1;
+}
+.jf-table-empty-title { font-weight: 600; color: var(--jf-t-head-fg); }
+.jf-table-empty-hint { margin-top: 4px; font-size: 13px; }
+
+/* long descriptive text only (never amounts, identifiers or names): clipped with an ellipsis, full value in title for the mouse,
+   and the element is focusable (tabindex="0"), so keyboard focus or a tap on a touch screen expands it to the full text */
+.jf-cell-clip {
+    display: block;
+    max-width: var(--jf-clip, 28ch);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
+.jf-cell-clip:focus,
+.jf-cell-clip:focus-visible {
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
+    outline: 2px solid var(--jf-t-focus, #b45309);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* narrow screens: tighter cells, and the table keeps a readable width and scrolls inside its container */
+@media (max-width: 768px) {
+    .jf-table { --jf-t-pad-x: 10px; --jf-t-head-pad-y: 10px; --jf-t-pad-y: 10px; min-width: 720px; }
+    .jf-table > thead > tr > th { font-size: 11px; }
+}
+
+/* product palettes */
+.dh-app .jf-table {
+    --jf-t-zebra: #fdfbf6;
+    --jf-t-zebra-solid: #fdfbf6;
+    --jf-t-hover: #fbf3e0;
+    --jf-t-hover-solid: #fbf3e0;
+    --jf-t-focus: #d98b00;
+    --jf-t-row-line: #efe9dc;
+}
+/* platform admin: the cool-grey header the admin tables already render (#f1f3f9) and its amber row hover, on white rows */
+.jf-table.admin-table {
+    --jf-t-head-bg: #f1f3f9;
+    --jf-t-hover: rgba(244, 163, 0, 0.09);
+    --jf-t-hover-solid: #fdf3df;
+    --jf-t-focus: #b45309;
+}

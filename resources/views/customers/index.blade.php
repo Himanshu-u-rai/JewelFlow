@@ -170,7 +170,7 @@
             </div>
 
             <div class="overflow-x-auto ui-table-shell customers-table-shell">
-                <table class="w-full customers-data-table customers-data-table--directory">
+                <table class="w-full jf-table customers-data-table customers-data-table--directory">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -253,7 +253,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="customers-empty-cell px-6 py-12 text-center text-slate-500">
+                                <td colspan="4" class="jf-table-empty customers-empty-cell">
                                     <div class="customers-empty-state">
                                         <span class="customers-empty-icon" aria-hidden="true">
                                             <x-icon name="user-plus" size="20" />
@@ -286,7 +286,7 @@
                             </tr>
                         @endforelse
                         <tr data-no-match-row style="display:none;">
-                            <td colspan="4" class="px-6 py-8 text-center text-slate-500 text-sm">
+                            <td colspan="4" class="jf-table-empty">
                                 <div class="customers-inline-empty">
                                     <strong>No customers match this page search.</strong>
                                     <span>Press Enter to search all customer records.</span>
@@ -454,7 +454,7 @@
                     </form>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell">
-                    <table class="w-full customers-data-table customers-data-table--loyalty">
+                    <table class="w-full jf-table customers-data-table customers-data-table--loyalty">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -486,7 +486,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="5" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loyalty members yet</p>
                                     <p class="text-sm">Points are earned automatically when customers make purchases.</p>
                                 </td>
@@ -615,7 +615,7 @@
                     </div>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell">
-                    <table class="w-full customers-data-table customers-data-table--emi">
+                    <table class="w-full jf-table customers-data-table customers-data-table--emi">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -653,7 +653,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="7" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No installment plans found</p>
                                     <p class="text-sm">Create an EMI plan from Invoices or the EMI module.</p>
                                 </td>
@@ -782,7 +782,7 @@
                     </form>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell">
-                    <table class="w-full customers-data-table customers-data-table--occasions">
+                    <table class="w-full jf-table customers-data-table customers-data-table--occasions">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -815,7 +815,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                    <td colspan="5" class="jf-table-empty">
                                         <p class="text-lg font-semibold mb-1 text-slate-700">No occasions in this window</p>
                                         <p class="text-sm">Increase the reminder window or add occasion dates on customer profiles.</p>
                                     </td>

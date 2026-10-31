@@ -270,7 +270,7 @@
             @endif
 
             <div class="overflow-x-auto invoices-table-shell">
-                <table class="w-full min-w-[1100px] invoices-data-table">
+                <table class="w-full jf-table jf-table--sticky-end">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-8 pr-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Invoice #</th>
@@ -393,7 +393,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="10" class="jf-table-empty">
                                     <x-icon name="file-text" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No invoices found</p>
                                     <p class="text-sm">Create your first sale from the POS</p>
