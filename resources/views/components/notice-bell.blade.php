@@ -26,7 +26,7 @@
         <button type="button" class="notice-bell-toggle" x-ref="toggle" :class="{ 'is-open': open }"
                 @click="open = !open" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'" aria-controls="notice-bell-panel"
                 aria-label="{{ $noticeCount > 0 ? "Notices, {$noticeCount}" : 'Notices' }}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <x-icon name="bell" size="18" />
             @if($noticeCount > 0)
                 <span class="notice-bell-count" aria-hidden="true">{{ $noticeCount > 99 ? '99+' : $noticeCount }}</span>
             @endif
@@ -45,7 +45,7 @@
                 @if($noticeCount === 0)
                     <div class="notice-bell-empty">
                         <span class="notice-bell-empty-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <x-icon name="circle-check" size="20" />
                         </span>
                         <p class="notice-bell-empty-title">All clear</p>
                         <p class="notice-bell-empty-copy">Nothing needs attention right now.</p>
@@ -70,7 +70,7 @@
                                         @endif
                                     </span>
                                     @if($item['href'])
-                                        <svg class="notice-bell-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                                        <x-icon name="chevron-right" size="14" class="notice-bell-chevron" />
                                     @endif
                                 </{{ $tag }}>
                             </li>
@@ -82,7 +82,7 @@
             @if($notices['reorder_href'])
                 <a href="{{ $notices['reorder_href'] }}" class="notice-bell-foot">
                     Manage reorder rules
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                    <x-icon name="chevron-right" size="14" />
                 </a>
             @endif
         </div>
