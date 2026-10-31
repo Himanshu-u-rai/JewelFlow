@@ -120,7 +120,7 @@
                     <p class="text-sm text-slate-500 mt-1">{{ $customers->total() }} total customers</p>
                 </div>
 
-                <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-toolbar customers-register-toolbar--search">
+                <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-toolbar customers-register-toolbar--search customers-register-toolbar--with-status">
                     <div class="ui-filter-field">
                         <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
                         <div class="relative">

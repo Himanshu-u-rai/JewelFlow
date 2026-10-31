@@ -13524,6 +13524,12 @@ input::-webkit-calendar-picker-indicator {
     width: min(100%, 580px);
 }
 
+/* with a Status field: Search, Status and the button in one row */
+.customers-index-page .customers-register-toolbar--search.customers-register-toolbar--with-status {
+    grid-template-columns: minmax(220px, 1fr) minmax(150px, 190px) auto !important;
+    width: min(100%, 760px);
+}
+
 .customers-index-page .customers-register-toolbar--select,
 .customers-index-page .customers-register-inline-form {
     grid-template-columns: minmax(190px, 1fr) auto !important;
@@ -14108,6 +14114,14 @@ input::-webkit-calendar-picker-indicator {
 
     .customers-index-page .customers-register-toolbar--emi {
         grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    /* phone: the search box takes its own row, Status and the button share the next one */
+    .customers-index-page .customers-register-toolbar--search.customers-register-toolbar--with-status {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+    }
+    .customers-index-page .customers-register-toolbar--with-status > :first-child {
+        grid-column: 1 / -1;
     }
 
     .customers-index-page .customers-register-toolbar--emi .customers-primary-action {
