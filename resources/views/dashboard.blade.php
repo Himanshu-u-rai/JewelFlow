@@ -3585,36 +3585,36 @@
             const commandIcon = (type) => {
                 switch (typeKey(type)) {
                     case 'page':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M7 8h10"></path><path d="M7 12h10"></path><path d="M7 16h6"></path></svg>';
+                        return @json(\App\View\Icons::svg('layout-dashboard', ['stroke-width' => '1.9']));
                     case 'customer':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="3.2"></circle><path d="M17 11a3 3 0 1 0 0-6"></path></svg>';
+                        return @json(\App\View\Icons::svg('users', ['stroke-width' => '1.9']));
                     case 'invoice':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l4 4v14H4V3z"></path><path d="M8 11h8"></path><path d="M8 15h6"></path><path d="M16 3v5h5"></path></svg>';
+                        return @json(\App\View\Icons::svg('file-text', ['stroke-width' => '1.9']));
                     case 'item':
                     case 'product':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5-8 4.5-8-4.5L12 3z"></path><path d="M4 7.5V16.5L12 21l8-4.5V7.5"></path><path d="M12 12v9"></path></svg>';
+                        return @json(\App\View\Icons::svg('package', ['stroke-width' => '1.9']));
                     case 'vendor':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 10h1"></path><path d="M14 10h1"></path><path d="M9 14h1"></path><path d="M14 14h1"></path></svg>';
+                        return @json(\App\View\Icons::svg('building-2', ['stroke-width' => '1.9']));
                     case 'quick-bill':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h10l3 3v15l-3-1.8L13 21l-3-1.8L7 21l-1-1.8L5 21V3z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>';
+                        return @json(\App\View\Icons::svg('receipt', ['stroke-width' => '1.9']));
                     case 'repair':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m14.7 6.3 3 3"></path><path d="m3 21 6.6-6.6"></path><path d="M11.7 8.2a4 4 0 1 0 4.1 4.1"></path><path d="m19.2 2.8 2 2a2 2 0 0 1 0 2.8l-5.7 5.7a2 2 0 0 1-2.8 0l-2-2"></path></svg>';
+                        return @json(\App\View\Icons::svg('wrench', ['stroke-width' => '1.9']));
                     case 'karigar':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="3.2"></circle><path d="M17 11a3 3 0 1 0 0-6"></path></svg>';
+                        return @json(\App\View\Icons::svg('hammer', ['stroke-width' => '1.9']));
                     case 'job-order':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 7h8"></path><path d="M8 11h8"></path><path d="M8 15h6"></path></svg>';
+                        return @json(\App\View\Icons::svg('clipboard-list', ['stroke-width' => '1.9']));
                     case 'karigar-invoice':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l4 4v14H4V3z"></path><path d="M8 11h8"></path><path d="M8 15h6"></path><path d="M16 3v5h5"></path></svg>';
+                        return @json(\App\View\Icons::svg('file-text', ['stroke-width' => '1.9']));
                     case 'stock-purchase':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h15l3 4v6h-2"></path><path d="M3 7v10h2"></path><path d="M7 17h8"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle></svg>';
+                        return @json(\App\View\Icons::svg('truck', ['stroke-width' => '1.9']));
                     case 'scheme':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v8a1 1 0 0 1-1 1h-5v-7H10v7H5a1 1 0 0 1-1-1v-8"></path><path d="M2 10l10-7 10 7"></path></svg>';
+                        return @json(\App\View\Icons::svg('gift', ['stroke-width' => '1.9']));
                     case 'emi-plan':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path><path d="M3 10h18"></path><path d="M8 15h4"></path><path d="M8 18h8"></path></svg>';
+                        return @json(\App\View\Icons::svg('calendar', ['stroke-width' => '1.9']));
                     case 'reorder-rule':
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
+                        return @json(\App\View\Icons::svg('triangle-alert', ['stroke-width' => '1.9']));
                     default:
-                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>';
+                        return @json(\App\View\Icons::svg('search', ['stroke-width' => '1.9']));
                 }
             };
 

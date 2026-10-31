@@ -754,7 +754,7 @@
                             removeButton.className = 'item-gallery-remove-btn';
                             removeButton.dataset.removeImageIndex = String(index);
                             removeButton.setAttribute('aria-label', 'Remove selected image ' + (index + 1));
-                            removeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"/></svg>';
+                            removeButton.innerHTML = @json(\App\View\Icons::svg('x', ['stroke-width' => '2.4'], 13));
 
                             tile.appendChild(image);
                             tile.appendChild(badge);

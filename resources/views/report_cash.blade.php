@@ -160,9 +160,7 @@
                     <div class="rounded-lg border {{ $netCash >= 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50' }} p-4">
                         <div class="flex items-center gap-2">
                             @if($netCash >= 0)
-                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="circle-check" class="w-5 h-5 text-emerald-600" />
                                 <span class="text-sm font-medium text-emerald-700">Healthy cash inflow today.</span>
                             @else
                                 <x-icon name="circle-alert" class="w-5 h-5 text-rose-600" />

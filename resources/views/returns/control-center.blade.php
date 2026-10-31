@@ -610,13 +610,9 @@
                     <div class="rc-kpi-card__inner">
                         <div class="rc-kpi-icon">
                             @if($loop->first)
-                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11l3 3L22 4M2 12l5 5m0 0l5-5m-5 5V3"/>
-                                </svg>
+                                <x-icon name="inbox" size="17" />
                             @elseif($loop->iteration === 2)
-                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="clock" size="17" />
                             @else
                                 <x-icon name="triangle-alert" size="17" />
                             @endif

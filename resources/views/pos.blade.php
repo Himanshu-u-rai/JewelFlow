@@ -875,9 +875,10 @@
     .btn-checkout-mobile-icon {
         width: 26px;
         height: 26px;
-        object-fit: contain;
         display: block;
+        color: #14213d; /* a line icon takes the text colour, and .btn-checkout makes that white on this light button */
     }
+    .btn-checkout-mobile:disabled .btn-checkout-mobile-icon { color: #8b97a8; }
 
     /* ─── Modal ──────────────────────── */
     .modal-overlay {
@@ -1572,7 +1573,7 @@
                             <div class="cart-items" id="cartItems"></div>
                         </div>
                         <button class="btn-checkout btn-checkout-mobile" id="btnCheckoutMobile" disabled onclick="goCheckout()" aria-label="Proceed to checkout" title="Proceed to checkout">
-                            <img src="{{ asset('images/cashless-payment.png') }}" alt="Cashless payment" class="btn-checkout-mobile-icon">
+                            <x-icon name="banknote" class="btn-checkout-mobile-icon" stroke-width="1.75" />
                         </button>
                     </div>
                 </div>
@@ -1842,8 +1843,8 @@
                 : '<div class="pos-product-img-placeholder ' + placeholderTone + '"><span class="pos-product-img-placeholder-chip">' + placeholderLabel + '</span></div>';
 
             const actionBtn = inCart
-                ? '<span class="pos-product-check" title="Remove from cart"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>'
-                : '<button class="pos-product-add" title="Add to cart" aria-label="Add to cart"><svg class="pos-product-add-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>';
+                ? '<span class="pos-product-check" title="Remove from cart">' + @json(\App\View\Icons::svg('check', [], 16)) + '</span>'
+                : '<button class="pos-product-add" title="Add to cart" aria-label="Add to cart">' + @json(\App\View\Icons::svg('plus', ['class' => 'pos-product-add-icon'])) + '</button>';
 
             const price = item.sellingPrice;
             const meta = [];
@@ -2061,7 +2062,7 @@
 
                 const imgHtml = item.image
                     ? '<img src="' + escHtml(item.image) + '" alt="' + cartItemLabel + ' image" class="cart-item-img">'
-                    : '<div class="cart-item-img-ph"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" opacity=".4"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>';
+                    : '<div class="cart-item-img-ph">' + @json(\App\View\Icons::svg('image', ['opacity' => '.4'], 16)) + '</div>';
 
                 const div = document.createElement('div');
                 div.className = 'cart-item';
