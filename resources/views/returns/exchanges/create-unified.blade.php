@@ -28,9 +28,7 @@
 
         <div class="page-actions">
             <a href="{{ route('invoices.show', $invoice) }}" class="exchange-create-back-btn" data-turbo-frame="_top">
-                <svg class="exchange-create-back-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
+                <x-icon name="chevron-left" class="exchange-create-back-btn__icon" />
                 <span>Cancel</span>
             </a>
         </div>
@@ -54,9 +52,7 @@
                 <p>{{ $approvalRuleCopy }}</p>
             </div>
             <button type="button" data-exchange-rule-close aria-label="Close approval rules notice">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/>
-                </svg>
+                <x-icon name="x" />
             </button>
         </div>
 

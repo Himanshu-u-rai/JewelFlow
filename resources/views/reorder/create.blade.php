@@ -441,10 +441,7 @@
         <h1 class="page-title">Create Reorder Rule</h1>
         <div class="page-actions">
             <a href="{{ route('reorder.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12"/>
-                    <polyline points="12 19 5 12 12 5"/>
-                </svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 Back
             </a>
         </div>

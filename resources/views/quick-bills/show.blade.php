@@ -21,34 +21,22 @@
         </div>
         <div class="page-actions qb-detail-header-actions">
             <a href="{{ route('quick-bills.index') }}" class="qb-header-action qb-header-action-secondary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m12 19-7-7 7-7"/>
-                </svg>
+                <x-icon name="arrow-left" />
                 <span>Back</span>
             </a>
             <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-header-action qb-header-action-primary qb-print-action">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 14h12v7H6z"/>
-                </svg>
+                <x-icon name="printer" />
                 <span>Print</span>
             </a>
             @if($isEditedBill)
                 <a href="{{ route('quick-bills.print-original', $quickBill) }}" target="_blank" class="qb-header-action qb-header-action-secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" />
                     <span>Original</span>
                 </a>
             @endif
             @if($canEditQuickBill)
                 <a href="{{ route('quick-bills.edit', $quickBill) }}" class="qb-header-action qb-header-action-edit qb-edit-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                    </svg>
+                    <x-icon name="pencil" />
                     <span>Edit</span>
                 </a>
             @endif
@@ -936,19 +924,12 @@
         <div class="invoice-emi-mobile-fab-shell" x-bind:class="{ 'is-open': quickBillFabOpen }" @click.outside="quickBillFabOpen = false">
             <nav class="invoice-emi-mobile-fab-nav" aria-label="Quick bill actions">
                 <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="invoice-emi-mobile-fab-link" @click="quickBillFabOpen = false">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 14h12v7H6z"/>
-                    </svg>
+                    <x-icon name="printer" size="14" />
                     <span>Print</span>
                 </a>
                 @if($canEditQuickBill)
                     <a href="{{ route('quick-bills.edit', $quickBill) }}" class="invoice-emi-mobile-fab-link" @click="quickBillFabOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                        </svg>
+                        <x-icon name="pencil" size="14" />
                         <span>Edit</span>
                     </a>
                 @endif

@@ -11,9 +11,7 @@
             <img src="{{ $imageUrl }}" alt="{{ $item->design ?? $item->barcode }}" class="item-card-img" loading="lazy">
         @else
             <div class="item-card-placeholder">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                </svg>
+                <x-icon name="layers" size="40" opacity="0.3" stroke-width="1" />
             </div>
         @endif
         @if($item->category)

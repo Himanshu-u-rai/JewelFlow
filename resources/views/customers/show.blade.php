@@ -20,7 +20,7 @@
                 @endif
             @endcan
             <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-show-back-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 <span class="customers-show-back-label-full">Back to Customers</span>
                 <span class="customers-show-back-label-short">Back</span>
             </a>
@@ -65,22 +65,22 @@
 
                     <div class="customers-show-retailer-profile-actions" aria-label="Customer actions">
                         <a href="{{ url('/pos/customer/' . $customer->id) }}" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--primary customers-show-retailer-profile-action--mobile-visible">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+                            <x-icon name="shopping-cart" size="15" stroke-width="2.1" />
                             <span>Sell Item</span>
                         </a>
                         <a href="{{ route('invoices.index', ['customer' => $customer->id]) }}" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--mobile-visible">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <x-icon name="file-text" size="15" stroke-width="2.1" />
                             <span>View Invoices</span>
                         </a>
                         @can('customers.edit')
                             <a href="{{ route('customers.edit', $customer) }}" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--mobile-fab-only">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                <x-icon name="pencil-line" size="15" stroke-width="2.1" />
                                 <span>Edit Customer</span>
                             </a>
                         @endcan
                         @if(auth()->user()?->isOwner())
                             <a href="{{ route('store-credit.adjust.create', $customer) }}" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--mobile-fab-only" data-turbo-frame="_top">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                <x-icon name="credit-card" size="15" stroke-width="2.1" />
                                 <span>Store Credit</span>
                             </a>
                         @endif
@@ -90,7 +90,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--danger">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        <x-icon name="trash-2" size="15" stroke-width="2.1" />
                                         <span>Delete Customer</span>
                                     </button>
                                 </form>
@@ -513,13 +513,13 @@
                 <nav class="customers-show-mobile-fab-nav" aria-label="Customer quick actions">
                     @can('customers.edit')
                         <a href="{{ route('customers.edit', $customer) }}" class="customers-show-mobile-fab-link" @click="customerQuickFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                            <x-icon name="pencil-line" size="14" stroke-width="2.1" />
                             <span>Edit Customer</span>
                         </a>
                     @endcan
                     @if(auth()->user()?->isOwner())
                         <a href="{{ route('store-credit.adjust.create', $customer) }}" class="customers-show-mobile-fab-link" data-turbo-frame="_top" @click="customerQuickFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                            <x-icon name="credit-card" size="14" stroke-width="2.1" />
                             <span>Store Credit</span>
                         </a>
                     @endif
@@ -529,7 +529,7 @@
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="customers-show-mobile-fab-link customers-show-mobile-fab-link--danger" @click="customerQuickFabOpen = false">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    <x-icon name="trash-2" size="14" stroke-width="2.1" />
                                     <span>Delete Customer</span>
                                 </button>
                             </form>

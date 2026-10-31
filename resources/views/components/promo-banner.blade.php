@@ -87,7 +87,7 @@
     </style>
 
     <span class="promo-banner__accent" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7" cy="7" r="1.5"/></svg>
+        <x-icon name="tag" />
     </span>
 
     <div class="promo-banner__body">
@@ -96,7 +96,7 @@
         @if($promoBanner->cta_label && $promoBanner->cta_url)
             <a href="{{ $promoBanner->cta_url }}" class="promo-banner__cta" data-turbo-frame="_top" rel="noopener">
                 {{ $promoBanner->cta_label }}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                <x-icon name="arrow-right" />
             </a>
         @endif
     </div>
@@ -104,7 +104,7 @@
     <form method="POST" action="{{ route('announcements.dismiss', $promoBanner) }}" data-turbo-frame="_top">
         @csrf
         <button type="submit" class="promo-banner__close" aria-label="Dismiss">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            <x-icon name="x" />
         </button>
     </form>
 </div>

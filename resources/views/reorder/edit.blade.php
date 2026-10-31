@@ -2,7 +2,7 @@
     <x-page-header class="ops-treatment-header">
         <h1 class="page-title">Edit Reorder Rule</h1>
         <div class="page-actions">
-            <a href="{{ route('reorder.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back</a>
+            <a href="{{ route('reorder.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium"><x-icon name="arrow-left" size="14" class="mr-1" />Back</a>
         </div>
     </x-page-header>
 
@@ -65,8 +65,8 @@
                         </div>
                     </div>
                     <div class="mt-8 flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
-                        <a href="{{ route('reorder.index') }}" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</a>
-                        <button type="submit" class="px-6 py-2 rounded-md font-medium" style="background: #0d9488; color: white;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Update Rule</button>
+                        <a href="{{ route('reorder.index') }}" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"><x-icon name="x" size="14" class="inline -mt-0.5 mr-1" />Cancel</a>
+                        <button type="submit" class="px-6 py-2 rounded-md font-medium" style="background: #0d9488; color: white;"><x-icon name="save" size="14" class="inline -mt-0.5 mr-1" />Update Rule</button>
                     </div>
                 </form>
             </div>

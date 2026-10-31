@@ -651,12 +651,12 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <a href="{{ route('report.metal-exchange', ['view' => 'transactions', 'from' => $from, 'to' => $to]) }}"
                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight: 700;text-decoration:none;border:1px solid {{ $view === 'transactions' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'transactions' ? '#0f172a' : '#fff' }};color:{{ $view === 'transactions' ? '#fff' : '#475569' }};">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    <x-icon name="list" size="13" stroke-width="2.5" />
                     Transactions
                 </a>
                 <a href="{{ route('report.metal-exchange', ['view' => 'lots', 'from' => $from, 'to' => $to]) }}"
                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight: 700;text-decoration:none;border:1px solid {{ $view === 'lots' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'lots' ? '#0f172a' : '#fff' }};color:{{ $view === 'lots' ? '#fff' : '#475569' }};">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    <x-icon name="briefcase" size="13" stroke-width="2.5" />
                     Weekly Lots
                 </a>
             </div>
@@ -679,7 +679,7 @@
                         <input id="mxr-to" type="date" name="to" value="{{ $to }}" class="mxr-filter-input" aria-label="To date">
                     </div>
                     <button type="submit" class="mxr-filter-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <x-icon name="search" size="14" />
                         Filter
                     </button>
                 </form>
@@ -758,7 +758,7 @@
                                 <div x-show="!showDispatch">
                                     <button @click="showDispatch = true"
                                             style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12px;font-weight: 700;border:1px solid #0f172a;background:#0f172a;color:#fff;cursor:pointer;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                        <x-icon name="send" size="12" stroke-width="2.5" />
                                         Mark as Dispatched
                                     </button>
                                 </div>
@@ -856,7 +856,7 @@
                     <div class="mxr-summary-head">
                         <div class="mxr-summary-meta">
                             <div class="mxr-summary-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <x-icon name="star" size="20" />
                             </div>
                             <div>
                                 <h3 class="mxr-summary-title">Old Gold Received</h3>
@@ -886,7 +886,7 @@
                     <div class="mxr-summary-head">
                         <div class="mxr-summary-meta">
                             <div class="mxr-summary-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                <x-icon name="circle-alert" size="20" />
                             </div>
                             <div>
                                 <h3 class="mxr-summary-title">Old Silver Received</h3>

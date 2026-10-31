@@ -844,9 +844,7 @@
         <x-slot:actions>
             @can('inventory.create')
             <a href="{{ route('inventory.purchases.create') }}" class="sp-page-action">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4" />
                 New Purchase
             </a>
             @endcan
@@ -973,7 +971,7 @@
             <div class="sp-kpi-card sp-kpi-card--total">
                 <div class="sp-kpi-inner">
                     <div class="sp-kpi-icon">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <x-icon name="file-text" class="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div class="min-w-0">
                         <p class="sp-kpi-label">Total Purchases</p>
@@ -984,7 +982,7 @@
             <div class="sp-kpi-card sp-kpi-card--month">
                 <div class="sp-kpi-inner">
                     <div class="sp-kpi-icon">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="circle-dollar-sign" class="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div class="min-w-0">
                         <p class="sp-kpi-label">This Month</p>
@@ -995,7 +993,7 @@
             <div class="sp-kpi-card sp-kpi-card--items">
                 <div class="sp-kpi-inner">
                     <div class="sp-kpi-icon">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        <x-icon name="package" class="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div class="min-w-0">
                         <p class="sp-kpi-label">Items This Month</p>
@@ -1006,7 +1004,7 @@
             <div class="sp-kpi-card sp-kpi-card--drafts">
                 <div class="sp-kpi-inner">
                     <div class="sp-kpi-icon">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="clock" class="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div class="min-w-0">
                         <p class="sp-kpi-label">Drafts Pending</p>
@@ -1051,7 +1049,7 @@
                         <div class="sp-mobile-filter-copy">Set filters and apply them together.</div>
                     </div>
                     <button type="button" class="sp-mobile-filter-close" @click="closeMobileFilters()" aria-label="Close filters">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        <x-icon name="x" size="16" stroke-width="2.3" />
                     </button>
                 </div>
 
@@ -1110,7 +1108,7 @@
                     <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Search</label>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <x-icon name="search" size="16" />
                         </span>
                         <input type="text" name="search" x-model="search" placeholder="Purchase #, invoice #, supplier..." class="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
                     </div>
@@ -1165,7 +1163,7 @@
             @if($purchases->isEmpty())
                 <div class="sp-empty-state">
                     <span class="sp-empty-icon">
-                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <x-icon name="file-text" class="h-7 w-7" />
                     </span>
                     <p class="sp-empty-title">{{ $hasActiveFilters ? 'No purchases match these filters' : 'No stock purchases recorded yet' }}</p>
                     <p class="sp-empty-copy">{{ $hasActiveFilters ? 'Clear or adjust filters to see purchase entries.' : 'Create a purchase entry when supplier stock arrives.' }}</p>

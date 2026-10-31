@@ -31,7 +31,7 @@
                 <a href="{{ route('admin.announcements.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.announcements.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Announcements</a>
                 <a href="{{ route('admin.backup.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.backup.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Backup</a>
                 <a href="{{ route('admin.settings.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.settings.*') ? 'bg-amber-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">
-                    ⚙ Settings
+                    <x-icon name="settings" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />Settings
                 </a>
                 <a href="{{ route('admin.feature-flags.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.feature-flags.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Feature Flags</a>
                 <a href="{{ route('admin.compliance-alerts.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.compliance-alerts.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Compliance</a>
@@ -39,7 +39,7 @@
                 <a href="{{ route('admin.2fa.enroll') }}"
                    class="px-3 py-1.5 rounded-md text-sm {{ auth('platform_admin')->user()?->two_factor_enabled ? 'bg-slate-800 hover:bg-slate-700 text-green-400' : 'bg-amber-900 hover:bg-amber-800 text-amber-300' }}"
                    title="{{ auth('platform_admin')->user()?->two_factor_enabled ? '2FA enabled' : 'Enable 2FA (recommended)' }}">
-                    🔐 2FA
+                    <x-icon name="lock-keyhole" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />2FA
                 </a>
                 <form method="POST" action="{{ route('admin.logout') }}">
                     @csrf

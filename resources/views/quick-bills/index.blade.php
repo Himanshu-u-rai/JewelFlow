@@ -7,9 +7,7 @@
         <x-slot:actions>
             @can('sales.create')
                 <a href="{{ route('quick-bills.create') }}" class="qb-new-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
-                    </svg>
+                    <x-icon name="plus" stroke-width="2.2" />
                     <span>New Quick Bill</span>
                 </a>
             @endcan
@@ -1055,9 +1053,7 @@
             <div class="qb-stats" aria-label="Quick bill summary">
                 <div class="qb-stat">
                     <span class="qb-stat__icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 6h10M8 10h10M8 14h7M5 4h.01M5 10h.01M5 16h.01M4 20h16"/>
-                        </svg>
+                        <x-icon name="list" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Total bills</div>
@@ -1066,9 +1062,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-success" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/>
-                        </svg>
+                        <x-icon name="check" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Issued</div>
@@ -1077,10 +1071,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-warning" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                        </svg>
+                        <x-icon name="pencil-line" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Drafts</div>
@@ -1089,9 +1080,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-money" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 8h12M7 4c5 0 7 2 7 5s-2 5-7 5l8 6"/>
-                        </svg>
+                        <x-icon name="indian-rupee" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Today's sales</div>
@@ -1100,11 +1089,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-warning" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v5"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 17h.01"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
-                        </svg>
+                        <x-icon name="triangle-alert" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Outstanding</div>
@@ -1130,10 +1115,7 @@
                         <label class="qb-field">
                             <span class="qb-field__label">Search</span>
                             <span class="qb-input-wrap">
-                                <svg class="qb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <circle cx="11" cy="11" r="8"/>
-                                    <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                                </svg>
+                                <x-icon name="search" class="qb-input-icon" />
                                 <input class="qb-control has-icon" type="text" name="search" value="{{ request('search') }}" placeholder="Bill number, customer or mobile" data-suggest="quick-bills" autocomplete="off">
                             </span>
                         </label>
@@ -1171,26 +1153,18 @@
                         <input type="hidden" name="from_date" value="{{ request('from_date') }}">
                         <input type="hidden" name="to_date" value="{{ request('to_date') }}">
                         <label class="qb-input-wrap">
-                            <svg class="qb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                            </svg>
+                            <x-icon name="search" class="qb-input-icon" />
                             <input class="qb-control has-icon" type="text" name="search" value="{{ request('search') }}" placeholder="Search quick bills" data-suggest="quick-bills" autocomplete="off" aria-label="Search quick bills">
                         </label>
                         <button type="submit" class="qb-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                            </svg>
+                            <x-icon name="search" />
                             <span>Search</span>
                         </button>
                     </form>
 
                     <div class="qb-mobile-actions">
                         <button type="button" class="qb-filter-trigger" @click="filterOpen = true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4"/>
-                            </svg>
+                            <x-icon name="list-filter" />
                             <span>Filters</span>
                             @if($activeFilterCount)
                                 <span class="qb-filter-count">{{ $activeFilterCount }}</span>
@@ -1256,16 +1230,11 @@
                                         <td class="is-right">
                                             <div class="qb-actions">
                                                 <a href="{{ route('quick-bills.show', $quickBill) }}" class="qb-action is-view">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
-                                                        <circle cx="12" cy="12" r="3"/>
-                                                    </svg>
+                                                    <x-icon name="eye" />
                                                     View
                                                 </a>
                                                 <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action is-print">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
-                                                    </svg>
+                                                    <x-icon name="printer" />
                                                     Print
                                                 </a>
                                             </div>
@@ -1308,16 +1277,11 @@
 
                                 <div class="qb-card__actions">
                                     <a href="{{ route('quick-bills.show', $quickBill) }}" class="qb-action is-view">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
+                                        <x-icon name="eye" />
                                         View
                                     </a>
                                     <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action is-print">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
-                                        </svg>
+                                        <x-icon name="printer" />
                                         Print
                                     </a>
                                 </div>
@@ -1342,9 +1306,7 @@
                     <div class="qb-filter-sheet__head">
                         <h3 class="qb-filter-sheet__title">Filters</h3>
                         <button type="button" class="qb-filter-close" @click="filterOpen = false" aria-label="Close filters">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
+                            <x-icon name="x" />
                         </button>
                     </div>
 

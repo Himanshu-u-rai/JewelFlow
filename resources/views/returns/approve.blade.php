@@ -20,10 +20,7 @@
         :subtitle="'Return against ' . ($invoice?->invoice_number ?? '#' . $returnOrder->id)">
         <x-slot:actions>
             <a href="{{ route('returns.show', $returnOrder) }}" class="returns-show-back-btn" aria-label="Back to return">
-                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span>Back to Return</span>
             </a>
         </x-slot:actions>
@@ -42,9 +39,7 @@
         @if(isset($approvalReason) && $approvalReason)
         <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
             <div class="flex items-start">
-                <svg class="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
+                <x-icon name="triangle-alert" class="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
                     <p class="font-semibold text-amber-800">Approval required because:</p>
                     <p class="mt-1 text-amber-700">{{ $approvalReason }}</p>
@@ -55,9 +50,7 @@
 
         {{-- Status notice --}}
         <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 text-sm text-amber-800">
-            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            </svg>
+            <x-icon name="triangle-alert" class="w-5 h-5 mt-0.5 flex-shrink-0" />
             <div>
                 <strong>This return is awaiting manager approval.</strong>
                 A staff member submitted this return but it exceeds a policy threshold and requires your explicit approval before the credit note is issued.

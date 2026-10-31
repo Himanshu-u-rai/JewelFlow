@@ -6,10 +6,7 @@
         </div>
         <div class="page-actions">
             <a href="{{ route('installments.index') }}" class="btn btn-secondary btn-sm emi-create-back-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
-                    <line x1="19" y1="12" x2="5" y2="12"/>
-                    <polyline points="12 19 5 12 12 5"/>
-                </svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 Back
             </a>
         </div>
@@ -237,9 +234,7 @@
                     <button type="submit"
                             class="emi-create-primary"
                             :disabled="!canSubmit()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M20 6 9 17l-5-5"/>
-                        </svg>
+                        <x-icon name="check" size="15" stroke-width="2.1" />
                         Create EMI Plan
                     </button>
                     @if(!empty($fromPosEmi) && !empty($selectedInvoiceId))

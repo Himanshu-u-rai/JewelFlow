@@ -219,7 +219,7 @@
                 <div class="pricing-shell-modal__panel rate-modal__panel">
                     <div class="rate-modal__head">
                         <span class="rate-modal__badge">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            <x-icon name="dollar-sign" />
                             {{ __('Retailer Pricing Required') }}
                         </span>
                         <h2 id="rate-modal-title" class="rate-modal__title">{{ __('Enter Today\'s Metal Rates') }}</h2>
@@ -227,7 +227,7 @@
                             {{ __('Save today\'s rates so the team can price stock and bill at the counter.') }}
                         </p>
                         <span class="rate-modal__date">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                            <x-icon name="calendar" stroke-width="1.9" />
                             {{ $pricingShellState['business_date'] ?? '-' }}
                             <span class="tz">{{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }}</span>
                         </span>
@@ -289,13 +289,13 @@
                         </div>
 
                         <div class="rate-modal__note">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4M12 8h.01M12 22a10 10 0 100-20 10 10 0 000 20z"/></svg>
+                            <x-icon name="info" stroke-width="1.9" />
                             <span>{{ __('Saving updates your stock prices and gets the counter ready for billing.') }}</span>
                         </div>
 
                         <button type="submit" class="rate-modal__cta">
                             {{ __('Save Today\'s Rates') }}
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+                            <x-icon name="arrow-right" stroke-width="2.2" />
                         </button>
                     </form>
                 </div>
@@ -319,10 +319,10 @@
                     </div>
                     <button type="button" class="sidebar-close-btn" data-mobile-menu-toggle="tenant" aria-controls="main-sidebar" aria-expanded="false" aria-label="Close navigation">
                         <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                            <x-icon name="menu" size="18" stroke-width="2.2" />
                         </span>
                         <span class="drawer-toggle-icon drawer-toggle-icon-close" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            <x-icon name="x" size="18" stroke-width="2.2" />
                         </span>
                     </button>
                 </div>
@@ -332,22 +332,22 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Workspace') }}</div>
                         <a href="{{ route($homeRoute) }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+                            <span class="nav-icon"><x-icon name="house" size="16" /></span>
                             {{ __('Dashboard') }}
                         </a>
                         @if($hasRetailer || $hasManufacturer)
                         {{-- Vendors and Product Catalog open from their Masters cards, so their pages light this link. --}}
                         <a href="{{ route('masters.index') }}" class="nav-link {{ request()->routeIs('masters.*', 'vendors.*', 'products.*') ? 'active' : '' }}" data-nav-match="/vendors,/products">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+                            <span class="nav-icon"><x-icon name="layers" size="16" /></span>
                             {{ __('Masters') }}
                         </a>
                         <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+                            <span class="nav-icon"><x-icon name="shopping-cart" size="16" /></span>
                             {{ __('Sales Counter') }}
                         </a>
                         @if($authShop?->preferences?->quick_bill_enabled ?? true)
                         <a href="{{ route('quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></span>
+                            <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Quick Bills') }}
                         </a>
                         @endif
@@ -360,49 +360,49 @@
                         <div class="nav-section-title">{{ __('Sales') }}</div>
                         {{-- Installments is the Customers page's "EMI / Installments" tab, so its pages light this link. --}}
                         <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') || (! $strandedInstallments && request()->routeIs('installments.*')) ? 'active' : '' }}" @unless($strandedInstallments) data-nav-match="/installments" @endunless>
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                            <span class="nav-icon"><x-icon name="users" size="16" /></span>
                             {{ __('Customers') }}
                         </a>
                         {{-- Historical Sales and Returns / Exchange open from the Invoices page, so their pages
                              light this link too (data-nav-match: see syncActiveNavLink in app.js). Operations
                              still lights itself on /returns/control-center: the longer address wins. --}}
                         <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) || (! $strandedReturns && request()->routeIs('returns.index', 'returns.show', 'exchanges.*')) ? 'active' : '' }}" data-nav-match="{{ implode(',', array_filter([$strandedHistorical ? '' : '/historical', $strandedReturns ? '' : '/returns,/exchanges'])) }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+                            <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Invoices') }}
                         </a>
                         {{-- Kept for a role with returns.view but not sales.view, who cannot open Invoices.
                              The exchange pages are part of it (they live at /exchanges, not under /returns). --}}
                         @if($strandedReturns)
                         <a href="{{ route('returns.index') }}" class="nav-link {{ request()->routeIs('returns.index') || request()->routeIs('returns.show') || request()->routeIs('exchanges.*') ? 'active' : '' }}" data-nav-match="/exchanges">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></span>
+                            <span class="nav-icon"><x-icon name="corner-up-left" size="16" /></span>
                             {{ __('Returns / Exchange') }}
                         </a>
                         @endif
                         @can('returns.approve')
                         <a href="{{ route('returns.control-center') }}" class="nav-link {{ request()->routeIs('returns.control-center') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                            <span class="nav-icon"><x-icon name="activity" size="16" /></span>
                             {{ __('Operations') }}
                         </a>
                         @endcan
                         @if($hasRetailer)
                         <a href="{{ route('schemes.index') }}" class="nav-link {{ request()->routeIs('schemes.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="gift" size="16" /></span>
                             {{ __('Schemes') }}
                         </a>
                         @if($strandedInstallments)
                         <a href="{{ route('installments.index') }}" class="nav-link {{ request()->routeIs('installments.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+                            <span class="nav-icon"><x-icon name="credit-card" size="16" /></span>
                             {{ __('Installments') }}
                         </a>
                         @endif
                         <a href="{{ route('catalog.index') }}" class="nav-link {{ request()->routeIs('catalog.*') && ! request()->routeIs('catalog.website.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="message-circle" size="16" /></span>
                             {{ __('Catalog') }}
                         </a>
                         @endif
                         @if($strandedHistorical)
                         <a href="{{ route('historical.index') }}" class="nav-link {{ request()->routeIs('historical.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg></span>
+                            <span class="nav-icon"><x-icon name="history" size="16" /></span>
                             {{ __('Historical Sales') }}
                         </a>
                         @endif
@@ -415,7 +415,7 @@
                         <div class="nav-section-title">{{ __('Inventory') }}</div>
                         @if($hasManufacturer)
                         <a href="{{ route('inventory.gold.index') }}" class="nav-link {{ request()->routeIs('inventory.gold.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+                            <span class="nav-icon"><x-icon name="database" size="16" /></span>
                             {{ __('Gold Inventory') }}
                         </a>
                         @endif
@@ -423,14 +423,14 @@
                              so their pages light this link. The reorder alert count came with them: it stays in
                              sight from every page here, on the way to the link that carries it. --}}
                         <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'categories.*', 'sub-categories.*', 'tags.*', 'reorder.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories,/tags,/reorder">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+                            <span class="nav-icon"><x-icon name="package" size="16" /></span>
                             {{ __('Jewellery Stock') }}
                             {{-- Always present: the sidebar survives Turbo visits, so app.js re-reads the count from each page's bell. --}}
                             <span class="sidebar-alert-pill" title="{{ __('Reorder alerts') }}" data-reorder-pill @if(($reorderAlertCount ?? 0) === 0) hidden @endif>{{ $reorderAlertCount ?? 0 }}</span>
                         </a>
                         @if($hasRetailer)
                         <a href="{{ route('inventory.purchases.index') }}" class="nav-link {{ request()->routeIs('inventory.purchases.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
+                            <span class="nav-icon"><x-icon name="shopping-bag" size="16" /></span>
                             {{ __('Stock Purchases') }}
                         </a>
                         @endif
@@ -442,11 +442,11 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Job Work') }}</div>
                         <a href="{{ route('vault.index') }}" class="nav-link {{ request()->routeIs('vault.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16.5" r="1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="lock" size="16" /></span>
                             {{ __('Metal Vault') }}
                         </a>
                         <a href="{{ route('karigars.index') }}" class="nav-link {{ request()->routeIs('karigars.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="hammer" size="16" /></span>
                             {{ __('Karigars') }}
                         </a>
                         <a href="{{ route('job-orders.index') }}" class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}">
@@ -454,7 +454,7 @@
                             {{ __('Job Orders') }}
                         </a>
                         <a href="{{ route('karigar-invoices.index') }}" class="nav-link {{ request()->routeIs('karigar-invoices.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+                            <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Karigar Bills') }}
                         </a>
                     </div>
@@ -465,7 +465,7 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Services') }}</div>
                         <a href="{{ route('repairs.index') }}" class="nav-link {{ request()->routeIs('repairs.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="wrench" size="16" /></span>
                             {{ __('Repairs') }}
                         </a>
                     </div>
@@ -483,18 +483,18 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
                         <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="layout-grid" size="16" /></span>
                             {{ __('All Reports') }}
                         </a>
                         @if($canOpenCashBook)
                         <a href="{{ route('cashbook.index') }}" class="nav-link {{ request()->routeIs('cashbook.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="book-open" size="16" /></span>
                             {{ __('Cash Book') }}
                         </a>
                         @endif
                         @if($strandedCloseDay)
                         <a href="{{ route('report.closing') }}" class="nav-link {{ request()->routeIs('report.closing') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+                            <span class="nav-icon"><x-icon name="square-check-big" size="16" /></span>
                             {{ __('Close Day') }}
                         </a>
                         @endif
@@ -511,13 +511,13 @@
                         <div class="nav-section-title">{{ __('Account') }}</div>
                         @if($strandedExport)
                         <a href="{{ route('export.index') }}" class="nav-link {{ request()->routeIs('export.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                            <span class="nav-icon"><x-icon name="download" size="16" /></span>
                             {{ __('Download Reports') }}
                         </a>
                         @endif
                         @if($strandedImport)
                         <a href="{{ route('imports.index') }}" class="nav-link {{ request()->routeIs('imports.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                            <span class="nav-icon"><x-icon name="upload" size="16" /></span>
                             {{ __('Import Data') }}
                         </a>
                         @endif
@@ -527,17 +527,17 @@
                 
                 <div class="sidebar-footer">
                     <a href="{{ route('settings.edit', ['tab' => 'profile']) }}" class="sidebar-footer-link {{ (request()->routeIs('profile.*') || (request()->routeIs('settings.*') && request()->query('tab') === 'profile')) ? 'is-active' : '' }}" data-nav-match="/profile">
-                        <span class="nav-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                        <span class="nav-icon"><x-icon name="user" size="16" /></span>
                         {{ __('Profile') }}
                     </a>
                     <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link {{ request()->routeIs('settings.*') || ($canOpenSettings && request()->routeIs('export.*', 'imports.*')) ? 'is-active' : '' }}" @if($canOpenSettings) data-nav-match="/export,/imports" @endif>
-                        <span class="nav-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                        <span class="nav-icon"><x-icon name="settings" size="16" /></span>
                         {{ __('Settings') }}
                         <span class="sidebar-footer-role">{{ $authUser?->role?->display_name ?? __('Guest') }}</span>
                     </a>
                     <div x-data="{ showLogout: false }">
                         <button @click="showLogout = true" type="button" class="sidebar-footer-link sidebar-footer-link--danger sidebar-button-reset">
-                            <span class="nav-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="log-out" size="16" /></span>
                             {{ __('Log out') }}
                         </button>
 
@@ -549,7 +549,7 @@
                             <div class="relative bg-white shadow-xl p-6 w-full max-w-sm mx-4 logout-confirm-card" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
                                 <div class="flex items-center gap-3 mb-4">
                                     <div class="w-10 h-10 bg-red-100 flex items-center justify-center logout-confirm-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                        <x-icon name="log-out" size="20" class="text-red-600" />
                                     </div>
                                     <div>
                                         <h3 class="text-lg font-semibold text-gray-900">{{ __('Log out?') }}</h3>

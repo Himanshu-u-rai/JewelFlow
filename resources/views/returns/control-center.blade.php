@@ -550,7 +550,7 @@
         <x-slot:actions>
             <a href="{{ route('returns.index') }}"
                class="rc-back-btn">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <x-icon name="chevron-left" class="w-4 h-4" />
                 <span>All Returns</span>
             </a>
         </x-slot:actions>
@@ -618,9 +618,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             @else
-                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01"/>
-                                </svg>
+                                <x-icon name="triangle-alert" size="17" />
                             @endif
                         </div>
                         <div>

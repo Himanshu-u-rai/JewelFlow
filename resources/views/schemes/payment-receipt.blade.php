@@ -441,11 +441,7 @@
         <div class="no-print-bar">
             <a href="{{ route('schemes.enrollment.show', $enrollment) }}">← Back to Enrollment</a>
             <button class="primary" onclick="window.print()">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <polyline points="6 9 6 2 18 2 18 9"/>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                    <rect x="6" y="14" width="12" height="8"/>
-                </svg>
+                <x-icon name="printer" size="13" />
                 Print / Save PDF
             </button>
         </div>
@@ -477,9 +473,7 @@
             {{-- ── Scheme banner ── --}}
             <div class="scheme-row">
                 <div class="scheme-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
+                    <x-icon name="clock" size="14" stroke-width="2.2" />
                 </div>
                 <div>
                     <div class="scheme-name">{{ $scheme?->name ?? 'Gold Savings Scheme' }}</div>

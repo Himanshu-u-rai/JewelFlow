@@ -299,8 +299,9 @@ class DhiranOnboardingTest extends TestCase
             // documents (receipts, certificates, notices) are full <!DOCTYPE html>
             // pages with NO app navigation at all — they carry no ERP chrome and
             // are correctly exempt from the shell requirement.
+            // <x-icon> is an inline drawing helper, not app chrome, so it does not make a document an app page.
             $isStandaloneDocument = str_contains($contents, '<!DOCTYPE html>')
-                && ! str_contains($contents, '<x-');
+                && ! str_contains(str_replace('<x-icon', '', $contents), '<x-');
 
             if (! $isStandaloneDocument) {
                 $this->assertStringContainsString(

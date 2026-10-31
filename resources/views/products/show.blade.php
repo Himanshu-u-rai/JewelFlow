@@ -5,8 +5,8 @@
             <p class="text-sm text-gray-500 mt-1">Product Catalog Detail</p>
         </div>
         <div class="page-actions flex gap-2">
-            <a href="{{ route('products.edit', $product) }}" class="btn btn-dark btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Edit</a>
-            <a href="{{ route('products.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back</a>
+            <a href="{{ route('products.edit', $product) }}" class="btn btn-dark btn-sm"><x-icon name="pencil" size="14" class="mr-1" />Edit</a>
+            <a href="{{ route('products.index') }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-left" size="14" class="mr-1" />Back</a>
         </div>
     </x-page-header>
 

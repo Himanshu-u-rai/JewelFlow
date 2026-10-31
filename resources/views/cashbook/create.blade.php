@@ -2,10 +2,7 @@
     <x-page-header class="cashbook-create-header" title="Add entry" subtitle="Record a manual cash movement">
         <x-slot:actions>
             <a href="{{ route('cashbook.index') }}" class="cbf-header-back" aria-label="Back to Cash book">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12"/>
-                    <polyline points="12 19 5 12 12 5"/>
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span>Back to Cash book</span>
             </a>
         </x-slot:actions>
@@ -32,9 +29,7 @@
                                 <input type="radio" name="type" value="in" {{ old('type', 'in') === 'in' ? 'checked' : '' }} onchange="handleTypeChange('in')">
                                 <span class="cbf-type-box cbf-type-box--in">
                                     <span class="cbf-type-icon" aria-hidden="true">
-                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M12 19V5M5 12l7-7 7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
+                                        <x-icon name="arrow-up" size="17" />
                                     </span>
                                     <span class="cbf-type-copy">
                                         <span class="cbf-type-name">Cash in</span>
@@ -47,9 +42,7 @@
                                 <input type="radio" name="type" value="out" {{ old('type') === 'out' ? 'checked' : '' }} onchange="handleTypeChange('out')">
                                 <span class="cbf-type-box cbf-type-box--out">
                                     <span class="cbf-type-icon" aria-hidden="true">
-                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M12 5v14M5 12l7 7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
+                                        <x-icon name="arrow-down" size="17" />
                                     </span>
                                     <span class="cbf-type-copy">
                                         <span class="cbf-type-name">Cash out</span>
@@ -147,10 +140,7 @@
             <div class="cbf-actions">
                 <a href="{{ route('cashbook.index') }}" class="cbf-cancel">Cancel</a>
                 <button type="submit" class="cbf-submit">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                        <path d="M17 21v-8H7v8M7 3v5h8"/>
-                    </svg>
+                    <x-icon name="save" size="15" />
                     Record Transaction
                 </button>
             </div>

@@ -325,7 +325,7 @@
              itself in that case, so the link would bounce straight back here. --}}
         @if(\App\Models\Platform\PlatformSetting::erpChooserOffersAChoice())
         <a href="{{ route('shops.choose-type') }}" class="header-back" aria-label="Change business type">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            <x-icon name="chevron-left" stroke-width="2.2" />
             <span class="header-back-label">Change business type</span>
         </a>
         @endif
@@ -359,7 +359,7 @@
             <section class="fcard">
                 <div class="fcard-head">
                     <div class="fcard-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+                        <x-icon name="building" stroke-width="1.8" />
                     </div>
                     <div class="fcard-titles">
                         <b>Shop details</b>
@@ -404,7 +404,7 @@
             <section class="fcard">
                 <div class="fcard-head">
                     <div class="fcard-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-5.686-7-11a7 7 0 1114 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                        <x-icon name="map-pin" stroke-width="1.8" />
                     </div>
                     <div class="fcard-titles">
                         <b>Shop address</b>
@@ -454,13 +454,13 @@
                                     <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
                                 @endforeach
                             </select>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            <x-icon name="chevron-down" stroke-width="2.4" />
                         </div>
                     </div>
                     <div class="field">
                         <label>Country</label>
                         <div class="locked-field">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.5 9h17M3.5 15h17M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9S9.5 5.5 12 3z"/></svg>
+                            <x-icon name="globe" stroke-width="1.8" />
                             India
                         </div>
                         <input type="hidden" name="country" value="India">
@@ -472,7 +472,7 @@
             <section class="fcard">
                 <div class="fcard-head">
                     <div class="fcard-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
+                        <x-icon name="user" stroke-width="1.8" />
                     </div>
                     <div class="fcard-titles">
                         <b>Owner details</b>

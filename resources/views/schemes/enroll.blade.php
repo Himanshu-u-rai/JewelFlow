@@ -6,10 +6,7 @@
     >
         <x-slot:actions>
             <a href="{{ route('schemes.show', $scheme) }}" class="customers-row-action schemes-header-action schemes-header-action--neutral schemes-create-back-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" />
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span class="schemes-create-back-label-full">Back to Scheme</span>
                 <span class="schemes-create-back-label-short">Back</span>
             </a>

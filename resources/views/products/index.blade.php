@@ -3,9 +3,7 @@
         <x-slot:actions>
             @can('catalog.manage')
             <a href="{{ route('products.create') }}" class="btn btn-primary btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
                 Add Product
             </a>
             @endcan
@@ -24,7 +22,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <x-icon name="search" size="16" />
                         </span>
                         <input type="text" name="search" value="{{ request('search') }}"
                                placeholder="Search by name, design code, category..."
@@ -33,7 +31,7 @@
                     </div>
                 </div>
                 @if(filled(request('search')))
-                    <a href="{{ route('products.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm inline-flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
+                    <a href="{{ route('products.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm inline-flex items-center"><x-icon name="x" size="14" class="mr-1" />Clear</a>
                 @else
                     <button type="submit" class="btn btn-dark btn-sm">
                         Search
@@ -45,9 +43,7 @@
         <!-- Products Grid -->
         @if($products->isEmpty())
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
+                <x-icon name="package" class="w-16 h-16 mx-auto text-gray-300 mb-4" />
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">No Products Yet</h3>
                 <p class="text-gray-500 mb-6">Create your first product template</p>
                 @can('catalog.manage')
@@ -84,9 +80,7 @@
                                             </button>
                                         @else
                                             <div class="w-full h-full flex items-center justify-center">
-                                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                </svg>
+                                                <x-icon name="image" class="w-6 h-6 text-gray-300" />
                                             </div>
                                         @endif
                                     </div>
@@ -116,26 +110,19 @@
                                         @can('inventory.create')
                                         <a href="{{ route('inventory.items.create', ['product_id' => $product->id]) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100 text-xs font-medium transition-colors">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                            </svg>
+                                            <x-icon name="plus" class="w-3 h-3 mr-1" />
                                             Create Stock
                                         </a>
                                         @endcan
                                         <a href="{{ route('products.show', $product) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 text-xs font-medium transition-colors">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
+                                            <x-icon name="eye" class="w-3 h-3 mr-1" />
                                             View
                                         </a>
                                         @can('catalog.manage')
                                         <a href="{{ route('products.edit', $product) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-xs font-medium transition-colors">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
+                                            <x-icon name="square-pen" class="w-3 h-3 mr-1" />
                                             Edit
                                         </a>
                                         @endcan
@@ -160,9 +147,7 @@
                 <img id="modalImage" src="" alt="Product preview" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl">
                 <button type="button" onclick="closeImageModal()" 
                         class="absolute -top-3 -right-3 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
+                    <x-icon name="x" class="w-5 h-5 text-gray-600" />
                 </button>
                 <p id="modalCaption" class="text-white text-center mt-3 text-sm"></p>
             </div>

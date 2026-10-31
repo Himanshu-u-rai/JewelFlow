@@ -392,7 +392,7 @@
         <x-slot:actions>
             @can('karigar_invoice.manage')
             <a href="{{ route('karigar-invoices.create') }}" class="ki-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                <x-icon name="plus" size="15" stroke-width="2.4" />
                 Add Invoice
             </a>
             @endcan
@@ -408,7 +408,7 @@
         <section class="jobwork-kpi-grid">
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--gold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                    <x-icon name="file" size="17" stroke-width="2.2" />
                 </span>
                 <div>
                     <p>Total invoices</p>
@@ -417,7 +417,7 @@
             </div>
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--slate">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+                    <x-icon name="list" size="17" stroke-width="2.2" />
                 </span>
                 <div>
                     <p>This page value</p>
@@ -426,7 +426,7 @@
             </div>
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--green">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    <x-icon name="check" size="17" stroke-width="2.2" />
                 </span>
                 <div>
                     <p>Paid / partial</p>
@@ -435,7 +435,7 @@
             </div>
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--rose">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <x-icon name="triangle-alert" size="17" stroke-width="2.2" />
                 </span>
                 <div>
                     <p>Unpaid</p>
@@ -522,7 +522,7 @@
                     <input type="hidden" name="payment_status" x-model="paymentStatus">
                     <button type="button" class="ki-filter-trigger" @click="toggleDropdown('payment', $el)" :aria-expanded="paymentOpen.toString()">
                         <span :class="paymentStatusName ? '' : 'ki-filter-placeholder'" x-text="paymentStatusName || 'All statuses'">All statuses</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <x-icon name="chevron-down" size="15" stroke-width="2.25" />
                     </button>
                     <div class="ki-filter-menu" x-show="paymentOpen" :style="paymentMenuStyle" x-transition.origin.top x-cloak>
                         <div class="ki-filter-list">
@@ -544,7 +544,7 @@
                     <input type="hidden" name="karigar_id" x-model="karigarId">
                     <button type="button" class="ki-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
                         <span :class="karigarName ? '' : 'ki-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <x-icon name="chevron-down" size="15" stroke-width="2.25" />
                     </button>
                     <div class="ki-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
                         <div class="ki-filter-list">

@@ -9,7 +9,7 @@
                 <a href="{{ route('dhiran.product-preferences.index') }}" class="btn btn-secondary btn-sm" data-turbo="false">Product preferences</a>
             @endif
             <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 Back to Dashboard
             </a>
         </div>
@@ -26,7 +26,7 @@
                 {{-- Interest Defaults --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <x-icon name="calculator" />
                         Interest Defaults
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -55,7 +55,7 @@
                 {{-- LTV Settings --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        <x-icon name="trending-up" />
                         LTV Settings
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -76,7 +76,7 @@
                 {{-- Loan Limits --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="circle-dollar-sign" />
                         Loan Limits
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -96,7 +96,7 @@
                 {{-- Processing Fee --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <x-icon name="camera" />
                         Processing Fee
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -117,7 +117,7 @@
                 {{-- Tenure & Periods --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <x-icon name="calendar" />
                         Tenure & Periods
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -146,7 +146,7 @@
                 {{-- Forfeiture --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <x-icon name="triangle-alert" />
                         Forfeiture
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -167,7 +167,7 @@
                 {{-- Loan Number --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                        <x-icon name="hash" />
                         Loan Number
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -211,7 +211,7 @@
                 {{-- Receipts/Certificates --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <x-icon name="printer" />
                         Receipts & Certificates
                     </div>
                     <div>
@@ -223,7 +223,7 @@
                 {{-- Notifications --}}
                 <div class="dset-section dset-section-last">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <x-icon name="bell" />
                         Notifications
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -258,7 +258,7 @@
                 <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
                     <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">Cancel</a>
                     <button type="submit" class="btn btn-dark btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <x-icon name="save" size="14" class="mr-1" />
                         Save Settings
                     </button>
                 </div>

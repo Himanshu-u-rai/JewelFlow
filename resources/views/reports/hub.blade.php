@@ -100,7 +100,7 @@
                             <a href="{{ route($c[2]) }}" class="rh-card">
                                 <div class="rh-card-top">
                                     <h3 class="rh-card-title">{{ $c[0] }}</h3>
-                                    <svg class="rh-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+                                    <x-icon name="chevron-right" class="rh-card-arrow" />
                                 </div>
                                 <p class="rh-card-desc">{{ $c[1] }}</p>
                             </a>

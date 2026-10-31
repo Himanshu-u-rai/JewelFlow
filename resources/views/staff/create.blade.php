@@ -6,7 +6,7 @@
         </div>
         <div class="page-actions">
             <a href="{{ route('staff.index') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 Back to Staff
             </a>
         </div>
@@ -118,11 +118,11 @@
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
                     <a href="{{ route('staff.index') }}" class="btn btn-secondary btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <x-icon name="x" size="14" class="mr-1" />
                         Cancel
                     </a>
                     <button type="submit" class="btn btn-dark btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        <x-icon name="user-plus" size="14" class="mr-1" />
                         Add Staff Member
                     </button>
                 </div>

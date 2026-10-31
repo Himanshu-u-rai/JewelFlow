@@ -22,10 +22,7 @@
         subtitle="Track items exchanged by customers">
         <x-slot:actions>
             <a href="{{ route('invoices.index') }}" class="returns-inbox-back-btn" aria-label="Back to invoices">
-                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span>Back to Invoices</span>
             </a>
         </x-slot:actions>
@@ -84,12 +81,7 @@
 
         @if($exchanges->isEmpty())
             <section class="returns-inbox-empty" aria-label="No exchanges">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <polyline points="17 1 21 5 17 9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <polyline points="7 23 3 19 7 15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <x-icon name="repeat" class="w-10 h-10" />
                 <h2>No exchanges yet</h2>
                 <p>When a customer exchange is processed, it will appear here. Start an exchange from the original invoice.</p>
             </section>

@@ -264,7 +264,7 @@
         <div x-show="draftRestored" x-cloak
              class="mb-4 flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <span>
-                <svg class="inline w-4 h-4 mr-1.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <x-icon name="clock" class="inline w-4 h-4 mr-1.5 text-amber-500" />
                 Unsaved draft restored from your last session. Review before saving.
             </span>
             <button type="button" @click="clearDraft(); draftRestored = false;"
@@ -432,7 +432,7 @@
                                 <p class="purchase-card-subtitle">Enter the essential item values first. Charges and codes stay tucked under details.</p>
                             </div>
                             <button type="button" @click="addLine()" class="purchase-add-btn inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                <x-icon name="plus" class="w-4 h-4" />
                                 Add Item
                             </button>
                         </div>
@@ -458,7 +458,7 @@
                                             <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700" x-text="'₹' + parseFloat(line.purchase_line_amount || 0).toFixed(2)"></span>
                                             <button type="button" @click="toggleLineDetails(line)" class="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" x-text="line.detailsOpen ? 'Hide details' : 'More details'"></button>
                                             <button type="button" @click="removeLine(idx)" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" aria-label="Remove item">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                <x-icon name="x" class="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>

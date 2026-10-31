@@ -14,7 +14,7 @@
         </div>
         <div class="page-actions">
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <x-icon name="printer" size="14" />
                 Print
             </button>
         </div>
@@ -45,7 +45,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                        <x-icon name="trending-up" size="18" class="text-green-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Inflows</p>
@@ -56,7 +56,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-red-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                        <x-icon name="trending-down" size="18" class="text-red-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Outflows</p>

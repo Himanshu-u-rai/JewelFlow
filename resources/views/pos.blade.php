@@ -1394,32 +1394,23 @@
         <div class="pos-topbar-main">
             <button type="button" class="mobile-menu-btn pos-topbar-menu" data-mobile-menu-toggle="tenant" aria-controls="main-sidebar" aria-expanded="false" aria-label="Open navigation">
                 <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <x-icon name="menu" size="22" />
                 </span>
                 <span class="drawer-toggle-icon drawer-toggle-icon-close" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    <x-icon name="x" size="22" stroke-width="2.2" />
                 </span>
             </button>
             <div class="pos-topbar-title"><span>Point Of Sale</span></div>
             <div class="pos-topbar-search">
                 <span class="pos-topbar-search-icon">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <x-icon name="search" size="16" />
                 </span>
                 <input type="text" id="posSearchMobile" class="pos-topbar-search-input" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('mobile')" autocomplete="off">
             </div>
         </div>
         <div class="pos-topbar-links">
             <button id="btnScanMobile" class="btn-scan-mobile" onclick="openScanModal()" title="Scan via Mobile Camera" aria-label="Scan via Mobile Camera">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M4 7V5h2"/>
-                    <path d="M20 7V5h-2"/>
-                    <path d="M4 17v2h2"/>
-                    <path d="M20 17v2h-2"/>
-                    <path d="M7 5v14"/>
-                    <path d="M10 5v14"/>
-                    <path d="M14 5v14"/>
-                    <path d="M17 5v14"/>
-                </svg>
+                <x-icon name="scan-barcode" size="18" stroke-width="1.8" />
                 <span class="scan-mobile-label">Scan via Mobile</span>
             </button>
             <a href="{{ route('repairs.index') }}">Repairs</a>
@@ -1436,28 +1427,19 @@
         <div class="pos-mobile-fab-shell" x-bind:class="{ 'is-open': posMobileNavOpen }" @click.outside="posMobileNavOpen = false">
             <nav class="pos-mobile-fab-nav" aria-label="POS mobile navigation">
                 <button type="button" class="pos-mobile-fab-link" onclick="openScanModal()" @click="posMobileNavOpen = false">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 7V5h2"/>
-                        <path d="M20 7V5h-2"/>
-                        <path d="M4 17v2h2"/>
-                        <path d="M20 17v2h-2"/>
-                        <path d="M7 5v14"/>
-                        <path d="M10 5v14"/>
-                        <path d="M14 5v14"/>
-                        <path d="M17 5v14"/>
-                    </svg>
+                    <x-icon name="scan-barcode" size="16" stroke="#14213d" stroke-width="1.8" />
                     <span>Scan via Mobile</span>
                 </button>
                 <a href="{{ route('inventory.items.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <x-icon name="package" size="16" stroke="#14213d" />
                     <span>Inventory</span>
                 </a>
                 <a href="{{ route('invoices.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <x-icon name="file-text" size="16" stroke="#14213d" />
                     <span>Invoices</span>
                 </a>
                 <a href="{{ route('repairs.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    <x-icon name="wrench" size="16" stroke="#14213d" />
                     <span>Repairs</span>
                 </a>
             </nav>
@@ -1478,7 +1460,7 @@
             <!-- Search -->
             <div class="pos-search-wrap pos-search-desktop-wrap">
                 <span class="pos-search-icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <x-icon name="search" size="18" />
                 </span>
                 <input type="text" id="posSearchDesktop" class="pos-search" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('desktop')" autocomplete="off" autofocus>
             </div>
@@ -1490,7 +1472,7 @@
                     <div class="pos-filter-dropdown" id="posCategoryDropdown">
                         <button type="button" id="posCategoryTrigger" class="pos-filter-trigger" onclick="togglePosFilterMenu('category')" aria-expanded="false">
                             <span class="pos-filter-trigger-text" id="posCategoryLabel">All categories</span>
-                            <svg class="pos-filter-trigger-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            <x-icon name="chevron-down" size="16" class="pos-filter-trigger-icon" stroke-width="2.2" />
                         </button>
                         <div class="pos-filter-menu" id="posCategoryMenu">
                             <button type="button" class="pos-filter-option is-active" data-category="" onclick="setCategory('')">
@@ -1511,7 +1493,7 @@
                     <div class="pos-filter-dropdown" id="posSubCategoryDropdown">
                         <button type="button" id="posSubCategoryTrigger" class="pos-filter-trigger" onclick="togglePosFilterMenu('sub')" aria-expanded="false" disabled>
                             <span class="pos-filter-trigger-text" id="posSubCategoryLabel">All sub-categories</span>
-                            <svg class="pos-filter-trigger-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            <x-icon name="chevron-down" size="16" class="pos-filter-trigger-icon" stroke-width="2.2" />
                         </button>
                         <div class="pos-filter-menu" id="posSubCategoryMenu">
                             <div class="pos-filter-empty">Choose a category first</div>
@@ -1545,7 +1527,7 @@
                         <div class="cust-search-desktop">
                             <div class="cust-search-wrap">
                                 <span class="cust-search-icon">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                    <x-icon name="search" size="14" />
                                 </span>
                                 <input type="text" id="custSearch" class="cust-search" placeholder="Search customer…" oninput="onCustSearch()" onfocus="onCustSearch()">
                                 <div class="cust-dropdown" id="custDropdown"></div>
@@ -1554,10 +1536,10 @@
                         </div>
                         <div class="cust-mobile-actions">
                             <button type="button" class="btn-cust-search-mobile" onclick="showCustSearchModal()" title="Search Customer" aria-label="Search Customer">
-                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                <x-icon name="search" size="16" />
                             </button>
                             <button type="button" class="btn-add-cust-mobile" onclick="showModal()" title="Add New Customer" aria-label="Add New Customer">
-                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+                                <x-icon name="user" size="17" />
                                 <span class="btn-add-cust-mobile-plus" aria-hidden="true">+</span>
                             </button>
                         </div>
@@ -1572,7 +1554,7 @@
                                 </div>
                             </div>
                             <button class="cust-remove" onclick="deselectCust()" title="Change">
-                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <x-icon name="x" size="16" />
                             </button>
                         </div>
                     </div>
@@ -1612,7 +1594,7 @@
                     <span class="checkout-row-val" id="checkoutTotal">₹0</span>
                 </div>
                 <button class="btn-checkout" id="btnCheckout" disabled onclick="goCheckout()">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <x-icon name="chevron-right" size="16" />
                     Proceed to Checkout
                 </button>
             </div>
@@ -1659,7 +1641,7 @@
             <div class="cust-search-modal-wrap">
                 <div class="cust-search-wrap">
                     <span class="cust-search-icon">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <x-icon name="search" size="14" />
                     </span>
                     <input type="text" id="custSearchMobile" class="cust-search" placeholder="Search customer…" oninput="onCustSearch('mobile')" onfocus="onCustSearch('mobile')">
                 </div>

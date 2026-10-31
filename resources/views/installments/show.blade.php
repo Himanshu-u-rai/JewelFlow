@@ -22,7 +22,7 @@
     <x-page-header class="installments-show-header" title="Installment Plan" subtitle="EMI account and payment activity">
         <x-slot:actions>
             <a href="{{ route('installments.index') }}" class="installments-show-action installments-show-action--neutral btn-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="15" />
                 <span class="installments-show-action-text">Back to Installments</span>
             </a>
         </x-slot:actions>
@@ -57,13 +57,13 @@
                 <div class="installments-show-profile-actions" aria-label="Plan actions">
                     @if($plan->customer)
                         <a href="{{ route('customers.show', $plan->customer) }}" class="installments-show-profile-action">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+                            <x-icon name="user" size="15" stroke-width="2.1" />
                             <span>Customer Profile</span>
                         </a>
                     @endif
                     @if($plan->invoice)
                         <a href="{{ route('invoices.show', $plan->invoice) }}" class="installments-show-profile-action installments-show-profile-action--primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <x-icon name="file-text" size="15" stroke-width="2.1" />
                             <span>View Invoice</span>
                         </a>
                     @endif

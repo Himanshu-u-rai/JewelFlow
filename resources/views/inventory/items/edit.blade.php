@@ -7,9 +7,7 @@
         <div class="page-actions">
             <a href="{{ route('inventory.items.show', $item) }}" 
                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 Back to Item
             </a>
         </div>
@@ -86,9 +84,7 @@
                     <!-- Editable Fields -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                         <h2 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
+                            <x-icon name="square-pen" class="w-5 h-5 text-amber-500" />
                             Item Details
                         </h2>
                         
@@ -140,9 +136,7 @@
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     <span class="flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                        </svg>
+                                        <x-icon name="image" class="w-4 h-4 text-amber-500" />
                                         Change Item Image
                                     </span>
                                 </label>
@@ -150,9 +144,7 @@
                                     <label class="flex-1 flex items-center justify-center px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 hover:border-amber-400 transition-colors">
                                         <input type="file" name="image" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" class="hidden" id="imageFileInput">
                                         <div class="text-center">
-                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                                            </svg>
+                                            <x-icon name="cloud-upload" class="mx-auto h-8 w-8 text-gray-400" />
                                             <p class="mt-1 text-sm text-gray-600"><span class="font-medium text-amber-600">Click to upload</span> or drag and drop</p>
                                             <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 2MB</p>
                                         </div>
@@ -171,9 +163,7 @@
                                             data-remove-image-state="0"
                                             class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12"/>
-                                            </svg>
+                                            <x-icon name="trash-2" class="h-4 w-4" />
                                             <span id="removeImageButtonLabel">Delete current image</span>
                                         </button>
                                     </div>
@@ -185,9 +175,7 @@
                     <!-- Charges -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                         <h2 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <x-icon name="circle-dollar-sign" class="w-5 h-5 text-green-500" />
                             Charges
                         </h2>
                         
@@ -218,9 +206,7 @@
                         </div>
                         
                         <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 flex items-start gap-2">
-                            <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <x-icon name="info" class="w-5 h-5 flex-shrink-0 mt-0.5" />
                             <span>Cost price will be recalculated automatically: Gold Cost + Making + Stone Charges</span>
                         </div>
                     </div>
@@ -231,9 +217,7 @@
                     <!-- Weight & Purity (Read-only) -->
                     <div class="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
                         <h2 class="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
+                            <x-icon name="lock" class="w-5 h-5 text-gray-500" />
                             Weight & Purity
                         </h2>
                         <p class="text-xs text-gray-500 mb-4">Cannot be changed (affects gold accounting)</p>
@@ -295,9 +279,7 @@
                                 <div class="font-semibold text-gray-900">Lot #{{ $item->metalLot->lot_number }}</div>
                                 <div class="text-xs text-gray-500">{{ $item->metalLot->type ?? 'Gold' }} • {{ $item->metalLot->purity }}K</div>
                             </div>
-                            <svg class="w-5 h-5 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
+                            <x-icon name="chevron-right" class="w-5 h-5 text-gray-400 ml-auto" />
                         </a>
                     </div>
                     @endif
@@ -312,13 +294,11 @@
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                     <a href="{{ route('inventory.items.show', $item) }}" 
                        class="w-full sm:w-auto px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
+                        <x-icon name="x" size="14" class="inline -mt-0.5 mr-1" />Cancel
                     </a>
                     <button type="submit" 
                             class="w-full sm:w-auto px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
+                        <x-icon name="check" class="w-5 h-5" />
                         Save Changes
                     </button>
                 </div>

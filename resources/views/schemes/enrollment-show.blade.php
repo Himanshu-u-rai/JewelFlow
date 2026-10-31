@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">{{ $enrollment->scheme->name ?? 'Scheme' }}</p>
         </div>
         <div class="page-actions flex flex-wrap items-center gap-2">
-            <a href="{{ route('schemes.show', $enrollment->scheme_id) }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to Scheme</a>
+            <a href="{{ route('schemes.show', $enrollment->scheme_id) }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-left" size="14" class="mr-1" />Back to Scheme</a>
         </div>
     </x-page-header>
 
@@ -99,7 +99,7 @@
                             <div>
                                 <input type="text" name="receipt_number" placeholder="Receipt # (optional)" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
-                            <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Record Payment</button>
+                            <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;"><x-icon name="credit-card" size="14" class="inline -mt-0.5 mr-1" />Record Payment</button>
                         </div>
                     </form>
 

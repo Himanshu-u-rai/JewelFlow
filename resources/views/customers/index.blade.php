@@ -16,9 +16,7 @@
             @can('customers.create')
             <a href="{{ route('customers.create') }}"
                class="btn btn-success btn-sm customers-add-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
-                </svg>
+                <x-icon name="user-plus" class="w-4 h-4 mr-2" />
                 Add Customer
             </a>
             @endcan
@@ -41,19 +39,19 @@
         <div class="mt-1 mb-3">
             <div class="ui-toggle-strip customers-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
             <button type="button" @click="view = 'customers'" :class="view === 'customers' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <x-icon name="users" size="14" />
                 Customer Directory
             </button>
             <button type="button" @click="view = 'loyalty'" :class="view === 'loyalty' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <x-icon name="star" size="14" />
                 Loyalty Points
             </button>
             <button type="button" @click="view = 'emi'" :class="view === 'emi' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <x-icon name="credit-card" size="14" />
                 EMI / Installments
             </button>
             <button type="button" @click="view = 'occasions'" :class="view === 'occasions' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <x-icon name="calendar" size="14" />
                 Occasions
             </button>
             </div>
@@ -67,9 +65,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m8-10a4 4 0 11-8 0 4 4 0 018 0z"/>
-                        </svg>
+                        <x-icon name="square-user" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Customers</p>
@@ -82,9 +78,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-                        </svg>
+                        <x-icon name="dollar-sign" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Gold on This Page</p>
@@ -135,7 +129,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <x-icon name="search" size="16" />
                             </span>
                             <input
                                 type="text"
@@ -235,11 +229,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="flex flex-wrap items-center justify-center gap-2">
                                         <a href="{{ route('customers.show', $customer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            <x-icon name="eye" size="12" />
                                             View
                                         </a>
                                         <a href="{{ route('customers.edit', $customer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                            <x-icon name="pencil" size="12" />
                                             Edit
                                         </a>
                                         @can('customers.delete')
@@ -266,11 +260,7 @@
                                 <td colspan="4" class="customers-empty-cell px-6 py-12 text-center text-slate-500">
                                     <div class="customers-empty-state">
                                         <span class="customers-empty-icon" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                                <circle cx="9.5" cy="7" r="4"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 8v6M22 11h-6"/>
-                                            </svg>
+                                            <x-icon name="user-plus" size="20" />
                                         </span>
                                         <div>
                                             <p class="customers-empty-title">No customers found</p>
@@ -408,7 +398,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            <x-icon name="star" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Issued</p>
@@ -419,7 +409,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-rose-100 text-rose-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>
+                            <x-icon name="gift" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Redeemed</p>
@@ -453,7 +443,7 @@
                             <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
                             <div class="relative">
                                 <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <x-icon name="search" size="16" />
                                 </span>
                                 <input type="text" name="loyalty_search" value="{{ request('loyalty_search') }}" placeholder="Customer name or mobile..." class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
                             </div>
@@ -493,8 +483,8 @@
                                 <td class="px-6 py-4 text-sm text-right text-slate-700 tabular-nums">₹{{ number_format($lCustomer->loyalty_points * 0.25, 2) }}</td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex flex-wrap items-center justify-center gap-2">
-                                        <a href="{{ route('customers.show', $lCustomer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View Profile</a>
-                                        <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Adjust</a>
+                                        <a href="{{ route('customers.show', $lCustomer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="eye" size="12" />View Profile</a>
+                                        <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="sliders-vertical" size="12" />Adjust</a>
                                     </div>
                                 </td>
                             </tr>
@@ -560,7 +550,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <x-icon name="clipboard" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Active Plans</p>
@@ -571,7 +561,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-rose-100 text-rose-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <x-icon name="clock" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Overdue</p>
@@ -622,7 +612,7 @@
 
                         @can('sales.create')
                             <a href="{{ route('installments.create') }}" class="btn btn-dark btn-sm customers-primary-action">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <x-icon name="plus" size="14" class="mr-1.5" />
                                 Create EMI Plan
                             </a>
                         @endcan
@@ -662,7 +652,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('installments.show', $plan) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View</a>
+                                    <a href="{{ route('installments.show', $plan) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="eye" size="12" />View</a>
                                 </td>
                             </tr>
                             @empty
@@ -741,7 +731,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10m-13 9h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2z"/></svg>
+                            <x-icon name="calendar" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Upcoming</p>
@@ -752,7 +742,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0z"/></svg>
+                            <x-icon name="clock" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Next 7 Days</p>
@@ -763,7 +753,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                            <x-icon name="users" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Customers</p>
@@ -822,7 +812,7 @@
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <a href="{{ route('customers.show', $occasion['customer_id']) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            <x-icon name="eye" size="12" />
                                             View Profile
                                         </a>
                                     </td>

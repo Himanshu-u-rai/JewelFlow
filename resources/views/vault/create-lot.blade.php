@@ -478,7 +478,7 @@
                             </label>
                             <a href="{{ route('vendors.create') }}" target="_blank" class="vault-lot-add">
                                 <span class="vault-lot-add-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                    <x-icon name="plus" stroke-width="2.6" />
                                 </span>
                                 Add new vendor
                             </a>
@@ -492,7 +492,7 @@
 
                     <div class="vault-lot-actions">
                         <button type="submit" class="vault-lot-submit">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            <x-icon name="plus" size="16" stroke-width="2.4" />
                             Add to Vault
                         </button>
                         <a href="{{ route('vault.index') }}" class="vault-lot-cancel">Cancel</a>

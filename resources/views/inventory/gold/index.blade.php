@@ -7,9 +7,7 @@
         <div class="page-actions">
             @can('inventory.create')
             <a href="{{ route('inventory.gold.create') }}" class="btn btn-dark btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
                 Add Gold
             </a>
             @endcan
@@ -25,9 +23,7 @@
                     <p class="text-3xl font-bold mt-2 text-gray-900">{{ number_format($totalFineGold, 3) }} g</p>
                 </div>
                 <div class="rounded-full p-4 bg-amber-50">
-                    <svg class="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                    </svg>
+                    <x-icon name="package" class="w-10 h-10 text-amber-600" />
                 </div>
             </div>
         </div>
@@ -106,18 +102,14 @@
                             <tr>
                                 <td colspan="8" class="px-6 py-12 text-center">
                                     <div class="text-gray-400 mb-4">
-                                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                        </svg>
+                                        <x-icon name="package" class="w-16 h-16 mx-auto" />
                                     </div>
                                     <p class="text-gray-500 font-medium">No gold lots found</p>
                                     <p class="text-gray-400 text-sm mt-1">Add your first gold lot to get started</p>
                                     @can('inventory.create')
                                     <a href="{{ route('inventory.gold.create') }}"
                                        class="inline-flex items-center mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                        </svg>
+                                        <x-icon name="plus" class="w-4 h-4 mr-2" />
                                         Add Gold
                                     </a>
                                     @endcan

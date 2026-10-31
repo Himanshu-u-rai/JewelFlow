@@ -14,7 +14,7 @@
         </div>
         <div class="page-actions">
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <x-icon name="printer" size="14" />
                 Print
             </button>
         </div>
@@ -45,7 +45,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <x-icon name="dollar-sign" size="18" class="text-green-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Interest Collected</p>
@@ -56,7 +56,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-amber-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <x-icon name="triangle-alert" size="18" class="text-amber-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Penalty Collected</p>
@@ -67,7 +67,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+                        <x-icon name="banknote" size="18" class="text-blue-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Principal Collected</p>

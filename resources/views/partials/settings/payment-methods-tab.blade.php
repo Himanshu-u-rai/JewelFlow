@@ -456,11 +456,11 @@
                     <span class="pm-section-title">
                         <span class="pm-type-mark" aria-hidden="true">
                             @if($type === 'upi')
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 7 8"/><path d="M7 13h3a5 5 0 0 0 0-10"/></svg>
+                                <x-icon name="indian-rupee" size="16" stroke-width="2.2" />
                             @elseif($type === 'bank')
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M4 10h16"/><path d="M5 21h14"/><path d="M7 10v11"/><path d="M17 10v11"/><path d="M12 10v11"/></svg>
+                                <x-icon name="landmark" size="16" stroke-width="2.2" />
                             @else
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                                <x-icon name="wallet" size="16" stroke-width="2.2" />
                             @endif
                         </span>
                         {{ $typeLabels[$type] }}
@@ -493,14 +493,14 @@
                             </form>
                             {{-- Edit toggle --}}
                             <button type="button" class="pm-btn-icon" title="Edit" @click="editOpen = !editOpen">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                <x-icon name="square-pen" size="14" stroke="#475569" />
                             </button>
                             {{-- Delete --}}
                             <form method="POST" action="{{ route('settings.payment-methods.destroy', $method) }}" style="margin:0;"
                                   onsubmit="return confirm({{ \Illuminate\Support\Js::from('Delete ' . $method->name . '?') }})">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="pm-btn-icon pm-btn-icon-danger" title="Delete">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                    <x-icon name="trash-2" size="14" />
                                 </button>
                             </form>
                         </div>

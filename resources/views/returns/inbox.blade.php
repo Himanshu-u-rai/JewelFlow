@@ -1561,10 +1561,7 @@
     <x-page-header class="customers-page-header returns-index-header" title="Returns" subtitle="Credit notes issued against customer returns">
         <x-slot:actions>
             <a href="{{ route('invoices.index') }}" class="ri-back-btn">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <x-icon name="arrow-left" size="14" />
                 <span>Back to Invoices</span>
             </a>
         </x-slot:actions>
@@ -1596,9 +1593,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12M6 8h12M7 13h5a4 4 0 010 8H8m4-8L8 3"/>
-                            </svg>
+                            <x-icon name="indian-rupee" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Visible refunds</p>
@@ -1609,9 +1604,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
-                            </svg>
+                            <x-icon name="calendar" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's refunds</p>
@@ -1622,9 +1615,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <x-icon name="clock" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Pending approval</p>
@@ -1640,9 +1631,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-rose-100 text-rose-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7M12 11v10"/>
-                            </svg>
+                            <x-icon name="box" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Awaiting inspection</p>
@@ -1666,9 +1655,7 @@
                             @click="returnsFiltersOpen = true"
                             :aria-expanded="returnsFiltersOpen.toString()"
                             aria-controls="returns-filter-panel">
-                        <svg class="returns-filter-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M10 18h4"/>
-                        </svg>
+                        <x-icon name="list-filter" size="16" class="returns-filter-icon" />
                         <span>
                             <strong>Filters</strong>
                             <small>{{ $hasFilters ? $activeFilterCount . ' active' : 'Status, date, customer' }}</small>
@@ -1696,9 +1683,7 @@
                                 <span>{{ $hasFilters ? $activeFilterCount . ' active filter' . ($activeFilterCount === 1 ? '' : 's') : 'Status, date, customer' }}</span>
                             </div>
                             <button type="button" class="returns-filter-sheet-close" @click="returnsFiltersOpen = false" aria-label="Close filters">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/>
-                                </svg>
+                                <x-icon name="x" size="18" />
                             </button>
                         </div>
                         <div class="ri-filter-field ui-filter-field">

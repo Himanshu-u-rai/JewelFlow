@@ -288,7 +288,7 @@
             attribution and audit behaviour are unchanged.
         --}}
         <p class="text-xs text-amber-300/90 mb-3">
-            ⚠ Read-Only and Suspended are recorded as <strong>administrator</strong>
+            <x-icon name="triangle-alert" size="13" style="display:inline-block;vertical-align:-2px;margin-right:3px" />Read-Only and Suspended are recorded as <strong>administrator</strong>
             restrictions. An administrator restriction is not self-service
             recoverable — while it is in place the owner
             <strong>cannot buy or renew a plan</strong> and is told to contact
@@ -316,7 +316,7 @@
                         {{ $chosenMode === 'active'
                             ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
-                        ✅ Active
+                        <x-icon name="circle-check" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />Active
                     </span>
                 </label>
 
@@ -328,7 +328,7 @@
                         {{ $chosenMode === 'read_only'
                             ? 'border-amber-500 bg-amber-500/20 text-amber-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
-                        🔒 Read-Only
+                        <x-icon name="lock" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />Read-Only
                     </span>
                 </label>
 
@@ -340,7 +340,7 @@
                         {{ $chosenMode === 'suspended'
                             ? 'border-rose-500 bg-rose-500/20 text-rose-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
-                        ⛔ Suspended
+                        <x-icon name="ban" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />Suspended
                     </span>
                 </label>
             </div>

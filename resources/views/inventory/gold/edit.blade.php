@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Update source and cost information</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('inventory.gold.show', $lot) }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to Lot</a>
+            <a href="{{ route('inventory.gold.show', $lot) }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-left" size="14" class="mr-1" />Back to Lot</a>
         </div>
     </x-page-header>
     <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -94,8 +94,8 @@
                 @endif
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                    <a href="{{ route('inventory.gold.show', $lot) }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</a>
-                    <button type="submit" class="btn btn-dark btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes</button>
+                    <a href="{{ route('inventory.gold.show', $lot) }}" class="btn btn-secondary btn-sm"><x-icon name="x" size="14" class="mr-1" />Cancel</a>
+                    <button type="submit" class="btn btn-dark btn-sm"><x-icon name="save" size="14" class="mr-1" />Save Changes</button>
                 </div>
             </form>
         </div>

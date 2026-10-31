@@ -22,7 +22,7 @@
                     <div class="admin-setting-card-head">
                         <div class="admin-setting-card-body">
                             <div class="admin-setting-title-row">
-                                <span class="admin-setting-icon">🏪</span>
+                                <span class="admin-setting-icon"><x-icon name="store" size="20" style="display:block" /></span>
                                 <span class="admin-setting-title">Retailer</span>
                                 @if($settings['retailer_enabled'])
                                     <span class="admin-setting-status is-active">Enabled</span>
@@ -60,7 +60,7 @@
                     <div class="admin-setting-card-head">
                         <div class="admin-setting-card-body">
                             <div class="admin-setting-title-row">
-                                <span class="admin-setting-icon">🏭</span>
+                                <span class="admin-setting-icon"><x-icon name="factory" size="20" style="display:block" /></span>
                                 <span class="admin-setting-title">Manufacturer</span>
                                 @if($settings['manufacturer_enabled'])
                                     <span class="admin-setting-status is-active">Enabled</span>
@@ -98,7 +98,7 @@
                     <div class="admin-setting-card-head">
                         <div class="admin-setting-card-body">
                             <div class="admin-setting-title-row">
-                                <span class="admin-setting-icon">💰</span>
+                                <span class="admin-setting-icon"><x-icon name="coins" size="20" style="display:block" /></span>
                                 <span class="admin-setting-title">Dhiran</span>
                                 @if($settings['dhiran_enabled'])
                                     <span class="admin-setting-status is-active">Enabled</span>
@@ -143,7 +143,7 @@
                 @endphp
                 <span><strong>Current behaviour for new registrations:</strong> </span>
                 @if(count($enabledLabels) === 0)
-                    <span class="font-semibold text-rose-400">⚠ No edition enabled — save will be blocked until at least one is enabled.</span>
+                    <span class="font-semibold text-rose-400"><x-icon name="triangle-alert" size="14" style="display:inline-block;vertical-align:-2px;margin-right:4px" />No edition enabled — save will be blocked until at least one is enabled.</span>
                 @elseif(count($enabledLabels) === 1)
                     Only {{ $enabledLabels[array_key_first($enabledLabels)] }} enabled — the choose-services screen is skipped; users go directly to plans.
                 @else

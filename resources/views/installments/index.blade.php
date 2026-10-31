@@ -23,10 +23,7 @@
         <x-slot:actions>
             @can('sales.create')
                 <a href="{{ route('installments.create') }}" class="btn btn-success btn-sm customers-add-btn installments-create-btn">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round" />
-                        <line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round" />
-                    </svg>
+                    <x-icon name="plus" class="w-4 h-4 mr-2" />
                     <span class="installments-create-label-full">Create EMI Plan</span>
                     <span class="installments-create-label-short">Create</span>
                 </a>

@@ -627,7 +627,7 @@
                                 <input type="hidden" name="karigar_id" x-model="karigarId">
                                 <button type="button" class="job-combobox-trigger" @click="karigarOpen = ! karigarOpen" :aria-expanded="karigarOpen.toString()">
                                     <span :class="karigarName ? '' : 'job-combobox-placeholder'" x-text="karigarName || 'Select karigar...'">Select karigar...</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                 </button>
                                 <div class="job-combobox-menu" x-show="karigarOpen" x-transition.origin.top x-cloak>
                                     <div class="job-combobox-list">
@@ -683,7 +683,7 @@
                                 <input type="hidden" name="metal_type" x-model="metalType">
                                 <button type="button" class="job-combobox-trigger" @click="metalTypeOpen = ! metalTypeOpen" :aria-expanded="metalTypeOpen.toString()">
                                     <span x-text="metalType === 'silver' ? 'Silver' : 'Gold'">Gold</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                 </button>
                                 <div class="job-combobox-menu" x-show="metalTypeOpen" x-transition.origin.top x-cloak>
                                     <div class="job-combobox-list">
@@ -750,7 +750,7 @@
                                 <p class="job-copy">Enter the fine weight to issue per lot. Gross weight is derived for the delivery challan.</p>
                             </div>
                             <button type="button" @click="addLine" class="job-add-line">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                <x-icon name="plus" size="14" stroke-width="2.4" />
                                 Add another lot
                             </button>
                         </div>
@@ -764,7 +764,7 @@
                                             <input type="hidden" :name="'issuances[' + idx + '][metal_lot_id]'" :disabled="metalSource !== 'vault'" x-model="line.metal_lot_id">
                                             <button type="button" class="job-combobox-trigger" @click="open = !open" :aria-expanded="open.toString()">
                                                 <span :class="line.lotName ? '' : 'job-combobox-placeholder'" x-text="line.lotName || 'Select lot...'">Select lot...</span>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                                <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                             </button>
                                             <div class="job-combobox-menu" x-show="open" x-transition.origin.top x-cloak>
                                                 <div class="job-combobox-list">
@@ -892,7 +892,7 @@
                                 <input type="hidden" name="sources[0][customer_id]" x-model="customerId" :disabled="metalSource !== 'customer_advance'">
                                 <button type="button" class="job-combobox-trigger" @click="customerOpen = ! customerOpen" :aria-expanded="customerOpen.toString()">
                                     <span :class="customerName ? '' : 'job-combobox-placeholder'" x-text="customerName || 'Select customer...'">Select customer...</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                 </button>
                                 <div class="job-combobox-menu" x-show="customerOpen" x-transition.origin.top x-cloak>
                                     <div class="job-combobox-list">
@@ -955,7 +955,7 @@
                                     <input type="hidden" name="advance_mode" x-model="advanceMode">
                                     <button type="button" class="job-combobox-trigger bg-white" @click="advanceModeOpen = ! advanceModeOpen" :aria-expanded="advanceModeOpen.toString()">
                                         <span x-text="advanceModeName">Cash</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                        <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                     </button>
                                     <div class="job-combobox-menu job-combobox-menu-up" x-show="advanceModeOpen" x-transition.origin.bottom x-cloak>
                                         <div class="job-combobox-list">
@@ -973,7 +973,7 @@
                                     <input type="hidden" name="advance_payment_method_id" x-model="paymentMethodId">
                                     <button type="button" class="job-combobox-trigger bg-white" @click="paymentMethodOpen = ! paymentMethodOpen" :aria-expanded="paymentMethodOpen.toString()">
                                         <span :class="paymentMethodName ? '' : 'job-combobox-placeholder'" x-text="paymentMethodName || 'Select account'">Select account</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                        <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                                     </button>
                                     <div class="job-combobox-menu job-combobox-menu-up" x-show="paymentMethodOpen" x-transition.origin.bottom x-cloak>
                                         <div class="job-combobox-list">
@@ -1000,7 +1000,7 @@
                     <section class="job-section">
                         <div class="job-actions">
                             <button type="submit" class="job-submit">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1"/><path d="M3 12v7c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-7"/></svg>
+                                <x-icon name="square-check-big" size="16" stroke-width="2.4" />
                                 Issue & Print Challan
                             </button>
                             <a href="{{ route('job-orders.index') }}" class="job-cancel">Cancel</a>

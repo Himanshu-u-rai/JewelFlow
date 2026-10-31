@@ -55,9 +55,7 @@
             @can('sales.pos')
             <a href="{{ route('pos.index') }}"
                class="btn btn-success btn-sm invoices-open-pos-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                </svg>
+                <x-icon name="shopping-cart" class="w-4 h-4 mr-2" />
                 Open POS
             </a>
             @endcan
@@ -85,18 +83,18 @@
         @if($showHistoricalSales || $showReturns)
         <nav class="invoices-page-nav" aria-label="Invoices navigation">
             <a href="{{ route('invoices.index') }}" class="invoices-page-nav-link" aria-current="page">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <x-icon name="file-text" size="14" />
                 Invoices
             </a>
             @if($showHistoricalSales)
             <a href="{{ route('historical.index') }}" class="invoices-page-nav-link">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+                <x-icon name="history" size="14" />
                 Historical Sales
             </a>
             @endif
             @if($showReturns)
             <a href="{{ route('returns.index') }}" class="invoices-page-nav-link">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                <x-icon name="corner-up-left" size="14" />
                 Returns / Exchange
             </a>
             @endif
@@ -108,9 +106,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--count">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
+                        <x-icon name="file-text" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Invoices</p>
@@ -121,9 +117,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--count">
                 <div class="flex items-center gap-3">
                     <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
+                        <x-icon name="calendar" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's Invoices</p>
@@ -134,9 +128,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--money">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <x-icon name="circle-dollar-sign" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's Sales</p>
@@ -147,9 +139,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--money">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m10 0V6a3 3 0 10-6 0v2m6 0H7"/>
-                        </svg>
+                        <x-icon name="briefcase" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">This Month</p>
@@ -177,7 +167,7 @@
                     <label class="invoices-filter-field invoices-filter-field--search">
                         <span>Search</span>
                         <span class="invoices-input-wrap">
-                            <svg class="invoices-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <x-icon name="search" size="16" class="invoices-input-icon" />
                             <input type="text"
                                    name="search"
                                    value="{{ request('search') }}"
@@ -234,7 +224,7 @@
                     <input type="hidden" name="status" value="{{ request('status') }}">
                     <input type="hidden" name="payment_mode" value="{{ request('payment_mode') }}">
                     <label class="invoices-input-wrap">
-                        <svg class="invoices-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <x-icon name="search" size="16" class="invoices-input-icon" />
                         <input type="text"
                                name="search"
                                value="{{ request('search') }}"
@@ -249,7 +239,7 @@
 
                 <div class="invoices-mobile-actions">
                     <button type="button" class="invoices-filter-trigger" @click="invoiceFiltersOpen = true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
+                        <x-icon name="list-filter" size="16" />
                         <span>Filters</span>
                         @if($activeInvoiceFilterCount)
                             <span class="invoices-filter-count">{{ $activeInvoiceFilterCount }}</span>
@@ -378,10 +368,7 @@
                                            class="invoice-action-icon-link invoice-action-icon-link--view"
                                            aria-label="View invoice"
                                            title="View">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
+                                            <x-icon name="eye" size="16" />
                                             <span class="invoice-action-tooltip">View</span>
                                         </a>
                                         @can('sales.void')
@@ -389,9 +376,7 @@
                                            class="invoice-action-icon-link invoice-action-icon-link--edit"
                                            aria-label="Edit invoice"
                                            title="Edit">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                            </svg>
+                                            <x-icon name="pencil" size="16" />
                                             <span class="invoice-action-tooltip">Edit</span>
                                         </a>
                                         @endcan
@@ -400,9 +385,7 @@
                                            class="invoice-action-icon-link invoice-action-icon-link--print"
                                            aria-label="Print invoice"
                                            title="Print">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                            </svg>
+                                            <x-icon name="printer" size="16" />
                                             <span class="invoice-action-tooltip">Print</span>
                                         </a>
                                     </div>
@@ -411,9 +394,7 @@
                         @empty
                             <tr>
                                 <td colspan="10" class="px-6 py-12 text-center text-slate-500">
-                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
+                                    <x-icon name="file-text" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No invoices found</p>
                                     <p class="text-sm">Create your first sale from the POS</p>
                                 </td>
@@ -517,7 +498,7 @@
                 <div class="invoices-filter-sheet__head">
                     <h3>Filters</h3>
                     <button type="button" class="invoices-filter-close" @click="invoiceFiltersOpen = false" aria-label="Close filters">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12"/></svg>
+                        <x-icon name="x" size="18" />
                     </button>
                 </div>
 

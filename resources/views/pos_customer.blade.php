@@ -915,9 +915,7 @@
                         <div class="item-picker-browse-shell" id="itemPickerShell">
                             <button type="button" class="item-picker-trigger" id="itemPickerTrigger" aria-expanded="false" aria-controls="itemPickerPanel">
                                 <span class="item-picker-trigger-text is-placeholder" id="itemPickerLabel">Browse stock items</span>
-                                <svg class="item-picker-trigger-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m5 7.5 5 5 5-5" />
-                                </svg>
+                                <x-icon name="chevron-down" class="item-picker-trigger-icon" stroke-width="1.8" />
                             </button>
                             <div class="item-picker-panel" id="itemPickerPanel" hidden>
                                 <div class="item-picker-panel-head">
@@ -1038,7 +1036,7 @@
                                 <option value="other">Other</option>
                             </select>
                             <input type="number" class="pay-amount payment-amount" placeholder="Amount (₹)" step="0.01" min="0" oninput="recalcPaymentBalance()">
-                            <button type="button" onclick="removePaymentRow(this)" class="pay-remove" title="Remove" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                            <button type="button" onclick="removePaymentRow(this)" class="pay-remove" title="Remove" style="display:none;"><x-icon name="x" size="14" /></button>
                         </div>
                         <div class="pay-details" style="display:none;"></div>
                     </div>

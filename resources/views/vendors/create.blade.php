@@ -395,9 +395,7 @@
         <h1 class="page-title">Add Vendor</h1>
         <div class="page-actions">
             <a href="{{ route('vendors.index') }}" class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors vendors-create-back-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 <span class="vendors-create-back-label-full">Back to Vendors</span>
                 <span class="vendors-create-back-label-short">Back</span>
             </a>

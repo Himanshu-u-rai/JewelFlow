@@ -15,7 +15,7 @@
         </div>
         <div class="page-actions flex flex-wrap items-center gap-2">
             <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-secondary btn-sm invoices-edit-back-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1.5" />
                 Back to invoice
             </a>
         </div>
@@ -71,7 +71,7 @@
                                 @error('gst_rate')<p class="invoices-edit-error">{{ $message }}</p>@enderror
 
                                 <button type="submit" class="invoices-edit-button invoices-edit-button--primary">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <x-icon name="check" size="14" />
                                     Finalize invoice
                                 </button>
                             </form>
@@ -101,7 +101,7 @@
                                     @error('cancellation_reason')<p class="invoices-edit-error">{{ $message }}</p>@enderror
 
                                     <button type="submit" class="invoices-edit-button invoices-edit-button--danger">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        <x-icon name="x" size="14" />
                                         Cancel draft
                                     </button>
                                 </form>
@@ -133,7 +133,7 @@
                                 @error('cancellation_reason')<p class="invoices-edit-error">{{ $message }}</p>@enderror
 
                                 <button type="submit" class="invoices-edit-button invoices-edit-button--danger">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.52"/></svg>
+                                    <x-icon name="rotate-ccw" size="14" />
                                     Cancel via reversal
                                 </button>
                             </form>
@@ -148,9 +148,7 @@
                     @endcan
                 @else
                     <section class="invoices-edit-card invoices-edit-empty">
-                        <svg class="invoices-edit-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/>
-                        </svg>
+                        <x-icon name="ban" class="invoices-edit-empty-icon" />
                         <p class="invoices-edit-kicker">Cancelled invoice</p>
                         <h2>No further actions are available.</h2>
                         <p>This invoice has already been cancelled.</p>

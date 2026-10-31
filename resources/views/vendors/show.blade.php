@@ -428,9 +428,7 @@
     <x-page-header class="vendors-show-header ops-treatment-header" :title="$vendor->name" subtitle="Vendor details & associated items">
         <x-slot:actions>
             <a href="{{ route('vendors.edit', $vendor) }}" class="btn btn-secondary btn-sm vendors-show-edit-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                </svg>
+                <x-icon name="pencil" size="14" class="mr-1.5" />
                 <span class="vendors-show-edit-label-full">Edit Vendor</span>
                 <span class="vendors-show-edit-label-short">Edit</span>
             </a>
@@ -454,10 +452,7 @@
                 @endif
             @endcan
             <a href="{{ route('vendors.index') }}" class="btn btn-secondary btn-sm vendors-show-back-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5">
-                    <line x1="19" y1="12" x2="5" y2="12" />
-                    <polyline points="12 19 5 12 12 5" />
-                </svg>
+                <x-icon name="arrow-left" size="14" class="mr-1.5" />
                 <span class="vendors-show-back-label-full">Back to Vendors</span>
                 <span class="vendors-show-back-label-short">Back</span>
             </a>

@@ -6,9 +6,7 @@
         <x-slot:actions>
             @if($lastReconciliationRun)
                 <span class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-500 shadow-sm">
-                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
+                    <x-icon name="clock" class="w-3.5 h-3.5 text-slate-400" />
                     Last reconciled {{ \Carbon\Carbon::parse($lastReconciliationRun)->diffForHumans() }}
                 </span>
             @else
@@ -194,10 +192,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white px-6 py-5">
                 <div class="flex items-start gap-4">
                     <div class="mt-0.5 flex-shrink-0 w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <x-icon name="badge-check" class="w-5 h-5 text-slate-500" />
                     </div>
                     <div>
                         <p class="text-sm font-semibold text-slate-800">

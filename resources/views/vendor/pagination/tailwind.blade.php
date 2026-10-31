@@ -42,11 +42,11 @@
                 {{-- Previous --}}
                 @if ($paginator->onFirstPage())
                     <span aria-disabled="true" aria-label="{{ __('pagination.previous') }}" class="jf-pager-btn jf-pager-btn--disabled">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15l-5-5 5-5"/></svg>
+                        <x-icon name="chevron-left" class="w-4 h-4" />
                     </span>
                 @else
                     <a href="{{ $paginator->previousPageUrl() }}" rel="prev" class="jf-pager-btn" aria-label="{{ __('pagination.previous') }}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15l-5-5 5-5"/></svg>
+                        <x-icon name="chevron-left" class="w-4 h-4" />
                     </a>
                 @endif
 
@@ -70,11 +70,11 @@
                 {{-- Next --}}
                 @if ($paginator->hasMorePages())
                     <a href="{{ $paginator->nextPageUrl() }}" rel="next" class="jf-pager-btn" aria-label="{{ __('pagination.next') }}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5l5 5-5 5"/></svg>
+                        <x-icon name="chevron-right" class="w-4 h-4" />
                     </a>
                 @else
                     <span aria-disabled="true" aria-label="{{ __('pagination.next') }}" class="jf-pager-btn jf-pager-btn--disabled">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5l5 5-5 5"/></svg>
+                        <x-icon name="chevron-right" class="w-4 h-4" />
                     </span>
                 @endif
             </div>

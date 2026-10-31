@@ -486,7 +486,7 @@
         <x-slot:actions>
             @can('job_order.manage')
             <a href="{{ route('job-orders.create') }}" class="btn btn-primary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <x-icon name="plus" size="14" class="mr-1" />
                 Issue Bullion
             </a>
             @endcan
@@ -519,7 +519,7 @@
             </section>
             <section class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    <x-icon name="clock" />
                 </span>
                 <div>
                     <p>Open on Page</p>
@@ -528,7 +528,7 @@
             </section>
             <section class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--green" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                    <x-icon name="check" />
                 </span>
                 <div>
                     <p>Completed</p>
@@ -537,7 +537,7 @@
             </section>
             <section class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <x-icon name="triangle-alert" />
                 </span>
                 <div>
                     <p>Flagged</p>
@@ -768,7 +768,7 @@
                             <div class="jo-mobile-filter-copy">Refine the list without crowding the main screen.</div>
                         </div>
                         <button type="button" class="jo-mobile-filter-close" @click="closeMobileFilters()" aria-label="Close filters">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            <x-icon name="x" size="16" stroke-width="2.3" />
                         </button>
                     </div>
 
@@ -824,7 +824,7 @@
                                 <input type="hidden" name="status" x-model="status">
                                 <button type="button" class="jo-filter-trigger" @click="toggleDropdown('status', $el)" :aria-expanded="statusOpen.toString()">
                                     <span :class="statusName ? '' : 'jo-filter-placeholder'" x-text="statusName || 'All statuses'">All statuses</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    <x-icon name="chevron-down" size="15" stroke-width="2.25" />
                                 </button>
                                 <div class="jo-filter-menu" x-show="statusOpen" :style="statusMenuStyle" x-transition.origin.top x-cloak>
                                     <div class="jo-filter-list">
@@ -845,7 +845,7 @@
                                 <input type="hidden" name="karigar_id" x-model="karigarId">
                                 <button type="button" class="jo-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
                                     <span :class="karigarName ? '' : 'jo-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    <x-icon name="chevron-down" size="15" stroke-width="2.25" />
                                 </button>
                                 <div class="jo-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
                                     <div class="jo-filter-list">

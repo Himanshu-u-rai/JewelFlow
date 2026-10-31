@@ -580,9 +580,7 @@
     >
         <x-slot:actions>
             <a href="{{ route('inventory.items.index') }}" class="pending-stock-header-action" aria-label="Back to inventory">
-                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m15 18-6-6 6-6"/>
-                </svg>
+                <x-icon name="chevron-left" size="17" stroke-width="2.2" />
                 <span class="pending-stock-back-label">Inventory</span>
             </a>
         </x-slot:actions>
@@ -615,9 +613,7 @@
         @if($items->isEmpty())
             <section class="pending-stock-empty">
                 <div class="pending-stock-empty-icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 6 9 17l-5-5"/>
-                    </svg>
+                    <x-icon name="check" size="20" stroke-width="2.1" />
                 </div>
                 <h3 class="pending-stock-empty-title">No pending stock</h3>
                 <p class="pending-stock-empty-copy">New karigar receipts will appear here for review before they move into sale-ready inventory.</p>

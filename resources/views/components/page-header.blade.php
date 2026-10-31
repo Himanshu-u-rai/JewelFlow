@@ -14,10 +14,10 @@
     <div class="content-header-nav">
         <button type="button" class="mobile-menu-btn" data-mobile-menu-toggle="tenant" aria-controls="main-sidebar" aria-expanded="false" aria-label="Open navigation">
             <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <x-icon name="menu" size="22" />
             </span>
             <span class="drawer-toggle-icon drawer-toggle-icon-close" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <x-icon name="x" size="22" stroke-width="2.2" />
             </span>
         </button>
     </div>
