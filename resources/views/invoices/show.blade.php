@@ -17,12 +17,12 @@
         <div class="page-actions flex flex-wrap gap-2">
             @if(($emiMeta['is_retailer'] ?? false) && ($emiMeta['eligible'] ?? false))
                 <a href="{{ route('installments.create', ['invoice_id' => $invoice->id]) }}" class="btn btn-dark btn-sm invoice-emi-primary-action">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <x-icon name="dollar-sign" size="14" class="mr-1.5" />
                     Convert to EMI
                 </a>
             @elseif(($emiMeta['is_retailer'] ?? false) && ($emiMeta['has_plan'] ?? false))
                 <a href="{{ route('installments.show', $emiMeta['plan_id']) }}" class="btn btn-secondary btn-sm invoice-emi-primary-action">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 3h6v4H9V3z"/></svg>
+                    <x-icon name="clipboard" size="14" class="mr-1.5" />
                     View EMI Plan
                 </a>
             @endif
@@ -31,22 +31,17 @@
             @endphp
             @if($canEditInvoice)
             <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-secondary btn-sm invoice-edit-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                <x-icon name="pencil" size="14" class="mr-1.5" />
                 Edit Invoice
             </a>
             @endif
             <a href="{{ route('invoices.print', $invoice) }}" target="_blank"
                class="btn btn-secondary btn-sm invoice-print-action">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                </svg>
+                <x-icon name="printer" class="w-4 h-4 mr-2" />
                 Print
             </a>
             <button type="button" class="btn btn-secondary btn-sm invoice-preview-action" x-on:click="invoicePreviewOpen = true">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.25A3.25 3.25 0 1112 8.75a3.25 3.25 0 010 6.5z"/>
-                </svg>
+                <x-icon name="eye" class="w-4 h-4 mr-2" />
                 Preview
             </button>
             @can('returns.create')
@@ -56,16 +51,14 @@
                     Return
                 </a>
                 <a href="{{ route('exchanges.unified.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg>
+                    <x-icon name="maximize-2" class="w-4 h-4 mr-2" />
                     Exchange
                 </a>
                 @endif
             @endcan
             <a href="{{ route('invoices.index') }}" 
                class="btn btn-secondary btn-sm invoice-back-action">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 All Invoices
             </a>
         </div>
@@ -77,18 +70,18 @@
                 <nav class="invoice-emi-mobile-fab-nav" aria-label="EMI invoice quick actions">
                     @if(($emiMeta['is_retailer'] ?? false) && ($emiMeta['eligible'] ?? false))
                         <a href="{{ route('installments.create', ['invoice_id' => $invoice->id]) }}" class="invoice-emi-mobile-fab-link" @click="invoiceEmiFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            <x-icon name="dollar-sign" size="14" />
                             <span>Convert to EMI</span>
                         </a>
                     @elseif(($emiMeta['is_retailer'] ?? false) && ($emiMeta['has_plan'] ?? false))
                         <a href="{{ route('installments.show', $emiMeta['plan_id']) }}" class="invoice-emi-mobile-fab-link" @click="invoiceEmiFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 3h6v4H9V3z"/></svg>
+                            <x-icon name="clipboard" size="14" />
                             <span>View EMI Plan</span>
                         </a>
                     @endif
                     @if(($invoice->status === \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.create')) || ($invoice->status !== \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.void')))
                     <a href="{{ route('invoices.edit', $invoice) }}" class="invoice-emi-mobile-fab-link" @click="invoiceEmiFabOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        <x-icon name="pencil" size="14" />
                         <span>Edit Invoice</span>
                     </a>
                     @endif
@@ -489,15 +482,11 @@
                 </div>
                 <div class="invoice-preview-panel-actions">
                     <a href="{{ route('invoices.print', $invoice) }}" target="_blank" class="invoice-preview-print-link">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                        </svg>
+                        <x-icon name="printer" class="w-4 h-4" />
                         Print
                     </a>
                     <button type="button" class="invoice-preview-close" x-on:click="invoicePreviewOpen = false" aria-label="Close invoice preview">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/>
-                        </svg>
+                        <x-icon name="x" class="w-4 h-4" />
                     </button>
                 </div>
             </header>

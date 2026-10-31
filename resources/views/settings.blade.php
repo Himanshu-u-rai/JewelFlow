@@ -2293,12 +2293,12 @@
         <nav class="settings-data-links" aria-label="{{ __('Download and import data') }}">
             @if($canDownloadReports)
             <a href="{{ route('export.index') }}" class="nav-item">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> {{ __('Download Reports') }}
+                <span class="nav-icon"><x-icon name="download" size="16" /></span> {{ __('Download Reports') }}
             </a>
             @endif
             @if($canImportData)
             <a href="{{ route('imports.index') }}" class="nav-item">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> {{ __('Import Data') }}
+                <span class="nav-icon"><x-icon name="upload" size="16" /></span> {{ __('Import Data') }}
             </a>
             @endif
         </nav>
@@ -2311,16 +2311,16 @@
             </a>
             @can('settings.edit')
             <a href="{{ route('settings.edit', ['tab' => 'profile']) }}" class="nav-item {{ $activeTab === 'profile' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> {{ __('Profile') }}
+                <span class="nav-icon"><x-icon name="user" size="16" /></span> {{ __('Profile') }}
             </a>
             @endcan
             {{-- Shop Info / Invoice / Payment Methods / Preferences — settings.view to read, settings.edit to write --}}
             @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="nav-item {{ $activeTab === 'shop' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> {{ __('Shop Info') }}
+                <span class="nav-icon"><x-icon name="house" size="16" /></span> {{ __('Shop Info') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'billing']) }}" class="nav-item {{ $activeTab === 'billing' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> {{ __('Invoice') }}
+                <span class="nav-icon"><x-icon name="file-text" size="16" /></span> {{ __('Invoice') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'gst']) }}" class="nav-item {{ $activeTab === 'gst' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l6-6"/><circle cx="9.5" cy="8.5" r="1.5"/><circle cx="14.5" cy="13.5" r="1.5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span> {{ __('GST & Tax') }}
@@ -2329,13 +2329,13 @@
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg></span> {{ __('Plan & Billing') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> {{ __('Payment Methods') }}
+                <span class="nav-icon"><x-icon name="credit-card" size="16" /></span> {{ __('Payment Methods') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'preferences']) }}" class="nav-item {{ $activeTab === 'preferences' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span> {{ __('Preferences') }}
+                <span class="nav-icon"><x-icon name="sliders-vertical" size="16" /></span> {{ __('Preferences') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'return-policy']) }}" class="nav-item {{ $activeTab === 'return-policy' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></span> {{ __('Return Policy') }}
+                <span class="nav-icon"><x-icon name="corner-up-left" size="16" /></span> {{ __('Return Policy') }}
             </a>
             @endcan
             {{-- Pricing — only users with pricing.update --}}
@@ -2355,25 +2355,25 @@
             {{-- Catalog Website — same as Settings: needs settings.view to enter --}}
             @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'website']) }}" class="nav-item {{ $activeTab === 'website' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> {{ __('Catalog Website') }}
+                <span class="nav-icon"><x-icon name="globe" size="16" /></span> {{ __('Catalog Website') }}
             </a>
             @endcan
             {{-- Roles & Permissions — Owner only (the matrix editor itself uses role:owner) --}}
             @if(auth()->user()->isOwner())
             <a href="{{ route('settings.edit', ['tab' => 'roles']) }}" class="nav-item {{ $activeTab === 'roles' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> {{ __('Roles') }}
+                <span class="nav-icon"><x-icon name="lock" size="16" /></span> {{ __('Roles') }}
             </a>
             @endif
             {{-- Staff — staff.view to read --}}
             @can('staff.view')
             <a href="{{ route('settings.edit', ['tab' => 'staff']) }}" class="nav-item {{ $activeTab === 'staff' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> {{ __('Staff') }}
+                <span class="nav-icon"><x-icon name="users" size="16" /></span> {{ __('Staff') }}
             </a>
             @endcan
             {{-- Audit Log — settings.view (sensitive history) --}}
             @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" class="nav-item {{ $activeTab === 'audit' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> {{ __('Audit Log') }}
+                <span class="nav-icon"><x-icon name="clock" size="16" /></span> {{ __('Audit Log') }}
             </a>
             @endcan
             {{-- Services — settings.view --}}
@@ -2385,7 +2385,7 @@
             {{-- Devices — settings.view (mobile phones signed in to this shop) --}}
             @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'devices']) }}" class="nav-item {{ $activeTab === 'devices' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> {{ __('Devices') }}
+                <span class="nav-icon"><x-icon name="smartphone" size="16" /></span> {{ __('Devices') }}
             </a>
             @endcan
         </nav>
@@ -2401,7 +2401,7 @@
 
             @if(! $canEditSettings && in_array($activeTab, ['shop', 'billing', 'preferences', 'website']))
                 <div class="settings-readonly-banner" style="display:flex;align-items:center;gap:10px;padding:12px 16px;margin-bottom:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:13px;font-weight:600;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <x-icon name="lock" size="18" style="flex-shrink:0;" stroke="#d97706" />
                     <span>{{ __('View only — ask the shop owner to grant') }} <code style="background:rgba(217,119,6,0.1);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;">settings.edit</code> {{ __('if you need to make changes here.') }}</span>
                 </div>
             @endif
@@ -2441,7 +2441,7 @@
                         </div>
                         <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top">
                             @csrf
-                            <button type="submit" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>{{ __('Logout') }}</button>
+                            <button type="submit" class="btn btn-danger"><x-icon name="log-out" size="14" class="mr-1" />{{ __('Logout') }}</button>
                         </form>
                     </div>
                 </div>
@@ -2565,7 +2565,7 @@
                                             data-skip-dropzone-click="true"
                                             aria-pressed="{{ old('remove_logo', 0) ? 'true' : 'false' }}"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                            <x-icon name="trash-2" size="12" stroke-width="2.1" />
                                             <span id="shop-logo-delete-label">{{ old('remove_logo', 0) ? __('Undo') : __('Delete') }}</span>
                                         </button>
                                         <div id="shop-logo-delete-note" class="logo-delete-note" @if(!old('remove_logo', 0)) style="display:none;" @endif>
@@ -3504,7 +3504,7 @@
                                 <li class="flex items-center justify-between px-5 py-3">
                                     <span class="text-sm font-medium text-slate-800 capitalize">{{ $metal }}</span>
                                     <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        <x-icon name="check" size="14" stroke-width="3" />
                                         {{ __('On') }}
                                     </span>
                                 </li>
@@ -3771,7 +3771,7 @@
                                                 @csrf @method('PATCH')
                                                 <button type="submit"
                                                         class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
+                                                    <x-icon name="rotate-ccw" size="11" />
                                                     {{ __('Recover') }}
                                                 </button>
                                             </form>
@@ -3779,7 +3779,7 @@
                                             <div class="flex gap-2">
                                                 <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
                                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    <x-icon name="square-pen" size="11" />
                                                     {{ __('Edit') }}
                                                 </a>
                                                 <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
@@ -3787,7 +3787,7 @@
                                                     @csrf @method('DELETE')
                                                     <button type="submit"
                                                             class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                        <x-icon name="trash-2" size="11" />
                                                         {{ __('Remove') }}
                                                     </button>
                                                 </form>
@@ -4190,7 +4190,7 @@
                 @empty
                     <div class="audit-empty">
                         <div class="audit-empty-glyph">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <x-icon name="clock" stroke-width="1.6" />
                         </div>
                         <p class="audit-empty-title">{{ __('Nothing recorded yet') }}</p>
                         <p class="audit-empty-sub">{{ __('As you and your staff use the shop, every important action shows up here.') }}</p>
@@ -4213,7 +4213,7 @@
                                 <p id="auditDetailMeta" class="text-xs text-gray-500 mt-1"></p>
                             </div>
                             <button id="closeJson" class="flex-shrink-0 -mr-1 -mt-1 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="{{ __('Close') }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                <x-icon name="x" class="h-5 w-5" />
                             </button>
                         </div>
                         <div class="flex-1 overflow-auto px-6 py-5">
@@ -4224,7 +4224,7 @@
                             {{-- Technical details tucked away for a CA / support, not shown by default. --}}
                             <div id="auditDetailRawWrap" class="mt-5 hidden">
                                 <button id="auditRawToggle" type="button" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
-                                    <svg id="auditRawChevron" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                    <x-icon name="chevron-right" class="h-3.5 w-3.5 transition-transform" id="auditRawChevron" />
                                     {{ __('Show technical details') }}
                                 </button>
                                 <div id="auditRawBody" class="hidden mt-3">
@@ -4420,7 +4420,7 @@
                                                 <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
                                             </div>
                                             <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 flex-shrink-0">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                <x-icon name="check" size="14" stroke-width="3" />
                                                 {{ __('On') }}
                                             </span>
                                         </div>
@@ -5052,7 +5052,7 @@
                     {{-- Empty state: teach what this screen is for. --}}
                     <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
                         <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                            <x-icon name="smartphone" size="22" stroke-width="1.75" />
                         </div>
                         <p class="text-sm font-semibold text-slate-700">{{ __('No phones are signed in right now') }}</p>
                         <p class="mt-1 text-sm text-slate-500">{{ __('A phone shows up here when your staff sign in on the mobile app.') }}</p>
@@ -5070,7 +5070,7 @@
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex items-start gap-3 min-w-0">
                                         <div class="h-10 w-10 flex-shrink-0 rounded-full bg-teal-100 flex items-center justify-center text-teal-700">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                            <x-icon name="smartphone" size="18" />
                                         </div>
                                         <div class="min-w-0">
                                             <p class="font-semibold text-gray-900 text-sm truncate">{{ $deviceName }}</p>
@@ -5117,7 +5117,7 @@
                                             @csrf @method('DELETE')
                                             <button type="submit"
                                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:scale-[0.97] transition">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                                <x-icon name="log-out" size="13" />
                                                 {{ __('Sign out this device') }}
                                             </button>
                                         </form>

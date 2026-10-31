@@ -87,7 +87,7 @@
                                 <td class="px-4 py-3 text-sm text-center">
                                     @if($r->invoice_id)
                                         <a href="{{ route('invoices.show', $r->invoice_id) }}" class="btn btn-primary btn-xs">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View
+                                            <x-icon name="eye" size="12" class="mr-1" />View
                                         </a>
                                     @else
                                         <span class="text-gray-400">-</span>

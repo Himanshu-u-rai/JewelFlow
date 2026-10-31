@@ -1537,7 +1537,7 @@
     <div class="pos-header">
         <div class="pos-header-left">
             <a href="{{ route('pos.index') }}" class="pos-back">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+                <x-icon name="chevron-left" size="16" />
                 Back
             </a>
             <div>
@@ -1546,7 +1546,7 @@
             </div>
             @if(($customerLoyaltyPoints ?? 0) > 0)
             <div class="loyalty-pill">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <x-icon name="star" size="16" />
                 <span class="loyalty-pill-points">{{ number_format($customerLoyaltyPoints) }} pts</span>
                 <span class="loyalty-pill-value">₹{{ number_format(($customerLoyaltyPoints) * ($loyaltyPointValue ?? 0.25), 2) }}</span>
             </div>
@@ -1557,9 +1557,7 @@
 
     @if($splitAlertTotal ?? false)
     <div class="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
+        <x-icon name="triangle-alert" class="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
         <span>
             <strong>Compliance alert:</strong> Combined today's total for {{ $customer->name }} is
             <strong>₹{{ number_format($splitAlertTotal, 0) }}</strong>.
@@ -1658,13 +1656,10 @@
                     <span class="items-list-title">Selected Items <span class="items-list-badge" x-text="items.length"></span></span>
                     <div class="items-list-actions">
                         <button type="button" class="items-list-add" @click="openItemPicker()" aria-label="Add item" title="Add item">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M12 5v14"></path>
-                                <path d="M5 12h14"></path>
-                            </svg>
+                            <x-icon name="plus" />
                         </button>
                         <button type="button" class="items-list-clear" x-show="items.length > 0" x-cloak @click="clearItems()">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <x-icon name="x" />
                             Clear All
                         </button>
                     </div>
@@ -1952,7 +1947,7 @@
                     </span>
                     <span class="offers-trigger-action">
                         Manage
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                        <x-icon name="chevron-right" stroke-width="2.2" />
                     </span>
                 </button>
             </div>
@@ -2116,7 +2111,7 @@
                 <div class="pay-status-wrap">
                     <template x-if="hasEmiMode() && remaining() > 0.01">
                         <div class="pay-status pay-status-emi">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <x-icon name="calendar" size="22" />
                             <div class="pay-status-body">
                                 <div class="pay-status-label">Will be scheduled in EMI</div>
                                 <div class="pay-status-value">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
@@ -2125,7 +2120,7 @@
                     </template>
                     <template x-if="!hasEmiMode() && remaining() > 0.01">
                         <div class="pay-status pay-status-remaining">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                            <x-icon name="wallet" size="22" />
                             <div class="pay-status-body">
                                 <div class="pay-status-label">Remaining to pay</div>
                                 <div class="pay-status-value">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
@@ -2134,13 +2129,13 @@
                     </template>
                     <template x-if="!hasEmiMode() && remaining() <= 0.01 && excess() <= 0.5">
                         <div class="pay-status pay-status-paid">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <x-icon name="circle-check" size="20" />
                             <span class="pay-status-paid-text">Fully paid</span>
                         </div>
                     </template>
                     <template x-if="excess() > 0.5">
                         <div class="excess-alert">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="excess-alert-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <x-icon name="triangle-alert" size="20" class="excess-alert-icon" stroke="#d97706" />
                             <div>
                                 <div class="excess-alert-label" x-text="excessStoredAsCredit() ? 'Stored as Customer Store Credit' : 'Overpaid — reduce payment amount'"></div>
                                 <div class="excess-alert-value">₹<span x-text="excess().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
@@ -2169,7 +2164,7 @@
                 </button>
 
                 <div x-show="missingAccountSelection()" class="mt-2 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
-                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <x-icon name="triangle-alert" class="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                     <div>
                         <p class="text-xs font-semibold text-red-700">Account not selected</p>
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
@@ -2246,7 +2241,7 @@
                     </span>
                     <span class="offers-trigger-action">
                         Manage
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                        <x-icon name="chevron-right" stroke-width="2.2" />
                     </span>
                 </button>
             </div>
@@ -2307,7 +2302,7 @@
                 </button>
 
                 <div x-show="missingAccountSelection()" class="mt-2 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
-                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <x-icon name="triangle-alert" class="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                     <div>
                         <p class="text-xs font-semibold text-red-700">Account not selected</p>
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
@@ -2325,7 +2320,7 @@
             <div class="flex items-center justify-between mb-5">
                 <h3 class="text-base font-bold text-gray-900">Offers &amp; Redemption</h3>
                 <button type="button" class="text-gray-400 hover:text-gray-600 transition" @click="$dispatch('close-modal', 'offers-modal')" aria-label="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <x-icon name="x" size="22" />
                 </button>
             </div>
 
@@ -2404,9 +2399,7 @@
         <div class="p-6">
             <div class="flex items-start gap-3 mb-5">
                 <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                    </svg>
+                    <x-icon name="triangle-alert" class="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
                     <h3 class="text-base font-bold text-gray-900">Government KYC Required</h3>

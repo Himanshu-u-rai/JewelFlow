@@ -649,9 +649,7 @@
         <x-slot:actions>
             <a href="{{ route('report.repairs') }}"
                class="btn btn-success btn-sm repairs-report-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 20v-6m-6 6V4m-6 16v-4"/>
-                </svg>
+                <x-icon name="chart-no-axes-column" class="w-4 h-4 mr-2" />
                 Repairs Report
             </a>
         </x-slot:actions>
@@ -688,9 +686,7 @@
             <div class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-lg p-2 repairs-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
+                        <x-icon name="settings" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">In Repair</p>
@@ -701,9 +697,7 @@
             <div class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-blue-100 text-blue-700 rounded-lg p-2 repairs-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <x-icon name="badge-check" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">Ready</p>
@@ -717,9 +711,7 @@
             <a href="{{ route('repairs.index', ['status' => 'delivered']) }}" class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card block hover:border-emerald-300 transition" title="View delivered repairs">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-lg p-2 repairs-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
+                        <x-icon name="check" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">Delivered</p>
@@ -744,7 +736,7 @@
                     <div class="repairs-card-header">
                         <div>
                         <h2 class="repairs-card-title">
-                            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <x-icon name="settings" class="w-5 h-5 text-amber-600" />
                             Receive New Repair
                         </h2>
                         <p class="repairs-card-subtitle">Register item for repair work</p>
@@ -756,7 +748,7 @@
                         
                         <!-- Customer Selection -->
                         <div class="r-form-group">
-                            <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Customer</label>
+                            <label class="r-label"><x-icon name="user" />Customer</label>
                             <input type="hidden" name="customer_id" id="customer_id" required>
                             <div class="r-dd-wrap" id="custDdWrap">
                                 <button type="button" class="r-dd-trigger" id="custDdTrigger" onclick="toggleDd('cust')">
@@ -764,7 +756,7 @@
                                 </button>
                                 <div class="r-dd-panel" id="custDdPanel">
                                     <div style="position:relative">
-                                        <span class="r-dd-search-icon"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                                        <span class="r-dd-search-icon"><x-icon name="search" size="14" /></span>
                                         <input type="text" class="r-dd-search" id="custDdSearch" placeholder="Search customer… (press Enter to add new)" oninput="filterCustDd()" onkeydown="handleCustSearchKey(event)">
                                     </div>
                                     <div class="r-dd-list" id="custDdList">
@@ -778,9 +770,7 @@
                                     <div class="r-dd-quick-add hidden" id="custQuickAddState" aria-live="polite">
                                         <button type="button" class="r-dd-quick-add-button" id="custQuickAddButton" onclick="confirmQuickAddCustomer()">
                                             <span class="r-dd-quick-add-icon" aria-hidden="true">
-                                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                </svg>
+                                                <x-icon name="plus" />
                                             </span>
                                             <span class="r-dd-quick-add-label" id="custQuickAddLabel">Create customer</span>
                                         </button>
@@ -795,7 +785,7 @@
 
                         <!-- Item Description -->
                         <div class="r-form-group">
-                            <label for="item_description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Item Description</label>
+                            <label for="item_description" class="r-label"><x-icon name="package" />Item Description</label>
                             <input type="text" name="item_description" id="item_description" 
                                    placeholder="e.g., Gold Ring, Chain, Bracelet"
                                    class="r-input" required>
@@ -806,7 +796,7 @@
 
                         <!-- Repair Description -->
                         <div class="r-form-group">
-                            <label for="description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Repair Description</label>
+                            <label for="description" class="r-label"><x-icon name="file-text" />Repair Description</label>
                             <textarea name="description" id="description" rows="3"
                                       placeholder="e.g., Resize from size 6 to size 7, Broken link in chain needs soldering"
                                       class="r-textarea"></textarea>
@@ -837,7 +827,7 @@
                         <!-- Gross Weight + Purity row -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="r-form-group">
-                                <label for="gross_weight" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>Gross Weight (g)</label>
+                                <label for="gross_weight" class="r-label"><x-icon name="scale" />Gross Weight (g)</label>
                                 <input type="number" step="0.001" name="gross_weight" id="gross_weight"
                                        placeholder="0.000"
                                        class="r-input" required>
@@ -847,7 +837,7 @@
                             </div>
 
                             <div class="r-form-group">
-                                <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><span id="purityLabelText">Purity</span> <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
+                                <label class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span> <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
                                 <input type="hidden" name="purity" id="purity">
                                 <div class="r-dd-wrap" id="purityDdWrap">
                                     <button type="button" class="r-dd-trigger" id="purityDdTrigger" onclick="toggleDd('purity')">
@@ -902,7 +892,7 @@
                         <!-- Item Photo -->
                         <div class="r-form-group">
                             <label for="repair_image" class="r-label">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <x-icon name="image" />
                                 Item Photo <span class="text-gray-400 text-xs font-normal">(optional)</span>
                             </label>
                             <input type="file" name="image" id="repair_image" accept="image/*" class="r-input" onchange="previewRepairImage(event)">
@@ -917,7 +907,7 @@
 
                         <!-- Estimated Cost -->
                         <div class="r-form-group">
-                            <label for="estimated_cost" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Estimated Cost (₹)</label>
+                            <label for="estimated_cost" class="r-label"><x-icon name="circle-dollar-sign" />Estimated Cost (₹)</label>
                             <input type="number" step="0.01" name="estimated_cost" id="estimated_cost" 
                                    placeholder="0.00"
                                    class="r-input">
@@ -928,7 +918,7 @@
 
                         <!-- Submit Button -->
                         <button type="submit" class="btn btn-dark w-full mt-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <x-icon name="plus" size="14" class="mr-1.5" />
                             Receive Repair Item
                         </button>
                     </form>
@@ -942,7 +932,7 @@
                     <div class="repairs-card-header">
                         <div>
                         <h2 class="repairs-card-title">
-                            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                            <x-icon name="clipboard-list" class="w-5 h-5 text-amber-600" />
                             Active Repairs
                         </h2>
                         <p class="repairs-card-subtitle">Search, update status, and bill completed work.</p>
@@ -950,7 +940,7 @@
                         <div class="flex items-center gap-2 flex-1 justify-end">
                             <div style="position:relative;flex:1;max-width:360px">
                                 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                    <x-icon name="search" size="14" />
                                 </span>
                                 <input type="text" id="repairsSearchInput"
                                        placeholder="Search repair #, item, customer, mobile…"
@@ -1029,10 +1019,7 @@
                                             <div class="flex items-center justify-center gap-2 repairs-action-row">
                                                 <a href="{{ route('repairs.show', $r) }}"
                                                    class="btn btn-primary btn-xs">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                    </svg>
+                                                    <x-icon name="eye" class="w-3 h-3 mr-1" />
                                                     View
                                                 </a>
                                                 @if($r->status !== 'delivered')
@@ -1049,21 +1036,19 @@
                                                     </form>
                                                     <a href="{{ route('repairs.edit', $r) }}"
                                                        class="btn btn-secondary btn-xs">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                        </svg>
+                                                        <x-icon name="square-pen" class="w-3 h-3 mr-1" />
                                                         Edit
                                                     </a>
                                                     <button onclick="openDeliverModal({{ $r->id }}, @js($r->customer->name), @js($r->item_description), {{ $r->estimated_cost ?? 0 }})"
                                                             class="btn btn-success btn-xs" title="Complete & Bill">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Bill
+                                                        <x-icon name="check" class="w-3 h-3 mr-1" />Bill
                                                     </button>
                                                     @endcan
                                                 @endif
                                                 @if($r->status === 'delivered' && $r->invoice_id)
                                                     <a href="{{ route('invoices.show', $r->invoice_id) }}"
                                                        class="btn btn-primary btn-xs">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>View Invoice
+                                                        <x-icon name="file-text" class="w-3 h-3 mr-1" />View Invoice
                                                     </a>
                                                 @endif
                                             </div>
@@ -1072,7 +1057,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="7" class="px-6 py-12 text-center text-gray-400">
-                                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            <x-icon name="settings" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                             <div class="text-sm font-medium">No repairs registered yet</div>
                                             <div class="text-xs mt-1">Receive an item to get started</div>
                                         </td>
@@ -1146,7 +1131,7 @@
                         @empty
                             <div class="repairs-empty-state">
                                 <div>
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <x-icon name="settings" />
                                     <div class="text-sm font-medium text-slate-700">No repairs registered yet</div>
                                     <div class="text-xs mt-1 text-slate-500">Receive an item below to get started.</div>
                                 </div>
@@ -1175,25 +1160,23 @@
         <div class="min-h-full w-full flex items-center justify-center p-4">
             <div class="w-full max-w-md p-5 bg-white r-modal-card">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Deliver Repair Item</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2"><x-icon name="archive" class="w-5 h-5 text-amber-600" />Deliver Repair Item</h3>
                     <button onclick="closeDeliverModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                        <x-icon name="x" class="h-6 w-6" />
                     </button>
                 </div>
                 
                 <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="text-sm text-gray-600 flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Customer</div>
+                    <div class="text-sm text-gray-600 flex items-center gap-1"><x-icon name="user" class="w-3.5 h-3.5" />Customer</div>
                     <div class="font-medium" id="modalCustomerName"></div>
-                    <div class="text-sm text-gray-600 mt-2 flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Item</div>
+                    <div class="text-sm text-gray-600 mt-2 flex items-center gap-1"><x-icon name="package" class="w-3.5 h-3.5" />Item</div>
                     <div class="font-medium" id="modalItemDesc"></div>
                 </div>
 
                 <form id="deliverForm" method="POST" action="">
                     @csrf
                     <div class="mb-4">
-                        <label for="amount" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Service Amount (Before GST) (₹)</label>
+                        <label for="amount" class="r-label"><x-icon name="circle-dollar-sign" />Service Amount (Before GST) (₹)</label>
                         <input type="number" step="0.01" name="amount" id="amount" 
                                class="r-input" required>
                     </div>
@@ -1216,11 +1199,11 @@
                     <div class="flex gap-3">
                         <button type="button" onclick="closeDeliverModal()"
                                 class="btn btn-secondary flex-1">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Cancel
+                            <x-icon name="x" class="w-3.5 h-3.5 mr-1" />Cancel
                         </button>
                         <button type="submit"
                                 class="btn btn-success flex-1">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Deliver & Bill
+                            <x-icon name="archive" class="w-3.5 h-3.5 mr-1" />Deliver & Bill
                         </button>
                     </div>
                 </form>

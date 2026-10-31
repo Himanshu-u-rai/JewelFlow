@@ -34,10 +34,10 @@
                 </div>
                 <button type="button" class="admin-sidebar-close" data-mobile-drawer-toggle="admin" aria-controls="admin-sidebar" aria-expanded="false" aria-label="Close admin navigation">
                     <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        <x-icon name="menu" size="18" stroke-width="2.2" />
                     </span>
                     <span class="drawer-toggle-icon drawer-toggle-icon-close" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        <x-icon name="x" size="18" stroke-width="2.2" />
                     </span>
                 </button>
             </div>
@@ -125,10 +125,10 @@
             <header class="admin-topbar border-b px-5 py-5 backdrop-blur-lg lg:px-8">
                 <button type="button" class="admin-mobile-toggle" data-mobile-drawer-toggle="admin" aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open admin navigation">
                     <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        <x-icon name="menu" size="20" />
                     </span>
                     <span class="drawer-toggle-icon drawer-toggle-icon-close" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        <x-icon name="x" size="20" stroke-width="2.2" />
                     </span>
                 </button>
                 <div class="admin-topbar-inner">

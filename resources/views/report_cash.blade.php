@@ -14,12 +14,12 @@
                     style="height: 40px;"
                 >
                 @if(request()->filled('date'))
-                    <a href="{{ route('report.cash') }}" class="btn btn-secondary btn-sm report-cash-header-btn"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
+                    <a href="{{ route('report.cash') }}" class="btn btn-secondary btn-sm report-cash-header-btn"><x-icon name="x" size="14" class="mr-1" />Clear</a>
                 @else
-                    <button type="submit" class="btn btn-secondary btn-sm report-cash-header-btn"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>View Date</button>
+                    <button type="submit" class="btn btn-secondary btn-sm report-cash-header-btn"><x-icon name="calendar" size="14" class="mr-1" />View Date</button>
                 @endif
             </form>
-            <a href="{{ route('cashbook.index') }}" class="btn btn-secondary btn-sm report-cash-header-btn report-cash-header-cashbook-btn"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Cashbook</a>
+            <a href="{{ route('cashbook.index') }}" class="btn btn-secondary btn-sm report-cash-header-btn report-cash-header-cashbook-btn"><x-icon name="book-open" size="14" class="mr-1" />Cashbook</a>
             <span class="header-badge report-cash-header-badge">{{ \Carbon\Carbon::parse($date ?? now()->toDateString())->format('d M Y') }}</span>
         </div>
     </x-page-header>
@@ -39,9 +39,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 report-cash-kpi-card report-cash-kpi-card--in">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-lg p-2 report-cash-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
-                        </svg>
+                        <x-icon name="arrow-left" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Cash In</p>
@@ -53,9 +51,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 report-cash-kpi-card report-cash-kpi-card--out">
                 <div class="flex items-center gap-3">
                     <div class="bg-rose-100 text-rose-700 rounded-lg p-2 report-cash-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                        </svg>
+                        <x-icon name="arrow-right" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Cash Out</p>
@@ -67,9 +63,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 report-cash-kpi-card report-cash-kpi-card--net">
                 <div class="flex items-center gap-3">
                     <div class="{{ $netCash >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }} rounded-lg p-2 report-cash-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
+                        <x-icon name="chart-column" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Net Cash</p>
@@ -83,9 +77,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 report-cash-kpi-card report-cash-kpi-card--ratio">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-lg p-2 report-cash-kpi-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
+                        <x-icon name="credit-card" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">In/Out Ratio</p>
@@ -173,9 +165,7 @@
                                 </svg>
                                 <span class="text-sm font-medium text-emerald-700">Healthy cash inflow today.</span>
                             @else
-                                <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="circle-alert" class="w-5 h-5 text-rose-600" />
                                 <span class="text-sm font-medium text-rose-700">More cash out than in today.</span>
                             @endif
                         </div>
@@ -205,8 +195,8 @@
         @endif
 
         <div class="flex flex-wrap gap-2">
-            <button onclick="window.print()" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button>
-            <a href="{{ route('cashbook.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>View Cash Ledger</a>
+            <button onclick="window.print()" class="btn btn-secondary btn-sm"><x-icon name="printer" size="14" class="mr-1" />Print Report</button>
+            <a href="{{ route('cashbook.index') }}" class="btn btn-secondary btn-sm"><x-icon name="book-open" size="14" class="mr-1" />View Cash Ledger</a>
         </div>
 
         <div class="mt-6 bg-amber-50 border-l-4 border-amber-300 p-4 rounded-lg">

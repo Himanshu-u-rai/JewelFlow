@@ -22,10 +22,7 @@
         subtitle="Track items exchanged by customers">
         <x-slot:actions>
             <a href="{{ route('invoices.index') }}" class="returns-inbox-back-btn" aria-label="Back to invoices">
-                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span>Back to Invoices</span>
             </a>
         </x-slot:actions>

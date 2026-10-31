@@ -459,7 +459,7 @@
     @can('catalog.manage')
     <div class="cw-card dashed" style="margin-top:12px;">
         <button type="button" class="cw-add-btn" onclick="document.getElementById('cwNewPageForm').style.display = document.getElementById('cwNewPageForm').style.display === 'none' ? 'block' : 'none'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <x-icon name="plus" size="16" />
             {{ __('Add New Page') }}
         </button>
         <div id="cwNewPageForm" style="display:none;" class="cw-edit-panel">

@@ -101,48 +101,34 @@
                     <span class="cash-report-action-label">Cash Ledger</span>
                 </a>
                 <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="cash-report-export-btn jf-header-action--gold" aria-label="Export Cash Flow">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" size="14" />
                     <span class="cash-report-action-label">Export</span>
                 </a>
             @elseif ($isDailyClosingReport)
                 <a href="{{ route('report.hub') }}" class="closing-report-header-btn jf-header-action--neutral" aria-label="Open Reports">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M4 6h16M4 12h16M4 18h10" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="menu" size="14" />
                     <span class="closing-report-action-label">Reports</span>
                 </a>
                 <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="closing-report-export-btn jf-header-action--gold" aria-label="Export Daily Closing">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" size="14" />
                     <span class="closing-report-action-label">Export</span>
                 </a>
             @elseif ($isGstReport)
                 <a href="{{ route('report.hub') }}" class="gst-report-header-btn jf-header-action--neutral" aria-label="Open Reports">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M4 6h16M4 12h16M4 18h10" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="menu" size="14" />
                     <span class="gst-report-action-label">Reports</span>
                 </a>
                 <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="gst-report-export-btn jf-header-action--gold" aria-label="Export GST Summary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" size="14" />
                     <span class="gst-report-action-label">Export</span>
                 </a>
             @else
                 <a href="{{ route('report.hub') }}" class="report-register-header-btn jf-header-action--neutral" aria-label="Open Reports">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M4 6h16M4 12h16M4 18h10" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="menu" size="14" />
                     <span class="report-register-action-label">Reports</span>
                 </a>
                 <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="report-register-export-btn jf-header-action--gold" aria-label="Export {{ $definition->title }}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" size="14" />
                     <span class="report-register-action-label">Export</span>
                 </a>
             @endif
@@ -157,11 +143,11 @@
                     <div class="cash-report-kpi cash-report-kpi--{{ $kpi['tone'] }}">
                         <span class="cash-report-kpi-icon" aria-hidden="true">
                             @if ($kpi['icon'] === 'in')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5M5 12l7-7 7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="arrow-up" size="17" />
                             @elseif ($kpi['icon'] === 'out')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12l7 7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="arrow-down" size="17" />
                             @elseif ($kpi['icon'] === 'balance')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M7 12h10M10 17h4" stroke-width="2" stroke-linecap="round"/></svg>
+                                <x-icon name="list-filter" size="17" />
                             @else
                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             @endif
@@ -181,9 +167,7 @@
                         <p>{{ $meta->periodLabel }}</p>
                     </div>
                     <button type="button" class="cash-report-filter-trigger" @click="filtersOpen = true" :aria-expanded="filtersOpen.toString()" aria-controls="cash-report-filter-sheet">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
+                        <x-icon name="list-filter" size="14" />
                         Filters
                         @if (count($activeFilters) > 0)
                             <span>{{ count($activeFilters) }}</span>
@@ -208,7 +192,7 @@
                             <span>Refine Cash Flow entries</span>
                         </div>
                         <button type="button" @click="filtersOpen = false" aria-label="Close filters">
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+                            <x-icon name="x" size="17" />
                         </button>
                     </div>
 
@@ -408,9 +392,9 @@
                             @elseif ($kpi['icon'] === 'tax')
                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 5 5 19M7.5 8.5h.01M16.5 15.5h.01" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             @elseif ($kpi['icon'] === 'in')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5M5 12l7-7 7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="arrow-up" size="17" />
                             @else
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M7 12h10M10 17h4" stroke-width="2" stroke-linecap="round"/></svg>
+                                <x-icon name="list-filter" size="17" />
                             @endif
                         </span>
                         <span class="closing-report-kpi-copy">
@@ -653,9 +637,7 @@
                         <p>{{ $meta->periodLabel }} · {{ $meta->profileLabel }}</p>
                     </div>
                     <button type="button" class="report-register-filter-trigger" @click="filtersOpen = true" :aria-expanded="filtersOpen.toString()" aria-controls="report-register-filter-sheet">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
+                        <x-icon name="list-filter" size="14" />
                         Filters
                         @if (count($activeFilters) > 0)
                             <span>{{ count($activeFilters) }}</span>
@@ -680,7 +662,7 @@
                             <span>Refine {{ $definition->title }}</span>
                         </div>
                         <button type="button" @click="filtersOpen = false" aria-label="Close filters">
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+                            <x-icon name="x" size="17" />
                         </button>
                     </div>
 

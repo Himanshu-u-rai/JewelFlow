@@ -3667,7 +3667,7 @@
             </button>
 
             <a href="/pos" class="btn btn-primary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <x-icon name="shopping-cart" size="14" />
                 <span class="dash-btn-label-full">Start Sale</span>
                 <span class="dash-btn-label-short">Sale</span>
             </a>
@@ -3686,7 +3686,7 @@
         <button type="button" class="dash-command-backdrop" data-dash-command-close aria-label="Close search"></button>
         <section class="dash-command-card" role="dialog" aria-modal="true" aria-label="Dashboard search">
             <div class="dash-command-input-row">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <x-icon name="search" size="16" stroke="#64748b" />
                 <input type="text" class="dash-command-input" data-dash-command-input placeholder="Search pages, lists, records, reports..." autocomplete="off" spellcheck="false">
                 <button type="button" class="dash-command-close" data-dash-command-close>Esc</button>
             </div>
@@ -4061,7 +4061,7 @@
                         <span>Daily Closing</span>
                     </a>
                     <a href="/repairs" class="dash-mobile-fab-action" @click="mobileFabOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                        <x-icon name="wrench" size="16" stroke="#14213d" />
                         <span>Repairs</span>
                     </a>
                 </nav>
@@ -4079,7 +4079,7 @@
         @if(!auth()->user()->email_verified_at)
         {{-- ══ EMAIL VERIFICATION BANNER ══════════════════════════════ --}}
         <div id="emailVerifyBanner" class="dash-email-verify">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#b45309" stroke-width="2" viewBox="0 0 24 24" class="dash-email-verify-icon"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.8 19.8 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72 12.8 12.8 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.07 6.07l.91-.91a2 2 0 0 1 2.11-.45 12.8 12.8 0 0 0 2.81.7A2 2 0 0 1 21.79 16.92z"/></svg>
+            <x-icon name="phone" size="20" class="dash-email-verify-icon" stroke="#b45309" />
             <div class="dash-email-verify-copy">
                 <div class="dash-email-verify-title">
                     Add your email to enable password recovery
@@ -4296,15 +4296,15 @@
             <div class="dash-block dash-col-quick dash-quick-strip">
                 <div class="dash-quick-list">
                     <a href="/pos" class="dash-quick-item dash-quick-sale">
-                        <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+                        <span class="dash-quick-icon"><x-icon name="shopping-cart" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Start Sale</strong><small>Open POS checkout</small></span>
                     </a>
                     <a href="/customers/create" class="dash-quick-item dash-quick-customer">
-                        <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg></span>
+                        <span class="dash-quick-icon"><x-icon name="user-plus" size="15" /></span>
                         <span class="dash-quick-copy"><strong>New Customer</strong><small>Create customer profile</small></span>
                     </a>
                     <a href="/inventory/items/create" class="dash-quick-item dash-quick-itemadd">
-                        <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                        <span class="dash-quick-icon"><x-icon name="plus" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Add Inventory</strong><small>Create stock item</small></span>
                     </a>
                     <a href="/report/closing" class="dash-quick-item dash-quick-closing">
@@ -4398,11 +4398,7 @@
                 <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-revenue" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 6h18v12H3z"></path>
-                                <path d="M3 10h18"></path>
-                                <circle cx="8" cy="15" r="1"></circle>
-                            </svg>
+                            <x-icon name="credit-card" />
                         </span>
                         <p class="dash-top-kpi-meta">{{ $invoicesToday }} {{ \Illuminate\Support\Str::plural('sale', $invoicesToday) }} today</p>
                     </div>
@@ -4415,10 +4411,7 @@
                 <div class="dash-block dash-top-kpi dash-top-kpi-profit dash-col-profit {{ ($todaysProfit ?? 0) < 0 ? 'is-loss' : '' }}" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 3v18h18"></path>
-                                <path d="M7 14l4-4 3 3 4-5"></path>
-                            </svg>
+                            <x-icon name="chart-line" />
                         </span>
                         <p class="dash-top-kpi-meta">{{ ($todaysProfit ?? 0) >= 0 ? 'Net gain today' : 'Net loss today' }}</p>
                     </div>
@@ -4440,7 +4433,7 @@
 
         @if(count($warnings) > 0)
             <div class="dash-warnings">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8f5300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <x-icon name="triangle-alert" size="16" stroke="#8f5300" />
                 @foreach($warnings as $msg)
                     <span class="dash-warning-chip">{{ $msg }}</span>
                 @endforeach
@@ -4451,11 +4444,7 @@
             <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-invoices-today">
                 <div class="dash-mini-kpi-head">
                     <span class="dash-mini-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="8" y1="13" x2="16" y2="13"></line>
-                        </svg>
+                        <x-icon name="file-spreadsheet" stroke-width="2.3" />
                     </span>
                     <p class="dash-mini-kpi-meta">Today</p>
                 </div>
@@ -4468,9 +4457,7 @@
             <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-open-repairs">
                 <div class="dash-mini-kpi-head">
                     <span class="dash-mini-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                        </svg>
+                        <x-icon name="wrench" stroke-width="2.3" />
                     </span>
                     <p class="dash-mini-kpi-meta">Pending repairs</p>
                 </div>
@@ -4483,11 +4470,7 @@
             <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-stock">
                 <div class="dash-mini-kpi-head">
                     <span class="dash-mini-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                        </svg>
+                        <x-icon name="package" stroke-width="2.3" />
                     </span>
                     <p class="dash-mini-kpi-meta">{{ $stock < $lowStockThreshold ? 'Low stock' : 'Healthy stock' }}</p>
                 </div>
@@ -4500,11 +4483,7 @@
             <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-customers">
                 <div class="dash-mini-kpi-head">
                     <span class="dash-mini-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        </svg>
+                        <x-icon name="users" stroke-width="2.3" />
                     </span>
                     <p class="dash-mini-kpi-meta">Customer base</p>
                 </div>
@@ -4518,11 +4497,7 @@
                 <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-overdue-emis">
                     <div class="dash-mini-kpi-head">
                         <span class="dash-mini-kpi-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
+                            <x-icon name="triangle-alert" stroke-width="2.3" />
                         </span>
                         <p class="dash-mini-kpi-meta">{{ ($overdueEmis ?? 0) > 0 ? 'Needs follow-up' : 'On track' }}</p>
                     </div>
@@ -4539,7 +4514,7 @@
             <div class="dash-block dash-reorder-widget">
                 <div class="dash-reorder-head">
                     <h2 class="dash-reorder-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <x-icon name="triangle-alert" size="15" stroke="#b45309" />
                         Low Stock / Reorder Alerts
                     </h2>
                     <a href="{{ route('reorder.index') }}" class="dash-reorder-link">
@@ -4845,11 +4820,7 @@
                                 <a href="/invoices/{{ $inv->id }}" class="dash-row">
                                     <div class="dash-row-main">
                                         <span class="dash-row-icon invoice" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                <polyline points="14 2 14 8 20 8"></polyline>
-                                                <line x1="8" y1="13" x2="16" y2="13"></line>
-                                            </svg>
+                                            <x-icon name="file-spreadsheet" />
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ $inv->invoice_number }}</div>
@@ -4859,7 +4830,7 @@
                                     <div class="dash-row-mid">{{ $inv->created_at->format('d M') }}</div>
                                     <div class="dash-row-end">
                                         <span class="dash-tag invoice">Invoice</span>
-                                        <svg class="dash-row-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        <x-icon name="chevron-right" class="dash-row-arrow" stroke-width="2.2" />
                                     </div>
                                 </a>
                             @endforeach
@@ -4934,12 +4905,7 @@
                 <div class="dash-list-head">
                     <div class="dash-list-title">
                         <span class="dash-list-title-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
+                            <x-icon name="users" />
                         </span>
                         <h2>Top Customers · 30 Days</h2>
                     </div>
@@ -4964,10 +4930,7 @@
                                 <a href="/customers/{{ $customer->id }}" class="dash-row">
                                     <div class="dash-row-main">
                                         <span class="dash-row-icon customer" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
-                                            </svg>
+                                            <x-icon name="user" />
                                             <span class="dash-top-rank">#{{ $loop->iteration }}</span>
                                         </span>
                                         <div class="dash-row-copy">
@@ -4978,7 +4941,7 @@
                                     <div class="dash-row-mid">{{ $invoiceCount }} {{ \Illuminate\Support\Str::plural('invoice', $invoiceCount) }}</div>
                                     <div class="dash-row-end">
                                         <span class="dash-amount">₹{{ number_format((float) $customer->total_spend, 2) }}</span>
-                                        <svg class="dash-row-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        <x-icon name="chevron-right" class="dash-row-arrow" stroke-width="2.2" />
                                     </div>
                                 </a>
                             @endforeach

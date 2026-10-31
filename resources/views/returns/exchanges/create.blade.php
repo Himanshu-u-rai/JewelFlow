@@ -7,7 +7,7 @@
         <x-slot:actions>
             <a href="{{ route('returns.show', $returnOrder) }}"
                class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <x-icon name="chevron-left" class="w-4 h-4" />
                 Back to Return
             </a>
         </x-slot:actions>
@@ -24,7 +24,7 @@
         @endif
 
         <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-start gap-3">
-            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <x-icon name="circle-alert" class="w-5 h-5 mt-0.5 flex-shrink-0" />
             <div>
                 Pick the new sale invoice this return is being exchanged against. The system will compute the net settlement and emit a single cash entry for the difference. The customer paid net (new sale − refund credit). For Phase 3A only cash settlement is supported — store credit lands in Phase 4.
             </div>

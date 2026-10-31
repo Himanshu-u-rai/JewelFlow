@@ -109,9 +109,7 @@
         </div>
         <div class="page-actions repairs-edit-header-actions">
             <a href="{{ route('repairs.show', $repair) }}" class="repairs-edit-back">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7 7-7-7 7-7"/>
-                </svg>
+                <x-icon name="arrow-left" />
                 <span>Back to Repair</span>
             </a>
         </div>
@@ -121,7 +119,7 @@
         <div class="bg-white border border-gray-200 overflow-hidden repairs-edit-card">
             <div class="repairs-edit-card-head">
                 <h2>
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <x-icon name="square-pen" class="w-5 h-5 text-amber-600" />
                     Repair details
                 </h2>
                 <p>Received {{ $repair->created_at->format('d M Y') }}</p>
@@ -135,7 +133,7 @@
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex-1">
                             <label for="status" class="r-label">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <x-icon name="badge-check" />
                                 Status
                             </label>
                             <select name="status" id="status" class="r-select" required>
@@ -152,7 +150,7 @@
                 </div>
 
                 <div class="repairs-edit-field repairs-edit-field--customer">
-                    <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Customer *</label>
+                    <label class="r-label"><x-icon name="user" />Customer *</label>
                     <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $repair->customer_id) }}" required>
                     <div class="r-dd-wrap" id="custDdWrap">
                         <button type="button" class="r-dd-trigger" id="custDdTrigger" onclick="toggleDd('cust')">
@@ -166,7 +164,7 @@
                         </button>
                         <div class="r-dd-panel" id="custDdPanel">
                             <div style="position:relative">
-                                <span class="r-dd-search-icon"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                                <span class="r-dd-search-icon"><x-icon name="search" size="14" /></span>
                                 <input type="text" class="r-dd-search" id="custDdSearch" placeholder="Search customer…" oninput="filterCustDd()">
                             </div>
                             <div class="r-dd-list" id="custDdList">
@@ -185,7 +183,7 @@
                 </div>
 
                 <div class="repairs-edit-field repairs-edit-field--item">
-                    <label for="item_description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Item Description *</label>
+                    <label for="item_description" class="r-label"><x-icon name="package" />Item Description *</label>
                     <input type="text" name="item_description" id="item_description"
                            value="{{ old('item_description', $repair->item_description) }}"
                            placeholder="e.g., Gold Ring, Chain, Bracelet"
@@ -196,7 +194,7 @@
                 </div>
 
                 <div class="repairs-edit-field repairs-edit-field--description repairs-edit-field--full">
-                    <label for="description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Repair Description</label>
+                    <label for="description" class="r-label"><x-icon name="file-text" />Repair Description</label>
                     <textarea name="description" id="description" rows="3"
                               placeholder="e.g., Resize from size 6 to size 7, Broken link in chain needs soldering"
                               class="r-textarea">{{ old('description', $repair->description) }}</textarea>
@@ -229,7 +227,7 @@
 
                 <div class="repairs-edit-field repairs-edit-field--specs">
                     <div>
-                        <label for="gross_weight" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>Gross Weight (g) *</label>
+                        <label for="gross_weight" class="r-label"><x-icon name="scale" />Gross Weight (g) *</label>
                         <input type="number" step="0.001" name="gross_weight" id="gross_weight"
                                value="{{ old('gross_weight', $repair->gross_weight) }}"
                                placeholder="0.000"
@@ -240,7 +238,7 @@
                     </div>
 
                     <div>
-                        <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><span id="purityLabelText">Purity</span> <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
+                        <label class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span> <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
                         <input type="hidden" name="purity" id="purity" value="{{ $currentPurity }}">
                         <div class="r-dd-wrap" id="purityDdWrap">
                             <button type="button" class="r-dd-trigger" id="purityDdTrigger" onclick="toggleDd('purity')">
@@ -297,7 +295,7 @@
                 </div>
 
                 <div class="repairs-edit-field repairs-edit-field--photo">
-                    <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Photo <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
+                    <label class="r-label"><x-icon name="image" />Photo <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
                     @php($existingRepairImageUrl = $repair->resolveImageUrl('public'))
                     @if($existingRepairImageUrl)
                         <div id="existingImageWrap" class="mb-2 flex items-center gap-3">
@@ -318,7 +316,7 @@
                 </div>
 
                 <div class="repairs-edit-field repairs-edit-field--cost">
-                    <label for="estimated_cost" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Estimated Cost (₹)</label>
+                    <label for="estimated_cost" class="r-label"><x-icon name="circle-dollar-sign" />Estimated Cost (₹)</label>
                     <div class="r-cost-wrap">
                         <span class="r-cost-symbol">₹</span>
                         <input type="number" step="0.01" name="estimated_cost" id="estimated_cost"
@@ -334,7 +332,7 @@
                 <div class="repairs-edit-actions repairs-edit-field--full">
                     @can('repairs.delete')
                         <button type="submit" form="repairDeleteForm" class="repairs-edit-button repairs-edit-button--danger" aria-label="Delete repair" title="Delete repair">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            <x-icon name="trash-2" size="14" class="mr-1" />
                             <span>Delete Repair</span>
                         </button>
                     @else
@@ -342,11 +340,11 @@
                     @endcan
                     <div class="repairs-edit-actions-main">
                         <a href="{{ route('repairs.show', $repair) }}" class="repairs-edit-button repairs-edit-button--secondary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <x-icon name="x" size="14" />
                             Cancel
                         </a>
                         <button type="submit" class="repairs-edit-button repairs-edit-button--primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            <x-icon name="save" size="14" />
                             Save Changes
                         </button>
                     </div>

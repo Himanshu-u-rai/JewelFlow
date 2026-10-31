@@ -14,7 +14,7 @@
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
                 <a href="{{ url()->previous() !== url()->current() ? url()->previous() : url('/') }}"
                    style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#14213d;color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                    <x-icon name="arrow-left" size="16" />
                     Go Back
                 </a>
                 <a href="{{ route('dashboard') }}"

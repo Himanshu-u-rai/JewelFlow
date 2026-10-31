@@ -8,11 +8,11 @@
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm" data-dh-mobile-pin="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <x-icon name="plus" size="14" class="mr-1" />
                 New Loan
             </a>
             <a href="{{ route('dhiran.settings') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
+                <x-icon name="settings" size="14" class="mr-1" />
                 Settings
             </a>
         </div>
@@ -44,7 +44,7 @@
             <div class="dd-kpi-card">
                 <div class="dd-kpi-inner">
                     <div class="dd-kpi-icon bg-emerald-100 text-emerald-700">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="badge-check" />
                     </div>
                     <div>
                         <p class="dd-kpi-label">Active Loans</p>
@@ -55,7 +55,7 @@
             <div class="dd-kpi-card">
                 <div class="dd-kpi-inner">
                     <div class="dd-kpi-icon bg-rose-100 text-rose-700">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="clock" />
                     </div>
                     <div>
                         <p class="dd-kpi-label">Overdue Loans</p>
@@ -66,7 +66,7 @@
             <div class="dd-kpi-card">
                 <div class="dd-kpi-inner">
                     <div class="dd-kpi-icon bg-amber-100 text-amber-700">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <x-icon name="circle-dollar-sign" />
                     </div>
                     <div>
                         <p class="dd-kpi-label">Total Outstanding</p>
@@ -77,7 +77,7 @@
             <div class="dd-kpi-card">
                 <div class="dd-kpi-inner">
                     <div class="dd-kpi-icon bg-violet-100 text-violet-700">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <x-icon name="calculator" />
                     </div>
                     <div>
                         <p class="dd-kpi-label">This Month Interest</p>
@@ -142,9 +142,7 @@
                         @empty
                             <tr>
                                 <td colspan="6" class="px-6 py-12 text-center text-slate-500">
-                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33"/>
-                                    </svg>
+                                    <x-icon name="dollar-sign" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans yet</p>
                                     <p class="text-sm">Create your first pledge loan to get started</p>
                                 </td>

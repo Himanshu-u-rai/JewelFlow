@@ -457,10 +457,7 @@
         <h1 class="page-title">Edit Vendor</h1>
         <div class="page-actions">
             <a href="{{ route('vendors.show', $vendor) }}" class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors vendors-edit-back-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5">
-                    <line x1="19" y1="12" x2="5" y2="12" />
-                    <polyline points="12 19 5 12 12 5" />
-                </svg>
+                <x-icon name="arrow-left" size="14" class="mr-1.5" />
                 <span class="vendors-edit-back-label-full">Back to Vendor</span>
                 <span class="vendors-edit-back-label-short">Back</span>
             </a>

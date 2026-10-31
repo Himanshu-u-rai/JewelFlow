@@ -2,11 +2,7 @@
     <div style="display:flex;align-items:center;justify-content:center;min-height:70vh;padding:40px 20px;">
         <div style="text-align:center;max-width:440px;">
             <div style="font-size:72px;margin-bottom:16px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/>
-                    <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
+                <x-icon name="triangle-alert" size="72" style="display:inline-block;" stroke="#dc2626" stroke-width="1.5" />
             </div>
             <h1 style="font-size:28px;font-weight:700;color:#101828;margin-bottom:8px;">Something Went Wrong</h1>
             <p style="font-size:15px;color:#475569;line-height:1.6;margin-bottom:24px;">
@@ -15,7 +11,7 @@
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
                 <a href="{{ url()->previous() !== url()->current() ? url()->previous() : url('/') }}"
                    style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#14213d;color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                    <x-icon name="arrow-left" size="16" />
                     Go Back
                 </a>
                 <a href="{{ route('dashboard') }}"

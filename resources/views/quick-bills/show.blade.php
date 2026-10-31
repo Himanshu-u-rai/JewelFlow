@@ -21,10 +21,7 @@
         </div>
         <div class="page-actions qb-detail-header-actions">
             <a href="{{ route('quick-bills.index') }}" class="qb-header-action qb-header-action-secondary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m12 19-7-7 7-7"/>
-                </svg>
+                <x-icon name="arrow-left" />
                 <span>Back</span>
             </a>
             <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-header-action qb-header-action-primary qb-print-action">
@@ -33,9 +30,7 @@
             </a>
             @if($isEditedBill)
                 <a href="{{ route('quick-bills.print-original', $quickBill) }}" target="_blank" class="qb-header-action qb-header-action-secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/>
-                    </svg>
+                    <x-icon name="arrow-down-to-line" />
                     <span>Original</span>
                 </a>
             @endif

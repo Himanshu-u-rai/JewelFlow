@@ -11,18 +11,12 @@
                     <span class="cb-action-label">Match drawer</span>
                 </button>
                 <a href="{{ route('cashbook.create') }}" class="cb-add-btn" aria-label="Add entry">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="plus" size="14" />
                     <span class="cb-action-label">Add entry</span>
                 </a>
             @endcan
             <a href="{{ route('report.cash') }}" class="cb-header-btn" aria-label="Open cash flow dashboard">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <polyline points="17 6 23 6 23 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <x-icon name="trending-up" size="14" />
                 <span class="cb-action-label">Cash flow</span>
             </a>
         </x-slot:actions>
@@ -79,9 +73,7 @@
                 <div class="cb-snapshot">
                     <div class="cb-snap">
                         <span class="cb-snap-icon cb-snap-icon--in" aria-hidden="true">
-                            <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 5v14M5 12l7-7 7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+                            <x-icon name="arrow-up" size="17" />
                         </span>
                         <span>
                             <p class="cb-snap-label">Today's cash in</p>
@@ -90,9 +82,7 @@
                     </div>
                     <div class="cb-snap">
                         <span class="cb-snap-icon cb-snap-icon--out" aria-hidden="true">
-                            <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 19V5M5 12l7 7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+                            <x-icon name="arrow-down" size="17" />
                         </span>
                         <span>
                             <p class="cb-snap-label">Today's cash out</p>
@@ -101,9 +91,7 @@
                     </div>
                     <div class="cb-snap">
                         <span class="cb-snap-icon cb-snap-icon--net" aria-hidden="true">
-                            <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M4 7h16M7 12h10M10 17h4" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
+                            <x-icon name="list-filter" size="17" />
                         </span>
                         <span>
                             <p class="cb-snap-label">Today's net</p>
@@ -112,9 +100,7 @@
                     </div>
                     <div class="cb-snap">
                         <span class="cb-snap-icon cb-snap-icon--month" aria-hidden="true">
-                            <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M3 3v18h18M7 15l4-4 3 3 5-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+                            <x-icon name="chart-line" size="17" />
                         </span>
                         <span>
                             <p class="cb-snap-label">This month net</p>
@@ -177,9 +163,7 @@
                         <p class="cb-register-copy">{{ number_format($transactions->total()) }} {{ Str::plural('entry', $transactions->total()) }} in this view</p>
                     </div>
                     <button type="button" class="cb-filter-trigger" @click="filtersOpen = true" :aria-expanded="filtersOpen.toString()" aria-controls="cashbook-filter-sheet">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
+                        <x-icon name="list-filter" size="14" />
                         Filters
                         @if($hasActiveFilters)
                             <span>{{ count($activeFilters) }}</span>
@@ -205,9 +189,7 @@
                             <span>Refine entries</span>
                         </div>
                         <button type="button" @click="filtersOpen = false" aria-label="Close filters">
-                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M18 6 6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
+                            <x-icon name="x" size="18" />
                         </button>
                     </div>
                     <div class="cb-filter-field cb-filter-field--search">
@@ -290,9 +272,7 @@
                                 <tr>
                                     <td colspan="7">
                                         <div class="cb-empty">
-                                            <svg class="cb-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                            </svg>
+                                            <x-icon name="camera" class="cb-empty-icon" />
                                             <p class="cb-empty-title">No transactions found</p>
                                             <p class="cb-empty-copy">Cash transactions appear here as they are recorded in the cash book.</p>
                                         </div>
@@ -341,9 +321,7 @@
                         </article>
                     @empty
                         <div class="cb-empty">
-                            <svg class="cb-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
+                            <x-icon name="camera" class="cb-empty-icon" />
                             <p class="cb-empty-title">No transactions found</p>
                             <p class="cb-empty-copy">Cash transactions appear here as they are recorded.</p>
                         </div>
@@ -370,9 +348,7 @@
                         <p class="cb-drawer-copy">Count physical cash against expected cash.</p>
                     </div>
                     <button type="button" class="cb-drawer-close" @click="drawerOpen = false" aria-label="Close drawer check">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M18 6 6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
+                        <x-icon name="x" size="18" />
                     </button>
                 </div>
 

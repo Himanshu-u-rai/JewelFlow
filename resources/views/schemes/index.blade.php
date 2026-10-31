@@ -23,10 +23,7 @@
         <x-slot:actions>
             @can('catalog.manage')
                 <a href="{{ route('schemes.create') }}" class="btn btn-success btn-sm customers-add-btn">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round" />
-                        <line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round" />
-                    </svg>
+                    <x-icon name="plus" class="w-4 h-4 mr-2" />
                     <span class="schemes-add-label-full">Create Scheme</span>
                     <span class="schemes-add-label-short">Create</span>
                 </a>
@@ -76,9 +73,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                        <x-icon name="badge-check" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Active</p>
@@ -105,7 +100,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2" for="schemes-search">Search</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                                <x-icon name="search" size="16" />
                             </span>
                             <input id="schemes-search" type="text" name="search" value="{{ request('search') }}" placeholder="Search scheme or description..." class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none" autocomplete="off">
                         </div>
@@ -136,15 +131,13 @@
                         <input type="hidden" name="type" value="{{ request('type') }}">
                         <label class="sr-only" for="schemes-mobile-search">Search schemes</label>
                         <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                            <x-icon name="search" size="15" />
                         </span>
                         <input id="schemes-mobile-search" type="text" name="search" value="{{ request('search') }}" placeholder="Search schemes..." autocomplete="off">
                     </form>
 
                     <button type="button" class="schemes-filter-trigger" @click="schemesFiltersOpen = true" :aria-expanded="schemesFiltersOpen.toString()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-                        </svg>
+                        <x-icon name="funnel" size="15" />
                         Filters
                         @if($activeFilterCount)
                             <span>{{ $activeFilterCount }}</span>
@@ -282,10 +275,7 @@
                         <p>Search and filter the scheme register.</p>
                     </div>
                     <button type="button" class="schemes-filter-close" aria-label="Close filters" @click="schemesFiltersOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        <x-icon name="x" size="18" />
                     </button>
                 </div>
 

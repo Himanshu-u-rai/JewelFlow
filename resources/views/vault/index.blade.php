@@ -999,15 +999,15 @@
         <x-slot:actions>
             <div class="vault-header-actions">
                 <a href="{{ route('vault.ledger') }}" class="vault-action vault-action-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                    <x-icon name="chart-no-axes-column-increasing" size="15" stroke-width="2.25" />
                     Full Ledger
                 </a>
                 <a href="{{ route('vault.lots.create') }}" class="vault-action vault-action-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <x-icon name="plus" size="15" stroke-width="2.25" />
                     Add Bullion
                 </a>
                 <a href="{{ route('job-orders.create') }}" class="vault-action vault-action-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <x-icon name="activity" size="15" stroke-width="2.25" />
                     Issue to Karigar
                 </a>
             </div>
@@ -1024,15 +1024,15 @@
             <section class="vault-card vault-responsive-actions-shell vault-tablet-mobile-only">
                 <div class="vault-responsive-actions-row">
                     <a href="{{ route('vault.ledger') }}" class="vault-action vault-action-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                        <x-icon name="chart-no-axes-column-increasing" size="15" stroke-width="2.25" />
                         Full Ledger
                     </a>
                     <a href="{{ route('vault.lots.create') }}" class="vault-action vault-action-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <x-icon name="plus" size="15" stroke-width="2.25" />
                         Add Bullion
                     </a>
                     <a href="{{ route('job-orders.create') }}" class="vault-action vault-action-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        <x-icon name="activity" size="15" stroke-width="2.25" />
                         Issue to Karigar
                     </a>
                 </div>
@@ -1585,7 +1585,7 @@
                         <p class="vault-section-copy">Quick totals and purity-level distribution for phone-sized screens.</p>
                     </div>
                     <span class="vault-overview-chevron" :class="{ 'is-open': mobileOverviewOpen }" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <x-icon name="chevron-down" size="18" stroke-width="2.4" />
                     </span>
                 </button>
 
@@ -1686,15 +1686,15 @@
                 <div class="vault-mobile-fab-shell" :class="{ 'is-open': vaultFabOpen }" @click.outside="vaultFabOpen = false">
                     <nav class="vault-mobile-fab-nav" aria-label="Vault quick actions">
                         <a href="{{ route('vault.ledger') }}" class="vault-mobile-fab-link" @click="vaultFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                            <x-icon name="chart-no-axes-column-increasing" size="14" stroke-width="2.2" />
                             <span>Full Ledger</span>
                         </a>
                         <a href="{{ route('vault.lots.create') }}" class="vault-mobile-fab-link" @click="vaultFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <x-icon name="plus" size="14" stroke-width="2.2" />
                             <span>Add Bullion</span>
                         </a>
                         <a href="{{ route('job-orders.create') }}" class="vault-mobile-fab-link" @click="vaultFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            <x-icon name="activity" size="14" stroke-width="2.2" />
                             <span>Issue to Karigar</span>
                         </a>
                     </nav>

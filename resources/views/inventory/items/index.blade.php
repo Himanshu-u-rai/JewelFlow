@@ -12,10 +12,7 @@
                     class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
                     title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention"
                     aria-label="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
+                <x-icon name="bell" class="w-5 h-5" />
                 <span class="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
                     {{ $pricingAlertCount > 99 ? '99+' : $pricingAlertCount }}
                 </span>
@@ -24,9 +21,7 @@
             @can('inventory.create')
                 <a href="{{ route('inventory.items.create') }}"
                     class="btn btn-success btn-sm inventory-items-create-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
                 Create Item
             </a>
             @endcan
@@ -75,10 +70,7 @@
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-amber-50">
                 <div class="flex items-center gap-3">
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                        </svg>
+                        <x-icon name="bell" class="w-4 h-4" stroke-width="2.2" />
                     </span>
                     <div>
                         <h2 id="pricing-alert-title" class="text-sm font-semibold text-gray-900">Pricing Alerts</h2>
@@ -86,7 +78,7 @@
                     </div>
                 </div>
                 <button @click="close()" class="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    <x-icon name="x" class="w-5 h-5" />
                 </button>
             </div>
 
@@ -105,21 +97,21 @@
                 </template>
                 <template x-if="!loading && items.length === 0">
                     <div data-turbo-temporary class="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <x-icon name="circle-check" class="w-8 h-8" stroke-width="1.5" />
                         <span>All items repriced successfully!</span>
                     </div>
                 </template>
                 <template x-for="item in items" :key="item.id">
                     <a data-turbo-temporary :href="item.edit_url" class="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
                         <span class="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <x-icon name="circle-alert" class="w-3.5 h-3.5" stroke-width="2.5" />
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600" x-text="item.barcode"></p>
                             <p class="text-xs text-gray-500 truncate" x-text="[item.design, item.category].filter(Boolean).join(' · ') || 'No description'"></p>
                             <p class="mt-0.5 text-xs text-red-600 overflow-hidden" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" x-text="item.pricing_review_notes || 'No metal type assigned'"></p>
                         </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-1 text-gray-300 group-hover:text-indigo-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        <x-icon name="chevron-right" class="w-4 h-4 flex-shrink-0 mt-1 text-gray-300 group-hover:text-indigo-400 transition-colors" />
                     </a>
                 </template>
             </div>
@@ -224,38 +216,38 @@
             @if($isRetailer)
             <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1" role="tablist" aria-label="Stock views">
             <button type="button" role="tab" @click="view = 'items'" :aria-selected="view === 'items'" :aria-pressed="view === 'items'" :class="{ 'is-active': view === 'items' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <x-icon name="package" size="14" />
                 Stock Items
             </button>
             <button type="button" role="tab" @click="view = 'aging'" :aria-selected="view === 'aging'" :aria-pressed="view === 'aging'" :class="{ 'is-active': view === 'aging' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <x-icon name="clock" size="14" />
                 Stock Aging
             </button>
             <button type="button" role="tab" @click="view = 'sellers'" :aria-selected="view === 'sellers'" :aria-pressed="view === 'sellers'" :class="{ 'is-active': view === 'sellers' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <x-icon name="trending-up" size="14" />
                 Sell Trend
             </button>
             </div>
             @endif
             <div class="items-page-links">
             <a href="{{ route('categories.index') }}" class="items-page-link inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                <x-icon name="tag" size="14" />
                 Categories
-                <svg class="items-page-link-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                <x-icon name="chevron-right" size="14" class="items-page-link-chevron" />
             </a>
             @if($isRetailer)
             <a href="{{ route('tags.index') }}" class="items-page-link inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Tag Printing
-                <svg class="items-page-link-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                <x-icon name="chevron-right" size="14" class="items-page-link-chevron" />
             </a>
             <a href="{{ route('reorder.index') }}" class="items-page-link inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <x-icon name="triangle-alert" size="14" />
                 Reorder Alerts
                 @if($reorderAlertCount > 0)
                     <span class="items-page-link-count">{{ $reorderAlertCount }}</span>
                 @endif
-                <svg class="items-page-link-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                <x-icon name="chevron-right" size="14" class="items-page-link-chevron" />
             </a>
             @endif
             </div>
@@ -279,7 +271,7 @@
             <section class="items-kpi-card items-kpi-charcoal items-kpi-card-total" aria-label="Total items KPI">
                 <div class="items-kpi-head">
                     <span class="items-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        <x-icon name="layers" stroke-width="2.2" />
                     </span>
                     <p class="items-kpi-meta">{{ $totalItems > 0 ? 'Catalog live' : 'Add first SKU' }}</p>
                 </div>
@@ -293,7 +285,7 @@
             <section class="items-kpi-card items-kpi-charcoal items-kpi-card-stock" aria-label="In stock KPI">
                 <div class="items-kpi-head">
                     <span class="items-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 2.6 2.6L16 9.2"/></svg>
+                        <x-icon name="circle-check" stroke-width="2.2" />
                     </span>
                     <p class="items-kpi-meta">{{ $inStockItems > 0 ? 'Ready stock' : 'Out of stock' }}</p>
                 </div>
@@ -370,7 +362,7 @@
                      x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
                 <div class="items-kpi-head">
                     <span class="items-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        <x-icon name="database" stroke-width="2.2" />
                     </span>
                     <button type="button" class="items-kpi-eye" @click="toggle()" :aria-label="show ? 'Hide fine gold' : 'Show fine gold'" :title="show ? 'Hide' : 'Show'">
                         <svg x-show="show" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -449,12 +441,12 @@
                 <div class="ui-filter-actions">
                     @if(request()->hasAny(['status', 'category', 'purity', 'search']))
                         <a href="{{ route('inventory.items.index') }}" class="items-filter-clear">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <x-icon name="x" size="14" />
                             Clear
                         </a>
                     @else
                         <button type="submit" class="items-filter-submit">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                            <x-icon name="funnel" size="14" />
                             Filter
                         </button>
                     @endif
@@ -563,19 +555,14 @@
                                     <div class="flex flex-wrap items-center justify-center gap-2">
                                         <a href="{{ route('inventory.items.show', $item) }}" 
                                            class="btn btn-secondary btn-xs inline-flex items-center">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
+                                            <x-icon name="eye" class="w-3 h-3 mr-1" />
                                             View
                                         </a>
                                         @if($item->status === 'in_stock')
                                             @can('inventory.edit')
                                                           <a href="{{ route('inventory.items.edit', $item) }}"
                                                               class="btn btn-success btn-xs inline-flex items-center">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                </svg>
+                                                <x-icon name="square-pen" class="w-3 h-3 mr-1" />
                                                 Edit
                                             </a>
                                             @endcan
@@ -588,10 +575,7 @@
                                 <td colspan="{{ $isRetailer ? 7 : 8 }}" class="items-stock-empty-cell px-6 py-12 text-center">
                                     <div class="items-stock-empty-state">
                                         <span class="items-stock-empty-icon" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.3 7 12 12l8.7-5M12 22V12M19 4v6M22 7h-6"/>
-                                            </svg>
+                                            <x-icon name="box" size="22" />
                                         </span>
                                         <div>
                                             <p class="items-stock-empty-title">{{ $inventoryFiltersActive ? 'No matching items found' : 'No stock items yet' }}</p>
@@ -644,7 +628,7 @@
                                     <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->design }}" class="items-stock-mobile-thumb">
                                 @else
                                     <div class="items-stock-mobile-thumb items-stock-mobile-thumb--empty" aria-hidden="true">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+                                        <x-icon name="box" size="18" stroke-width="2.1" />
                                     </div>
                                 @endif
                                 <div class="items-stock-mobile-identity">
@@ -693,10 +677,7 @@
                     @empty
                         <div class="items-stock-mobile-empty">
                             <span class="items-stock-empty-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.3 7 12 12l8.7-5M12 22V12M19 4v6M22 7h-6"/>
-                                </svg>
+                                <x-icon name="box" size="22" />
                             </span>
                             <strong>{{ $inventoryFiltersActive ? 'No matching items found' : 'No stock items yet' }}</strong>
                             <span>{{ $inventoryFiltersActive ? 'Adjust the filters or clear them to return to the full stock register.' : 'Create your first jewellery item to start tracking stock.' }}</span>
@@ -1003,9 +984,9 @@
                                 </select>
                             </div>
                             @if(request()->has('seller_period'))
-                                <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="items-filter-clear items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
+                                <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="items-filter-clear items-seller-period-apply"><x-icon name="x" size="14" class="mr-1" />Clear</a>
                             @else
-                                <button type="submit" class="items-filter-submit items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Apply</button>
+                                <button type="submit" class="items-filter-submit items-seller-period-apply"><x-icon name="funnel" size="14" class="mr-1" />Apply</button>
                             @endif
                         </form>
                     </div>

@@ -807,9 +807,7 @@
                                                                     <option value="per_gram">₹ / gram</option>
                                                                 </select>
                                                                 <span class="qb-making-select-icon" aria-hidden="true">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-                                                                        <path d="m6 9 6 6 6-6" />
-                                                                    </svg>
+                                                                    <x-icon name="chevron-down" stroke-width="2.25" />
                                                                 </span>
                                                             </div>
                                                             <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
@@ -918,9 +916,7 @@
                                 <div class="mt-1 text-xs text-slate-500">GST, payment tracker, and final totals</div>
                             </div>
                             <button type="button" @click="closeReview()" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50" aria-label="Close review">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
+                                <x-icon name="x" class="h-5 w-5" />
                             </button>
                         </div>
 
@@ -996,7 +992,7 @@
                                         </select>
                                         <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-32 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-bold text-right">
                                         <button type="button" @click="removePayment(index)" class="text-rose-500 hover:text-rose-700">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <x-icon name="x" class="h-4 w-4" />
                                         </button>
                                     </div>
                                     {{-- UPI / Bank / Wallet → pick the saved account from shop settings. --}}

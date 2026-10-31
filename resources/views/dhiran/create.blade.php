@@ -6,7 +6,7 @@
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1" />
                 Back to Loans
             </a>
         </div>
@@ -23,7 +23,7 @@
             {{-- Customer Section --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <div class="dh-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <x-icon name="user" />
                     Customer Details
                 </div>
 
@@ -31,13 +31,13 @@
                     <div class="dh-customer-search-row" @click.outside="customerDropdownOpen = false">
                         <div class="dh-customer-search-box">
                             <label class="dh-label">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <x-icon name="user" />
                                 Customer *
                             </label>
                             <input type="hidden" name="customer_id" x-model="customer_id">
                             <div class="dh-dd-wrap" :class="{ 'dd-open': customerDropdownOpen }">
                                 <div class="dh-customer-search-control" :class="{ open: customerDropdownOpen }">
-                                    <span class="dh-customer-search-icon"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                                    <span class="dh-customer-search-icon"><x-icon name="search" size="15" /></span>
                                     <input type="search"
                                            class="dh-customer-search-input"
                                            placeholder="Search borrower by name, mobile, PAN, or ID"
@@ -65,7 +65,7 @@
                         </div>
 
                         <button type="button" class="btn btn-dark btn-sm dh-customer-add-btn" @click="openNewBorrower()" aria-label="Add new borrower" title="Add new borrower">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <x-icon name="plus" size="15" />
                             <span>Add New Borrower</span>
                         </button>
                     </div>
@@ -139,7 +139,7 @@
                             <p>Create a borrower profile and select it for this pledge loan.</p>
                         </div>
                         <button type="button" class="dh-borrower-modal-close" @click="newBorrowerOpen = false" aria-label="Close borrower form">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <x-icon name="x" />
                         </button>
                     </div>
 
@@ -189,14 +189,14 @@
             {{-- Pledged Items --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <div class="dh-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    <x-icon name="package" />
                     Pledged Items
                 </div>
 
                 <template x-for="(item, index) in items" :key="index">
                     <div class="dh-item-row">
                         <button type="button" class="dh-item-remove" @click="removeItem(index)" x-show="items.length > 1">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            <x-icon name="x" />
                         </button>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
@@ -308,7 +308,7 @@
                 </template>
 
                 <button type="button" class="dh-add-item-btn" @click="addItem()">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                    <x-icon name="plus" />
                     Add Item
                 </button>
             </div>
@@ -316,7 +316,7 @@
             {{-- Loan Parameters --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <div class="dh-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    <x-icon name="calculator" />
                     Loan Parameters
                 </div>
 
@@ -403,7 +403,7 @@
             {{-- Summary --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <div class="dh-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <x-icon name="badge-check" />
                     Loan Summary
                 </div>
                 <div class="dh-summary-row">
@@ -431,7 +431,7 @@
             {{-- Notes --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <label for="notes" class="dh-label">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <x-icon name="file-text" />
                     Notes (optional)
                 </label>
                 <textarea name="notes" id="notes" rows="3" placeholder="Any additional notes about this loan..." class="dh-textarea">{{ old('notes') }}</textarea>
@@ -440,11 +440,11 @@
             {{-- Submit --}}
             <div class="flex justify-end gap-3 pb-6">
                 <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <x-icon name="x" size="14" class="mr-1" />
                     Cancel
                 </a>
                 <button type="submit" class="btn btn-dark btn-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    <x-icon name="save" size="14" class="mr-1" />
                     Create Loan
                 </button>
             </div>

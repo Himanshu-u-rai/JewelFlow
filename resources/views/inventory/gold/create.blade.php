@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Purchase, buyback, or opening stock</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('inventory.gold.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to Inventory</a>
+            <a href="{{ route('inventory.gold.index') }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-left" size="14" class="mr-1" />Back to Inventory</a>
         </div>
     </x-page-header>
     <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -141,8 +141,8 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                    <a href="{{ route('inventory.gold.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</a>
-                    <button type="submit" class="btn btn-dark btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Add Gold to Inventory</button>
+                    <a href="{{ route('inventory.gold.index') }}" class="btn btn-secondary btn-sm"><x-icon name="x" size="14" class="mr-1" />Cancel</a>
+                    <button type="submit" class="btn btn-dark btn-sm"><x-icon name="circle-plus" size="14" class="mr-1" />Add Gold to Inventory</button>
                 </div>
             </form>
         </div>

@@ -691,7 +691,7 @@
                         <div class="upload-box">
                             <div class="upload-box-head">
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
-                                <a href="{{ route('imports.template', ['type' => 'stock']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Sample CSV</a>
+                                <a href="{{ route('imports.template', ['type' => 'stock']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><x-icon name="download" size="14" class="mr-1" />Sample CSV</a>
                             </div>
                             <input
                                 type="file"
@@ -703,7 +703,7 @@
                             <p class="text-xs text-gray-500 mt-2">Barcode must be unique. Vendors will be auto-created if not found.</p>
                         </div>
                         <button type="submit" class="btn btn-dark" :disabled="uploading">
-                            <template x-if="!uploading"><span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Create Preview</span></template>
+                            <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
                             <template x-if="uploading"><span><svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Uploading &amp; Validating...</span></template>
                         </button>
                     </form>
@@ -759,7 +759,7 @@
                 </div>
 
                 <div class="import-template-actions mt-4 flex flex-wrap gap-2">
-                    <a href="{{ route('imports.template', ['type' => 'catalog']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Sample CSV</a>
+                    <a href="{{ route('imports.template', ['type' => 'catalog']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><x-icon name="download" size="14" class="mr-1" />Download Sample CSV</a>
                 </div>
 
                 <form method="POST" action="{{ route('imports.catalog.preview') }}" enctype="multipart/form-data" class="mt-4" x-data="{ uploading: false }" @submit="uploading = true">
@@ -776,7 +776,7 @@
                         <p class="text-xs text-gray-500 mt-2">Max file size: 10 MB. Only CSV allowed.</p>
                     </div>
                     <button type="submit" class="btn btn-dark mt-3" :disabled="uploading">
-                        <template x-if="!uploading"><span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Create Preview</span></template>
+                        <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
                         <template x-if="uploading"><span><svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Uploading &amp; Validating...</span></template>
                     </button>
                 </form>
@@ -815,7 +815,7 @@
                 </div>
 
                 <div class="import-template-actions mt-4 flex flex-wrap gap-2">
-                    <a href="{{ route('imports.template', ['type' => 'manufacture']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Sample CSV</a>
+                    <a href="{{ route('imports.template', ['type' => 'manufacture']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><x-icon name="download" size="14" class="mr-1" />Download Sample CSV</a>
                 </div>
 
                 <form method="POST" action="{{ route('imports.manufacture.preview') }}" enctype="multipart/form-data" class="mt-4" x-data="{ uploading: false }" @submit="uploading = true">
@@ -832,7 +832,7 @@
                         <p class="text-xs text-gray-500 mt-2">Make sure lot_number belongs to your shop and barcode is unique.</p>
                     </div>
                     <button type="submit" class="btn btn-dark mt-3" :disabled="uploading">
-                        <template x-if="!uploading"><span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Create Preview</span></template>
+                        <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
                         <template x-if="uploading"><span><svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Uploading &amp; Validating...</span></template>
                     </button>
                 </form>
@@ -883,7 +883,7 @@
                                 <td class="px-4 py-3 text-sm text-right text-red-700 font-semibold">{{ $import->invalid_rows }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $import->created_at?->format('d M Y, h:i A') }}</td>
                                 <td class="px-4 py-3 text-sm text-right">
-                                    <a href="{{ route('imports.show', $import) }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open</a>
+                                    <a href="{{ route('imports.show', $import) }}" class="btn btn-secondary btn-sm"><x-icon name="external-link" size="14" class="mr-1" />Open</a>
                                 </td>
                             </tr>
                         @empty

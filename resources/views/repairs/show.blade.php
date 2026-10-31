@@ -31,16 +31,12 @@
         </div>
         <div class="page-actions repairs-show-header-actions">
             <a href="{{ route('repairs.index') }}" class="repairs-show-action repairs-show-action--back">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7 7-7-7 7-7"/>
-                </svg>
+                <x-icon name="arrow-left" />
                 <span>Back to Repairs</span>
             </a>
             @if($repair->status !== 'delivered')
                 <a href="{{ route('repairs.edit', $repair) }}" class="repairs-show-action repairs-show-action--primary">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
+                    <x-icon name="square-pen" />
                     <span>Edit Repair</span>
                 </a>
             @elseif($repair->invoice_id)
@@ -68,9 +64,7 @@
                     <li class="{{ $index < $statusIndex ? 'is-complete' : ($index === $statusIndex ? 'is-current' : '') }}">
                         <span class="repairs-show-step-dot">
                             @if($index < $statusIndex)
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
+                                <x-icon name="check" />
                             @else
                                 {{ $index + 1 }}
                             @endif
@@ -95,17 +89,17 @@
                     </header>
                     <div style="display:flex; flex-wrap:wrap; gap:.5rem; padding:0 1rem 1rem;">
                         <a href="{{ route('repairs.challan', $repair) }}" target="_blank" rel="noopener" class="repairs-show-action">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+                            <x-icon name="printer" />
                             <span>Print challan</span>
                         </a>
                         <a href="{{ route('repairs.challan.pdf', $repair) }}" class="repairs-show-action" data-turbo="false">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                            <x-icon name="download" />
                             <span>Download PDF</span>
                         </a>
                         {{-- Hidden until the browser shows it can hand a PDF to its share menu (repair-challan-share.js). --}}
                         <button type="button" class="repairs-show-action" data-challan-share hidden
                                 data-url="{{ route('repairs.challan.pdf', $repair) }}" data-filename="{{ $challanRef }}-challan.pdf">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.7 10.7l6.6-3.4M8.7 13.3l6.6 3.4M18 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zm12 7a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                            <x-icon name="share-2" />
                             <span data-challan-share-label>Share challan</span>
                         </button>
                         @if($customerWhatsApp['link'])

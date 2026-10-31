@@ -6,15 +6,11 @@
         </div>
         <div class="page-actions flex gap-2">
             <a href="{{ route('inventory.gold.edit', $lot) }}" class="btn btn-dark btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
+                <x-icon name="square-pen" class="w-4 h-4 mr-2" />
                 Edit
             </a>
             <a href="{{ route('inventory.gold.index') }}" class="btn btn-secondary btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 Back to Inventory
             </a>
         </div>
@@ -131,9 +127,7 @@
                 <div class="space-y-3">
                     @if($lot->fine_weight_remaining > 0)
                         <a href="{{ route('inventory.items.create') }}" class="btn btn-dark w-full">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                            </svg>
+                            <x-icon name="plus" class="w-5 h-5 mr-2" />
                             Create Item from this Lot
                         </a>
                     @else

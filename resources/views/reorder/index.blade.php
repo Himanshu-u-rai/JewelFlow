@@ -544,10 +544,7 @@
         <div class="page-actions">
             @include('partials.back-to-stock')
             <a href="{{ route('reorder.create') }}" class="reorder-index-add">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 5v14"/>
-                    <path d="M5 12h14"/>
-                </svg>
+                <x-icon name="plus" size="15" stroke-width="2.1" />
                 <span class="reorder-index-add-full">Add Rule</span>
                 <span class="reorder-index-add-short">Add</span>
             </a>
@@ -572,9 +569,7 @@
             </article>
             <article class="reorder-stat-card">
                 <span class="reorder-stat-icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m5 13 4 4L19 7"/>
-                    </svg>
+                    <x-icon name="check" size="20" stroke-width="1.9" />
                 </span>
                 <div>
                     <p class="reorder-stat-label">Active</p>
@@ -584,11 +579,7 @@
             </article>
             <article class="reorder-stat-card">
                 <span class="reorder-stat-icon reorder-stat-icon--warn" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
-                        <path d="M12 9v4"/>
-                        <path d="M12 17h.01"/>
-                    </svg>
+                    <x-icon name="triangle-alert" size="20" stroke-width="1.9" />
                 </span>
                 <div>
                     <p class="reorder-stat-label">Alerts</p>

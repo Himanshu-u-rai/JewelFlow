@@ -15,7 +15,7 @@
         </div>
         <div class="page-actions flex flex-wrap items-center gap-2">
             <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-secondary btn-sm invoices-edit-back-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <x-icon name="arrow-left" size="14" class="mr-1.5" />
                 Back to invoice
             </a>
         </div>
@@ -71,7 +71,7 @@
                                 @error('gst_rate')<p class="invoices-edit-error">{{ $message }}</p>@enderror
 
                                 <button type="submit" class="invoices-edit-button invoices-edit-button--primary">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <x-icon name="check" size="14" />
                                     Finalize invoice
                                 </button>
                             </form>
@@ -101,7 +101,7 @@
                                     @error('cancellation_reason')<p class="invoices-edit-error">{{ $message }}</p>@enderror
 
                                     <button type="submit" class="invoices-edit-button invoices-edit-button--danger">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        <x-icon name="x" size="14" />
                                         Cancel draft
                                     </button>
                                 </form>

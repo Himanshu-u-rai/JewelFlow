@@ -57,7 +57,7 @@
                 </form>
                 <div class="gst-toolbar-actions">
                     <button type="button" onclick="window.print()" class="gst-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+                        <x-icon name="printer" size="14" />
                         Print
                     </button>
                 </div>
@@ -251,7 +251,7 @@
                     {{-- Filing reminder + quick jump --}}
                     <div class="gst-note">
                         <div class="gst-note-top">
-                            <svg class="gst-note-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                            <x-icon name="triangle-alert" class="gst-note-icon" />
                             <p class="gst-note-title">Filing reminder</p>
                         </div>
                         <ul class="gst-note-list">

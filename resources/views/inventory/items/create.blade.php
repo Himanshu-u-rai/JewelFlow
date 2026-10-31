@@ -7,9 +7,7 @@
         <div class="page-actions">
                 <a href="{{ route('inventory.items.index') }}" 
                     class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors text-sm font-medium inventory-items-create-back-btn" style="border-radius:10px;">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 Back to Items
             </a>
         </div>
@@ -75,7 +73,7 @@
                                         placeholder="Enter or generate barcode">
                                 <button type="button" onclick="generateBarcode()" 
                                     class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm font-medium" style="border-radius:10px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Generate
+                                    <x-icon name="refresh-cw" size="14" class="inline -mt-0.5 mr-1" />Generate
                                 </button>
                             </div>
                         </div>
@@ -309,11 +307,11 @@
             <div class="flex justify-end gap-4">
                      <a href="{{ route('inventory.items.index') }}" 
                          class="px-6 py-3 bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors font-medium" style="border-radius:10px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
+                    <x-icon name="x" size="14" class="inline -mt-0.5 mr-1" />Cancel
                 </a>
                 <button type="submit" id="submitBtn"
                     class="px-6 py-3 bg-amber-600 text-white hover:bg-amber-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" style="border-radius:10px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Item
+                    <x-icon name="circle-plus" size="14" class="inline -mt-0.5 mr-1" />Create Item
                 </button>
             </div>
         </form>

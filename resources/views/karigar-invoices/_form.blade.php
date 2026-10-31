@@ -515,7 +515,7 @@
                             <input type="hidden" name="karigar_id" x-model="selectedKarigarId">
                             <button type="button" class="ki-combobox-trigger" @click="karigarOpen = ! karigarOpen" :aria-expanded="karigarOpen.toString()">
                                 <span :class="selectedKarigarName ? '' : 'ki-combobox-placeholder'" x-text="selectedKarigarName || 'Select karigar...'">Select karigar...</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                             </button>
                             <div class="ki-combobox-menu" x-show="karigarOpen" x-transition.origin.top x-cloak>
                                 <div class="ki-combobox-list">
@@ -542,7 +542,7 @@
                         <input type="hidden" name="mode" x-model="mode">
                         <button type="button" class="ki-combobox-trigger" @click="modeOpen = ! modeOpen" :aria-expanded="modeOpen.toString()">
                             <span x-text="modeName">Purchase (full metal + making)</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            <x-icon name="chevron-down" size="16" stroke-width="2.25" />
                         </button>
                         <div class="ki-combobox-menu" x-show="modeOpen" x-transition.origin.top x-cloak>
                             <div class="ki-combobox-list">

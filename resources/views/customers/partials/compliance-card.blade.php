@@ -40,7 +40,7 @@
                     <p>Needed for any sale above ₹2,00,000.</p>
                 </div>
                 <button type="button" class="customers-show-kyc-close" @click="kycOpen = false" aria-label="Close KYC compliance">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    <x-icon name="x" size="18" stroke-width="2.2" />
                 </button>
             </div>
 

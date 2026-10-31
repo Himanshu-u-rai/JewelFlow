@@ -103,12 +103,7 @@
                 >
                     <img src="{{ $url }}" alt="{{ $alt }} {{ $i + 1 }}" class="jf-carousel-image" loading="{{ $i === 0 ? 'eager' : 'lazy' }}">
                     <span class="jf-carousel-zoom-hint" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"/>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                            <line x1="11" y1="8" x2="11" y2="14"/>
-                            <line x1="8" y1="11" x2="14" y2="11"/>
-                        </svg>
+                        <x-icon name="zoom-in" size="14" stroke-width="2.2" />
                     </span>
                 </button>
             </div>
@@ -122,9 +117,7 @@
             aria-label="Previous {{ $alt }} image"
             @click="prev()"
         >
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
+            <x-icon name="chevron-left" size="16" />
         </button>
         <button
             type="button"
@@ -132,9 +125,7 @@
             aria-label="Next {{ $alt }} image"
             @click="next()"
         >
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
+            <x-icon name="chevron-right" size="16" />
         </button>
         <div class="jf-carousel-dots" aria-label="{{ $alt }} image selector">
             @foreach ($urls as $i => $url)
@@ -165,9 +156,7 @@
             @click="closeLightbox()"
             aria-label="Close fullscreen view"
         >
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+            <x-icon name="x" size="20" />
         </button>
 
         <div class="jf-lightbox-stage">
@@ -189,9 +178,7 @@
                 @click.stop="lightboxPrev()"
                 aria-label="Previous image"
             >
-                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
+                <x-icon name="chevron-left" size="22" />
             </button>
             <button
                 type="button"
@@ -199,9 +186,7 @@
                 @click.stop="lightboxNext()"
                 aria-label="Next image"
             >
-                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
+                <x-icon name="chevron-right" size="22" />
             </button>
             <div class="jf-lightbox-counter" aria-live="polite">
                 <span x-text="lightboxIndex + 1"></span> / {{ $count }}

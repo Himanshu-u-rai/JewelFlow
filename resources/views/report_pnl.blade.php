@@ -9,9 +9,9 @@
                 <input type="date" name="date" value="{{ $date }}"
                        class="border-gray-300 rounded-md shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm pnl-header-date" style="height: 40px;">
                 @if(request()->filled('date'))
-                    <a href="{{ route('report.pnl') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
+                    <a href="{{ route('report.pnl') }}" class="btn btn-secondary btn-sm"><x-icon name="x" size="14" class="mr-1" />Clear</a>
                 @else
-                    <button type="submit" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>View Date</button>
+                    <button type="submit" class="btn btn-secondary btn-sm"><x-icon name="calendar" size="14" class="mr-1" />View Date</button>
                 @endif
             </form>
             <span class="header-badge">{{ $periodLabel }}</span>
@@ -27,9 +27,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 pnl-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-lg p-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <x-icon name="circle-dollar-sign" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Total Sales</p>
@@ -41,9 +39,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 pnl-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-lg p-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                        </svg>
+                        <x-icon name="package" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Cost of Goods</p>
@@ -55,9 +51,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 pnl-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="{{ $profit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }} rounded-lg p-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
+                        <x-icon name="chart-column" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Gross Profit</p>
@@ -89,9 +83,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden pnl-panel">
                 <div class="p-6 border-b border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <x-icon name="circle-dollar-sign" class="w-5 h-5 mr-2 text-amber-600" />
                         Revenue Breakdown
                     </h2>
                     <p class="text-sm text-gray-500 mt-1">Income sources for selected date</p>
@@ -186,9 +178,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden pnl-panel">
                 <div class="p-6 border-b border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
+                        <x-icon name="credit-card" class="w-5 h-5 mr-2 text-amber-600" />
                         Cost Analysis
                     </h2>
                     <p class="text-sm text-gray-500 mt-1">Expenses and material costs</p>
@@ -199,9 +189,7 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg pnl-stat-row">
                         <div class="flex items-center gap-3">
                             <div class="bg-amber-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
+                                <x-icon name="package" class="w-5 h-5 text-amber-700" />
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-gray-600">Cost of Goods (COGS)</div>
@@ -244,14 +232,10 @@
                     <div class="mt-4 p-4 rounded-lg {{ $profit > 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200' }} border">
                         <div class="flex items-center gap-2">
                             @if($profit > 0)
-                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="badge-check" class="w-5 h-5 text-emerald-600" />
                                 <span class="text-sm font-medium text-emerald-700">Profitable Day</span>
                             @else
-                                <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="circle-alert" class="w-5 h-5 text-rose-600" />
                                 <span class="text-sm font-medium text-rose-700">No Profit Recorded</span>
                             @endif
                         </div>
@@ -269,9 +253,7 @@
                         <p class="text-sm text-gray-500 mt-1">Complete P&L breakdown</p>
                     </div>
                     <button onclick="window.print()" class="btn btn-secondary btn-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                        </svg>
+                        <x-icon name="printer" class="w-4 h-4 mr-2" />
                         Print Report
                     </button>
                 </div>

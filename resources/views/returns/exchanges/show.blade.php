@@ -41,16 +41,12 @@
             <a href="{{ route('exchanges.receipt', $exchange) }}"
                target="_blank"
                class="exchange-show-action exchange-show-action--primary">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6v-8z"/>
-                </svg>
+                <x-icon name="printer" />
                 <span>Print receipt</span>
             </a>
             <a href="{{ route('returns.index') }}"
                class="exchange-show-action exchange-show-action--back">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
+                <x-icon name="chevron-left" />
                 <span>Back to returns</span>
             </a>
         </div>

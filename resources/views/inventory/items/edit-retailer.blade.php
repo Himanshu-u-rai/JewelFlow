@@ -29,9 +29,7 @@
         <div class="page-actions">
             <a href="{{ route('inventory.items.show', $item) }}"
                class="inventory-items-create-back-btn inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 Back to Item
             </a>
         </div>
@@ -99,9 +97,7 @@
                     <section class="item-create-panel item-create-panel--identity">
                         <div class="item-create-panel-head">
                             <span class="item-create-panel-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7V5a1 1 0 0 1 1-1h2M4 17v2a1 1 0 0 0 1 1h2M17 4h2a1 1 0 0 1 1 1v2M17 20h2a1 1 0 0 0 1-1v-2M7 12h10M7 9h10M7 15h6"/>
-                                </svg>
+                                <x-icon name="scan-text" size="18" stroke-width="2.2" />
                             </span>
                             <div>
                                 <p class="item-create-kicker">Item Identity</p>
@@ -200,10 +196,7 @@
                                     <label for="imageFileInput" class="item-create-upload-zone">
                                         <input type="file" name="images[]" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp" multiple class="sr-only" id="imageFileInput">
                                         <span class="item-create-upload-icon" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 16.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.5"/>
-                                            </svg>
+                                            <x-icon name="upload" size="22" />
                                         </span>
                                         <span>
                                             <strong>Add item photos</strong>
@@ -234,9 +227,7 @@
                     <section class="item-create-panel item-create-panel--weights">
                         <div class="item-create-panel-head">
                             <span class="item-create-panel-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M5 7h14M6 7l-3 6h6L6 7Zm12 0-3 6h6l-3-6Z"/>
-                                </svg>
+                                <x-icon name="scale" size="18" stroke-width="2.2" />
                             </span>
                             <div>
                                 <p class="item-create-kicker">Weight &amp; Rate</p>
@@ -294,9 +285,7 @@
                     <section class="item-create-panel item-create-panel--pricing">
                         <div class="item-create-panel-head">
                             <span class="item-create-panel-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>
-                                </svg>
+                                <x-icon name="dollar-sign" size="18" stroke-width="2.2" />
                             </span>
                             <div>
                                 <p class="item-create-kicker">Pricing</p>
@@ -506,14 +495,12 @@
                         <div class="item-create-action-card">
                             <button type="submit"
                                     class="item-create-submit-btn">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
+                                <x-icon name="check" class="w-5 h-5" />
                                 Save Changes
                             </button>
                             <a href="{{ route('inventory.items.show', $item) }}"
                                class="item-create-cancel-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
+                                <x-icon name="x" size="14" class="inline -mt-0.5 mr-1" />Cancel
                             </a>
                         </div>
 
@@ -1402,9 +1389,7 @@
         <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div class="item-create-modal-head flex items-start gap-3">
                 <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
                     <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
@@ -1449,9 +1434,7 @@
         <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div class="item-create-modal-head flex items-start gap-3">
                 <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
                     <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Category</h3>
@@ -1486,9 +1469,7 @@
         <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div class="item-create-modal-head flex items-start gap-3">
                 <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
                     <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Sub-Category</h3>
@@ -1528,9 +1509,7 @@
         <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div class="item-create-modal-head flex items-start gap-3">
                 <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                    </svg>
+                    <x-icon name="triangle-alert" class="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
                     <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Purity</h3>

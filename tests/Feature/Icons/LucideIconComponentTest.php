@@ -13,7 +13,11 @@ use Tests\TestCase;
  */
 class LucideIconComponentTest extends TestCase
 {
-    private const GLYPHS = ['search', 'pencil', 'trash-2', 'printer', 'users'];
+    /** Every official fixture is a glyph under test; test_the_glyph_table_and_the_fixtures_list_the_same_icons keeps the two in step. */
+    private static function glyphs(): array
+    {
+        return array_map(fn (string $f) => basename($f, '.svg'), glob(__DIR__ . '/../../Fixtures/lucide-1.66.0/*.svg'));
+    }
 
     private function icon(string $markup): string
     {
@@ -68,7 +72,7 @@ class LucideIconComponentTest extends TestCase
 
     public function test_the_markup_has_no_surrounding_whitespace_so_inline_layouts_do_not_shift(): void
     {
-        foreach (self::GLYPHS as $name) {
+        foreach (self::glyphs() as $name) {
             $svg = $this->icon("<x-icon name=\"{$name}\" />");
             $this->assertSame(trim($svg), $svg, "{$name} renders stray whitespace");
             $this->assertStringStartsWith('<svg ', $svg);
@@ -80,7 +84,7 @@ class LucideIconComponentTest extends TestCase
     {
         $norm = fn (string $s) => preg_replace(['/\s+/', '/\s\/>/', '/>\s+</'], [' ', '/>', '><'], trim($s));
 
-        foreach (self::GLYPHS as $name) {
+        foreach (self::glyphs() as $name) {
             $official = file_get_contents(__DIR__ . "/../../Fixtures/lucide-1.66.0/{$name}.svg");
             preg_match('/<svg\b([^>]*)>(.*)<\/svg>/s', $official, $o);
             $ours = $this->icon("<x-icon name=\"{$name}\" />");
@@ -91,6 +95,35 @@ class LucideIconComponentTest extends TestCase
                 $this->assertSame($this->attr($official, $a), $this->attr($ours, $a), "{$name}: {$a} differs from the official SVG");
             }
         }
+    }
+
+    public function test_the_glyph_table_and_the_fixtures_list_the_same_icons(): void
+    {
+        $table = array_keys((new \ReflectionClass(Icons::class))->getReflectionConstant('GLYPHS')->getValue());
+        $fixtures = self::glyphs();
+        sort($table);
+        sort($fixtures);
+
+        $this->assertSame($fixtures, $table);
+    }
+
+    public function test_every_icon_name_written_in_a_view_is_a_known_glyph(): void
+    {
+        $known = self::glyphs();
+        $unknown = [];
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+            preg_match_all('/<x-icon\b[^>]*?\sname="([^"{}$]+)"/', file_get_contents($file->getPathname()), $m);
+            foreach ($m[1] as $name) {
+                if (! in_array($name, $known, true)) {
+                    $unknown[] = $file->getFilename() . ': ' . $name;
+                }
+            }
+        }
+
+        $this->assertSame([], $unknown, 'views use <x-icon> names that are not in App\View\Icons');
     }
 
     public function test_plain_tags_compile_to_a_direct_call_and_anything_dynamic_stays_a_component(): void
@@ -110,7 +143,7 @@ class LucideIconComponentTest extends TestCase
             '<x-icon name="%s" />', '<x-icon name="%s" size="12" />', '<x-icon name="%s" class="w-4 h-4 qb-input-icon" />',
             '<x-icon name="%s" size="14" class="a" data-probe="x" />', '<x-icon name="%s" label="Search records" />',
         ];
-        foreach (self::GLYPHS as $glyph) {
+        foreach (self::glyphs() as $glyph) {
             foreach ($cases as $tag) {
                 $static = sprintf($tag, $glyph);
                 $viaComponent = str_replace('name="' . $glyph . '"', ':name="$n"', $static);

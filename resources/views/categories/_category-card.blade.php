@@ -4,9 +4,7 @@
         <div class="categories-card-title-wrap min-w-0">
             <div class="flex min-w-0 items-center gap-3">
                 <span class="categories-card-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"/>
-                    </svg>
+                    <x-icon name="menu" class="h-4 w-4" />
                 </span>
                 <div class="min-w-0">
                     <h3 class="truncate font-semibold text-slate-900">{{ $category->name }}</h3>
@@ -22,9 +20,7 @@
                 aria-label="{{ __('Toggle sub-categories') }}"
                 aria-expanded="false"
             >
-                <svg class="w-4 h-4 categories-mobile-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/>
-                </svg>
+                <x-icon name="chevron-down" class="w-4 h-4 categories-mobile-toggle-icon" />
             </button>
             @can('catalog.manage')
             <button
@@ -34,9 +30,7 @@
                 class="categories-icon-btn categories-icon-btn--primary !h-11 !w-11 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
                 aria-label="{{ __('Add sub-category to :name', ['name' => $category->name]) }}"
                 title="{{ __('Add Sub-Category') }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4" />
             </button>
             <button
                 data-category-id="{{ $category->id }}"

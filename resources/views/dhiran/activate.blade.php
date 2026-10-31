@@ -22,28 +22,28 @@
                 <div class="da-features">
                     <div class="da-feature-card">
                         <div class="da-feature-card-icon bg-amber-100 text-amber-700">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33"/></svg>
+                            <x-icon name="dollar-sign" />
                         </div>
                         <div class="da-feature-card-title">Gold &amp; Silver Pledge Loans</div>
                         <div class="da-feature-card-desc">Issue loans against gold &amp; silver jewellery with configurable LTV ratios and interest rates.</div>
                     </div>
                     <div class="da-feature-card">
                         <div class="da-feature-card-icon bg-emerald-100 text-emerald-700">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <x-icon name="calculator" />
                         </div>
                         <div class="da-feature-card-title">Interest Tracking</div>
                         <div class="da-feature-card-desc">Flat, daily or compound interest calculations with automatic penalty tracking on overdue loans.</div>
                     </div>
                     <div class="da-feature-card">
                         <div class="da-feature-card-icon bg-sky-100 text-sky-700">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            <x-icon name="package" />
                         </div>
                         <div class="da-feature-card-title">Collateral Management</div>
                         <div class="da-feature-card-desc">Detailed item-wise tracking with weight, purity, HUID and individual item release support.</div>
                     </div>
                     <div class="da-feature-card">
                         <div class="da-feature-card-icon bg-violet-100 text-violet-700">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <x-icon name="file-chart-column" />
                         </div>
                         <div class="da-feature-card-title">Reports & Receipts</div>
                         <div class="da-feature-card-desc">Active loan reports, overdue tracking, interest summaries and printable pledge receipts.</div>
@@ -54,7 +54,7 @@
                 <form method="POST" action="{{ route('dhiran.activate') }}" data-turbo-frame="_top">
                     @csrf
                     <button type="submit" class="da-activate-btn">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <x-icon name="zap" />
                         Activate Dhiran Module
                     </button>
                 </form>

@@ -915,10 +915,7 @@
         <x-slot:actions>
             @can('vendors.manage')
             <a href="{{ route('vendors.create') }}" class="btn btn-success btn-sm vendors-add-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
                 <span class="vendors-add-label-full">Add Vendor</span>
                 <span class="vendors-add-label-short">Add</span>
             </a>
@@ -947,9 +944,7 @@
 
             <div class="vendors-stat-card">
                 <div class="vendors-stat-icon vendors-stat-icon--success">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <x-icon name="badge-check" class="h-5 w-5" />
                 </div>
                 <div>
                     <p class="vendors-stat-label">Active</p>
@@ -960,9 +955,7 @@
 
             <div class="vendors-stat-card">
                 <div class="vendors-stat-icon">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <x-icon name="file-chart-column" class="h-5 w-5" />
                 </div>
                 <div>
                     <p class="vendors-stat-label">GST Registered</p>
@@ -989,10 +982,7 @@
                         <label class="vendors-field-label" for="vendors-search">Search</label>
                         <div class="vendors-search-wrap">
                             <span class="vendors-search-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <circle cx="11" cy="11" r="8" />
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                                </svg>
+                                <x-icon name="search" size="16" />
                             </span>
                             <input
                                 id="vendors-search"
@@ -1021,9 +1011,7 @@
 
                     <div class="vendors-actions">
                         <button type="submit" class="vendors-btn vendors-btn--primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-                            </svg>
+                            <x-icon name="funnel" size="14" />
                             Filter
                         </button>
                         @if($hasFilters)
@@ -1067,17 +1055,12 @@
                                     <td>
                                         <div class="vendors-table-actions">
                                             <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                </svg>
+                                                <x-icon name="eye" size="12" />
                                                 View
                                             </a>
                                             @can('vendors.manage')
                                             <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                                                </svg>
+                                                <x-icon name="pencil" size="12" />
                                                 Edit
                                             </a>
                                             {{-- MASTERS PART 3: explicit lifecycle action, right where

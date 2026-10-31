@@ -22,9 +22,7 @@
         <div class="page-actions">
             <a href="{{ route('products.show', $product) }}" 
                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 mr-2" />
                 Cancel
             </a>
         </div>
@@ -62,17 +60,13 @@
                                     <button type="button" 
                                             onclick="openImageModal('{{ asset('storage/' . $product->image) }}', '{{ $product->name }}')"
                                             class="absolute bottom-2 right-2 px-2 py-1 bg-black/60 rounded text-white text-xs hover:bg-black/80 transition-colors flex items-center gap-1" id="viewFullBtn">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-                                        </svg>
+                                        <x-icon name="zoom-in" class="w-3 h-3" />
                                         View Full
                                     </button>
                                 @else
                                     <div class="w-full h-full flex items-center justify-center" id="noImagePlaceholder">
                                         <div class="text-center">
-                                            <svg class="w-10 h-10 text-gray-300 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            </svg>
+                                            <x-icon name="image" class="w-10 h-10 text-gray-300 mx-auto mb-1" />
                                             <p class="text-xs text-gray-400">No image</p>
                                         </div>
                                     </div>
@@ -208,11 +202,11 @@
             <div class="flex justify-end gap-4">
                 <a href="{{ route('products.show', $product) }}" 
                    class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
+                    <x-icon name="x" size="14" class="inline -mt-0.5 mr-1" />Cancel
                 </a>
                 <button type="submit" 
                         class="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Update Product
+                    <x-icon name="save" size="14" class="inline -mt-0.5 mr-1" />Update Product
                 </button>
             </div>
         </form>
@@ -226,9 +220,7 @@
                 <img id="modalImage" src="" alt="Product preview" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl">
                 <button onclick="closeImageModal()" 
                         class="absolute -top-3 -right-3 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
+                    <x-icon name="x" class="w-5 h-5 text-gray-600" />
                 </button>
                 <p id="modalCaption" class="text-white text-center mt-3 text-sm"></p>
             </div>

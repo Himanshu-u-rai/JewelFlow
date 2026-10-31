@@ -19,9 +19,7 @@
             <a href="{{ route('historical.batches.show', $batch) }}"
                class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                data-historical-back>
-                <svg class="h-4 w-4 shrink-0 text-amber-700" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <path d="M12.5 5 7.5 10l5 5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <x-icon name="chevron-left" class="h-4 w-4 shrink-0 text-amber-700" stroke-width="1.75" />
                 <span>Back to batch</span>
             </a>
         </x-slot:actions>

@@ -209,7 +209,7 @@
     <x-page-header title="Vault Ledger" subtitle="All bullion movements across this shop">
         <x-slot:actions>
             <a href="{{ route('vault.index') }}" class="vault-ledger-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <x-icon name="chevron-left" size="15" stroke-width="2.25" />
                 Vault
             </a>
         </x-slot:actions>

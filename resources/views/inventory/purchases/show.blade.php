@@ -111,7 +111,7 @@
                     @csrf @method('PATCH')
                     <button type="submit" onclick="return confirm('Confirm this purchase? This will lock the invoice details.')"
                             class="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <x-icon name="check" class="w-4 h-4" />
                         Confirm Purchase
                     </button>
                 </form>
@@ -120,7 +120,7 @@
                     @csrf @method('PATCH')
                     <button type="submit" onclick="return confirm('Add items from this purchase to shop inventory? This cannot be undone.')"
                             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        <x-icon name="package" class="w-4 h-4" />
                         Add to Shop Inventory
                     </button>
                 </form>
@@ -381,13 +381,13 @@
                                     @if($line->metalLot)
                                         <a href="{{ route('vault.lots.show', $line->metalLot) }}"
                                            class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            <x-icon name="shield" size="11" stroke-width="2.5" />
                                             Lot #{{ $line->metalLot->lot_number }}
                                         </a>
                                     @elseif(! $purchase->isDraft())
                                         <a href="{{ route('inventory.purchases.vault-line.form', [$purchase, $line]) }}"
                                            class="inline-flex items-center gap-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 border border-yellow-500 px-2.5 py-1 text-xs font-semibold text-yellow-900 transition-colors whitespace-nowrap shadow-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            <x-icon name="shield" size="11" stroke-width="2.5" />
                                             Add to Vault
                                         </a>
                                     @else
@@ -470,13 +470,13 @@
                                     @if($line->metalLot)
                                         <a href="{{ route('vault.lots.show', $line->metalLot) }}"
                                            class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            <x-icon name="shield" size="11" stroke-width="2.5" />
                                             Lot #{{ $line->metalLot->lot_number }}
                                         </a>
                                     @elseif(! $purchase->isDraft())
                                         <a href="{{ route('inventory.purchases.vault-line.form', [$purchase, $line]) }}"
                                            class="inline-flex items-center gap-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 border border-yellow-500 px-2.5 py-1 text-xs font-semibold text-yellow-900 transition-colors shadow-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            <x-icon name="shield" size="11" stroke-width="2.5" />
                                             Add to Vault
                                         </a>
                                     @else
@@ -511,7 +511,7 @@
                 @foreach($itemLines as $line)
                     <a href="{{ route('inventory.items.show', $line->item) }}"
                        class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        <x-icon name="package" class="w-3 h-3" />
                         {{ $line->item->barcode }}
                     </a>
                 @endforeach

@@ -35,10 +35,7 @@
             <a href="{{ route('invoices.show', $invoice) }}"
                class="returns-create-back-btn"
                aria-label="Back to invoice">
-                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span>Back to invoice</span>
             </a>
         </x-slot:actions>
@@ -90,10 +87,7 @@
 
             <article class="returns-create-kpi-card">
                 <span class="returns-create-kpi-icon" aria-hidden="true">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14 4 9l5-5"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9h11a5 5 0 0 1 0 10h-1"/>
-                    </svg>
+                    <x-icon name="undo-2" size="18" />
                 </span>
                 <div>
                     <span>Returnable lines</span>

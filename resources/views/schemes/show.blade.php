@@ -25,30 +25,20 @@
     >
         <x-slot:actions>
             <a href="{{ route('schemes.index') }}" class="customers-row-action schemes-header-action schemes-header-action--neutral schemes-show-back-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round" />
-                    <polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <x-icon name="arrow-left" size="15" />
                 <span class="schemes-action-label-full">Back to Schemes</span>
                 <span class="schemes-action-label-short">Back</span>
             </a>
 
             <a href="{{ route('schemes.edit', $scheme) }}" class="customers-row-action schemes-header-action scheme-edit-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <x-icon name="pencil" size="15" />
                 Edit
             </a>
 
             @if($scheme->isGoldSavings())
                 @can('sales.create')
                     <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action customers-row-action--primary schemes-header-action schemes-header-action--primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round" />
-                            <circle cx="8.5" cy="7" r="4" />
-                            <line x1="20" y1="8" x2="20" y2="14" stroke-linecap="round" />
-                            <line x1="23" y1="11" x2="17" y2="11" stroke-linecap="round" />
-                        </svg>
+                        <x-icon name="user-plus" size="15" />
                         Enroll
                     </a>
                 @endcan
@@ -58,11 +48,7 @@
                 <button type="button"
                         onclick="document.getElementById('delete-scheme-modal').classList.remove('hidden')"
                         class="customers-row-action schemes-header-action schemes-header-action--danger scheme-delete-action">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="3 6 5 6 21 6" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M10 11v6M14 11v6M9 6V4h6v2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                    <x-icon name="trash-2" size="15" />
                     Delete
                 </button>
             @endcan
@@ -73,14 +59,14 @@
         <div class="invoice-emi-mobile-fab-shell" x-bind:class="{ 'is-open': schemeQuickFabOpen }" @click.outside="schemeQuickFabOpen = false">
             <nav class="invoice-emi-mobile-fab-nav" aria-label="Scheme quick actions">
                 <a href="{{ route('schemes.edit', $scheme) }}" class="invoice-emi-mobile-fab-link" @click="schemeQuickFabOpen = false">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <x-icon name="pencil" size="14" />
                     <span>Edit Scheme</span>
                 </a>
                 @can('catalog.manage')
                     <button type="button"
                             class="invoice-emi-mobile-fab-link scheme-mobile-fab-delete"
                             x-on:click="schemeQuickFabOpen = false; document.getElementById('delete-scheme-modal').classList.remove('hidden')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6M9 6V4h6v2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <x-icon name="trash-2" size="14" />
                         <span>Delete Scheme</span>
                     </button>
                 @endcan

@@ -9,9 +9,7 @@
             @can('catalog.manage')
             <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
                 class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
                 <span class="categories-add-label-full">{{ __('Add Category') }}</span>
                 <span class="categories-add-label-short">{{ __('Add') }}</span>
             </button>
@@ -29,17 +27,13 @@
             {{-- Genuinely no categories in this shop — distinct from a search miss below. --}}
             <div class="categories-empty-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
                 <div class="categories-empty-icon mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"/>
-                    </svg>
+                    <x-icon name="menu" class="h-6 w-6" />
                 </div>
                 <h2 class="text-lg font-semibold text-slate-900">{{ __('No Categories Yet') }}</h2>
                 <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
                 @can('catalog.manage')
                     <button onclick="openAddCategoryModal()" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                        </svg>
+                        <x-icon name="plus" class="w-4 h-4 mr-2" />
                         {{ __('Add First Category') }}
                     </button>
                 @endcan
@@ -51,9 +45,7 @@
                 <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
                     <div class="flex items-center gap-3">
                         <div class="categories-kpi-icon">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"/>
-                            </svg>
+                            <x-icon name="menu" class="h-4 w-4" />
                         </div>
                         <div>
                             <p class="categories-kpi-label">{{ __('Categories') }}</p>

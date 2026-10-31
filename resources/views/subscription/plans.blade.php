@@ -283,9 +283,7 @@
       <div class="plans-back-link-wrap">
         <a href="{{ route('shops.choose-type') }}" class="back-btn">
           <span class="back-btn__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M15 18 9 12l6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <x-icon name="chevron-left" />
           </span>
           <span>Change business type</span>
         </a>
@@ -379,7 +377,7 @@
 
               <div class="md-trial-points">
                 <div class="md-trial-point">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  <x-icon name="check" stroke-width="1.8" />
                   <div><strong>Full {{ $trialLabel }}, free</strong><span>No card, no charge upfront.</span></div>
                 </div>
                 <div class="md-trial-point">
@@ -387,7 +385,7 @@
                   <div><strong>Everything unlocked</strong><span>The same tools as the full plan, nothing held back.</span></div>
                 </div>
                 <div class="md-trial-point">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <x-icon name="badge-check" stroke-width="1.8" />
                   <div><strong>Your data stays safe</strong><span>When the trial ends your data is kept, never deleted — pick a plan whenever you are ready and carry on where you left off.</span></div>
                 </div>
                 <div class="md-trial-point">

@@ -32,9 +32,7 @@
     >
         <x-slot:actions>
             <a href="{{ $screenRoute }}" class="report-export-header-action jf-header-action--neutral" aria-label="Back to report">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <path d="M15 18 9 12l6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <x-icon name="chevron-left" size="16" />
                 <span>Back to report</span>
             </a>
         </x-slot:actions>
@@ -166,9 +164,7 @@
                 <div class="report-export-actions">
                     <a href="{{ $screenRoute }}" class="report-export-secondary">Cancel</a>
                     <button type="submit" class="report-export-primary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                        <x-icon name="arrow-down-to-line" size="16" />
                         Export
                     </button>
                 </div>

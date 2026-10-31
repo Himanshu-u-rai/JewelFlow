@@ -43,9 +43,7 @@
                 @can('inventory.edit')
                 <a href="{{ route('inventory.items.edit', $item) }}"
                    class="inline-flex items-center px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
-                    <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
+                    <x-icon name="square-pen" class="w-4 h-4 sm:mr-2" />
                     <span class="hidden sm:inline">Edit</span>
                 </a>
                 @endcan
@@ -58,9 +56,7 @@
                     @method('DELETE')
                     <button type="submit"
                             class="inline-flex items-center px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
-                        <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
+                        <x-icon name="trash-2" class="w-4 h-4 sm:mr-2" />
                         <span class="hidden sm:inline">Delete</span>
                     </button>
                 </form>
@@ -68,9 +64,7 @@
             @endif
             <a href="{{ route('inventory.items.index') }}"
                class="inline-flex items-center px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+                <x-icon name="arrow-left" class="w-4 h-4 sm:mr-2" />
                 <span class="hidden sm:inline">Back to Items</span>
             </a>
         </div>
@@ -220,9 +214,7 @@
                                         aria-label="Previous item image"
                                         @click="prev()"
                                     >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                                        </svg>
+                                        <x-icon name="chevron-left" class="w-4 h-4" />
                                     </button>
                                     <button
                                         type="button"
@@ -230,9 +222,7 @@
                                         aria-label="Next item image"
                                         @click="next()"
                                     >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
+                                        <x-icon name="chevron-right" class="w-4 h-4" />
                                     </button>
                                     <div class="inventory-item-retailer-carousel-dots hs-carousel-pagination" aria-label="Item image selector">
                                         @foreach($retailerImageGallery as $galleryIndex => $galleryImage)
@@ -248,11 +238,7 @@
                             </div>
                         @else
                             <div class="inventory-item-retailer-image inventory-item-retailer-image--empty" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                    <path d="M3.27 6.96 12 12.01l8.73-5.05"/>
-                                    <path d="M12 22.08V12"/>
-                                </svg>
+                                <x-icon name="box" size="34" stroke-width="1.8" />
                             </div>
                         @endif
                     </div>
@@ -384,9 +370,7 @@
                                     <input type="hidden" name="include_barcode_image" value="1">
                                     <input type="hidden" name="print_format" value="standard">
                                     <button type="submit" class="inventory-item-retailer-action inventory-item-retailer-action--dark">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                        </svg>
+                                        <x-icon name="printer" class="w-4 h-4" />
                                         Print Standard
                                     </button>
                                 </form>
@@ -475,9 +459,7 @@
                                         <small>Source Purchase</small>
                                         <strong>{{ $sourcePurchaseLabel }}</strong>
                                     </span>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
+                                    <x-icon name="chevron-right" class="w-4 h-4" />
                                 </a>
                             @else
                                 <div class="inventory-item-retailer-source-link inventory-item-retailer-source-link--empty">
@@ -485,9 +467,7 @@
                                         <small>Source Purchase</small>
                                         <strong>{{ $sourcePurchaseLabel }}</strong>
                                     </span>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-                                    </svg>
+                                    <x-icon name="minus" class="w-4 h-4" />
                                 </div>
                             @endif
                         </section>
@@ -509,11 +489,7 @@
                                 ])
                             @else
                                 <div class="rounded-xl bg-gray-100 flex items-center justify-center w-full h-full min-h-[240px] md:min-h-[300px]">
-                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                        <path d="M3.27 6.96 12 12.01l8.73-5.05"/>
-                                        <path d="M12 22.08V12"/>
-                                    </svg>
+                                    <x-icon name="box" size="40" stroke="#94a3b8" stroke-width="1.5" />
                                 </div>
                             @endif
                         </div>
@@ -683,9 +659,7 @@
                             @endif
                         </div>
                         @if($item->metalLot)
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
+                            <x-icon name="chevron-right" class="w-5 h-5 text-gray-400 flex-shrink-0" />
                         @endif
                     </div>
                 </div>
@@ -718,12 +692,12 @@
                     <a href="{{ route('inventory.items.edit', $item) }}"
                        class="inline-flex items-center justify-center px-3 py-2.5 rounded-lg font-medium transition-colors text-sm
                               {{ $item->status === 'in_stock' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Edit
+                        <x-icon name="pencil" size="14" class="mr-1" />Edit
                     </a>
                     @endcan
                     <a href="{{ route('inventory.items.index') }}"
                        class="inline-flex items-center justify-center px-3 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>All Items
+                        <x-icon name="list" size="14" class="mr-1" />All Items
                     </a>
                 </div>
             </div>

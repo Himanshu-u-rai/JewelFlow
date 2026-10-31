@@ -325,7 +325,7 @@
              itself in that case, so the link would bounce straight back here. --}}
         @if(\App\Models\Platform\PlatformSetting::erpChooserOffersAChoice())
         <a href="{{ route('shops.choose-type') }}" class="header-back" aria-label="Change business type">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            <x-icon name="chevron-left" stroke-width="2.2" />
             <span class="header-back-label">Change business type</span>
         </a>
         @endif
@@ -454,7 +454,7 @@
                                     <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
                                 @endforeach
                             </select>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            <x-icon name="chevron-down" stroke-width="2.4" />
                         </div>
                     </div>
                     <div class="field">
@@ -472,7 +472,7 @@
             <section class="fcard">
                 <div class="fcard-head">
                     <div class="fcard-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
+                        <x-icon name="user" stroke-width="1.8" />
                     </div>
                     <div class="fcard-titles">
                         <b>Owner details</b>
