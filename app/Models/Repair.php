@@ -147,18 +147,27 @@ class Repair extends Model
      */
     public function purityLabel(): ?string
     {
+        $value = $this->purityValue();
+
+        if ($value === null) {
+            return null;
+        }
+
+        return $this->metal_type === 'gold' ? $value . 'K' : $value;
+    }
+
+    /**
+     * The stored purity written as PURITY_OPTIONS writes its values ("22", "925",
+     * or "22.5" for a custom one), not as the two-decimal column holds it ("22.00"),
+     * so a form can match it to its preset. Null when no purity is recorded.
+     */
+    public function purityValue(): ?string
+    {
         if ($this->purity === null || $this->purity === '') {
             return null;
         }
 
-        $value = (float) $this->purity;
-
-        if ($this->metal_type === 'gold') {
-            return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.') . 'K';
-        }
-
-        // Silver / platinum / other: fineness or plain number, no karat suffix.
-        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+        return rtrim(rtrim(number_format((float) $this->purity, 2, '.', ''), '0'), '.');
     }
 
     protected static function booted(): void

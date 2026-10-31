@@ -72,6 +72,14 @@ class ItemController extends Controller
             }
         }
 
+        // Filter by sub-category — matched the way a reorder rule counts it (the bell's links)
+        if ($request->filled('sub_category')) {
+            $query->whereRaw(
+                "LOWER(TRIM(COALESCE(sub_category, ''))) = ?",
+                [\App\Models\ReorderRule::normalizeName((string) $request->sub_category)]
+            );
+        }
+
         // Filter by purity — validate against allowlist
         if ($request->filled('purity') && is_numeric($request->purity) && (float) $request->purity > 0) {
             $query->where('purity', (float) $request->purity);

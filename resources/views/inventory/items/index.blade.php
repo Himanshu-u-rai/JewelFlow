@@ -271,6 +271,7 @@
             $inStockItems = (int) ($stats['in_stock'] ?? 0);
             $soldItems = (int) ($stats['sold'] ?? 0);
             $inventoryFiltersActive = request()->filled('category')
+                || request()->filled('sub_category')
                 || request()->filled('purity')
                 || request()->filled('search')
                 || request('status') === 'sold';
@@ -424,6 +425,17 @@
                         @endforeach
                     </select>
                 </div>
+                @if(request()->filled('sub_category'))
+                    {{-- Set by a reorder alert link; kept while other filters change, removed with its ✕. --}}
+                    <div class="ui-filter-field-sm">
+                        <label class="items-filter-label">Sub-category</label>
+                        <input type="hidden" name="sub_category" value="{{ request('sub_category') }}">
+                        <a href="{{ request()->fullUrlWithoutQuery(['sub_category', 'page']) }}" class="items-filter-input items-filter-sub" title="Show every sub-category">
+                            <span>{{ request('sub_category') }}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </a>
+                    </div>
+                @endif
                 <div class="ui-filter-field-sm ui-filter-field--purity">
                     <label class="items-filter-label">Purity</label>
                     @if($isRetailer)
@@ -447,7 +459,7 @@
                               data-suggest="items" autocomplete="off">
                 </div>
                 <div class="ui-filter-actions">
-                    @if(request()->hasAny(['status', 'category', 'purity', 'search']))
+                    @if(request()->hasAny(['status', 'category', 'sub_category', 'purity', 'search']))
                         <a href="{{ route('inventory.items.index') }}" class="items-filter-clear">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             Clear

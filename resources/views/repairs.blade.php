@@ -1229,10 +1229,20 @@
     </div>
 
     <script>
+        // Turbo Drive evaluates this script again on every visit, in the same global
+        // scope as repairs/edit.blade.php's. So nothing at its top level may be `const`
+        // or `let` (a second declaration throws and the whole script is skipped), and
+        // each listener it puts on document or window replaces the last repairs page's.
+        function replaceRepairsListener(target, type, slot, handler, options) {
+            if (window[slot]) target.removeEventListener(type, window[slot], options);
+            window[slot] = handler;
+            target.addEventListener(type, handler, options);
+        }
+
         /* ─── Metal-aware purity (server-driven presets) ── */
         // Single source of truth: App\Models\Repair::PURITY_OPTIONS.
         window.REPAIR_PURITY_OPTIONS = @json(\App\Models\Repair::PURITY_OPTIONS);
-        const REPAIR_PURITY_SUBS = {
+        var REPAIR_PURITY_SUBS = {
             gold:     { '24':'99.9% pure', '22':'91.6% pure', '21':'87.5% pure', '18':'75.0% pure', '14':'58.3% pure' },
             silver:   { '999':'99.9% pure', '925':'Sterling', '900':'Coin silver' },
             platinum: { '999':'99.9% pure', '950':'95.0% pure', '900':'90.0% pure' },
@@ -1362,7 +1372,7 @@
         }
 
         // Close dropdowns on outside click
-        document.addEventListener('click', function(e) {
+        replaceRepairsListener(document, 'click', '__repairsPageClickHandler', function(e) {
             if (!e.target.closest('.r-dd-wrap')) closeAllDd();
         });
 
@@ -1374,9 +1384,10 @@
             }
             closeAllDd();
         }
+        // .content-body is drawn again on every visit, so its listener leaves with it.
         document.querySelector('.content-body')?.addEventListener('scroll', closeDropdownsOnScroll, { passive: true });
-        window.addEventListener('scroll', closeDropdownsOnScroll, { passive: true });
-        window.addEventListener('resize', () => {
+        replaceRepairsListener(window, 'scroll', '__repairsPageScrollHandler', closeDropdownsOnScroll, { passive: true });
+        replaceRepairsListener(window, 'resize', '__repairsPageResizeHandler', () => {
             document.querySelectorAll('.r-dd-panel.open').forEach(updateDdDirection);
         }, { passive: true });
 
@@ -1409,7 +1420,7 @@
             closeAllDd();
         }
 
-        let pendingQuickCustomerName = '';
+        var pendingQuickCustomerName = '';
 
         function updateQuickAddCustomerState(name) {
             const state = document.getElementById('custQuickAddState');
@@ -1616,15 +1627,16 @@
             document.getElementById('deliverForm').action = `/repairs/${repairId}/deliver`;
         }
 
+        // Escape still reaches this once the user has left for a page without the modal.
         function closeDeliverModal() {
-            document.getElementById('deliverModal').classList.add('hidden');
+            document.getElementById('deliverModal')?.classList.add('hidden');
         }
 
         document.getElementById('deliverModal')?.addEventListener('click', function(e) {
             if (e.target === this) closeDeliverModal();
         });
 
-        document.addEventListener('keydown', function(e) {
+        replaceRepairsListener(document, 'keydown', '__repairsPageEscapeHandler', function(e) {
             if (e.key === 'Escape') { closeAllDd(); closeDeliverModal(); }
         });
 

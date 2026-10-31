@@ -346,9 +346,8 @@
                 <div class="kv"><div class="k">Mobile</div><div class="v">: {{ \App\Support\Mobile::forDisplay($quickBill->customer_mobile) ?: (\App\Support\Mobile::forDisplay($quickBill->customer?->mobile) ?: '-') }}</div></div>
             </div>
             <div class="bill-col right">
-                <div class="kv"><div class="k">Bill No.</div><div class="v">: {{ $quickBill->bill_number }}</div></div>
+                <div class="kv"><div class="k">Bill No.</div><div class="v">: {{ $quickBill->bill_number }}@if($quickBill->status === \App\Models\QuickBill::STATUS_VOID) <span class="badge">VOID</span>@elseif($isOriginal) <span class="badge badge-original">ORIGINAL</span>@elseif($isEdited) <span class="badge badge-edited">EDITED</span>@endif</div></div>
                 <div class="kv"><div class="k">Date</div><div class="v">: {{ $billDate }}</div></div>
-                <div class="kv"><div class="k">Mode</div><div class="v">: {{ ucwords(str_replace('_', ' ', $quickBill->pricing_mode)) }}@if($quickBill->status === \App\Models\QuickBill::STATUS_VOID) <span class="badge">VOID</span>@elseif($isOriginal) <span class="badge badge-original">ORIGINAL</span>@elseif($isEdited) <span class="badge badge-edited">EDITED</span>@endif</div></div>
             </div>
         </div>
 

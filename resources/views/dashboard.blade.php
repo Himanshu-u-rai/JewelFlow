@@ -123,8 +123,8 @@
             align-items: center;
             gap: 8px;
             min-height: 40px;
-            min-width: 220px;
-            width: clamp(220px, 34vw, 420px);
+            min-width: 200px;
+            width: clamp(200px, 24vw, 320px);
             max-width: 100%;
             padding: 0 14px;
             border: 1px solid #dfddd5;
@@ -1351,29 +1351,6 @@
             color: #b42318;
         }
 
-        .dash-warnings {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border: 1px solid rgba(245, 158, 11, 0.45);
-            background: #fffbf2;
-            box-shadow: var(--dash-shadow);
-        }
-
-        .dash-warning-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border: 1px solid rgba(150, 90, 0, 0.24);
-            background: rgba(255, 255, 255, 0.55);
-            font-size: 12px;
-            color: #8a5300;
-            font-weight: 600;
-        }
-
         .dash-mini-grid {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1541,99 +1518,6 @@
             .dash-mini .dash-mini-value {
                 font-size: clamp(26px, 2vw, 32px);
             }
-        }
-
-        .dash-reorder-widget {
-            padding: 12px 14px;
-            border-color: rgba(217, 119, 6, 0.38);
-            background: #ffffff;
-        }
-
-        .dash-reorder-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .dash-reorder-title {
-            margin: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 16px;
-            color: #9a6200;
-            font-weight: 700;
-            letter-spacing: 0;
-        }
-
-        .dash-reorder-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 9999px;
-            border: 1px solid rgba(154, 98, 0, 0.28);
-            background: rgba(255, 255, 255, 0.66);
-            color: #8b5200;
-            font-size: 11px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .dash-reorder-link:hover {
-            background: #fff;
-        }
-
-        .dash-reorder-list {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .dash-reorder-item {
-            min-width: 0;
-            border-radius: 12px;
-            border: 1px solid rgba(154, 98, 0, 0.16);
-            background: rgba(255, 255, 255, 0.82);
-            padding: 8px 10px;
-        }
-
-        .dash-reorder-item-head {
-            font-size: 12px;
-            color: #7a4d02;
-            font-weight: 700;
-            line-height: 1.25;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .dash-reorder-item-meta {
-            margin-top: 4px;
-            font-size: 11px;
-            color: #8f5300;
-            font-weight: 600;
-        }
-
-        .dash-reorder-item-meta strong {
-            color: #b42318;
-            font-weight: 700;
-        }
-
-        .dash-reorder-more {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            border: 1px dashed rgba(154, 98, 0, 0.28);
-            background: rgba(255, 255, 255, 0.55);
-            font-size: 12px;
-            color: #8f5300;
-            font-weight: 700;
-            min-height: 58px;
-            padding: 8px;
         }
 
         .dash-main-grid {
@@ -2721,10 +2605,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .dash-reorder-list {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
             .dash-quick-list {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -2749,8 +2629,8 @@
             }
 
             .dash-command-desktop-trigger {
-                width: clamp(190px, 32vw, 300px);
-                min-width: 190px;
+                width: clamp(170px, 24vw, 240px);
+                min-width: 170px;
             }
 
             .dash-command-trigger-kbd {
@@ -3075,16 +2955,6 @@
                 box-shadow: none;
             }
 
-            .dash-warnings {
-                gap: 8px;
-                padding: 10px;
-            }
-
-            .dash-warning-chip {
-                font-size: 11px;
-                padding: 5px 8px;
-            }
-
             .dash-mini-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 10px;
@@ -3266,32 +3136,6 @@
 
             .dash-monthly-peaks {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .dash-reorder-widget {
-                padding: 10px 12px;
-            }
-
-            .dash-reorder-head {
-                margin-bottom: 8px;
-            }
-
-            .dash-reorder-title {
-                font-size: 14px;
-            }
-
-            .dash-reorder-link {
-                padding: 5px 8px;
-                font-size: 10px;
-            }
-
-            .dash-reorder-list {
-                grid-template-columns: 1fr;
-                gap: 7px;
-            }
-
-            .dash-reorder-item {
-                padding: 7px 8px;
             }
 
             .dash-quick-strip {
@@ -4432,22 +4276,7 @@
             @endif
         </div>
 
-        @php
-            $warnings = array_column(\App\Services\DashboardMetricsService::warnings(
-                compact('openRepairs', 'stock', 'overdueEmis') + ['isRetailer' => $isRetailer ?? false],
-                (int) $lowStockThreshold,
-            ), 'message');
-        @endphp
-
-        @if(count($warnings) > 0)
-            <div class="dash-warnings">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8f5300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                @foreach($warnings as $msg)
-                    <span class="dash-warning-chip">{{ $msg }}</span>
-                @endforeach
-            </div>
-        @endif
-
+        {{-- Warnings and low-stock rules live in the header bell (x-notice-bell). --}}
         <div class="dash-mini-grid">
             <section class="dash-block dash-mini dash-mini-dark dash-mini-kpi" aria-labelledby="dash-mini-label-invoices-today">
                 <div class="dash-mini-kpi-head">
@@ -4535,42 +4364,6 @@
                 </section>
             @endif
         </div>
-
-        @if(($reorderAlertCount ?? 0) > 0)
-            <div class="dash-block dash-reorder-widget">
-                <div class="dash-reorder-head">
-                    <h2 class="dash-reorder-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Low Stock / Reorder Alerts
-                    </h2>
-                    <a href="{{ route('reorder.index') }}" class="dash-reorder-link">
-                        <span>Open Alerts</span>
-                        <strong>{{ $reorderAlertCount }}</strong>
-                    </a>
-                </div>
-                <div class="dash-reorder-list">
-                    @foreach(($reorderAlerts ?? collect()) as $alert)
-                        <div class="dash-reorder-item">
-                            <div class="dash-reorder-item-head">
-                                {{ $alert['category'] }}
-                                @if(!empty($alert['sub_category']))
-                                    · {{ $alert['sub_category'] }}
-                                @endif
-                            </div>
-                            <div class="dash-reorder-item-meta">
-                                <strong>{{ $alert['current_stock'] }}</strong> in stock · min {{ $alert['threshold'] }}
-                                @if(!empty($alert['vendor_name']))
-                                    · {{ $alert['vendor_name'] }}
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                    @if(($reorderAlertCount ?? 0) > count($reorderAlerts ?? []))
-                        <span class="dash-reorder-more">+{{ ($reorderAlertCount ?? 0) - count($reorderAlerts ?? []) }} more alerts</span>
-                    @endif
-                </div>
-            </div>
-        @endif
 
         @can('reports.view')
         <div class="dash-main-grid">

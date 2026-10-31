@@ -41,4 +41,6 @@
             </div>
         @endif
     @endif
+
+    <x-notice-bell />
 </div>

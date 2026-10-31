@@ -258,11 +258,23 @@ let confirmDialogEl = null;
 let confirmDialogResolve = null;
 let confirmDialogFocusReturn = null;
 
+// The sidebar is turbo-permanent, so its Stock pill would keep the first page's
+// count; each page's header bell carries the current one.
+function syncReorderPill() {
+    const bell = document.querySelector('[data-notice-bell]');
+    const pill = document.querySelector('[data-reorder-pill]');
+    if (!bell || !pill) return;
+
+    const count = Number(bell.dataset.reorderCount || 0);
+    pill.textContent = String(count);
+    pill.hidden = count === 0;
+}
+
 function normalizeLegacyPageHeaders() {
     document.querySelectorAll('.content-header').forEach((header) => {
         if (header.dataset.legacyHeaderNormalized === 'true') return;
 
-        const directChildren = Array.from(header.children).filter((child) => !child.classList.contains('content-header-nav'));
+        const directChildren = Array.from(header.children).filter((child) => !child.classList.contains('content-header-nav') && !child.classList.contains('notice-bell'));
         if (!directChildren.length) return;
 
         const firstBlock = directChildren[0];
@@ -1665,6 +1677,7 @@ document.addEventListener('turbo:visit', () => {
 
 document.addEventListener('turbo:load', () => {
     normalizeLegacyPageHeaders();
+    syncReorderPill();
     normalizeButtonTypes();
     upgradeInlineClickTargetsA11y();
     normalizeConfirmForms();

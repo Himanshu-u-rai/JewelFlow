@@ -539,7 +539,6 @@
     <x-page-header class="ops-treatment-header">
         <div>
             <h1 class="page-title">Reorder Rules</h1>
-            <p class="page-subtitle">Track low-stock thresholds and keep preferred supplier links ready for restocking.</p>
         </div>
         <div class="page-actions">
             @include('partials.back-to-stock')

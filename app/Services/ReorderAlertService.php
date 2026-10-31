@@ -31,22 +31,33 @@ class ReorderAlertService
     }
 
     /**
-     * Cached alert count for a shop — used by the nav badge.
-     * TTL: 5 minutes. Stale-by-5-min is acceptable for a badge.
+     * Cached alerts as plain rows — read by the header bell and the nav badges,
+     * so they always agree. TTL: 5 minutes. Stale-by-5-min is acceptable for a badge.
      */
+    public function cachedAlerts(int $shopId): array
+    {
+        return Cache::remember("reorder_alert_rows_{$shopId}", 300, fn () => $this->getAlerts($shopId)
+            ->map(fn (array $alert): array => [
+                'category' => $alert['category'] ?: null,
+                'sub_category' => $alert['sub_category'] ?: null,
+                'current_stock' => (int) $alert['current_stock'],
+                'threshold' => (int) $alert['threshold'],
+                'vendor_name' => $alert['vendor']?->name,
+            ])
+            ->all());
+    }
+
     public function alertCount(int $shopId): int
     {
-        return (int) Cache::remember("reorder_alerts_{$shopId}", 300, fn () =>
-            $this->getAlerts($shopId)->count()
-        );
+        return count($this->cachedAlerts($shopId));
     }
 
     /**
-     * Clear the cached alert count for a shop.
+     * Clear the cached alerts for a shop.
      * Call after creating, updating, or deleting a reorder rule.
      */
     public function clearCache(int $shopId): void
     {
-        Cache::forget("reorder_alerts_{$shopId}");
+        Cache::forget("reorder_alert_rows_{$shopId}");
     }
 }

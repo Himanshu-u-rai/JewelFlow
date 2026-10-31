@@ -1136,7 +1136,6 @@
                     </div>
 
                     <div class="qb-summary-list">
-                        <div class="qb-summary-row"><span>Pricing mode</span><strong>{{ ucwords(str_replace('_', ' ', $quickBill->pricing_mode)) }}</strong></div>
                         <div class="qb-summary-row"><span>GST rate</span><strong>{{ number_format((float) $quickBill->gst_rate, 2) }}%</strong></div>
                         <div class="qb-summary-row"><span>Subtotal</span><strong>₹{{ number_format((float) $quickBill->subtotal, 2) }}</strong></div>
                         <div class="qb-summary-row"><span>Discount</span><strong>- ₹{{ number_format((float) $quickBill->discount_amount, 2) }}</strong></div>

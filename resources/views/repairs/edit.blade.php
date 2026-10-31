@@ -207,7 +207,7 @@
 
                 @php
                     $currentMetal  = old('metal_type', $repair->metal_type ?? 'gold');
-                    $currentPurity = old('purity', $repair->purity);
+                    $currentPurity = old('purity', $repair->purityValue());
                 @endphp
                 <div class="repairs-edit-field repairs-edit-field--metal">
                     <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>Metal</label>
@@ -364,9 +364,19 @@
     @endcan
 
     <script>
+        // Turbo Drive evaluates this script again on every visit, in the same global
+        // scope as repairs.blade.php's. So nothing at its top level may be `const` or
+        // `let` (a second declaration throws and the whole script is skipped), and each
+        // listener it puts on document or window replaces the last repairs page's.
+        function replaceRepairsListener(target, type, slot, handler, options) {
+            if (window[slot]) target.removeEventListener(type, window[slot], options);
+            window[slot] = handler;
+            target.addEventListener(type, handler, options);
+        }
+
         /* ─── Metal-aware purity (server-driven presets) ── */
         window.REPAIR_PURITY_OPTIONS = @json(\App\Models\Repair::PURITY_OPTIONS);
-        const REPAIR_PURITY_SUBS = {
+        var REPAIR_PURITY_SUBS = {
             gold:     { '24':'99.9% pure', '22':'91.6% pure', '21':'87.5% pure', '18':'75.0% pure', '14':'58.3% pure' },
             silver:   { '999':'99.9% pure', '925':'Sterling', '900':'Coin silver' },
             platinum: { '999':'99.9% pure', '950':'95.0% pure', '900':'90.0% pure' },
@@ -502,14 +512,15 @@
             }
         }
 
-        document.addEventListener('click', function(e) {
+        replaceRepairsListener(document, 'click', '__repairsPageClickHandler', function(e) {
             if (!e.target.closest('.r-dd-wrap')) closeAllDd();
         });
 
         // Close dropdowns when the page scrolls so panels don't drift into sticky header.
+        // .content-body is drawn again on every visit, so its listener leaves with it.
         document.querySelector('.content-body')?.addEventListener('scroll', closeAllDd, { passive: true });
-        window.addEventListener('scroll', closeAllDd, { passive: true });
-        window.addEventListener('resize', () => {
+        replaceRepairsListener(window, 'scroll', '__repairsPageScrollHandler', closeAllDd, { passive: true });
+        replaceRepairsListener(window, 'resize', '__repairsPageResizeHandler', () => {
             document.querySelectorAll('.r-dd-panel.open').forEach(updateDdDirection);
         }, { passive: true });
 
@@ -571,7 +582,7 @@
 
         function escHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAllDd(); });
+        replaceRepairsListener(document, 'keydown', '__repairsPageEscapeHandler', function(e) { if (e.key === 'Escape') closeAllDd(); });
 
         // Build the purity list for the repair's current metal, pre-selecting its
         // existing purity value (preset or custom).

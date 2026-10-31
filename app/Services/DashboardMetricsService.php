@@ -26,17 +26,7 @@ class DashboardMetricsService
             ->salesIn($todayPeriod)
             ->count();
 
-        // "Open" = any repair not yet delivered — the canonical definition used by
-        // RepairController::index(). The repair lifecycle is received → in_repair →
-        // ready → delivered; there is no 'pending' status (the old filter matched
-        // nothing, so the KPI always read 0).
-        $openRepairs = Repair::where('shop_id', $shopId)
-            ->whereNotIn('status', ['delivered'])
-            ->count();
-
-        $stock = Item::where('shop_id', $shopId)
-            ->where('status', 'in_stock')
-            ->count();
+        ['openRepairs' => $openRepairs, 'stock' => $stock, 'overdueEmis' => $overdueEmis] = self::noticeCounts($shopId, $isRetailer);
 
         $customerCount = DB::table('customers')
             ->where('shop_id', $shopId)
@@ -44,18 +34,12 @@ class DashboardMetricsService
 
         $todaysRevenue = 0;
         $todaysProfit = 0;
-        $overdueEmis = 0;
 
         if ($isRetailer) {
             $todaysInvoices = Invoice::where('shop_id', $shopId)
                 ->salesIn($todayPeriod)
                 ->get();
             $todaysRevenue = $todaysInvoices->sum('total');
-
-            $overdueEmis = InstallmentPlan::where('shop_id', $shopId)
-                ->active()
-                ->where('next_due_date', '<', now()->toDateString())
-                ->count();
 
             $todaysItemIds = $todaysInvoices->pluck('id');
             if ($todaysItemIds->isNotEmpty()) {
@@ -153,18 +137,6 @@ class DashboardMetricsService
 
         $allReorderAlerts = app(ReorderAlertService::class)->getAlerts($shopId);
         $reorderAlertCount = $allReorderAlerts->count();
-        $reorderAlerts = $allReorderAlerts
-            ->take(4)
-            ->map(function (array $alert): array {
-                return [
-                    'category' => $alert['category'] ?: 'All Categories',
-                    'sub_category' => $alert['sub_category'] ?: null,
-                    'current_stock' => (int) ($alert['current_stock'] ?? 0),
-                    'threshold' => (int) ($alert['threshold'] ?? 0),
-                    'vendor_name' => optional($alert['vendor'] ?? null)->name,
-                ];
-            })
-            ->values();
 
         return compact(
             'invoicesToday',
@@ -177,7 +149,6 @@ class DashboardMetricsService
             'recentRepairs',
             'topCustomers',
             'reorderAlertCount',
-            'reorderAlerts',
             'allReorderAlerts',
             'isRetailer',
             'todaysRevenue',
@@ -187,7 +158,27 @@ class DashboardMetricsService
     }
 
     /**
-     * The dashboard's warning chips: the website shows the messages, the app's
+     * The counts the warnings read. "Open" = any repair not yet delivered — the
+     * canonical definition used by RepairController::index(). The repair lifecycle
+     * is received → in_repair → ready → delivered; there is no 'pending' status
+     * (the old filter matched nothing, so the KPI always read 0).
+     *
+     * @return array{openRepairs: int, stock: int, overdueEmis: int, isRetailer: bool}
+     */
+    public static function noticeCounts(int $shopId, bool $isRetailer): array
+    {
+        return [
+            'openRepairs' => Repair::where('shop_id', $shopId)->whereNotIn('status', ['delivered'])->count(),
+            'stock' => Item::where('shop_id', $shopId)->where('status', 'in_stock')->count(),
+            'overdueEmis' => $isRetailer
+                ? InstallmentPlan::where('shop_id', $shopId)->active()->where('next_due_date', '<', now()->toDateString())->count()
+                : 0,
+            'isRetailer' => $isRetailer,
+        ];
+    }
+
+    /**
+     * The dashboard's warnings: the website shows the messages, the app's
      * Shop notices page lists them by key. One rule for both.
      *
      * @return list<array{key: string, count: int, message: string}>

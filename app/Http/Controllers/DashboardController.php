@@ -38,7 +38,6 @@ class DashboardController extends Controller
         }
         $data['topCustomers'] = $data['topCustomers'] ?? collect();
         $data['monthlyRevenueTrend'] = $data['monthlyRevenueTrend'] ?? collect();
-        $data['reorderAlerts'] = $data['reorderAlerts'] ?? collect();
         $data['reorderAlertCount'] = (int) ($data['reorderAlertCount'] ?? 0);
 
         return view('dashboard', $data);

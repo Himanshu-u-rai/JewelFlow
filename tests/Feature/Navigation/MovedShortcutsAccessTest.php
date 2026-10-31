@@ -193,10 +193,11 @@ class MovedShortcutsAccessTest extends TestCase
         $count = '~>\s*2\s*</span>~';
         $anyCount = '~>\s*\d+\s*</span>~';
 
-        // Nothing below its threshold: no count on the Stock page's link, none on the sidebar entry that leads there.
+        // Nothing below its threshold: no count on the Stock page's link, none shown on the sidebar entry that
+        // leads there (its pill stays in the page, hidden, so app.js can update it across Turbo visits).
         $this->assertDoesNotMatchRegularExpression($anyCount, $this->link(
             $this->stockNav($this->actingAs($owner)->get(route('inventory.items.index'))->assertOk()->getContent()), 'reorder.index'));
-        $this->assertDoesNotMatchRegularExpression($anyCount, $this->link(
+        $this->assertMatchesRegularExpression('~data-reorder-pill\s+hidden\s*>\s*0\s*</span>~', $this->link(
             $this->sidebarNav($this->actingAs($owner)->get(route('dashboard'))->assertOk()->getContent()), 'inventory.items.index'));
 
         // Two rules, nothing in stock for either: two alerts.

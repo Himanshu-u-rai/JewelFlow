@@ -2895,6 +2895,10 @@ body.app-shell {
     line-height: 1.2;
 }
 
+.sidebar-alert-pill[hidden] {
+    display: none;
+}
+
 .sidebar-button-reset {
     width: 100%;
     border: 0;
@@ -8650,6 +8654,20 @@ body.admin-shell {
     padding: 10px 12px;
     font-size: 14px;
     box-shadow: none;
+}
+
+.inventory-items-page .items-filter-sub {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.inventory-items-page .items-filter-sub svg {
+    flex-shrink: 0;
+    color: var(--jf-text-muted);
 }
 
 .inventory-items-page .items-filter-input:focus {
@@ -32095,4 +32113,281 @@ body.admin-shell :where(.admin-main, [role="dialog"], .modal, .drawer-panel)
 .sub-pay-body :where(label, small, .sub-pay-title, .sub-pay-amount-label, .sub-pay-detail-row dt) {
     color: var(--jf-type-label);
     font-weight: 600 !important;
+}
+
+/* ── Header notice bell (components/notice-bell) ─────────────────────────
+   Last child of every .content-header. Kept at the end of the file so it
+   wins the header's own nth-child rules at equal specificity. */
+.notice-bell {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+/* The block before the bell (the page's actions) sits beside it, on the right. */
+.content-header > :nth-child(n+3):has(+ .notice-bell) {
+    margin-left: auto;
+}
+
+/* Some page headers clip their contents; the open panel hangs below the header. */
+.content-header.content-header:has(> .notice-bell) {
+    overflow: visible !important;
+}
+
+.notice-bell-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--jf-border);
+    border-radius: var(--jf-radius);
+    background: var(--jf-surface);
+    color: var(--jf-text);
+    box-shadow: var(--jf-shadow-xs);
+    cursor: pointer;
+    transition: background var(--jf-duration) var(--jf-ease), border-color var(--jf-duration) var(--jf-ease), color var(--jf-duration) var(--jf-ease);
+}
+
+.notice-bell-toggle:hover,
+.notice-bell-toggle.is-open {
+    border-color: var(--jf-border-strong);
+    background: var(--jf-surface-soft);
+    color: var(--jf-ink);
+}
+
+.notice-bell-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--jf-focus-ring);
+}
+
+.notice-bell-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--jf-surface);
+    border-radius: var(--jf-radius-pill);
+    background: var(--jf-danger-strong);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.notice-bell-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 60;
+    width: 380px;
+    max-width: calc(100vw - 24px);
+    border: 1px solid var(--jf-border);
+    border-radius: var(--jf-radius-lg);
+    background: var(--jf-surface);
+    box-shadow: var(--jf-shadow-xl);
+    overflow: hidden;
+    text-align: left;
+}
+
+.notice-bell-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--jf-border-subtle);
+}
+
+.notice-bell-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--jf-ink);
+}
+
+.notice-bell-head-count {
+    padding: 1px 8px;
+    border-radius: var(--jf-radius-pill);
+    background: var(--jf-danger-bg);
+    color: var(--jf-danger-strong);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.notice-bell-body {
+    max-height: min(60vh, 440px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 6px;
+}
+
+.notice-bell-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 12px 16px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--jf-text-muted);
+}
+
+.notice-bell-section span {
+    color: var(--jf-text-subtle);
+}
+
+.notice-bell-list {
+    margin: 0;
+    padding: 0 6px;
+    list-style: none;
+}
+
+.notice-bell-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: var(--jf-radius);
+    color: inherit;
+    text-decoration: none;
+}
+
+a.notice-bell-item:hover {
+    background: var(--jf-surface-soft);
+}
+
+a.notice-bell-item:focus-visible {
+    outline: none;
+    box-shadow: var(--jf-focus-ring);
+}
+
+.notice-bell-icon {
+    flex: 0 0 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--jf-radius);
+}
+
+.notice-bell-icon--warn {
+    background: var(--jf-warn-bg);
+    color: var(--jf-warn-ink);
+}
+
+.notice-bell-icon--danger {
+    background: var(--jf-danger-bg);
+    color: var(--jf-danger-strong);
+}
+
+.notice-bell-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.notice-bell-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--jf-ink);
+    line-height: 1.3;
+}
+
+.notice-bell-item-meta {
+    font-size: 12px;
+    color: var(--jf-text-muted);
+    line-height: 1.3;
+}
+
+.notice-bell-chevron {
+    flex-shrink: 0;
+    color: var(--jf-text-subtle);
+}
+
+.notice-bell-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 26px 20px 22px;
+    text-align: center;
+}
+
+.notice-bell-empty-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--jf-radius-pill);
+    background: var(--jf-success-bg);
+    color: var(--jf-success);
+}
+
+.notice-bell-empty-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--jf-ink);
+}
+
+.notice-bell-empty-copy {
+    margin: 0;
+    font-size: 12px;
+    color: var(--jf-text-muted);
+}
+
+.notice-bell-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    border-top: 1px solid var(--jf-border-subtle);
+    background: var(--jf-surface-soft);
+    color: var(--jf-erp-primary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.notice-bell-foot:hover {
+    background: var(--jf-gold-soft);
+    color: var(--jf-erp-primary-hover);
+}
+
+@media (max-width: 768px) {
+    /* Phones: page headers lay out their rows in many ways (flex rows, grids,
+       wrapped actions), so the bell takes the top-right corner, opposite the
+       menu button, and the header keeps that corner free (some pages set
+       their header padding with !important). */
+    .content-header.content-header:has(> .notice-bell) {
+        padding-right: 58px !important;
+    }
+
+    .content-header > .notice-bell {
+        position: absolute;
+        top: 14px;
+        right: 12px;
+    }
+
+    .notice-bell-toggle {
+        width: 36px;
+        height: 36px;
+    }
+
+    .notice-bell-panel {
+        top: calc(100% + 8px);
+        width: min(380px, calc(100vw - 24px));
+        max-width: none;
+    }
 }
