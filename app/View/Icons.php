@@ -56,21 +56,46 @@ final class Icons
             if ($value === false || $value === null) {
                 continue;
             }
-            $html .= $value === true ? " {$key}" : " {$key}=\"" . e($value) . '"';
+            // Values arrive the way Blade's attribute bag carries them: a bound value (:title="$x") was already escaped
+            // once by Blade, a static value is HTML the author wrote. Escaping without double-encoding keeps both exactly
+            // once (an entity is left alone, a bare & < > or quote is escaped), so nothing is escaped twice or left raw.
+            $html .= $value === true ? " {$key}" : " {$key}=\"" . e((string) $value, false) . '"';
         }
 
         return "<svg{$html}>{$glyph}</svg>";
     }
 
+    /** Raw content Blade protects before it compiles component tags: verbatim blocks, @php blocks, {{-- comments --}}. */
+    private const PROTECTED_BLOCKS = '/((?<!@)@verbatim.*?@endverbatim|(?<!@)@php.*?@endphp|\{\{--.*?--\}\})/s';
+
     /**
      * Blade precompiler: rewrite self-closing <x-icon .../> tags whose attributes are all plain text into a direct
      * svg() call. Anything else (a :bound, @event or x-alpine attribute, a {{ }} or $variable value, a closing tag)
      * is left alone and handled by the component.
+     *
+     * This runs before Blade stores its raw blocks (BladeCompiler::compileString), so it skips the same three kinds of
+     * block itself (patterns copied from storeVerbatimBlocks, storePhpBlocks and compileComments): a tag shown inside
+     * @verbatim, kept as a string inside @php ... @endphp, or written in a Blade comment is left exactly as written.
      */
     public static function compileTags(string $template): string
     {
-        return preg_replace_callback('/<x-icon((?:\s+[a-z][\w.:-]*(?:="[^"{}$<>@]*")?)*)\s*\/>/i', function (array $m): string {
-            preg_match_all('/\s+([a-z][\w.:-]*)(?:="([^"]*)")?/i', $m[1], $pairs, PREG_SET_ORDER);
+        $parts = preg_split(self::PROTECTED_BLOCKS, $template, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $template; // pattern backtracking limit: leave the template to Blade's own component compiler
+        }
+        foreach ($parts as $i => $part) {
+            if ($i % 2 === 0) { // even entries are the text between protected blocks
+                $parts[$i] = self::rewrite($part);
+            }
+        }
+
+        return implode('', $parts);
+    }
+
+    private static function rewrite(string $text): string
+    {
+        return preg_replace_callback('/<x-icon((?:\s+[a-zA-Z][\w.:-]*(?:="[^"{}$<>@]*")?)*)\s*\/>/', function (array $m): string {
+            preg_match_all('/\s+([a-zA-Z][\w.:-]*)(?:="([^"]*)")?/', $m[1], $pairs, PREG_SET_ORDER);
             $attrs = [];
             foreach ($pairs as $p) {
                 if (str_starts_with($p[1], 'x-')) {
@@ -88,6 +113,6 @@ final class Icons
             unset($attrs['name'], $attrs['size'], $attrs['label']);
 
             return '{!! \\App\\View\\Icons::svg(' . var_export($name, true) . ', ' . var_export($attrs, true) . ', ' . var_export($size, true) . ', ' . var_export($label, true) . ') !!}';
-        }, $template);
+        }, $text) ?? $text;
     }
 }

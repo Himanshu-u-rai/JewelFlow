@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Icons;
 
+use App\View\Icons;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
@@ -132,6 +133,108 @@ class LucideIconComponentTest extends TestCase
             "<a>\n    {$svg}\n    <span>Edit</span>\n</a>",
             Blade::render("<a>\n    <x-icon name=\"pencil\" size=\"12\" class=\"w-4 h-4\" />\n    <span>Edit</span>\n</a>")
         );
+    }
+
+    /** The attribute value as a browser sees it (entities decoded), read from the real DOM. */
+    private function domAttr(string $html, string $name): ?string
+    {
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?><body>' . $html . '</body>');
+        libxml_clear_errors();
+        $svg = $dom->getElementsByTagName('svg')->item(0);
+
+        return $svg && $svg->hasAttribute($name) ? $svg->getAttribute($name) : null;
+    }
+
+    public function test_a_bound_attribute_is_escaped_exactly_once(): void
+    {
+        // Blade escapes bound attributes before they reach the attribute bag; svg() must not escape them again.
+        $title = 'A & B "quoted" <b>bold</b> it\'s';
+        $html = Blade::render('<x-icon name="search" :title="$title" />', ['title' => $title]);
+
+        $this->assertSame($title, $this->domAttr($html, 'title'), 'the DOM value must equal the original text');
+        $this->assertStringNotContainsString('&amp;amp;', $html);
+        $this->assertStringNotContainsString('&amp;quot;', $html);
+        $this->assertStringNotContainsString('<b>', $html, 'a raw angle bracket reached the markup');
+        $this->assertStringContainsString('A &amp; B &quot;quoted&quot; &lt;b&gt;bold&lt;/b&gt;', $html);
+
+        // Text that already looks like an entity is data when bound: it must print literally, escaped once.
+        $literal = Blade::render('<x-icon name="search" :title="$t" />', ['t' => 'Fish &amp; chips']);
+        $this->assertSame('Fish &amp; chips', $this->domAttr($literal, 'title'));
+    }
+
+    public function test_static_html_entities_are_kept_as_written_and_never_escaped_twice(): void
+    {
+        $static = '<x-icon name="search" title="A &amp; B &lt;tag&gt; &quot;q&quot;" />';
+        $viaComponent = '<x-icon :name="$n" title="A &amp; B &lt;tag&gt; &quot;q&quot;" />';
+
+        foreach (['compiled call' => Blade::render($static), 'component fallback' => Blade::render($viaComponent, ['n' => 'search'])] as $path => $html) {
+            $this->assertSame('A & B <tag> "q"', $this->domAttr($html, 'title'), "{$path}: DOM value");
+            $this->assertStringNotContainsString('&amp;amp;', $html, "{$path}: double-escaped");
+            $this->assertStringNotContainsString('<tag>', $html, "{$path}: raw angle brackets in the tag");
+        }
+
+        // A bare ampersand written in a static attribute is escaped once.
+        $bare = Blade::render('<x-icon name="search" title="Fish & chips" />');
+        $this->assertSame('Fish & chips', $this->domAttr($bare, 'title'));
+        $this->assertStringContainsString('Fish &amp; chips', $bare);
+    }
+
+    public function test_accessible_labels_are_escaped_once_on_both_rendering_paths(): void
+    {
+        $cases = [
+            'compiled, static label' => [Blade::render('<x-icon name="search" label="Search &amp; replace" />'), 'Search & replace'],
+            'fallback, static label' => [Blade::render('<x-icon :name="$n" label="Search &amp; replace" />', ['n' => 'search']), 'Search & replace'],
+            'fallback, bound label' => [Blade::render('<x-icon :name="$n" :label="$l" />', ['n' => 'search', 'l' => 'Fish & "chips" <3']), 'Fish & "chips" <3'],
+        ];
+        foreach ($cases as $path => [$html, $expected]) {
+            $this->assertSame($expected, $this->domAttr($html, 'aria-label'), "{$path}: aria-label");
+            $this->assertSame('img', $this->domAttr($html, 'role'), "{$path}: role");
+            $this->assertNull($this->domAttr($html, 'aria-hidden'), "{$path}: a named icon must not be hidden");
+            $this->assertStringNotContainsString('&amp;amp;', $html, "{$path}: double-escaped");
+            $this->assertStringNotContainsString('&amp;quot;', $html, "{$path}: double-escaped");
+        }
+    }
+
+    public function test_content_blade_protects_is_left_alone_by_the_compile_hook(): void
+    {
+        $tag = '<x-icon name="search" />';
+        $protected = [
+            'verbatim block' => "@verbatim\n{$tag}\n@endverbatim",
+            'tag as a string inside @php' => "@php \$example = '{$tag}'; @endphp",
+            'Blade comment' => "{{-- {$tag} --}}",
+            'html-escaped example' => '&lt;x-icon name="search" /&gt;',
+        ];
+        foreach ($protected as $label => $template) {
+            $this->assertSame($template, Icons::compileTags($template), "{$label}: the hook rewrote protected content");
+        }
+
+        // (Real views start with markup; plain Blade leaves a raw-block placeholder uncompiled when a template starts with one.)
+        $verbatim = Blade::render("<p>x</p>\n@verbatim\n{$tag}\n@endverbatim");
+        $this->assertStringContainsString($tag, $verbatim, 'verbatim must print the tag as written');
+        $this->assertStringNotContainsString('<svg', $verbatim);
+
+        $php = Blade::render("<p>x</p>\n@php \$example = '{$tag}'; @endphp\n{{ \$example }}");
+        $this->assertStringContainsString(e($tag), $php, 'the string kept in @php must print as text');
+        $this->assertStringNotContainsString('<svg', $php);
+
+        $this->assertStringNotContainsString('<svg', Blade::render("<p>x</p>{{-- {$tag} --}}"));
+        $this->assertSame('&lt;x-icon name="search" /&gt;', Blade::render('&lt;x-icon name="search" /&gt;'));
+    }
+
+    public function test_live_tags_beside_protected_content_still_compile_and_an_escaped_verbatim_is_not_a_block(): void
+    {
+        $tag = '<x-icon name="search" />';
+        $mixed = "<p>x</p>\n@verbatim {$tag} @endverbatim\n<x-icon name=\"pencil\" />\n@php \$s = '{$tag}'; @endphp\n<x-icon name=\"printer\" />";
+
+        $this->assertSame(2, substr_count(Blade::compileString($mixed), 'Icons::svg('), 'only the two live tags compile');
+        $out = Blade::render($mixed);
+        $this->assertSame(2, substr_count($out, '<svg'));
+        $this->assertStringContainsString($tag, $out, 'the verbatim copy is still printed as written');
+
+        // `@@verbatim` is the escape for a literal "@verbatim", not a raw block: the tag after it is live.
+        $this->assertStringContainsString('Icons::svg(', Icons::compileTags("@@verbatim {$tag} @endverbatim"));
     }
 
     public function test_an_unknown_icon_fails_loudly_while_developing_and_renders_nothing_in_production(): void
