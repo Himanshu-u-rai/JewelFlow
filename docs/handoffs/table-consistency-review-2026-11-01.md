@@ -1,5 +1,7 @@
 # Data-table consistency: notes for review
 
+> Covers the first two code commits only. The current state, later corrections and the takeover instructions are in [table-consistency-takeover-2026-11-01.md](table-consistency-takeover-2026-11-01.md); where the two differ, that file wins (e.g. the exclusion list below was reduced, Repairs is no longer pinned, row actions are icon-only).
+
 Branch `feature/table-consistency`, based on the integrated UI branch at `3df1baf7` (icons + companion web work). Two code commits, kept separately reviewable:
 
 | Commit | What |
