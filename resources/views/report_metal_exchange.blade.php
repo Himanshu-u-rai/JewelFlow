@@ -716,7 +716,7 @@
                              @click="expanded = (expanded === {{ $lot->id }}) ? null : {{ $lot->id }}">
                             <span style="flex:0 0 auto;display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:10px;{{ $isGoldLot ? 'background:#fffbeb;color:#b45309;border:1px solid rgba(217,119,6,.16)' : 'background:#f8fafc;color:#475569;border:1px solid rgba(100,116,139,.16)' }}">
                                 @if($isGoldLot)
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                    <x-icon name="star" size="16" />
                                 @else
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>
                                 @endif
@@ -743,10 +743,7 @@
                                     <span style="font-size:11px;color:#64748b;font-weight:700;">{{ $lot->payments->count() }} transaction{{ $lot->payments->count() == 1 ? '' : 's' }}</span>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                                 style="flex:0 0 auto;transition:transform .2s;" :style="expanded === {{ $lot->id }} ? 'transform:rotate(180deg)' : ''">
-                                <polyline points="6 9 12 15 18 9"/>
-                            </svg>
+                            <x-icon name="chevron-down" size="16" stroke="#94a3b8" stroke-width="2.5" style="flex:0 0 auto;transition:transform .2s;" x-bind:style="expanded === {{ $lot->id }} ? 'transform:rotate(180deg)' : ''" />
                         </div>
 
                         {{-- Expanded: transactions + dispatch --}}
@@ -975,7 +972,7 @@
                                         <td class="mxr-center">
                                             @if($isGold)
                                                 <span class="mxr-type-pill mxr-type-pill--gold">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                                    <x-icon name="star" size="10" />
                                                     Gold
                                                 </span>
                                             @else

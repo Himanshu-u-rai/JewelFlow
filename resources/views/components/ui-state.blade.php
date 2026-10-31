@@ -17,11 +17,11 @@
 <div {{ $attributes->merge(['class' => 'ui-state ' . $tone . ($compact ? ' ui-state-compact' : '')]) }}>
     <div class="ui-state-icon" aria-hidden="true">
         @if($type === 'loading')
-            <svg class="ui-state-spinner" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" opacity="0.25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
+            <x-icon name="loader-circle" class="ui-state-spinner" />
         @elseif($type === 'error')
             <x-icon name="circle-alert" />
         @else
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
+            <x-icon name="inbox" />
         @endif
     </div>
 

@@ -4,10 +4,7 @@
         <x-slot:actions>
             @can('cash.create')
                 <button type="button" class="cb-header-btn cb-drawer-header-btn" @click="drawerOpen = true; $nextTick(() => $refs.countedCash?.focus())" aria-label="Match your drawer">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"/>
-                        <path d="M7 10h10M8 14h2M14 14h2" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="wallet" size="14" />
                     <span class="cb-action-label">Match drawer</span>
                 </button>
                 <a href="{{ route('cashbook.create') }}" class="cb-add-btn" aria-label="Add entry">

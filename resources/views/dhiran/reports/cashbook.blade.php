@@ -67,7 +67,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 {{ $net >= 0 ? 'bg-blue-100' : 'bg-red-100' }} flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="{{ $net >= 0 ? 'text-blue-600' : 'text-red-600' }}"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        <x-icon name="chart-no-axes-column" size="18" :class="$net >= 0 ? 'text-blue-600' : 'text-red-600'" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Net</p>

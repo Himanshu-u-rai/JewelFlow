@@ -33,7 +33,7 @@
             <div class="bg-white shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="bg-green-100 text-green-700 p-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7"/></svg>
+                        <x-icon name="award" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Members with Points</p>

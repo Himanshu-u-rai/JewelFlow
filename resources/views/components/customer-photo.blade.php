@@ -6,10 +6,10 @@
     $id = 'customer-photo-'.$realm.'-'.($customer?->id ?? 'new').'-'.$mode;
     $url = $customer?->exists ? route(($realm === 'dhiran' ? 'dhiran.borrowers' : 'customers').'.photo.show', $customer) : '';
     $actions = [
-        'camera' => ['Take photo', 'M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5ZM16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z'],
-        'upload' => ['Upload photo', 'M12 16V3m-4 4 4-4 4 4M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4'],
-        'change' => ['Change photo', 'm16 3 5 5M4 20l4-1L21 6a2 2 0 0 0-3-3L5 16ZM13 20h8'],
-        'remove' => ['Remove photo', 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7'],
+        'camera' => ['Take photo', 'camera'],
+        'upload' => ['Upload photo', 'upload'],
+        'change' => ['Change photo', 'pencil'],
+        'remove' => ['Remove photo', 'trash-2'],
     ];
 @endphp
 <section class="customer-photo" data-customer-photo data-photo-mode="{{ $mode }}" data-photo-url="{{ $url }}" data-photo-version="{{ $photo?->version ?? '' }}" aria-label="Customer photo">
@@ -20,9 +20,9 @@
             <p>Private to your shop. Separate from KYC documents.</p>
             @if($canChange)
                 <div class="customer-photo__actions">
-                    @foreach($actions as $action => [$label, $path])
+                    @foreach($actions as $action => [$label, $icon])
                         <button type="button" class="btn btn-secondary customer-photo-icon {{ $action === 'remove' ? 'customer-photo__remove' : '' }}" data-photo-action="{{ $action }}" aria-label="{{ $label }}" title="{{ $label }}" @if(!$photo && in_array($action, ['change', 'remove'])) hidden @endif>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
+                            <x-icon :name="$icon" stroke-width="1.75" />
                         </button>
                     @endforeach
                 </div>
@@ -51,9 +51,9 @@
                 <video data-photo-video playsinline muted autoplay hidden aria-label="Live camera preview"></video>
                 <img data-photo-preview alt="Selected customer photo preview" hidden>
                 <div class="customer-photo-dialog__choices">
-                    @foreach(array_slice($actions, 0, 2, true) as $action => [$label, $path])
+                    @foreach(array_slice($actions, 0, 2, true) as $action => [$label, $icon])
                         <button type="button" class="btn btn-secondary customer-photo-icon" data-photo-action="{{ $action }}" aria-label="{{ $label }}" title="{{ $label }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
+                            <x-icon :name="$icon" stroke-width="1.75" />
                         </button>
                     @endforeach
                     <button type="button" class="btn btn-secondary customer-photo-icon customer-photo-switch" data-photo-action="switch" aria-label="Switch to front camera" title="Switch to front camera" hidden>

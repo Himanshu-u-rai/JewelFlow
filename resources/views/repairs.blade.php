@@ -1003,14 +1003,14 @@
                                         <td class="px-3 py-4 whitespace-nowrap">
                                             @php
                                                 $statusBadge = match($r->status) {
-                                                    'delivered'  => ['repairs-chip--success', 'M5 13l4 4L19 7', 'Delivered'],
-                                                    'ready'      => ['repairs-chip--info',    'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 'Ready'],
-                                                    'in_repair'  => ['repairs-chip--gold',    'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', 'In Repair'],
-                                                    default      => ['',                    'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4', 'Received'],
+                                                    'delivered'  => ['repairs-chip--success', 'check', 'Delivered'],
+                                                    'ready'      => ['repairs-chip--info',    'circle-check', 'Ready'],
+                                                    'in_repair'  => ['repairs-chip--gold',    'settings', 'In Repair'],
+                                                    default      => ['',                    'inbox', 'Received'],
                                                 };
                                             @endphp
                                             <span class="repairs-chip {{ $statusBadge[0] }}">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $statusBadge[1] }}"/></svg>{{ $statusBadge[2] }}
+                                                <x-icon :name="$statusBadge[1]" class="w-3 h-3 mr-1" />{{ $statusBadge[2] }}
                                             </span>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap text-sm text-center">
@@ -1187,7 +1187,7 @@
                         </label>
 
                         <div id="gstRateWrap" class="hidden">
-                            <label for="gst_rate" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>GST Rate (%)</label>
+                            <label for="gst_rate" class="r-label"><x-icon name="percent" />GST Rate (%)</label>
                             <input type="number" step="0.01" min="0" max="100" name="gst_rate" id="gst_rate"
                                    value="{{ auth()->user()->shop->gst_rate ?? 3 }}"
                                    class="r-input">

@@ -331,9 +331,7 @@
         @endif
     </div>
     <div class="shop-chip">
-        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v6a4 4 0 01-4 4H6a4 4 0 01-4-4V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5z" clip-rule="evenodd"/>
-        </svg>
+        <x-icon name="briefcase" size="12" />
         {{ ucfirst($shopType) }} Edition
     </div>
 </header>

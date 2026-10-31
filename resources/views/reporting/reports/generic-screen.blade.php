@@ -95,9 +95,7 @@
         <x-slot:actions>
             @if ($isCashFlowReport)
                 <a href="{{ route('cashbook.index') }}" class="cash-report-header-btn jf-header-action--neutral" aria-label="Open Cash Ledger">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M4 5h16M4 12h16M4 19h10" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <x-icon name="list" size="14" />
                     <span class="cash-report-action-label">Cash Ledger</span>
                 </a>
                 <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="cash-report-export-btn jf-header-action--gold" aria-label="Export Cash Flow">
@@ -149,7 +147,7 @@
                             @elseif ($kpi['icon'] === 'balance')
                                 <x-icon name="list-filter" size="17" />
                             @else
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="wallet" size="17" />
                             @endif
                         </span>
                         <span class="cash-report-kpi-copy">
@@ -388,9 +386,9 @@
                     <div class="closing-report-kpi closing-report-kpi--{{ $kpi['tone'] }}">
                         <span class="closing-report-kpi-icon" aria-hidden="true">
                             @if ($kpi['icon'] === 'sales')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 3h10v18H7zM10 7h4M10 11h4M10 15h2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="receipt" size="17" />
                             @elseif ($kpi['icon'] === 'tax')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 5 5 19M7.5 8.5h.01M16.5 15.5h.01" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="percent" size="17" />
                             @elseif ($kpi['icon'] === 'in')
                                 <x-icon name="arrow-up" size="17" />
                             @else
@@ -468,13 +466,13 @@
                     <div class="gst-report-kpi gst-report-kpi--{{ $kpi['tone'] }}">
                         <span class="gst-report-kpi-icon" aria-hidden="true">
                             @if ($kpi['icon'] === 'sales')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 3h10v18H7zM10 7h4M10 11h4M10 15h2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="receipt" size="17" />
                             @elseif ($kpi['icon'] === 'taxable')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14M7 9h10M9 13h6M11 17h2" stroke-width="2" stroke-linecap="round"/></svg>
+                                <x-icon name="list-filter" size="17" />
                             @elseif ($kpi['icon'] === 'gst')
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 5 5 19M7.5 8.5h.01M16.5 15.5h.01" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="percent" size="17" />
                             @else
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7h8M8 12h8M8 17h5M5 3h14v18H5z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <x-icon name="file-text" size="17" />
                             @endif
                         </span>
                         <span class="gst-report-kpi-copy">

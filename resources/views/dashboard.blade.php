@@ -200,7 +200,7 @@
             height: 16px;
             display: block;
             flex-shrink: 0;
-            fill: #727b89;
+            fill: none; /* the Lucide search icon is an outline: its colour comes from stroke=currentColor */
             color: #727b89;
         }
 
@@ -3500,14 +3500,14 @@
     >
         <x-slot:actions>
             <button type="button" class="dash-command-desktop-trigger" data-dash-command-trigger aria-label="Search pages and records">
-                <svg class="dash-command-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.74 13.31l4.22 4.21a.75.75 0 1 0 1.06-1.06l-4.2-4.22A7.5 7.5 0 0 0 10.5 3Zm-6 7.5a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg>
+                <x-icon name="search" class="dash-command-icon" />
                 <span class="dash-command-trigger-copy dash-command-trigger-copy-full">Search pages, lists, records, reports...</span>
                 <span class="dash-command-trigger-copy dash-command-trigger-copy-short">Search</span>
                 <span class="dash-command-trigger-kbd">Ctrl+K</span>
             </button>
 
             <button type="button" class="dash-command-mobile-trigger" data-dash-command-trigger aria-label="Open search">
-                <svg class="dash-command-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.74 13.31l4.22 4.21a.75.75 0 1 0 1.06-1.06l-4.2-4.22A7.5 7.5 0 0 0 10.5 3Zm-6 7.5a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg>
+                <x-icon name="search" class="dash-command-icon" />
             </button>
 
             <a href="/pos" class="btn btn-primary btn-sm">
@@ -3901,7 +3901,7 @@
             <div class="dash-mobile-fab-shell" x-bind:class="{ 'is-open': mobileFabOpen }" @click.outside="mobileFabOpen = false">
                 <nav class="dash-mobile-fab-nav" aria-label="Quick mobile actions">
                     <a href="/report/closing" class="dash-mobile-fab-action" @click="mobileFabOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17v-2m3 2v-4m3 4v-6"/><path d="M3 3h18v18H3z"/></svg>
+                        <x-icon name="chart-column" size="16" stroke="#14213d" />
                         <span>Daily Closing</span>
                     </a>
                     <a href="/repairs" class="dash-mobile-fab-action" @click="mobileFabOpen = false">
@@ -4152,7 +4152,7 @@
                         <span class="dash-quick-copy"><strong>Add Inventory</strong><small>Create stock item</small></span>
                     </a>
                     <a href="/report/closing" class="dash-quick-item dash-quick-closing">
-                        <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17v-2m3 2v-4m3 4v-6"/><path d="M3 3h18v18H3z"/></svg></span>
+                        <span class="dash-quick-icon"><x-icon name="chart-column" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Close Day</strong><small>Run day-end report</small></span>
                     </a>
                 </div>
@@ -4637,12 +4637,7 @@
                 <div class="dash-list-head">
                     <div class="dash-list-title">
                         <span class="dash-list-title-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m14.7 6.3 3 3"></path>
-                                <path d="M5 19 19 5"></path>
-                                <path d="m3 21 3-3"></path>
-                                <path d="m15 9 3 3"></path>
-                            </svg>
+                            <x-icon name="wrench" />
                         </span>
                         <h2>Recent Repairs</h2>
                     </div>
@@ -4672,12 +4667,7 @@
                                 <div class="dash-row">
                                     <div class="dash-row-main">
                                         <span class="dash-row-icon repair" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="m14.7 6.3 3 3"></path>
-                                                <path d="M5 19 19 5"></path>
-                                                <path d="m3 21 3-3"></path>
-                                                <path d="m15 9 3 3"></path>
-                                            </svg>
+                                            <x-icon name="wrench" />
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ \Illuminate\Support\Str::limit($rep->item_description, 36) }}</div>

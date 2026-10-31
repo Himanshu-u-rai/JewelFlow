@@ -47,10 +47,10 @@
 
         // One category icon per section (path-only SVGs, safe in the body loop).
         $sectionIcons = [
-            'Tax & Compliance (for your CA)' => '<path d="M9 7h6M9 11h6M9 15h4M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>',
-            'Receivables & Liability'        => '<path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H18v3"/><path d="M3 6.5V18a2 2 0 0 0 2 2h15v-5"/><path d="M17 12.5a2 2 0 0 0 0 4h4v-4z"/>',
-            'Ledger & Reconciliation'        => '<path d="M6.5 3H19a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/>',
-            'Operational'                    => '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
+            'Tax & Compliance (for your CA)' => 'file-text',
+            'Receivables & Liability'        => 'wallet',
+            'Ledger & Reconciliation'        => 'book-open',
+            'Operational'                    => 'activity',
         ];
 
         // What this shop sees, worked out once. The shortcuts at the top and the
@@ -76,7 +76,7 @@
                 @foreach($visibleSections as $heading => $cards)
                     <a href="#{{ $sectionId($heading) }}" class="rh-jump-link" aria-label="{{ $heading }}: {{ $cards->count() }} {{ Str::plural('report', $cards->count()) }}">
                         <span class="rh-jump-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{!! $sectionIcons[$heading] ?? '<circle cx="12" cy="12" r="9"/>' !!}</svg>
+                            <x-icon :name="$sectionIcons[$heading] ?? 'circle'" stroke-width="1.7" />
                         </span>
                         {{-- The section's own title, without its aside: "Tax & Compliance (for your CA)". --}}
                         <span class="rh-jump-label">{{ trim(Str::before($heading, '(')) }}</span>
@@ -90,7 +90,7 @@
                 <section class="rh-section" id="{{ $sectionId($heading) }}" aria-labelledby="{{ $sectionId($heading) }}-title">
                     <div class="rh-section-head">
                         <span class="rh-section-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{!! $sectionIcons[$heading] ?? '<circle cx="12" cy="12" r="9"/>' !!}</svg>
+                            <x-icon :name="$sectionIcons[$heading] ?? 'circle'" stroke-width="1.7" />
                         </span>
                         <h2 class="rh-section-title" id="{{ $sectionId($heading) }}-title">{{ $heading }}</h2>
                         <span class="rh-section-count">{{ $visible->count() }} {{ Str::plural('report', $visible->count()) }}</span>

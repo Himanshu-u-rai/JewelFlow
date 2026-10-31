@@ -187,7 +187,7 @@
                 {{-- KYC --}}
                 <div class="dset-section">
                     <div class="dset-section-title">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
+                        <x-icon name="id-card" />
                         KYC Requirements
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

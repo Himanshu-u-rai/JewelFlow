@@ -1660,7 +1660,7 @@
     <div class="scan-modal-box">
         <div class="scan-modal-header">
             <div class="scan-modal-title">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3m0 4h4m-4 0v-4m-4 4h-3"/></svg>
+                <x-icon name="qr-code" size="18" />
                 Scan via Mobile
             </div>
             <button class="scan-modal-close" onclick="hideScanModal()">&times;</button>

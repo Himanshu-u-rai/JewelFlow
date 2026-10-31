@@ -450,7 +450,7 @@
                             {{ __('Karigars') }}
                         </a>
                         <a href="{{ route('job-orders.index') }}" class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H3v10h6V11z"/><path d="M21 3h-6v18h6V3z"/><path d="M15 11H9V3h6v8z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="clipboard-list" size="16" /></span>
                             {{ __('Job Orders') }}
                         </a>
                         <a href="{{ route('karigar-invoices.index') }}" class="nav-link {{ request()->routeIs('karigar-invoices.*') ? 'active' : '' }}">

@@ -90,9 +90,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/>
-                        </svg>
+                        <x-icon name="receipt-text" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Purchases</p>
@@ -105,9 +103,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m0 0H6a2 2 0 01-2-2V6a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2h-2m-8 0l1 8h6l1-8"/>
-                        </svg>
+                        <x-icon name="mail" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">With Email</p>
@@ -420,7 +416,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-green-100 text-green-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7"/></svg>
+                            <x-icon name="award" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Members with Points</p>
@@ -572,7 +568,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 0v8m0 5v-1"/></svg>
+                            <x-icon name="coins" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Outstanding</p>

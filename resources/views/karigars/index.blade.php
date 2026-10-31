@@ -48,7 +48,7 @@
             </section>
             <section class="karigars-kpi-card jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 6h4"/><path d="M5 8h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <x-icon name="clipboard-list" />
                 </span>
                 <div>
                     <span class="karigars-kpi-label">Job Orders</span>
@@ -57,7 +57,7 @@
             </section>
             <section class="karigars-kpi-card jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15h6"/></svg>
+                    <x-icon name="file-text" />
                 </span>
                 <div>
                     <span class="karigars-kpi-label">Invoices</span>

@@ -35,9 +35,7 @@
         <section class="installments-index-kpi-grid" aria-label="Installment summary">
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--gold">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.5 3A2.5 2.5 0 0 0 3 5.5v9A2.5 2.5 0 0 0 5.5 17h9a2.5 2.5 0 0 0 2.5-2.5v-9A2.5 2.5 0 0 0 14.5 3h-9Zm1.75 4.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75Zm0 3.5a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
-                    </svg>
+                    <x-icon name="calendar-check" />
                 </span>
                 <div>
                     <span>Active Plans</span>
@@ -47,9 +45,7 @@
 
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--danger">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 3.75a.75.75 0 0 0-1.5 0v3.44c0 .2.08.39.22.53l2.25 2.25a.75.75 0 1 0 1.06-1.06l-2.03-2.03V6.25Z" clip-rule="evenodd" />
-                    </svg>
+                    <x-icon name="clock" />
                 </span>
                 <div>
                     <span>Overdue</span>
@@ -59,9 +55,7 @@
 
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--slate">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.5 2.5A2.5 2.5 0 0 0 3 5v10a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 17 15V5a2.5 2.5 0 0 0-2.5-2.5h-9Zm.75 6a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5H7a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5H7a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
-                    </svg>
+                    <x-icon name="calendar-clock" />
                 </span>
                 <div>
                     <span>Due Next 7 Days</span>
@@ -71,9 +65,7 @@
 
             <article class="installments-index-kpi-card installments-index-kpi-card--money">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--success">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm3.03 6.47a.75.75 0 0 0-1.06-1.06L9.25 10.62l-1.22-1.22a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.25-3.25Z" clip-rule="evenodd" />
-                    </svg>
+                    <x-icon name="circle-check" />
                 </span>
                 <div>
                     <span>Collected This Month</span>
@@ -91,9 +83,7 @@
 
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--danger">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5.5Zm0 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" clip-rule="evenodd" />
-                    </svg>
+                    <x-icon name="circle-alert" />
                 </span>
                 <div>
                     <span>Defaulted</span>

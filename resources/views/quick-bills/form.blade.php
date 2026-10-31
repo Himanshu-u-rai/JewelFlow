@@ -657,9 +657,7 @@
                                     <div class="text-sm font-semibold text-slate-900">Notes & Terms</div>
                                     <div class="mt-1 text-xs text-slate-500">Keep collapsed when the bill does not need extra text.</div>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
-                                </svg>
+                                <x-icon name="chevron-down" class="h-5 w-5 text-slate-500 transition-transform" x-bind:class="open ? 'rotate-180' : ''" />
                             </button>
 
                             <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
@@ -854,9 +852,7 @@
                                                         <div class="text-sm font-medium text-slate-900">Additional charges</div>
                                                         <div class="mt-0.5 text-[11px] text-slate-500">Hallmark, Rhodium, etc.</div>
                                                     </div>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 transition-transform" :class="item._chargesOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
-                                                    </svg>
+                                                    <x-icon name="chevron-down" class="h-4 w-4 text-slate-400 transition-transform" x-bind:class="item._chargesOpen ? 'rotate-180' : ''" stroke-width="2.5" />
                                                 </button>
 
                                                 <div x-show="item._chargesOpen" x-transition x-cloak class="border-t border-slate-100 p-4">

@@ -53,6 +53,13 @@ Mapping decisions that are the owner's: Pencil = Edit (`pencil`, `pencil-line`, 
 6. **Stroke weights** keep the original per-icon values (1.5 to 2.5, mostly 2 to 2.25), so no icon changed weight; unifying them is a one-line follow-up if wanted.
 7. `super-admin/layout.blade.php` (gear and lock-with-key in its header) was changed too, but that legacy layout does not render today (`/admin/2fa/manage` returns 500 on the pristine build as well), so it has no page to test.
 
+## Final pass on the integrated branch (`integration/ui-all`)
+The icon branch was merged with the companion web branch (header notice bell and the other UI work that was uncommitted there) and the remaining icons were finished on the combined tree. **This supersedes the exception list above**: 972 `<x-icon>` tags, 149 glyphs, **46 inline SVGs left out of about 1,020**.
+- The one-off outline drawings and the solid ones (except the groups listed below) were mapped by their labels to the closest Lucide icon (KPI cards, settings tabs, plans page, vendor/member/returns pages, receipts, status marks), solid ones becoming outline icons in the same colour.
+- Icons with bound attributes or lookup tables are drawn through the component too: repair status chips, report-section icons, customer-photo actions, notice-bell rows, login modal icons, eye/eye-off toggles (`x-show`), rotating chevrons (`x-bind:class`), spinners (`animate-spin` kept). The dashboard search trigger needed one CSS line (`fill: none` instead of a fill colour) because the page filled the old solid icon.
+- Left on purpose (46): 26 built inside JavaScript strings (dashboard command palette, POS, retailer forms); brand marks (WhatsApp, Instagram, Facebook); logos, illustrations and print barcodes; the two **Gem** marks (deferred); the metal-exchange gold/silver dots; the seals on printed Dhiran/EMI receipts and certificates; one returns KPI mark; the audit-trail glyph whose path comes from a model.
+- `view:cache` does not catch a parse error in the generated PHP, so the check is now `view:cache` followed by `php -l` on every compiled view (383 files, 0 errors).
+
 ## Verification (local, against a pristine baseline worktree at d7dcfb03)
 - **Tests.** Icons: glyphs equal the official SVGs, table and fixtures list the same icons, every `<x-icon name>` in a view is a known glyph, escaping and protected-block regressions, admin emoji replacements. One existing test (`DhiranOnboardingTest`) treated `<x-icon>` as app chrome inside a printable document; it now ignores `<x-icon>`.
 - **Views.** All 330 Blade views compile with `view:cache`; every `<x-icon>` tag in the views compiles to the direct call.

@@ -203,22 +203,20 @@
     <h1>Choose Your Plan</h1>
     <p>Simple pricing, powerful features. No hidden fees.</p>
     <div class="shop-badge">
-      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v6a4 4 0 01-4 4H6a4 4 0 01-4-4V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5z" clip-rule="evenodd"/>
-      </svg>
+      <x-icon name="briefcase" size="12" />
       {{ ucfirst($shopType) }} Plan
     </div>
 
     @if(session('error'))
       <div role="alert" style="margin:18px auto 0;max-width:560px;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:12px;padding:13px 18px;font-size:13.5px;line-height:1.5;text-align:left;display:flex;gap:11px;align-items:flex-start;">
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="#d97706" style="flex-shrink:0;margin-top:1px;"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        <x-icon name="triangle-alert" size="18" style="flex-shrink:0;margin-top:1px;" stroke="#d97706" />
         <span>{{ session('error') }}</span>
       </div>
     @endif
 
     @if(!empty($upgradingFromTrial))
       <div style="margin:18px auto 0;max-width:560px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:12px;padding:13px 18px;font-size:13.5px;line-height:1.5;text-align:left;display:flex;gap:11px;align-items:flex-start;">
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="#059669" style="flex-shrink:0;margin-top:1px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        <x-icon name="circle-check" size="18" style="flex-shrink:0;margin-top:1px;" stroke="#059669" />
         <span>
           <strong>Your free trial keeps running{{ $trialEndsAt ? ' until ' . \Carbon\Carbon::parse($trialEndsAt)->format('d M, Y') : '' }}.</strong>
           Subscribe now and your paid plan starts right after your trial ends — you don’t lose any of your free days.
@@ -355,7 +353,7 @@
               <ul class="md-pane-features">
                 @foreach($featuresOf($opt['plan']) as $feat)
                   <li>
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <x-icon name="check" />
                     <span>{{ $feat }}</span>
                   </li>
                 @endforeach
@@ -381,7 +379,7 @@
                   <div><strong>Full {{ $trialLabel }}, free</strong><span>No card, no charge upfront.</span></div>
                 </div>
                 <div class="md-trial-point">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2m-2 4h.01M5 12a7 7 0 1114 0 7 7 0 01-14 0z"/></svg>
+                  <x-icon name="circle-help" stroke-width="1.8" />
                   <div><strong>Everything unlocked</strong><span>The same tools as the full plan, nothing held back.</span></div>
                 </div>
                 <div class="md-trial-point">
@@ -389,7 +387,7 @@
                   <div><strong>Your data stays safe</strong><span>When the trial ends your data is kept, never deleted — pick a plan whenever you are ready and carry on where you left off.</span></div>
                 </div>
                 <div class="md-trial-point">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 12h14M5 16h10"/></svg>
+                  <x-icon name="repeat" stroke-width="1.8" />
                   <div><strong>Pick a plan anytime</strong><span>Switch to Yearly or Monthly whenever you are ready.</span></div>
                 </div>
               </div>
@@ -402,15 +400,15 @@
       <div class="footer-info">
         <div class="trust-badges">
           <span class="trust-badge">
-            <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1l3.09 1.545a12.028 12.028 0 013.91 3.91V10a8 8 0 01-14 5.292V6.455A12.028 12.028 0 016.91 2.545L10 1z" clip-rule="evenodd"/></svg>
+            <x-icon name="shield-check" />
             Secure via Razorpay
           </span>
           <span class="trust-badge">
-            <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            <x-icon name="check" />
             GST included
           </span>
           <span class="trust-badge">
-            <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 11.707a1 1 0 001.414 1.414l2-2A1 1 0 0011 10.586V7z" clip-rule="evenodd"/></svg>
+            <x-icon name="gift" />
             Cancel anytime
           </span>
         </div>

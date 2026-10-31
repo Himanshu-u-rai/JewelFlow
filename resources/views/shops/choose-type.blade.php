@@ -308,7 +308,7 @@
                 <label class="type-card card-retailer {{ $selected->contains('retailer') ? 'selected' : '' }}">
                     <input type="radio" name="edition" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>
                     <div class="check-dot">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <x-icon name="check" stroke="#fff" stroke-width="2.5" />
                     </div>
                     <div class="type-icon">
                         <x-icon name="shopping-bag" size="22" stroke="#fbbf24" stroke-width="1.8" />
@@ -328,7 +328,7 @@
                 <label class="type-card card-manufacturer {{ $selected->contains('manufacturer') ? 'selected' : '' }}">
                     <input type="radio" name="edition" value="manufacturer" {{ $selected->contains('manufacturer') ? 'checked' : '' }}>
                     <div class="check-dot">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <x-icon name="check" stroke="#fff" stroke-width="2.5" />
                     </div>
                     <div class="type-icon">
                         <x-icon name="wrench" size="22" stroke="#d97706" stroke-width="1.8" />

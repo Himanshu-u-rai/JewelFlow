@@ -2326,7 +2326,7 @@
                 <span class="nav-icon"><x-icon name="square-percent" size="16" /></span> {{ __('GST & Tax') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'subscription']) }}" class="nav-item {{ $activeTab === 'subscription' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg></span> {{ __('Plan & Billing') }}
+                <span class="nav-icon"><x-icon name="receipt" size="16" /></span> {{ __('Plan & Billing') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="credit-card" size="16" /></span> {{ __('Payment Methods') }}
@@ -4551,10 +4551,7 @@
                                                             :data-cycle="cycle"
                                                             data-default-label="{{ __('Buy & activate now') }}">
                                                         <span class="buy-service-btn-label">{{ __('Buy & activate now') }}</span>
-                                                        <svg class="buy-service-btn-spinner hidden h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                                        </svg>
+                                                        <x-icon name="loader-circle" class="buy-service-btn-spinner hidden h-4 w-4 animate-spin" />
                                                     </button>
 
                                                     <p class="buy-service-error hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2" role="alert" aria-live="polite"></p>
@@ -4734,7 +4731,7 @@
                          We can't redirect mid-tab-render, so we render a calm panel. --}}
                     <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
                         <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg>
+                            <x-icon name="receipt" size="22" stroke-width="1.75" />
                         </div>
                         <p class="text-sm font-semibold text-slate-700">{{ __('No active plan yet') }}</p>
                         <p class="mt-1 text-sm text-slate-500 max-w-md mx-auto">{{ __('Choose a plan to start using JewelFlows. Your bills will show up here after payment.') }}</p>
@@ -4944,9 +4941,7 @@
                                                 @endif
 
                                                 <li class="sub-feature-item">
-                                                    <svg class="sub-dot" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                    </svg>
+                                                    <x-icon name="check" class="sub-dot" />
                                                     <span>
                                                         @if(is_bool($value) && $value)
                                                             {{ $featureLabels[$feature] ?? ucfirst(str_replace('_', ' ', (string) $feature)) }}

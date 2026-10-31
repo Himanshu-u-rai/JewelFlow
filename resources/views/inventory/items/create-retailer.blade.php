@@ -348,9 +348,7 @@
                     <section class="item-create-panel item-create-panel--supplier">
                         <div class="item-create-panel-head">
                             <span class="item-create-panel-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11a4 4 0 1 0-8 0M3 21a7 7 0 0 1 18 0M18 8h3m-1.5-1.5v3"/>
-                                </svg>
+                                <x-icon name="user-plus" size="18" stroke-width="2.2" />
                             </span>
                             <div>
                                 <p class="item-create-kicker">Source Details</p>

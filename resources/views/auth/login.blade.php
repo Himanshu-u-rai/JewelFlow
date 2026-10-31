@@ -42,13 +42,9 @@
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 rounded-full {{ $modalAccent['bg'] }} flex items-center justify-center">
                         @if ($modalType === 'not_registered')
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 {{ $modalAccent['text'] }}">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                            </svg>
+                            <x-icon name="circle-alert" :class="'w-6 h-6 ' . $modalAccent['text']" />
                         @else
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 {{ $modalAccent['text'] }}">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                            </svg>
+                            <x-icon name="triangle-alert" :class="'w-6 h-6 ' . $modalAccent['text']" />
                         @endif
                     </div>
                     <div class="flex-1">

@@ -1580,9 +1580,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-4m-6 4l3 3m0 0l3-3m-3 3V14"/>
-                            </svg>
+                            <x-icon name="undo-2" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Total returns</p>
@@ -1719,10 +1717,7 @@
 
                 @if($returnOrders->isEmpty())
                     <div class="ri-empty">
-                        <svg class="ri-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M9 14H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-4m-6 4l3 3m0 0l3-3m-3 3V14"/>
-                        </svg>
+                        <x-icon name="undo-2" class="ri-empty-icon" />
                         <h2 class="ri-empty-title">No returns yet</h2>
                         <p class="ri-empty-copy">When a customer return is processed, the credit note appears here. Open the original invoice and use Cancel via Reversal to start a return.</p>
                     </div>

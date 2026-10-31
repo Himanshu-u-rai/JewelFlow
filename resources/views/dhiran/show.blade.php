@@ -33,7 +33,7 @@
                 @endcan
                 @can('dhiran.release')
                 <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('releaseItemModal').showModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4"/></svg>
+                    <x-icon name="package-open" size="14" class="mr-1" />
                     Release Item
                 </button>
                 @endcan
@@ -119,7 +119,7 @@
                     @if($evidence['item_photo'] ?? false)
                         <x-icon name="check" size="16" stroke-width="2.5" />
                     @else
-                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                        <x-icon name="circle" size="16" />
                     @endif
                     Pledged item photo
                 </li>
@@ -127,7 +127,7 @@
                     @if($evidence['id_proof'] ?? false)
                         <x-icon name="check" size="16" stroke-width="2.5" />
                     @else
-                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                        <x-icon name="circle" size="16" />
                     @endif
                     Borrower ID proof
                 </li>

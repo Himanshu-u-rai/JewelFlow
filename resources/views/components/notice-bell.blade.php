@@ -3,11 +3,11 @@
     $noticeUser = auth()->user();
     $notices = $noticeUser?->shop_id ? \App\Services\ShopNoticeService::forUser($noticeUser) : null;
     $noticeIcons = [
-        'repair_backlog' => ['warn', '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'],
-        'low_stock' => ['warn', '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>'],
-        'overdue_emis' => ['danger', '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'],
-        'reorder' => ['warn', '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'],
-        'other' => ['warn', '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'],
+        'repair_backlog' => ['warn', 'wrench'],
+        'low_stock' => ['warn', 'archive'],
+        'overdue_emis' => ['danger', 'circle-alert'],
+        'reorder' => ['warn', 'package'],
+        'other' => ['warn', 'triangle-alert'],
     ];
 @endphp
 
@@ -61,7 +61,7 @@
                             <li>
                                 <{{ $tag }} class="notice-bell-item" @if($item['href']) href="{{ $item['href'] }}" @endif>
                                     <span class="notice-bell-icon notice-bell-icon--{{ $item['icon'][0] }}" aria-hidden="true">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $item['icon'][1] !!}</svg>
+                                        <x-icon :name="$item['icon'][1]" size="16" />
                                     </span>
                                     <span class="notice-bell-text">
                                         <span class="notice-bell-item-title">{{ $item['title'] }}</span>
