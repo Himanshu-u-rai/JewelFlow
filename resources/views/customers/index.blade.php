@@ -223,7 +223,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="flex flex-wrap items-center justify-center gap-2">
+                                    <div class="jf-table-actions jf-table-actions--center">
                                         <a href="{{ route('customers.show', $customer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                                             <x-icon name="eye" size="12" />
                                             View

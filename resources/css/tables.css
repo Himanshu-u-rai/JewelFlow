@@ -126,11 +126,16 @@
 }
 .jf-table-actions--center { justify-content: center; }
 .jf-table-actions > form { display: inline-flex; margin: 0; }
+/* every control in an action cell has the same height (a 44px button next to 30px links looked broken); touch screens get 44px for all */
+.jf-table-actions > a,
+.jf-table-actions > button,
+.jf-table-actions > form > button,
+.jf-table-actions > form > select { min-height: 36px; }
 @media (pointer: coarse) {
     .jf-table-actions > a,
     .jf-table-actions > button,
     .jf-table-actions > form > button,
-    .jf-table-actions > form > select { min-height: 40px; }
+    .jf-table-actions > form > select { min-height: 44px; }
 }
 
 /* .jf-table--sticky-end: a wide table keeps its last (action) column pinned at the right edge of the scroll container, so the
