@@ -30,7 +30,7 @@
 
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm jf-table">
                     <thead class="bg-gray-50"><tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date/Time</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
@@ -50,7 +50,7 @@
                                 <td class="px-4 py-2 text-right {{ $e->direction === 'credit' ? 'text-emerald-600' : 'text-rose-600' }}">{{ $e->direction === 'credit' ? '' : '−' }}₹{{ number_format($e->amount, 2) }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400 text-sm">No accounting events this period.</td></tr>
+                            <tr><td colspan="5" class="jf-table-empty">No accounting events this period.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

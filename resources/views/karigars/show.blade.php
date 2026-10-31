@@ -139,7 +139,7 @@
             @if($karigar->jobOrders->isEmpty())
                 <div class="py-10 text-center text-gray-400 text-sm">No job orders yet.</div>
             @else
-                <table class="w-full text-sm">
+                <table class="w-full text-sm jf-table">
                     <thead>
                         <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                             <th class="px-4 py-2 text-left font-semibold">Job #</th>
@@ -169,7 +169,7 @@
             @if($karigar->invoices->isEmpty())
                 <div class="py-10 text-center text-gray-400 text-sm">No invoices recorded.</div>
             @else
-                <table class="w-full text-sm">
+                <table class="w-full text-sm jf-table">
                     <thead>
                         <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                             <th class="px-4 py-2 text-left font-semibold">Invoice #</th>

@@ -326,7 +326,7 @@
                 </div>
             </div>
             <div class="hidden md:block overflow-x-auto">
-                <table class="purchase-line-table w-full text-sm">
+                <table class="purchase-line-table w-full text-sm jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">#</th>
@@ -402,7 +402,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="11" class="px-4 py-8 text-center text-slate-400 text-sm">No line items recorded.</td>
+                            <td colspan="11" class="jf-table-empty">No line items recorded.</td>
                         </tr>
                         @endforelse
                     </tbody>

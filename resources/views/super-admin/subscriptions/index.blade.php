@@ -66,7 +66,7 @@
 
     <div class="admin-panel admin-table-panel">
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm admin-table">
+            <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="py-3.5 pl-4 pr-3 text-left w-16 sm:pl-6">#</th>
@@ -75,7 +75,7 @@
                         <th class="px-3 py-3.5 text-left">Status</th>
                         <th class="px-3 py-3.5 text-left">Started</th>
                         <th class="px-3 py-3.5 text-left">Expires/Renews</th>
-                        <th class="px-3 py-3.5 text-left">Days Left</th>
+                        <th class="px-3 py-3.5 text-right">Days Left</th>
                         <th class="py-3.5 pl-3 pr-4 text-right sm:pr-6">Actions</th>
                     </tr>
                 </thead>
@@ -105,7 +105,7 @@
                             </td>
                             <td class="whitespace-nowrap px-3 py-4 text-slate-300">{{ $sub->starts_at->format('d M, Y') }}</td>
                             <td class="whitespace-nowrap px-3 py-4 text-slate-300">{{ $sub->ends_at->format('d M, Y') }}</td>
-                            <td class="whitespace-nowrap px-3 py-4 font-semibold {{ $sub->days_remaining < 0 ? 'text-rose-300' : 'text-slate-200' }}">
+                            <td class="whitespace-nowrap px-3 py-4 font-semibold text-right {{ $sub->days_remaining < 0 ? 'text-rose-300' : 'text-slate-200' }}">
                                 {{ $sub->days_remaining }}
                             </td>
                             <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right sm:pr-6">
@@ -118,7 +118,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-12 text-slate-400">No subscriptions found matching criteria.</td>
+                            <td colspan="8" class="jf-table-empty">No subscriptions found matching criteria.</td>
                         </tr>
                     @endforelse
                 </tbody>

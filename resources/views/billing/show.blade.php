@@ -52,7 +52,7 @@
             </div>
 
             {{-- Items table --}}
-            <table class="w-full text-sm mb-6">
+            <table class="w-full text-sm mb-6 jf-table">
                 <thead>
                     <tr class="border-b-2 border-gray-200">
                         <th class="pb-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>

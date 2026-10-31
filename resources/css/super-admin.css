@@ -537,25 +537,10 @@ body.admin-shell .admin-badge[class*="bg-slate-"] {
 .admin-table {
     background: var(--sa-surface);
 }
-
-.admin-table thead,
 .admin-table thead[class*="bg-"],
 body.admin-shell thead[class*="bg-slate"] {
     background: var(--sa-surface-muted);
     color: var(--sa-text-muted);
-}
-
-.admin-table thead th {
-    color: var(--sa-text-muted);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-}
-
-.admin-table tbody td {
-    color: var(--sa-text-secondary);
-    font-size: 13px;
-    border-color: var(--sa-border);
 }
 
 .admin-table-index {
@@ -574,14 +559,8 @@ body.admin-shell thead[class*="bg-slate"] {
     font-weight: 500;
     padding: 12px 16px;
 }
-
-.admin-table tbody tr,
 body.admin-shell tr[class*="border-slate"] {
     border-color: var(--sa-border);
-}
-
-.admin-table tbody tr:hover {
-    background: var(--sa-hover);
 }
 
 .admin-inline-link {
@@ -915,37 +894,14 @@ body.admin-shell .admin-kpi__description,
 body.admin-shell .admin-panel p,
 body.admin-shell .admin-panel label {
     color: var(--sa-text-muted) !important;
-}
-
-body.admin-shell .admin-table,
-body.admin-shell .admin-table tbody {
+}body.admin-shell .admin-table {
     background: var(--sa-surface) !important;
 }
-
-body.admin-shell .admin-table thead,
 body.admin-shell .admin-table thead[class*="bg-"],
 body.admin-shell .admin-table tfoot,
 body.admin-shell .admin-table tfoot[class*="bg-"] {
     background: var(--sa-surface-muted) !important;
     color: var(--sa-text-muted) !important;
-}
-
-body.admin-shell .admin-table tbody tr {
-    background: var(--sa-surface) !important;
-    border-color: var(--sa-border) !important;
-}
-
-body.admin-shell .admin-table tbody tr:hover {
-    background: var(--sa-hover) !important;
-}
-
-body.admin-shell .admin-table th {
-    color: var(--sa-text-muted) !important;
-}
-
-body.admin-shell .admin-table td {
-    color: var(--sa-text-secondary) !important;
-    border-color: var(--sa-border) !important;
 }
 
 body.admin-shell .admin-setting-card {

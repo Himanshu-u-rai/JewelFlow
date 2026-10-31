@@ -295,7 +295,7 @@
                     </div>
                     <div class="p-4 sm:p-6 min-w-0 max-w-full">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+                        <table class="w-full text-sm jf-table">
                             <thead><tr class="text-left">@foreach($headers as $h)<th>{{ $h }}</th>@endforeach</tr></thead>
                             <tbody class="divide-y divide-slate-100">
                             @foreach($samples as $sample)

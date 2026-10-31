@@ -158,7 +158,7 @@
                 <h3 class="text-lg font-semibold text-gray-900">Payment History</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -190,7 +190,7 @@
                 <h3 class="text-lg font-semibold text-gray-900">Redemption History</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -226,7 +226,7 @@
                 <h3 class="text-lg font-semibold text-gray-900">Scheme Ledger (Recent)</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>

@@ -218,7 +218,7 @@
 
                         @if($enrollments->count())
                             <div class="schemes-table-shell">
-                                <table class="schemes-enrollments-table">
+                                <table class="schemes-enrollments-table jf-table">
                                     <thead>
                                         <tr>
                                             <th>Customer</th>

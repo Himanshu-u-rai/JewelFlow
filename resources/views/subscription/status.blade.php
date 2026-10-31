@@ -906,7 +906,7 @@
 
                 <div class="sub-billing-card">
                     <div class="sub-billing-table-wrap">
-                        <table class="sub-billing-table">
+                        <table class="sub-billing-table jf-table">
                             <thead>
                                 <tr>
                                     <th class="text-left">Invoice #</th>

@@ -648,7 +648,7 @@
                     </div>
                 </div>
                 <div class="pending-stock-table-wrap">
-                    <table class="pending-stock-table">
+                    <table class="pending-stock-table jf-table">
                         <thead>
                             <tr>
                                 <th class="text-left">Barcode</th>
@@ -656,7 +656,7 @@
                                 <th class="text-left">Karigar / Job order</th>
                                 <th class="text-right">Gross wt</th>
                                 <th class="text-right">Purity</th>
-                                <th class="text-right">Actions</th>
+                                <th class="text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -684,7 +684,7 @@
                                     <td class="text-right">
                                         <span class="pending-stock-strong">{{ $item->purity }}{{ $item->metal_type === 'silver' ? '/1000' : 'K' }}</span>
                                     </td>
-                                    <td>
+                                    <td class="text-left">
                                         <div class="pending-stock-row-actions">
                                             <a href="{{ route('inventory.items.edit', $item) }}" class="pending-stock-action pending-stock-action-primary">Release</a>
                                             <form action="{{ route('inventory.items.destroy', $item) }}"

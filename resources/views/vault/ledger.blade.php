@@ -250,7 +250,7 @@
             </div>
 
             <div class="vault-ledger-desktop overflow-x-auto">
-                <table class="vault-ledger-table w-full text-sm">
+                <table class="vault-ledger-table w-full text-sm jf-table">
                     <thead>
                         <tr>
                             <th class="px-4 py-3 text-left">When</th>
@@ -275,7 +275,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-10 text-center text-sm text-slate-400">No movements match your filter.</td>
+                                <td colspan="7" class="jf-table-empty">No movements match your filter.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -89,7 +89,7 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[760px]">
+                    <table class="w-full min-w-[760px] jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan #</th>
@@ -137,7 +137,7 @@
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Recent payments</h2></div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[760px]">
+                <table class="w-full min-w-[760px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</th>
@@ -179,7 +179,7 @@
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Pledged items</h2></div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[820px]">
+                <table class="w-full min-w-[820px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Item</th>

@@ -37,7 +37,7 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100"><h2 class="font-semibold text-gray-900">B2B — Registered Buyers</h2></div>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm jf-table">
                     <thead class="bg-gray-50"><tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -72,9 +72,9 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100"><h2 class="font-semibold text-gray-900">B2CS — Consumers (rate-wise)</h2></div>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm jf-table">
                     <thead class="bg-gray-50"><tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rate</th>
+                        <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase text-right">Rate</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Place of Supply</th>
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Taxable</th>
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">CGST</th>
@@ -85,7 +85,7 @@
                     <tbody class="divide-y divide-gray-100">
                         @forelse($data->b2cs as $r)
                             <tr>
-                                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs">{{ number_format($r->gst_rate, 2) }}%</span></td>
+                                <td class="px-4 py-2 text-right"><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs">{{ number_format($r->gst_rate, 2) }}%</span></td>
                                 <td class="px-4 py-2 text-gray-600">{{ $r->place_of_supply_state_code ?? '—' }}</td>
                                 <td class="px-4 py-2 text-right">₹{{ number_format($r->taxable, 2) }}</td>
                                 <td class="px-4 py-2 text-right text-emerald-600">₹{{ number_format($r->cgst, 2) }}</td>
@@ -105,7 +105,7 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100"><h2 class="font-semibold text-gray-900">HSN Summary</h2></div>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm jf-table">
                     <thead class="bg-gray-50"><tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">HSN</th>
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Taxable</th>

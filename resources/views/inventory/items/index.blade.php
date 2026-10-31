@@ -481,7 +481,7 @@
                 </p>
             </div>
             <div class="overflow-x-auto ui-table-shell items-stock-table-shell">
-                <table class="w-full items-data-table items-data-table--stock">
+                <table class="w-full items-data-table items-data-table--stock jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item</th>
@@ -863,7 +863,7 @@
                     <span class="items-analytics-card-pill">{{ number_format($slowItems->count()) }} flagged</span>
                 </div>
                 <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--slow">
-                    <table class="w-full items-data-table items-data-table--slow">
+                    <table class="w-full items-data-table items-data-table--slow jf-table">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
@@ -1057,7 +1057,7 @@
                         </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
-                        <table class="w-full items-data-table items-data-table--sellers">
+                        <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -1075,7 +1075,7 @@
                                     <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 text-sm">No sales data in this period.</td></tr>
+                                <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -1116,7 +1116,7 @@
                         </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
-                        <table class="w-full items-data-table items-data-table--sellers">
+                        <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -1136,7 +1136,7 @@
                                     <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-sm">No data.</td></tr>
+                                <tr><td colspan="5" class="jf-table-empty">No data.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -1177,7 +1177,7 @@
                         </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
-                        <table class="w-full items-data-table items-data-table--sellers">
+                        <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -1195,7 +1195,7 @@
                                     <td class="px-6 py-3 text-sm text-right">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 text-sm">No sales data in this period.</td></tr>
+                                <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

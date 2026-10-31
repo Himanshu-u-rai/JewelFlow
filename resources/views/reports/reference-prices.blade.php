@@ -32,7 +32,7 @@
                     </div>
                 @else
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
+                        <table class="min-w-full text-sm jf-table">
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-5 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">When noted</th>

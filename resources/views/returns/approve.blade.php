@@ -126,7 +126,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
                             <tr>
                                 <th class="px-4 py-3 text-left">Item / Barcode</th>

@@ -426,7 +426,7 @@
             @if($document->lines->isNotEmpty())
                 <div class="hidden md:block" data-historical-document-register="lines-desktop">
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-full text-sm">
+                    <table class="w-full min-w-full text-sm jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
                             <th class="w-16 px-4 py-3 text-center">No.</th><th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 sm:px-6">SKU</th><th class="px-4 py-3 sm:px-6">HSN</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Line total</th>
                         </tr></thead>

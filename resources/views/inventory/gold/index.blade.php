@@ -35,7 +35,7 @@
             </div>
             
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lot #</th>
@@ -100,7 +100,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center">
+                                <td colspan="8" class="jf-table-empty">
                                     <div class="text-gray-400 mb-4">
                                         <x-icon name="package" class="w-16 h-16 mx-auto" />
                                     </div>

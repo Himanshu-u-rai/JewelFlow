@@ -76,7 +76,7 @@
                 <p class="text-sm text-slate-500 mt-1">Customers with dates due in the next {{ (int) $daysAhead }} days</p>
             </div>
             <div class="overflow-x-auto ui-table-shell customers-table-shell">
-                <table class="w-full customers-data-table customers-data-table--occasions">
+                <table class="w-full customers-data-table customers-data-table--occasions jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -108,7 +108,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="5" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No occasions in this window</p>
                                     <p class="text-sm">Increase the reminder window or add occasion dates on customer profiles.</p>
                                 </td>

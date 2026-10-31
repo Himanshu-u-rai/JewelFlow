@@ -880,7 +880,7 @@
                 </div>
             @else
                 <div class="jo-table-wrap">
-                    <table class="jo-table w-full text-sm">
+                    <table class="jo-table w-full text-sm jf-table">
                         <thead>
                             <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                                 <th class="px-4 py-3 text-left font-semibold">Job #</th>

@@ -150,12 +150,12 @@
 
                     @if($payments->count())
                         <div class="installments-show-table-wrap">
-                            <table class="installments-show-table">
+                            <table class="installments-show-table jf-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Date</th>
-                                        <th class="is-right">Amount</th>
+                                        <th class="is-right text-right">Amount</th>
                                         <th>Method</th>
                                         <th>Notes</th>
                                         <th class="is-center">Receipt</th>
@@ -166,7 +166,7 @@
                                         <tr>
                                             <td>{{ $payments->count() - $i }}</td>
                                             <td>{{ $payment->payment_date->format('d M Y') }}</td>
-                                            <td class="is-right">₹{{ number_format($payment->amount, 2) }}</td>
+                                            <td class="is-right text-right">₹{{ number_format($payment->amount, 2) }}</td>
                                             <td>
                                                 {{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}
                                                 @if($payment->paymentMethod)

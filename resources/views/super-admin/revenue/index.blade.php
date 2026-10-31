@@ -42,7 +42,7 @@
                 <h3 class="font-semibold text-white">MRR Trend (Last 6 Months)</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm admin-table">
+                <table class="w-full text-sm admin-table jf-table">
                     <thead class="bg-slate-800/80 text-slate-300">
                         <tr>
                             <th class="px-4 py-2 text-left w-16">#</th>
@@ -106,7 +106,7 @@
             <h3 class="font-semibold text-white">Plan Breakdown</h3>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -125,7 +125,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-slate-500">No active subscriptions found.</td>
+                            <td colspan="4" class="jf-table-empty">No active subscriptions found.</td>
                         </tr>
                     @endforelse
                 </tbody>

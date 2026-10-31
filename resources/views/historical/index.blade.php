@@ -66,7 +66,7 @@
 
             <div class="hidden md:block" data-historical-register="batches-desktop">
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[720px]">
+                    <table class="w-full min-w-[720px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="w-16 px-4 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">No.</th>
@@ -97,7 +97,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-10 text-center text-slate-500 text-sm">
+                                <td colspan="7" class="jf-table-empty">
                                     No file imports yet. Import a CSV or XLSX file to begin.
                                 </td>
                             </tr>
@@ -151,7 +151,7 @@
 
             <div class="hidden md:block" data-historical-register="documents-desktop">
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[960px]">
+                    <table class="w-full min-w-[960px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="w-16 px-4 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">No.</th>
@@ -161,7 +161,7 @@
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">FY</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Customer</th>
                             <th class="px-6 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600">Total</th>
-                            <th class="px-6 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">Tax</th>
+                            <th class="px-6 py-3 text-xs font-semibold normal-case tracking-normal text-slate-600 text-right">Tax</th>
                             <th class="px-6 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">Status</th>
                             <th class="px-6 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">Action</th>
                         </tr>
@@ -185,7 +185,7 @@
                                 <td class="px-6 py-4 text-sm text-right tabular-nums font-medium text-slate-800 whitespace-nowrap">
                                     ₹{{ number_format((float) $document->grand_total, 2) }}
                                 </td>
-                                <td class="px-6 py-4 text-center">
+                                <td class="px-6 py-4 text-right">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap {{ $taxColors[$document->tax_completeness] ?? 'bg-slate-100 text-slate-700' }}">
                                         {{ $taxLabels[$document->tax_completeness] ?? ucfirst(str_replace('_', ' ', $document->tax_completeness)) }}
                                     </span>
@@ -201,7 +201,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-6 py-10 text-center text-slate-500 text-sm">
+                                <td colspan="10" class="jf-table-empty">
                                     No historical documents yet.
                                 </td>
                             </tr>

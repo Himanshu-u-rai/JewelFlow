@@ -846,7 +846,7 @@
                 <span class="import-history-subtitle">Latest first</span>
             </div>
             <div class="imports-history-table overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Reference</th>

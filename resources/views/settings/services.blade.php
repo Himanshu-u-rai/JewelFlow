@@ -125,7 +125,7 @@
         <section class="mb-8">
             <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Pending Removal Requests') }}</h2>
             <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm jf-table">
                     <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                         <tr>
                             <th class="px-4 py-2 text-left">Service</th>
@@ -157,7 +157,7 @@
         <section>
             <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Recent Activity') }}</h2>
             <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm jf-table">
                     <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                         <tr>
                             <th class="px-4 py-2 text-left">Request</th>

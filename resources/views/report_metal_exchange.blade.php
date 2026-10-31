@@ -787,17 +787,17 @@
                             {{-- Transaction drill-down --}}
                             @if($lot->payments->isNotEmpty())
                             <div style="overflow-x:auto;">
-                                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                                <table style="width:100%;border-collapse:collapse;font-size:12px;" class="jf-table">
                                     <thead>
                                         <tr style="background:#f8fafc;">
                                             <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Date</th>
                                             <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Invoice</th>
                                             <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Customer</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Gross (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;" class="text-right">Gross (g)</th>
                                             <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Purity</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Fine (g)</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Rate ₹/g</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Value</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;" class="text-right">Fine (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;" class="text-right">Rate ₹/g</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;" class="text-right">Value</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -813,11 +813,11 @@
                                                 @endif
                                             </td>
                                             <td style="padding:8px 12px;color:#0f172a;font-weight:700;">{{ $pmtCustomer?->name ?? '—' }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">{{ number_format($pmt->metal_gross_weight, 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;" class="text-right">{{ number_format($pmt->metal_gross_weight, 3) }}</td>
                                             <td style="padding:8px 12px;text-align:right;">{{ $pmt->metal_purity }}{{ $pmt->mode === 'old_gold' ? 'K' : '‰' }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($pmt->metal_fine_weight, 3) }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">₹{{ number_format($pmt->metal_rate_per_gram, 0) }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;">₹{{ number_format($pmt->amount, 0) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}" class="text-right">{{ number_format($pmt->metal_fine_weight, 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;" class="text-right">₹{{ number_format($pmt->metal_rate_per_gram, 0) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;" class="text-right">₹{{ number_format($pmt->amount, 0) }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
@@ -930,19 +930,19 @@
                     </div>
                 @else
                     <div class="mxr-table-shell">
-                        <table class="mxr-table">
+                        <table class="mxr-table jf-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
                                     <th>Invoice</th>
                                     <th>Customer</th>
                                     <th class="mxr-center">Type</th>
-                                    <th class="mxr-right">Gross Wt (g)</th>
+                                    <th class="mxr-right text-right">Gross Wt (g)</th>
                                     <th class="mxr-right">Purity</th>
                                     <th class="mxr-right">Test Loss %</th>
-                                    <th class="mxr-right">Fine Wt (g)</th>
-                                    <th class="mxr-right">Rate / g</th>
-                                    <th class="mxr-right">Value</th>
+                                    <th class="mxr-right text-right">Fine Wt (g)</th>
+                                    <th class="mxr-right text-right">Rate / g</th>
+                                    <th class="mxr-right text-right">Value</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -982,12 +982,12 @@
                                                 </span>
                                             @endif
                                         </td>
-                                        <td class="mxr-right mxr-tabular">{{ number_format($row->metal_gross_weight, 3) }}</td>
+                                        <td class="mxr-right mxr-tabular text-right">{{ number_format($row->metal_gross_weight, 3) }}</td>
                                         <td class="mxr-right">{{ $row->metal_purity }}{{ $isGold ? 'K' : '‰' }}</td>
                                         <td class="mxr-right">{{ $row->metal_test_loss ?? 0 }}%</td>
-                                        <td class="mxr-right mxr-tabular mxr-fine {{ $isGold ? 'is-gold' : 'is-silver' }}">{{ number_format($row->metal_fine_weight, 3) }}</td>
-                                        <td class="mxr-right mxr-tabular">{{ number_format($row->metal_rate_per_gram, 2) }}</td>
-                                        <td class="mxr-right mxr-tabular mxr-value">₹{{ number_format($row->amount, 2) }}</td>
+                                        <td class="mxr-right mxr-tabular mxr-fine {{ $isGold ? 'is-gold' : 'is-silver' }} text-right">{{ number_format($row->metal_fine_weight, 3) }}</td>
+                                        <td class="mxr-right mxr-tabular text-right">{{ number_format($row->metal_rate_per_gram, 2) }}</td>
+                                        <td class="mxr-right mxr-tabular mxr-value text-right">₹{{ number_format($row->amount, 2) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

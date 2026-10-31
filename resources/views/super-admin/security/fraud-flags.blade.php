@@ -44,7 +44,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead>
                     <tr class="border-b border-slate-800 text-left">
                         <th class="px-4 py-3 text-xs font-medium text-slate-400 w-16">#</th>
@@ -142,7 +142,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">
+                            <td colspan="7" class="jf-table-empty">
                                 No fraud flags found matching the current filters.
                             </td>
                         </tr>

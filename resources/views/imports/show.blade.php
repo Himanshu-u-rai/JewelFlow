@@ -640,7 +640,7 @@
                     </div>
                 </div>
                 <div class="import-show-table-wrap">
-                    <table class="import-show-table">
+                    <table class="import-show-table jf-table">
                         <thead>
                             <tr>
                                 <th>Lot</th>
@@ -681,7 +681,7 @@
             </div>
 
             <div class="import-show-table-wrap">
-                <table class="import-show-table">
+                <table class="import-show-table jf-table">
                     <thead>
                         <tr>
                             <th>Row</th>

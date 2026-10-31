@@ -54,7 +54,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm">
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
+                <table class="w-full border-collapse jf-table">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
@@ -62,7 +62,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan Date</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Outstanding</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Interest Rate</th>
+                            <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Interest Rate</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maturity Date</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Days to Maturity</th>
                         </tr>
@@ -77,7 +77,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->loan_date?->format('d M Y') ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loan->totalOutstanding() > 0 ? 'text-red-600' : 'text-green-600' }}">{{ number_format($loan->totalOutstanding(), 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ number_format((float) $loan->interest_rate_monthly, 2) }}%/mo</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{{ number_format((float) $loan->interest_rate_monthly, 2) }}%/mo</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->maturity_date?->format('d M Y') ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                     @if($loan->isOverdue())
@@ -91,7 +91,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">No active loans found</td>
+                                <td colspan="8" class="jf-table-empty">No active loans found</td>
                             </tr>
                         @endforelse
                     </tbody>

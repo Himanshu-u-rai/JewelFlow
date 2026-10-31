@@ -644,7 +644,7 @@
 
             @if ($ruleCount > 0)
                 <div class="reorder-table-wrap">
-                    <table class="reorder-table">
+                    <table class="reorder-table jf-table">
                         <thead>
                             <tr>
                                 <th>Category</th>

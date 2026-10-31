@@ -18,7 +18,7 @@
         <h2 class="report-section-title">{{ $section->title }}</h2>
     @endif
 
-    <table class="report-table">
+    <table class="report-table jf-table">
         <thead>
             <tr>
                 @foreach($columns as $column)

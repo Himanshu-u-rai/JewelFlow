@@ -56,7 +56,7 @@
         @else
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                <table class="w-full min-w-[860px]">
+                <table class="w-full min-w-[860px] jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-16">Image</th>

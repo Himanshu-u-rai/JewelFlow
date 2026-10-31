@@ -107,7 +107,7 @@
                 @endif
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             @foreach($reportColumns ?? [] as $col)

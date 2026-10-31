@@ -293,7 +293,7 @@
                 @if($lines !== [])
                     <div class="hidden md:block" data-historical-preview-register="lines-desktop">
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-full text-sm">
+                            <table class="w-full min-w-full text-sm jf-table">
                                 <thead class="bg-slate-50">
                                     <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
                                         <th class="w-16 border-b border-slate-200 px-4 py-3 text-center">No.</th><th class="border-b border-slate-200 px-4 py-3 sm:px-6">Item</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Qty</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Net wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Gross wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Stone wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Total</th>

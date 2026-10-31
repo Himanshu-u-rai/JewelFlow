@@ -1021,7 +1021,7 @@
 
             @if($vendors->count())
                 <div class="vendors-table-wrap">
-                    <table class="vendors-table">
+                    <table class="vendors-table jf-table">
                         <thead>
                             <tr>
                                 <th class="text-left vendors-index-cell">#</th>
@@ -1029,7 +1029,7 @@
                                 <th class="text-left">Contact</th>
                                 <th class="text-left">GST</th>
                                 <th class="text-center">Status</th>
-                                <th class="text-center">Actions</th>
+                                <th class="text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1050,7 +1050,7 @@
                                             {{ $vendor->is_active ? 'Active' : 'Archived' }}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="text-left">
                                         <div class="vendors-table-actions">
                                             <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">
                                                 <x-icon name="eye" size="12" />

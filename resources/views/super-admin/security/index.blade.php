@@ -64,7 +64,7 @@
             <p class="text-xs text-slate-400">Latest security-related actions.</p>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm admin-table">
+            <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>

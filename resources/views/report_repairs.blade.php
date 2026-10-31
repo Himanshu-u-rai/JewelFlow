@@ -49,7 +49,7 @@
             </div>
 
             <div class="overflow-x-auto repairs-report-table-shell">
-                <table class="w-full repairs-report-table">
+                <table class="w-full repairs-report-table jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -96,7 +96,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
+                                <td colspan="6" class="jf-table-empty">
                                     No repair records found.
                                 </td>
                             </tr>

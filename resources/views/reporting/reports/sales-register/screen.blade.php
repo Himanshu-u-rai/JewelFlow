@@ -53,7 +53,7 @@
                     <div class="px-5 py-10 text-center text-sm text-slate-400">No invoices for this scope.</div>
                 @else
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
+                        <table class="min-w-full text-sm jf-table">
                             <thead class="bg-slate-50">
                                 <tr>
                                     @foreach ($section['columns'] as $col)

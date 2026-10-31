@@ -95,7 +95,7 @@
                 </div>
 
                 <div class="returns-inbox-table-wrap">
-                    <table class="returns-inbox-table">
+                    <table class="returns-inbox-table jf-table">
                         <thead>
                             <tr>
                                 <th>#</th>

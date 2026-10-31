@@ -4637,7 +4637,7 @@
                         <section>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Waiting to be turned off') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                                <table class="w-full text-sm">
+                                <table class="w-full text-sm jf-table">
                                     <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
                                         <tr>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Service') }}</th>
@@ -4671,7 +4671,7 @@
                         <section>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Recent activity') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                                <table class="w-full text-sm">
+                                <table class="w-full text-sm jf-table">
                                     <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
                                         <tr>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('What happened') }}</th>
@@ -4975,7 +4975,7 @@
 
                                 <div class="sub-billing-card">
                                     <div class="sub-billing-table-wrap">
-                                        <table class="sub-billing-table">
+                                        <table class="sub-billing-table jf-table">
                                             <thead>
                                                 <tr>
                                                     <th class="text-left">Invoice #</th>

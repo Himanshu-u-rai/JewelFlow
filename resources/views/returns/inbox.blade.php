@@ -1724,7 +1724,7 @@
                 @else
                     {{-- Desktop table --}}
                     <div class="ri-table-wrap customers-table-shell returns-table-shell">
-                        <table class="ri-table customers-data-table returns-data-table">
+                        <table class="ri-table customers-data-table returns-data-table jf-table">
                             <thead>
                                 <tr>
                                     <th>Credit Note</th>

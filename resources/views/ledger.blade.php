@@ -21,7 +21,7 @@
             </div>
 
             <div class="overflow-x-auto p-6 ledger-table-shell">
-                <table class="w-full ledger-data-table">
+                <table class="w-full ledger-data-table jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -64,7 +64,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">No ledger entries found.</td>
+                                <td colspan="7" class="jf-table-empty">No ledger entries found.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -31,7 +31,7 @@
 
     <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>

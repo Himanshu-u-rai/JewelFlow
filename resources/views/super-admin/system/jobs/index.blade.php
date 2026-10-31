@@ -26,7 +26,7 @@
             <h3 class="text-sm font-semibold text-white">Queue Breakdown</h3>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm admin-table">
+            <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -65,7 +65,7 @@
             <p class="text-xs text-slate-400">Latest 50 queued or reserved jobs.</p>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm admin-table">
+            <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -123,7 +123,7 @@
             @endif
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm admin-table">
+            <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>

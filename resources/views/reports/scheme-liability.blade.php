@@ -21,7 +21,7 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100"><h2 class="font-semibold text-gray-900">Open Enrollments</h2></div>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm jf-table">
                     <thead class="bg-gray-50"><tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Scheme</th>
@@ -43,7 +43,7 @@
                                 <td class="px-4 py-2 text-gray-600">{{ $r->maturity_date ? \Carbon\Carbon::parse($r->maturity_date)->format('d M Y') : '—' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="px-4 py-10 text-center text-gray-400">No open scheme enrollments.</td></tr>
+                            <tr><td colspan="7" class="jf-table-empty">No open scheme enrollments.</td></tr>
                         @endforelse
                     </tbody>
                     @if($data->rows->isNotEmpty())

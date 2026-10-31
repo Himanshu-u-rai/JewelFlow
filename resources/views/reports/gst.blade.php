@@ -90,10 +90,10 @@
                         <p class="gst-panel-copy">Itemized tax collection details</p>
                     </div>
                     <div class="gst-table-wrap">
-                        <table class="gst-table">
+                        <table class="gst-table jf-table">
                             <thead>
                                 <tr>
-                                    <th>Rate</th>
+                                    <th class="text-right">Rate</th>
                                     <th class="text-right">Taxable</th>
                                     <th class="text-right">Discount</th>
                                     <th class="text-right">CGST</th>
@@ -110,7 +110,7 @@
                                         $sgst = round((float) ($row->sgst ?? ($row->gst - $cgst)), 2);
                                     @endphp
                                     <tr>
-                                        <td><span class="gst-rate-pill">{{ number_format($row->gst_rate, 2) }}%</span></td>
+                                        <td class="text-right"><span class="gst-rate-pill">{{ number_format($row->gst_rate, 2) }}%</span></td>
                                         <td class="text-right gst-num">₹{{ number_format($row->taxable, 2) }}</td>
                                         <td class="text-right gst-num gst-neg">{{ $row->discount > 0 ? '−₹' . number_format($row->discount, 2) : '-' }}</td>
                                         <td class="text-right gst-num gst-muted">₹{{ number_format($cgst, 2) }}</td>
@@ -286,7 +286,7 @@
                     <div class="gst-empty gst-empty--pad">No credit notes issued this period.</div>
                 @else
                     <div class="gst-table-wrap">
-                        <table class="gst-table">
+                        <table class="gst-table jf-table">
                             <thead>
                                 <tr>
                                     <th>CN Number</th>

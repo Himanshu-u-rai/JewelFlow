@@ -114,12 +114,12 @@
             </div>
 
             <div class="overflow-x-auto ui-table-shell customers-table-shell installments-table-shell">
-                <table class="w-full customers-data-table installments-data-table">
+                <table class="w-full customers-data-table installments-data-table jf-table">
                     <thead>
                         <tr>
                             <th>Customer</th>
-                            <th class="is-right">Total</th>
-                            <th class="is-right">EMI</th>
+                            <th class="is-right text-right">Total</th>
+                            <th class="is-right text-right">EMI</th>
                             <th class="is-center">Progress</th>
                             <th>Next Due</th>
                             <th class="is-center">Status</th>
@@ -143,8 +143,8 @@
                                         <span>{{ $customerMobile ?: $invoiceLabel }}</span>
                                     </div>
                                 </td>
-                                <td class="is-right tabular-nums">₹{{ number_format($plan->total_amount, 2) }}</td>
-                                <td class="is-right tabular-nums">₹{{ number_format($plan->emi_amount, 2) }}</td>
+                                <td class="is-right tabular-nums text-right">₹{{ number_format($plan->total_amount, 2) }}</td>
+                                <td class="is-right tabular-nums text-right">₹{{ number_format($plan->emi_amount, 2) }}</td>
                                 <td class="is-center">
                                     <div class="installments-progress-cell">
                                         <span>{{ $plan->emis_paid }}/{{ $plan->total_emis }}</span>

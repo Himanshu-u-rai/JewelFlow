@@ -80,7 +80,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm">
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
+                <table class="w-full border-collapse jf-table">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -129,7 +129,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">No cash entries found for the selected period</td>
+                                <td colspan="8" class="jf-table-empty">No cash entries found for the selected period</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -275,7 +275,7 @@
                             $hasRunningBalance = collect($section['columns'])->contains(fn ($c) => $c['key'] === 'running_balance');
                         @endphp
                         <div class="cash-report-table-wrap">
-                            <table class="cash-report-table js-report-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
+                            <table class="cash-report-table js-report-table jf-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
                                 <thead>
                                     <tr>
                                         @foreach ($section['columns'] as $col)
@@ -520,7 +520,7 @@
                             $hasRunningBalance = collect($section['columns'])->contains(fn ($c) => $c['key'] === 'running_balance');
                         @endphp
                         <div class="gst-report-table-wrap">
-                            <table class="gst-report-table js-report-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
+                            <table class="gst-report-table js-report-table jf-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
                                 <thead>
                                     <tr>
                                         @foreach ($section['columns'] as $col)
@@ -747,7 +747,7 @@
                             $hasRunningBalance = collect($section['columns'])->contains(fn ($c) => $c['key'] === 'running_balance');
                         @endphp
                         <div class="report-register-table-wrap">
-                            <table class="report-register-table js-report-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
+                            <table class="report-register-table js-report-table jf-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
                                 <thead>
                                     <tr>
                                         @foreach ($section['columns'] as $col)

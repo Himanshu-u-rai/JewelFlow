@@ -31,7 +31,7 @@
                 <p class="px-5 py-10 text-center text-sm text-slate-500">No {{ strtolower($tabLabels[$tab]) }} yet.</p>
             @else
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
+                    <table class="min-w-full text-sm jf-table">
                         <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
                                 <th class="px-4 py-3 text-left">{{ $tab === 'repairs' ? 'Repair' : 'Bill' }}</th>

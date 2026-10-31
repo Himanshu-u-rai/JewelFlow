@@ -4657,25 +4657,6 @@ body.admin-shell {
 .admin-badge-sky { background: rgba(56, 189, 248, 0.18); color: #bae6fd; }
 .admin-badge-slate { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; }
 
-.admin-table thead th {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: rgba(147, 164, 191, 0.92);
-    padding-top: 12px;
-    padding-bottom: 12px;
-}
-
-.admin-table tbody td {
-    padding-top: 12px;
-    padding-bottom: 12px;
-}
-
-.admin-table tbody tr:hover {
-    background: rgba(244, 163, 0, 0.08);
-}
-
 .admin-kpi {
     border-radius: var(--jf-radius-xl);
     border: 1px solid var(--adm-border);
@@ -6365,39 +6346,6 @@ body.admin-shell {
     border-color: #fcd34d !important;
     background: #fef3c7 !important;
     color: #78350f !important;
-}
-
-.vendors-index-page .vendors-table thead th,
-.vendors-show-page .vendors-show-table thead th {
-    background: #f8fafc !important;
-    color: #475569 !important;
-    border-bottom: 1px solid #e5e7eb !important;
-    text-transform: none !important;
-    letter-spacing: 0 !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-}
-
-.vendors-index-page .vendors-table tbody tr:nth-child(even),
-.vendors-show-page .vendors-show-table tbody tr:nth-child(even) {
-    background: #f8fbff !important;
-}
-
-.vendors-index-page .vendors-table tbody tr:hover,
-.vendors-show-page .vendors-show-table tbody tr:hover {
-    background: #edf5ff !important;
-}
-
-.vendors-index-page .vendors-table tbody td,
-.vendors-show-page .vendors-show-table tbody td {
-    border-bottom-color: #edf2f7 !important;
-    color: var(--vendor-text) !important;
-    font-size: 14px !important;
-    font-weight: 400 !important;
-    padding-top: 14px !important;
-    padding-bottom: 14px !important;
 }
 
 .vendors-index-page .vendors-table .vendors-index-cell {
@@ -9275,57 +9223,6 @@ body.admin-shell {
     min-width: 640px;
 }
 
-.inventory-items-page .items-data-table thead th {
-    background: #f8fafc !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #e5e7eb !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-}
-
-.inventory-items-page .items-data-table thead {
-    background: #f8fafc;
-    border-bottom: 1px solid #e5e7eb !important;
-}
-
-.inventory-items-page .items-data-table thead.border-b {
-    border-bottom-width: 1px !important;
-    border-bottom-color: #e5e7eb !important;
-}
-
-.inventory-items-page .items-data-table tbody tr {
-    transition: background-color 140ms ease;
-}
-
-.inventory-items-page .items-data-table tbody {
-    background: #ffffff;
-}
-
-.inventory-items-page .items-data-table tbody tr:nth-child(even) {
-    background: #f8fbff;
-}
-
-.inventory-items-page .items-data-table tbody tr:hover {
-    background: #edf5ff;
-}
-
-.inventory-items-page .items-data-table tbody td {
-    border-bottom: 1px solid #edf2f7 !important;
-    vertical-align: middle;
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-}
-
-.inventory-items-page .items-data-table tbody tr:first-child td {
-    border-top: 0 !important;
-}
-
-.inventory-items-page .items-data-table tbody tr:last-child td {
-    border-bottom: 0;
-}
-
 .inventory-items-page .items-data-table thead th:first-child {
     border-top-left-radius: 0;
 }
@@ -9364,19 +9261,6 @@ body.admin-shell {
 
     .inventory-items-page .items-table-card > .p-4.border-b {
         padding: 12px 14px;
-    }
-
-    .inventory-items-page .items-data-table thead th {
-        font-size: 10px !important;
-        letter-spacing: 0.06em;
-        padding-top: 10px;
-        padding-bottom: 10px;
-    }
-
-    .inventory-items-page .items-data-table tbody td {
-        font-size: 12px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
     }
 
     .inventory-items-page .items-data-table--stock {
@@ -9566,16 +9450,6 @@ body.admin-shell {
 
 .inventory-items-page .items-stock-register--retailer .items-data-table--stock {
     min-width: 860px;
-}
-
-.inventory-items-page .items-stock-register--retailer .items-data-table thead th {
-    padding: 10px 12px !important;
-    font-size: 10px !important;
-}
-
-.inventory-items-page .items-stock-register--retailer .items-data-table tbody td {
-    padding: 10px 12px !important;
-    font-size: 12px !important;
 }
 
 .inventory-items-page .items-stock-register--retailer .items-stock-price-cell {
@@ -11177,14 +11051,6 @@ body.admin-shell {
 
 .inventory-items-page .items-sellers-register .items-seller-table-card {
     overflow: hidden;
-}
-
-.inventory-items-page .items-sellers-register .items-data-table--sellers thead {
-    background: #f8fafc;
-}
-
-.inventory-items-page .items-sellers-register .items-data-table--sellers tbody tr:hover {
-    background: #fff7ed;
 }
 
 @media (max-width: 1180px) {
@@ -13897,46 +13763,6 @@ input::-webkit-calendar-picker-indicator {
     border-spacing: 0;
     background: transparent;
 }
-.customers-show-page .customers-show-data-table thead {
-    background: #f8fafc !important;
-    border-bottom: 1px solid #e5e7eb !important;
-}
-.customers-show-page .customers-show-data-table thead.border-b {
-    border-bottom-width: 1px !important;
-    border-bottom-color: #e5e7eb !important;
-}
-.customers-show-page .customers-show-data-table thead th {
-    background: #f8fafc !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    text-transform: none !important;
-    letter-spacing: 0 !important;
-    font-size: 12px !important;
-    border-bottom: 1px solid #e5e7eb !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-}
-.customers-show-page .customers-show-data-table tbody {
-    background: #fff;
-}
-.customers-show-page .customers-show-data-table tbody tr:nth-child(even) {
-    background: #f8fbff;
-}
-.customers-show-page .customers-show-data-table tbody tr:hover {
-    background: #edf5ff !important;
-}
-.customers-show-page .customers-show-data-table tbody td {
-    border-bottom: 1px solid #edf2f7 !important;
-    color: var(--cust-text);
-    font-size: 14px;
-    font-weight: 400;
-    vertical-align: middle;
-    padding-top: 14px !important;
-    padding-bottom: 14px !important;
-}
-.customers-show-page .customers-show-data-table tbody tr:last-child td {
-    border-bottom: 0 !important;
-}
 
 .customers-index-page .customers-mobile-cards {
     display: none;
@@ -14322,18 +14148,6 @@ input::-webkit-calendar-picker-indicator {
         padding: 11px;
         border-top: 1px solid var(--cust-line-soft);
         background: #fbfcfd;
-    }
-    .customers-show-page .customers-show-data-table thead th {
-        font-size: 11px !important;
-        text-transform: none !important;
-        letter-spacing: 0 !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-    }
-    .customers-show-page .customers-show-data-table tbody td {
-        font-size: 12px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
     }
 
     /* Compact 2-up KPI grid on phones — stops the charcoal cards from
@@ -15046,12 +14860,9 @@ input::-webkit-calendar-picker-indicator {
 
 .schemes-detail-kpi {
     padding: 14px 16px;
-}
-
-.schemes-detail-kpi > span,
+}.schemes-detail-kpi > span,
 .schemes-detail-list dt,
 .schemes-side-list dt,
-.schemes-enrollments-table th,
 .schemes-enrollment-mobile-card dt {
     display: block;
     color: var(--schemes-muted);
@@ -15262,26 +15073,6 @@ input::-webkit-calendar-picker-indicator {
     min-width: 760px;
     border-collapse: collapse;
     background: #ffffff;
-}
-
-.schemes-enrollments-table th {
-    border-bottom: 1px solid var(--schemes-line-soft);
-    background: #f8fafc;
-    padding: 12px 14px;
-    text-align: left;
-}
-
-.schemes-enrollments-table td {
-    border-bottom: 1px solid var(--schemes-line-soft);
-    padding: 13px 14px;
-    color: var(--schemes-text);
-    font-size: 14px;
-    line-height: 1.35;
-    vertical-align: middle;
-}
-
-.schemes-enrollments-table tbody tr:last-child td {
-    border-bottom: 0;
 }
 
 .schemes-enrollments-table td strong,
@@ -16718,39 +16509,6 @@ input::-webkit-calendar-picker-indicator {
     border-spacing: 0;
     background: transparent;
 }
-.repairs-report-page .repairs-report-table thead {
-    background: #f8fafc !important;
-    border-bottom: 1px solid #e5e7eb !important;
-}
-.repairs-report-page .repairs-report-table thead.border-b {
-    border-bottom-width: 1px !important;
-    border-bottom-color: #e5e7eb !important;
-}
-.repairs-report-page .repairs-report-table thead th {
-    background: #f8fafc !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #e5e7eb !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-}
-.repairs-report-page .repairs-report-table tbody {
-    background: #ffffff;
-}
-.repairs-report-page .repairs-report-table tbody tr:nth-child(even) {
-    background: #f8fbff;
-}
-.repairs-report-page .repairs-report-table tbody tr:hover {
-    background: #edf5ff !important;
-}
-.repairs-report-page .repairs-report-table tbody td {
-    border-bottom: 1px solid #edf2f7 !important;
-    vertical-align: middle;
-}
-.repairs-report-page .repairs-report-table tbody tr:last-child td {
-    border-bottom: 0 !important;
-}
 
 .repairs-edit-page .repairs-edit-status-card {
     background: #fffaf0 !important;
@@ -16776,17 +16534,6 @@ input::-webkit-calendar-picker-indicator {
     .repairs-management-page .repairs-surface-card,
     .repairs-report-page .repairs-report-table-card {
         border-radius: 14px;
-    }
-    .repairs-report-page .repairs-report-table thead th {
-        font-size: 10px !important;
-        letter-spacing: 0.06em;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-    }
-    .repairs-report-page .repairs-report-table tbody td {
-        font-size: 12px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
     }
 }
 
@@ -16853,39 +16600,6 @@ input::-webkit-calendar-picker-indicator {
     border-collapse: collapse;
     border-spacing: 0;
     background: transparent;
-}
-.invoice-show-page .invoice-show-data-table thead {
-    background: #f8fafc !important;
-    border-bottom: 1px solid #e5e7eb !important;
-}
-.invoice-show-page .invoice-show-data-table thead.border-b {
-    border-bottom-width: 1px !important;
-    border-bottom-color: #e5e7eb !important;
-}
-.invoice-show-page .invoice-show-data-table thead th {
-    background: #f8fafc !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #e5e7eb !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-}
-.invoice-show-page .invoice-show-data-table tbody {
-    background: #ffffff;
-}
-.invoice-show-page .invoice-show-data-table tbody tr:nth-child(even) {
-    background: #f8fbff;
-}
-.invoice-show-page .invoice-show-data-table tbody tr:hover {
-    background: #edf5ff !important;
-}
-.invoice-show-page .invoice-show-data-table tbody td {
-    border-bottom: 1px solid #edf2f7 !important;
-    vertical-align: middle;
-}
-.invoice-show-page .invoice-show-data-table tbody tr:last-child td {
-    border-bottom: 0 !important;
 }
 
 .invoices-index-page .invoices-table-card.invoices-table-card--main {
@@ -17000,17 +16714,6 @@ input::-webkit-calendar-picker-indicator {
     .invoice-show-page .invoice-show-card,
     .invoices-edit-page .invoices-edit-card {
         border-radius: 14px;
-    }
-    .invoice-show-page .invoice-show-data-table thead th {
-        font-size: 10px !important;
-        letter-spacing: 0.06em;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-    }
-    .invoice-show-page .invoice-show-data-table tbody td {
-        font-size: 12px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
     }
 }
 
@@ -20122,16 +19825,10 @@ input::-webkit-calendar-picker-indicator {
     border-collapse: collapse;
     border-spacing: 0;
     background: transparent;
-}
-
-.cashbook-index-page .cashbook-data-table thead,
-.ledger-page .ledger-data-table thead {
+}.cashbook-index-page .cashbook-data-table thead {
     background: #f8fafc !important;
     border-bottom: 1px solid #e5e7eb !important;
-}
-
-.cashbook-index-page .cashbook-data-table thead th,
-.ledger-page .ledger-data-table thead th {
+}.cashbook-index-page .cashbook-data-table thead th {
     background: #f8fafc !important;
     color: #475569 !important;
     font-weight: 600 !important;
@@ -20139,31 +19836,16 @@ input::-webkit-calendar-picker-indicator {
     border-bottom: 1px solid #e5e7eb !important;
     padding-top: 13px !important;
     padding-bottom: 13px !important;
-}
-
-.cashbook-index-page .cashbook-data-table tbody,
-.ledger-page .ledger-data-table tbody {
+}.cashbook-index-page .cashbook-data-table tbody {
     background: #ffffff;
-}
-
-.cashbook-index-page .cashbook-data-table tbody tr:nth-child(even),
-.ledger-page .ledger-data-table tbody tr:nth-child(even) {
+}.cashbook-index-page .cashbook-data-table tbody tr:nth-child(even) {
     background: #f8fbff;
-}
-
-.cashbook-index-page .cashbook-data-table tbody tr:hover,
-.ledger-page .ledger-data-table tbody tr:hover {
+}.cashbook-index-page .cashbook-data-table tbody tr:hover {
     background: #edf5ff !important;
-}
-
-.cashbook-index-page .cashbook-data-table tbody td,
-.ledger-page .ledger-data-table tbody td {
+}.cashbook-index-page .cashbook-data-table tbody td {
     border-bottom: 1px solid #edf2f7 !important;
     vertical-align: middle;
-}
-
-.cashbook-index-page .cashbook-data-table tbody tr:last-child td,
-.ledger-page .ledger-data-table tbody tr:last-child td {
+}.cashbook-index-page .cashbook-data-table tbody tr:last-child td {
     border-bottom: 0 !important;
 }
 
@@ -20713,18 +20395,12 @@ input::-webkit-calendar-picker-indicator {
     .cashbook-create-page .cashbook-create-actions .btn {
         flex: 1 1 100%;
         justify-content: center;
-    }
-
-    .cashbook-index-page .cashbook-data-table thead th,
-    .ledger-page .ledger-data-table thead th {
+    }.cashbook-index-page .cashbook-data-table thead th {
         font-size: 10px !important;
         letter-spacing: 0.06em;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
-    }
-
-    .cashbook-index-page .cashbook-data-table tbody td,
-    .ledger-page .ledger-data-table tbody td {
+    }.cashbook-index-page .cashbook-data-table tbody td {
         font-size: 12px !important;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
@@ -21401,28 +21077,6 @@ input::-webkit-calendar-picker-indicator {
     font-size: 13px;
 }
 
-.karigars-table thead {
-    background: #f8fafc;
-}
-
-.karigars-table th {
-    padding: 12px 14px;
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-align: left;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.karigars-table td {
-    border-top: 1px solid #edf2f7;
-    padding: 13px 14px;
-    vertical-align: middle;
-    white-space: nowrap;
-}
-
 .karigars-table .text-right {
     text-align: right;
 }
@@ -22019,57 +21673,6 @@ input::-webkit-calendar-picker-indicator {
     border-collapse: collapse;
     border-spacing: 0;
     background: transparent;
-}
-
-.job-orders-index-page .jo-table thead,
-.karigars-index-page .karigars-table thead,
-.karigar-invoices-index-page .ki-table thead {
-    border-bottom: 1px solid #e5e7eb !important;
-    background: #f8fafc !important;
-}
-
-.job-orders-index-page .jo-table thead th,
-.karigars-index-page .karigars-table thead th,
-.karigar-invoices-index-page .ki-table thead th {
-    border-bottom: 1px solid #e5e7eb !important;
-    background: #f8fafc !important;
-    color: #475569 !important;
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0 !important;
-    text-transform: none !important;
-}
-
-.job-orders-index-page .jo-table tbody tr:nth-child(even),
-.karigars-index-page .karigars-table tbody tr:nth-child(even),
-.karigar-invoices-index-page .ki-table tbody tr:nth-child(even) {
-    background: #f8fbff;
-}
-
-.job-orders-index-page .jo-table tbody tr:hover,
-.karigars-index-page .karigars-table tbody tr:hover,
-.karigar-invoices-index-page .ki-table tbody tr:hover {
-    background: #edf5ff !important;
-}
-
-.job-orders-index-page .jo-table tbody td,
-.karigars-index-page .karigars-table tbody td,
-.karigar-invoices-index-page .ki-table tbody td {
-    border-bottom: 1px solid #edf2f7 !important;
-    color: var(--jobwork-text);
-    padding-top: 14px !important;
-    padding-bottom: 14px !important;
-    font-size: 14px;
-    font-weight: 400;
-    vertical-align: middle;
-}
-
-.job-orders-index-page .jo-table tbody tr:last-child td,
-.karigars-index-page .karigars-table tbody tr:last-child td,
-.karigar-invoices-index-page .ki-table tbody tr:last-child td {
-    border-bottom: 0 !important;
 }
 
 .job-orders-index-page .jo-table a,
@@ -22805,30 +22408,6 @@ input, select {
     border-collapse: collapse;
 }
 
-.customers-show-retailer-table th,
-.customers-show-retailer-table td {
-    border-bottom: 1px solid #eef2f7;
-    padding: 11px 14px;
-    color: var(--retailer-profile-text);
-    font-size: 12px;
-    line-height: 1.35;
-    vertical-align: middle;
-}
-
-.customers-show-retailer-table th {
-    background: var(--retailer-profile-soft);
-    color: #475569;
-    font-size: 11px;
-    font-weight: 700;
-    text-align: left;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.customers-show-retailer-table tbody tr:hover {
-    background: #f8fafc;
-}
-
 .customers-show-retailer-table a,
 .customers-show-retailer-history-card a,
 .customers-show-retailer-invoice a {
@@ -23010,11 +22589,6 @@ body:has(.customers-show-page--retailer) .customers-show-mobile-fab-link {
 
     .customers-show-retailer-meta > div {
         padding: 10px 0;
-    }
-
-    .customers-show-retailer-table th,
-    .customers-show-retailer-table td {
-        padding: 9px 12px;
     }
 
     .customers-show-retailer-invoice {
@@ -24542,13 +24116,6 @@ input[type="date"] {
 .customers-show-compliance-docs form {
     min-width: 0;
 }
-
-.customers-show-retailer-table th {
-    font-weight: 600 !important;
-    letter-spacing: .02em !important;
-}
-
-.customers-show-retailer-table td,
 .customers-show-retailer-invoice strong,
 .customers-show-retailer-invoice b,
 .customers-show-retailer-meta dd,
@@ -26284,27 +25851,6 @@ input[type="date"] {
     min-width: 680px;
 }
 
-.installments-show-table th,
-.installments-show-table td {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--emi-border-soft);
-    color: #1f2937;
-    font-size: 14px;
-    font-weight: 450;
-    line-height: 1.35;
-    text-align: left;
-    vertical-align: top;
-}
-
-.installments-show-table th {
-    background: #f8fafc;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
 .installments-show-table tr:last-child td {
     border-bottom: 0;
 }
@@ -27064,13 +26610,6 @@ input[type="date"] {
     min-width: 960px;
 }
 
-.installments-index-page .installments-data-table th,
-.installments-index-page .installments-data-table td {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-    text-align: left;
-}
-
 .installments-index-page .installments-data-table th:nth-child(1),
 .installments-index-page .installments-data-table td:nth-child(1) {
     width: 22%;
@@ -27709,34 +27248,9 @@ input[type="date"] {
     border-collapse: collapse;
     background: #ffffff;
 }
-
-.invoice-show-page .invoice-show-data-table thead,
 .invoice-show-page .invoice-show-data-table thead.bg-gray-50 {
     background: #f8fafc !important;
     border-bottom: 1px solid var(--invoice-show-line-soft) !important;
-}
-
-.invoice-show-page .invoice-show-data-table thead th {
-    color: #475569 !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0 !important;
-    text-transform: none !important;
-}
-
-.invoice-show-page .invoice-show-data-table tbody tr,
-.invoice-show-page .invoice-show-data-table tbody tr:nth-child(even) {
-    background: #ffffff !important;
-}
-
-.invoice-show-page .invoice-show-data-table tbody tr:hover {
-    background: #f8fafc !important;
-}
-
-.invoice-show-page .invoice-show-data-table tbody td {
-    color: var(--invoice-show-text);
-    font-size: 14px !important;
-    font-weight: 450;
 }
 
 .invoice-show-page .invoice-show-data-table tfoot {
@@ -28124,34 +27638,6 @@ input[type="date"] {
     width: 100% !important;
     border-collapse: collapse;
     background: #ffffff;
-}
-
-.invoice-show-page .invoice-show-data-table th,
-.invoice-show-page .invoice-show-data-table td {
-    padding: 13px 20px;
-    border-top: 1px solid var(--invoice-show-line-soft);
-    vertical-align: middle;
-}
-
-.invoice-show-page .invoice-show-data-table thead th {
-    border-top: 0;
-    background: var(--invoice-show-soft);
-    color: #475569 !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0 !important;
-    text-transform: none !important;
-}
-
-.invoice-show-page .invoice-show-data-table tbody td {
-    color: var(--invoice-show-text);
-    font-size: 14px !important;
-    font-weight: 450;
-    font-variant-numeric: tabular-nums;
-}
-
-.invoice-show-page .invoice-show-data-table tbody tr:hover {
-    background: #f8fafc !important;
 }
 
 .invoice-show-page .invoice-show-data-table td small {
@@ -29135,24 +28621,11 @@ input[type="date"] {
         justify-content: space-between;
     }
 
-    .invoice-show-page .invoice-show-data-table th,
-    .invoice-show-page .invoice-show-data-table td {
-        padding: 12px 14px;
-    }
-
     .invoice-show-page .invoice-show-data-table--sales,
     .invoice-show-page .invoice-show-data-table--repair {
         min-width: 0;
-    }
-
-    .invoice-show-page .invoice-show-data-table thead {
-        display: none;
-    }
-
-    .invoice-show-page .invoice-show-data-table,
-    .invoice-show-page .invoice-show-data-table tbody,
-    .invoice-show-page .invoice-show-data-table tr,
-    .invoice-show-page .invoice-show-data-table td {
+    }.invoice-show-page .invoice-show-data-table,
+    .invoice-show-page .invoice-show-data-table tr {
         display: block;
         width: 100%;
     }
@@ -29160,17 +28633,6 @@ input[type="date"] {
     .invoice-show-page .invoice-show-data-table tr {
         padding: 12px 14px;
         border-top: 1px solid var(--invoice-show-line-soft);
-    }
-
-    .invoice-show-page .invoice-show-data-table td {
-        display: grid;
-        grid-template-columns: minmax(92px, 0.38fr) minmax(0, 1fr);
-        gap: 10px;
-        align-items: center;
-        min-height: 30px;
-        padding: 6px 0;
-        border-top: 0;
-        text-align: right !important;
     }
 
     .invoice-show-page .invoice-show-data-table td::before {

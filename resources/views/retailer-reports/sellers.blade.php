@@ -33,7 +33,7 @@
                     <h3 class="text-lg font-semibold text-green-800">Best Sellers — by Category</h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -51,7 +51,7 @@
                                 <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 text-sm">No sales data in this period.</td></tr>
+                            <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -64,7 +64,7 @@
                     <h3 class="text-lg font-semibold text-amber-800">Best Sellers — by Sub-Category</h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -84,7 +84,7 @@
                                 <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-sm">No data.</td></tr>
+                            <tr><td colspan="5" class="jf-table-empty">No data.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -97,7 +97,7 @@
                     <h3 class="text-lg font-semibold text-rose-800">Worst Sellers — Lowest Movement Categories</h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -115,7 +115,7 @@
                                 <td class="px-6 py-3 text-sm text-right">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 text-sm">No sales data in this period.</td></tr>
+                            <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

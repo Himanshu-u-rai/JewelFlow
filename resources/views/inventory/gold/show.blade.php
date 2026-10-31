@@ -146,7 +146,7 @@
             </div>
             
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
@@ -178,7 +178,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">No movements recorded</td>
+                                <td colspan="5" class="jf-table-empty">No movements recorded</td>
                             </tr>
                         @endforelse
                     </tbody>

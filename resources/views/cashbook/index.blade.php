@@ -259,7 +259,7 @@
 
                 {{-- Desktop table --}}
                 <div class="cb-table-wrap">
-                    <table class="cb-table">
+                    <table class="cb-table jf-table">
                         <thead>
                             <tr>
                                 <th>Date &amp; Time</th>

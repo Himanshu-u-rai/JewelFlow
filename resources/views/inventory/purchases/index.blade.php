@@ -1173,7 +1173,7 @@
                 </div>
             @else
                 <div class="sp-register-table-wrap">
-                    <table class="sp-register-table">
+                    <table class="sp-register-table jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Purchase #</th>

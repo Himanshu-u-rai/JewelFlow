@@ -231,7 +231,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Pledged Items</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[900px]">
+                <table class="w-full min-w-[900px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Description</th>
@@ -276,7 +276,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-6 py-8 text-center text-slate-500 text-sm">No items recorded</td>
+                                <td colspan="10" class="jf-table-empty">No items recorded</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -290,7 +290,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Payment History</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px]">
+                <table class="w-full min-w-[800px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
@@ -323,7 +323,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-slate-500 text-sm">No payments recorded yet</td>
+                                <td colspan="8" class="jf-table-empty">No payments recorded yet</td>
                             </tr>
                         @endforelse
                     </tbody>

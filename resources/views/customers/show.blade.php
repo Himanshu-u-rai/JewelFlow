@@ -223,7 +223,7 @@
                         </div>
 
                         <div class="customers-show-retailer-table-wrap customers-show-retailer-desktop-table">
-                            <table class="customers-show-retailer-table">
+                            <table class="customers-show-retailer-table jf-table">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
@@ -440,7 +440,7 @@
                             <h2 class="text-lg font-semibold text-gray-900">Recent Gold Transactions</h2>
                         </div>
                         <div class="customers-show-table-wrap overflow-x-auto customers-show-table-shell">
-                            <table class="customers-show-table w-full customers-show-data-table customers-show-data-table--gold">
+                            <table class="customers-show-table w-full customers-show-data-table customers-show-data-table--gold jf-table">
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -459,7 +459,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No transactions found.</td>
+                                            <td colspan="4" class="jf-table-empty">No transactions found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

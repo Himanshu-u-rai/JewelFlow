@@ -117,7 +117,7 @@
                 </div>
             @else
                 <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                             <tr>
                                 <th class="px-5 py-3 text-left">Run At</th>

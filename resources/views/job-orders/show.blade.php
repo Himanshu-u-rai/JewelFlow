@@ -132,7 +132,7 @@
 
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
             <div class="px-5 py-3 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-800">Issuance Lines</h3></div>
-            <table class="w-full text-sm">
+            <table class="w-full text-sm jf-table">
                 <thead>
                     <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                         <th class="px-4 py-2 text-left font-semibold">Lot</th>
@@ -173,7 +173,7 @@
                             </div>
                             <div class="text-xs text-gray-600">{{ $rcpt->total_pieces }} pcs · {{ number_format($rcpt->total_net_weight, 3) }}g net · {{ number_format($rcpt->total_fine_weight, 3) }}g fine</div>
                         </div>
-                        <table class="w-full text-xs">
+                        <table class="w-full text-xs jf-table">
                             <thead>
                                 <tr class="text-gray-500">
                                     <th class="text-left font-semibold py-1">Description</th>
@@ -212,7 +212,7 @@
             @if($jobOrder->invoices->isEmpty())
                 <div class="py-8 text-center text-gray-400 text-sm">No karigar invoice attached yet.</div>
             @else
-                <table class="w-full text-sm">
+                <table class="w-full text-sm jf-table">
                     <thead>
                         <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                             <th class="px-4 py-2 text-left font-semibold">Invoice #</th>

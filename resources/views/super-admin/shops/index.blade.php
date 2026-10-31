@@ -52,7 +52,7 @@
     {{-- Shop table --}}
     <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-3 py-2 w-8">
@@ -66,7 +66,7 @@
                         <th class="px-4 py-2 text-left">Owner</th>
                         <th class="px-4 py-2 text-left">Phone</th>
                         <th class="px-4 py-2 text-left">Type</th>
-                        <th class="px-4 py-2 text-left">Users</th>
+                        <th class="px-4 py-2 text-right">Users</th>
                         <th class="px-4 py-2 text-left">Status</th>
                         <th class="px-4 py-2 text-right">Actions</th>
                     </tr>
@@ -95,7 +95,7 @@
                             <td class="px-4 py-3">{{ trim(($shop->owner_first_name ?? '') . ' ' . ($shop->owner_last_name ?? '')) ?: ($shop->owner_name ?? '-') }}</td>
                             <td class="px-4 py-3">{{ $shop->phone }}</td>
                             <td class="px-4 py-3">{{ \App\Support\ShopEdition::label($shop->shop_type) }}</td>
-                            <td class="px-4 py-3">{{ $shop->users_count }}</td>
+                            <td class="px-4 py-3 text-right">{{ $shop->users_count }}</td>
                             <td class="px-4 py-2">
                                 <x-super-admin.access-mode-badge :shop="$shop" />
                             </td>

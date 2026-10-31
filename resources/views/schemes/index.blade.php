@@ -143,7 +143,7 @@
             </div>
 
             <div class="overflow-x-auto ui-table-shell customers-table-shell schemes-table-shell">
-                <table class="w-full customers-data-table schemes-data-table">
+                <table class="w-full customers-data-table schemes-data-table jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Scheme</th>
@@ -151,7 +151,7 @@
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Period</th>
                             <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Enrollments</th>
                             <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Status</th>
-                            <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Actions</th>
+                            <th class="px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-slate-100">
@@ -178,7 +178,7 @@
                                         {{ $scheme->is_active ? 'Active' : 'Inactive' }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4 text-left">
                                     <div class="flex items-center justify-center gap-2">
                                         <a href="{{ route('schemes.show', $scheme) }}" class="customers-row-action customers-row-action--primary">
                                             View
@@ -195,7 +195,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-10 text-center">
+                                <td colspan="6" class="jf-table-empty">
                                     <div class="customers-mobile-empty schemes-empty-inline">
                                         <strong>No schemes found</strong>
                                         <span>Create a gold savings scheme or promotional offer to get started.</span>

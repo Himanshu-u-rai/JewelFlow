@@ -56,7 +56,7 @@
         {{-- Loans Table --}}
         <div class="dh-table-card">
             <div class="dh-table-wrap">
-                <table class="dh-table min-w-[900px]">
+                <table class="dh-table min-w-[900px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
@@ -117,7 +117,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="8" class="jf-table-empty">
                                     <x-icon name="dollar-sign" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans found</p>
                                     <p class="text-sm">Try adjusting your search or filters</p>

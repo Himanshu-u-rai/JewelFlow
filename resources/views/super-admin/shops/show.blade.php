@@ -444,7 +444,7 @@
             <div class="mt-3">
                 <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">History</div>
                 <div class="overflow-x-auto rounded-lg border border-slate-800">
-                    <table class="w-full text-xs admin-table">
+                    <table class="w-full text-xs admin-table jf-table">
                         <thead class="bg-slate-800/70 text-slate-300">
                             <tr>
                                 <th class="px-3 py-2 text-left w-14">#</th>
@@ -483,7 +483,7 @@
             <h3 class="font-semibold text-white">Shop Users</h3>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -779,7 +779,7 @@
             <span class="text-xs text-slate-400">Last 10 platform invoices</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -822,7 +822,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-4 py-8 text-center text-slate-500">No invoices generated yet.</td>
+                            <td colspan="11" class="jf-table-empty">No invoices generated yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -854,7 +854,7 @@
 
             @if($storageStat->breakdown)
                 <div class="overflow-x-auto rounded-lg border border-slate-800">
-                    <table class="w-full text-xs admin-table">
+                    <table class="w-full text-xs admin-table jf-table">
                         <thead class="bg-slate-800/70 text-slate-300">
                             <tr>
                                 <th class="px-3 py-2 text-left w-14">#</th>

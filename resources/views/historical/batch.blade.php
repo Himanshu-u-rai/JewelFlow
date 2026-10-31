@@ -262,7 +262,7 @@
                     <div class="border-t border-slate-200 px-4 py-4 sm:px-6">
                     <h3 class="text-sm font-semibold text-slate-900">Sample normalized records</h3>
                     <div class="mt-3 overflow-x-auto">
-                        <table class="w-full min-w-full text-sm">
+                        <table class="w-full min-w-full text-sm jf-table">
                             <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                                 <th class="py-2">Number</th><th class="py-2">Date</th><th class="py-2">Customer</th><th class="py-2 text-right">Total</th><th class="py-2">Tax</th><th class="py-2 text-center">Lines</th>
                             </tr></thead>
@@ -336,7 +336,7 @@
             </div>
             <div class="hidden md:block" data-historical-register="staged-desktop">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-full text-sm">
+                <table class="w-full min-w-full text-sm jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
                             <th class="px-4 sm:px-6 py-3">Sheet</th><th class="px-4 sm:px-6 py-3 text-center">Row</th><th class="px-4 sm:px-6 py-3">Severity</th><th class="px-4 sm:px-6 py-3">Findings</th>
@@ -354,7 +354,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 sm:px-6 py-10 text-center text-slate-500 text-sm">No staged rows.</td></tr>
+                        <tr><td colspan="4" class="jf-table-empty">No staged rows.</td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -394,7 +394,7 @@
                 </div>
                 <div class="hidden md:block" data-historical-batch-register="documents-desktop">
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-full text-sm">
+                        <table class="w-full min-w-full text-sm jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
                                 <th class="px-4 py-3 sm:px-6">Document</th><th class="px-4 py-3 sm:px-6">Date</th><th class="px-4 py-3 text-right sm:px-6">Total</th>
                             </tr></thead>

@@ -1820,23 +1820,6 @@ body.dh-modal-open {
 }
 .dh-table-wrap { overflow-x: auto; }
 .dh-table { width: 100%; border-collapse: collapse; }
-.dh-table th {
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--dh-muted);
-    background: var(--dh-table-head);
-    border-bottom: 1px solid var(--dh-line);
-}
-.dh-table td {
-    padding: 14px 16px;
-    color: #334155;
-    font-size: 13px;
-    border-bottom: 1px solid var(--dh-line-soft);
-}
 .dh-table tr:last-child td { border-bottom: 0; }
 .dh-mobile-list { display: none; }
 .dh-mobile-card {

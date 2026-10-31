@@ -13,7 +13,7 @@
     <div class="content-inner">
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -48,7 +48,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">No loyalty transactions yet.</td>
+                            <td colspan="6" class="jf-table-empty">No loyalty transactions yet.</td>
                         </tr>
                         @endforelse
                     </tbody>

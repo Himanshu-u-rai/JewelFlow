@@ -9,19 +9,19 @@
 
     <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="py-3.5 pl-4 pr-3 text-left w-16 sm:pl-6">#</th>
                         <th class="py-3.5 pl-4 pr-3 text-left sm:pl-6">Plan</th>
                         <th class="px-3 py-3.5 text-left">Code</th>
-                        <th class="px-3 py-3.5 text-left">Monthly Price</th>
-                        <th class="px-3 py-3.5 text-left">Yearly Price</th>
-                        <th class="px-3 py-3.5 text-left">Trial Days</th>
+                        <th class="px-3 py-3.5 text-right">Monthly Price</th>
+                        <th class="px-3 py-3.5 text-right">Yearly Price</th>
+                        <th class="px-3 py-3.5 text-right">Trial Days</th>
                         <th class="px-3 py-3.5 text-left">Staff Limit</th>
                         <th class="px-3 py-3.5 text-left">Item Limit</th>
-                        <th class="px-3 py-3.5 text-left">Subscribers</th>
-                        <th class="px-3 py-3.5 text-left">Active Subscribers</th>
+                        <th class="px-3 py-3.5 text-right">Subscribers</th>
+                        <th class="px-3 py-3.5 text-right">Active Subscribers</th>
                         <th class="px-3 py-3.5 text-left">Status</th>
                         <th class="py-3.5 pl-3 pr-4 text-right sm:pr-6">Actions</th>
                     </tr>
@@ -35,11 +35,11 @@
                             <td class="whitespace-nowrap py-4 pl-4 pr-3 admin-table-index sm:pl-6">{{ $loop->iteration }}</td>
                             <td class="whitespace-nowrap py-4 pl-4 pr-3 font-medium sm:pl-6">{{ $plan->name }}</td>
                             <td class="whitespace-nowrap px-3 py-4 text-slate-400 font-mono">{{ $plan->code }}</td>
-                            <td class="whitespace-nowrap px-3 py-4 text-slate-300">₹{{ number_format($plan->price_monthly) }}</td>
-                            <td class="whitespace-nowrap px-3 py-4 text-slate-300">
+                            <td class="whitespace-nowrap px-3 py-4 text-slate-300 text-right">₹{{ number_format($plan->price_monthly) }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-slate-300 text-right">
                                 {{ $plan->price_yearly ? '₹' . number_format($plan->price_yearly) : '—' }}
                             </td>
-                            <td class="whitespace-nowrap px-3 py-4 text-slate-300">{{ $plan->trial_days }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-slate-300 text-right">{{ $plan->trial_days }}</td>
                             <td class="whitespace-nowrap px-3 py-4">
                                 @php $sl = $plan->features['staff_limit'] ?? null; @endphp
                                 @if($sl === null || $sl == -1)
@@ -56,8 +56,8 @@
                                     <span class="text-slate-300">{{ number_format($mi) }}</span>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap px-3 py-4 text-slate-300">{{ $plan->subscriptions_count }}</td>
-                            <td class="whitespace-nowrap px-3 py-4 text-slate-300">{{ $plan->active_subscriptions_count }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-slate-300 text-right">{{ $plan->subscriptions_count }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-slate-300 text-right">{{ $plan->active_subscriptions_count }}</td>
                             <td class="whitespace-nowrap px-3 py-4">
                                 @if ($plan->is_active)
                                     <span class="admin-badge admin-badge-emerald">Active</span>

@@ -655,7 +655,7 @@
                     />
                 @else
                     <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                        <table class="w-full">
+                        <table class="w-full jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
                                     <th class="px-5 py-3 text-left">Invoice</th>
@@ -769,7 +769,7 @@
                                     <a href="#" @click.prevent="showPreview = false" class="text-xs text-slate-500 hover:text-slate-700 underline">Cancel</a>
                                 </div>
 
-                                <table class="w-full">
+                                <table class="w-full jf-table">
                                     <thead class="bg-emerald-100 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-700">
                                         <tr>
                                             <th class="px-5 py-2.5 text-left">Item</th>
@@ -822,7 +822,7 @@
                     @endif
 
                     <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                        <table class="w-full">
+                        <table class="w-full jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
                                     <th class="px-5 py-3 text-left">Item</th>
@@ -949,7 +949,7 @@
                     />
                 @else
                     <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                        <table class="w-full">
+                        <table class="w-full jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
                                     <th class="px-5 py-3 text-left">Item</th>
@@ -1024,7 +1024,7 @@
                 </div>
                 <p class="rc-queue-copy">These items are still marked "with karigar" but the job order was cancelled. Their status needs to be corrected manually.</p>
                 <div class="rc-table-card rounded-2xl border border-rose-200 bg-white overflow-hidden">
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-rose-50 border-b border-rose-100 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600">
                             <tr>
                                 <th class="px-5 py-3 text-left">Item</th>
@@ -1101,7 +1101,7 @@
                     />
                 @else
                     <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                        <table class="w-full">
+                        <table class="w-full jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
                                     <th class="px-5 py-3 text-left">Item</th>

@@ -564,7 +564,7 @@
                 </div>
 
                 <div class="vendors-show-table-wrap">
-                    <table class="vendors-show-table">
+                    <table class="vendors-show-table jf-table">
                         <thead>
                             <tr>
                                 <th class="text-left">Barcode</th>

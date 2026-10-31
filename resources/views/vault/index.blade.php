@@ -1197,7 +1197,7 @@
                     @else
                         <div class="vault-table-view vault-table-view--desktop">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-data-table w-full text-sm">
+                            <table class="vault-data-table w-full text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">Lot #</th>
@@ -1250,7 +1250,7 @@
 
                     <div class="vault-table-view vault-table-view--tablet">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-compact-table text-sm">
+                            <table class="vault-compact-table text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">Lot</th>
@@ -1365,7 +1365,7 @@
                 @else
                     <div class="vault-table-view vault-table-view--desktop">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-data-table w-full text-sm">
+                            <table class="vault-data-table w-full text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">Job #</th>
@@ -1396,7 +1396,7 @@
 
                     <div class="vault-table-view vault-table-view--tablet">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-compact-table text-sm">
+                            <table class="vault-compact-table text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">Job</th>
@@ -1479,7 +1479,7 @@
                 @else
                     <div class="vault-table-view vault-table-view--desktop">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-data-table w-full text-sm">
+                            <table class="vault-data-table w-full text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">When</th>
@@ -1508,7 +1508,7 @@
 
                     <div class="vault-table-view vault-table-view--tablet">
                         <div class="vault-scroll-region overflow-x-auto">
-                            <table class="vault-compact-table text-sm">
+                            <table class="vault-compact-table text-sm jf-table">
                                 <thead>
                                     <tr>
                                         <th class="px-4 py-3 text-left">When / Type</th>

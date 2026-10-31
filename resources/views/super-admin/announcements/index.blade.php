@@ -110,7 +110,7 @@
             <span class="text-xs text-slate-400">{{ $announcements->total() }} total</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm admin-table">
+            <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
                         <th class="px-4 py-2 text-left w-16">#</th>
@@ -185,7 +185,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center text-slate-500">No messages yet.</td>
+                            <td colspan="8" class="jf-table-empty">No messages yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

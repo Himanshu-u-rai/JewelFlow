@@ -208,11 +208,11 @@
 
                         <div class="invoice-show-table-shell">
                             @if($isRepairInvoice)
-                                <table class="invoice-show-data-table invoice-show-data-table--repair">
+                                <table class="invoice-show-data-table invoice-show-data-table--repair jf-table">
                                     <thead>
                                         <tr>
                                             <th>Description</th>
-                                            <th class="text-center">Weight</th>
+                                            <th class="text-right">Weight</th>
                                             <th class="text-center">Purity</th>
                                             <th class="text-right">Amount</th>
                                         </tr>
@@ -220,18 +220,18 @@
                                     <tbody>
                                         <tr class="jf-skel-row">
                                             <td data-label="Description">{{ $repair?->item_description ?? 'Repair service' }}</td>
-                                            <td data-label="Weight" class="text-center">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
+                                            <td data-label="Weight" class="text-right">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
                                             <td data-label="Purity" class="text-center">{{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}</td>
                                             <td data-label="Amount" class="text-right invoice-show-money">₹{{ number_format($lineItemsTotal, 2) }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             @else
-                                <table class="invoice-show-data-table invoice-show-data-table--sales">
+                                <table class="invoice-show-data-table invoice-show-data-table--sales jf-table">
                                     <thead>
                                         <tr>
                                             <th>Item</th>
-                                            <th class="text-center">Weight</th>
+                                            <th class="text-right">Weight</th>
                                             <th class="text-center">Purity</th>
                                             @if(!$isRetailer)
                                                 <th class="text-right">Rate</th>
@@ -265,7 +265,7 @@
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td data-label="Weight" class="text-center">{{ number_format($invoiceItem->weight, 3) }} g</td>
+                                                <td data-label="Weight" class="text-right">{{ number_format($invoiceItem->weight, 3) }} g</td>
                                                 <td data-label="Purity" class="text-center">
                                                     <span class="invoice-show-purity">{{ $linkedItem?->purity_label ?? (($linkedItem->purity ?? 22) . 'K') }}</span>
                                                 </td>

@@ -110,7 +110,7 @@
                 </div>
             @else
                 <div class="karigars-table-shell">
-                    <table class="karigars-table">
+                    <table class="karigars-table jf-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -121,7 +121,7 @@
                                 <th class="text-right">Invoices</th>
                                 <th class="text-right">Gold Held</th>
                                 <th class="text-center">Status</th>
-                                <th></th>
+                                <th class="text-right"></th>
                             </tr>
                         </thead>
                         <tbody>

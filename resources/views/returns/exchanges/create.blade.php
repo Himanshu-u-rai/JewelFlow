@@ -58,7 +58,7 @@
                         <p class="text-sm text-slate-500">No eligible invoices found. Create the new sale through the POS first, then come back here.</p>
                     </div>
                 @else
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                             <tr>
                                 <th class="px-5 py-3 text-left w-12"></th>

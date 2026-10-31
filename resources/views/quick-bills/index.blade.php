@@ -1193,14 +1193,14 @@
 
                 @if($quickBills->count())
                     <div class="qb-table-wrap">
-                        <table class="qb-table">
+                        <table class="qb-table jf-table">
                             <thead>
                                 <tr>
                                     <th>Bill</th>
                                     <th>Customer</th>
                                     <th>Date</th>
-                                    <th class="is-right">Total</th>
-                                    <th class="is-right">Due</th>
+                                    <th class="is-right text-right">Total</th>
+                                    <th class="is-right text-right">Due</th>
                                     <th>Status</th>
                                     <th class="is-right">Actions</th>
                                 </tr>
@@ -1218,10 +1218,10 @@
                                             <div class="qb-sub">{{ \App\Support\Mobile::forDisplay($quickBill->customer_mobile) ?: (\App\Support\Mobile::forDisplay($quickBill->customer?->mobile) ?: 'No mobile') }}</div>
                                         </td>
                                         <td>{{ $quickBill->bill_date?->format('d M Y') }}</td>
-                                        <td class="is-right">
+                                        <td class="is-right text-right">
                                             <span class="qb-amount">₹{{ number_format((float) $quickBill->total_amount, 2) }}</span>
                                         </td>
-                                        <td class="is-right">
+                                        <td class="is-right text-right">
                                             <span class="{{ (float) $quickBill->due_amount > 0 ? 'qb-due-pos' : 'qb-due-0' }}">₹{{ number_format((float) $quickBill->due_amount, 2) }}</span>
                                         </td>
                                         <td>

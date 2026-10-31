@@ -69,7 +69,7 @@
         {{-- Loans Table --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px]">
+                <table class="w-full min-w-[800px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
@@ -113,7 +113,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="7" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans for this customer</p>
                                     <p class="text-sm">Create a new pledge loan to get started</p>
                                 </td>

@@ -114,7 +114,7 @@
                     }
                 @endphp
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm jf-table">
                         <thead>
                             <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                                 <th class="px-4 py-2 text-left font-semibold">When</th>

@@ -27,7 +27,7 @@
             @if($loop->first)
                 <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-[820px]">
+                        <table class="w-full min-w-[820px] jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Borrower</th>

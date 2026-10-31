@@ -196,10 +196,10 @@
             {{-- ── Item table ───────────────────────────────────────────── --}}
             <div class="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-xl">
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-4 py-3 w-10"></th>
+                                <th class="px-4 py-3 w-10 text-center"></th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Barcode</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Design</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Category</th>
@@ -232,7 +232,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-slate-500">No items in stock.</td>
+                                <td colspan="8" class="jf-table-empty">No items in stock.</td>
                             </tr>
                             @endforelse
                         </tbody>

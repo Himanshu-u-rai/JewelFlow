@@ -606,7 +606,7 @@
                 </div>
             @else
                 <div class="ki-desktop overflow-x-auto">
-                    <table class="ki-table w-full text-sm">
+                    <table class="ki-table w-full text-sm jf-table">
                         <thead>
                             <tr>
                                 <th class="px-4 py-3 text-left">Invoice #</th>
