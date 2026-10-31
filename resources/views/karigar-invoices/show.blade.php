@@ -226,37 +226,11 @@
 
         .ki-show-lines-table,
         .ki-show-payments-table {
-            width: 100%;
             min-width: 860px;
-            border-collapse: collapse;
-            border-spacing: 0;
-            color: var(--ki-show-text);
-            font-size: 13px;
         }
 
-        .ki-show-lines-table thead,
-        .ki-show-payments-table thead {
-            background: #f8fafc;
-        }
 
-        .ki-show-lines-table th,
-        .ki-show-payments-table th {
-            padding: 11px 14px;
-            color: #475569;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0;
-            text-align: left;
-            text-transform: none;
-            white-space: nowrap;
-        }
 
-        .ki-show-lines-table td,
-        .ki-show-payments-table td {
-            border-top: 1px solid #edf2f7;
-            padding: 12px 14px;
-            vertical-align: top;
-        }
 
         .ki-show-text-right {
             text-align: right;
@@ -807,7 +781,7 @@
                         </div>
 
                         <div class="ki-show-table-wrap">
-                            <table class="ki-show-lines-table">
+                            <table class="ki-show-lines-table jf-table">
                                 <thead>
                                     <tr>
                                         <th>Description</th>
@@ -959,7 +933,7 @@
                     <div class="ki-show-empty">No payments yet.</div>
                 @else
                     <div class="ki-show-table-wrap">
-                        <table class="ki-show-payments-table">
+                        <table class="ki-show-payments-table jf-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>

@@ -566,17 +566,11 @@
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex flex-wrap items-center justify-center gap-2">
                                         <a href="{{ route('inventory.items.show', $item) }}" 
-                                           class="btn btn-secondary btn-xs inline-flex items-center">
-                                            <x-icon name="eye" class="w-3 h-3 mr-1" />
-                                            View
-                                        </a>
+                                           class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @if($item->status === 'in_stock')
                                             @can('inventory.edit')
                                                           <a href="{{ route('inventory.items.edit', $item) }}"
-                                                              class="btn btn-success btn-xs inline-flex items-center">
-                                                <x-icon name="square-pen" class="w-3 h-3 mr-1" />
-                                                Edit
-                                            </a>
+                                                              class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="square-pen" size="16" /><span class="jf-sr-only">Edit</span></a>
                                             @endcan
                                         @endif
                                     </div>

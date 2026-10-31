@@ -67,9 +67,7 @@
                             </td>
                             <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right sm:pr-6">
                                 <div class="admin-action-row">
-                                    <a href="{{ route('admin.plans.edit', $plan) }}" class="admin-btn admin-btn-secondary admin-btn-xs">
-                                        Edit
-                                    </a>
+                                    <a href="{{ route('admin.plans.edit', $plan) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                     <form action="{{ route('admin.plans.toggle', $plan) }}" method="POST" class="inline-block"
                                         data-confirm-message="{{ $plan->is_active ? 'Deactivate this plan? Existing active subscriptions must be zero.' : 'Activate this plan?' }}">
                                         @csrf

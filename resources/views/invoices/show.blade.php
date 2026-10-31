@@ -618,11 +618,11 @@
 
                     <div class="invoice-preview-table-wrap">
                         @if($isRepairInvoice)
-                            <table class="invoice-preview-table">
+                            <table class="invoice-preview-table jf-table jf-table--fit">
                                 <thead>
                                     <tr>
                                         <th>Description</th>
-                                        <th class="text-center">Weight</th>
+                                        <th class="text-right">Weight</th>
                                         <th class="text-center">Purity</th>
                                         <th class="text-right">Amount</th>
                                     </tr>
@@ -630,18 +630,18 @@
                                 <tbody>
                                     <tr>
                                         <td>{{ $repair?->item_description ?? 'Repair service' }}</td>
-                                        <td class="text-center">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
+                                        <td class="text-right">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
                                         <td class="text-center">{{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}</td>
                                         <td class="text-right">₹{{ number_format($invoice->total, 2) }}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         @else
-                            <table class="invoice-preview-table">
+                            <table class="invoice-preview-table jf-table jf-table--fit">
                                 <thead>
                                     <tr>
                                         <th>Item</th>
-                                        <th class="text-center">Weight</th>
+                                        <th class="text-right">Weight</th>
                                         @if(!$isRetailer)
                                             <th class="text-right">Rate</th>
                                             <th class="text-right">Making</th>
@@ -654,7 +654,7 @@
                                     @foreach($invoice->items as $line)
                                         <tr>
                                             <td>{{ optional($line->item)->design ?? 'Item #' . $line->item_id }}</td>
-                                            <td class="text-center">{{ number_format($line->weight, 3) }}</td>
+                                            <td class="text-right">{{ number_format($line->weight, 3) }}</td>
                                             @if(!$isRetailer)
                                                 <td class="text-right">₹{{ number_format($line->rate, 2) }}</td>
                                                 <td class="text-right">₹{{ number_format($line->making_charges, 2) }}</td>

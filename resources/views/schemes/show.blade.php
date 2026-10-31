@@ -243,7 +243,7 @@
                                                     <span class="schemes-enrollment-status schemes-enrollment-status--{{ $enrollment->status }}">{{ ucfirst($enrollment->status) }}</span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <a href="{{ route('schemes.enrollment.show', $enrollment) }}" class="customers-row-action">View</a>
+                                                    <a href="{{ route('schemes.enrollment.show', $enrollment) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                                 </td>
                                             </tr>
                                         @endforeach

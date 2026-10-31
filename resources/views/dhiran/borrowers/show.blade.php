@@ -123,7 +123,7 @@
                                     <td class="px-4 py-4 text-right text-sm font-medium text-slate-800">₹{{ number_format($loan->totalOutstanding(), 2) }}</td>
                                     <td class="px-4 py-4 text-sm text-slate-500">{{ $loan->loan_date?->format('d M Y') }}</td>
                                     <td class="px-4 py-4 text-sm text-slate-500">{{ $loan->maturity_date?->format('d M Y') }}</td>
-                                    <td class="px-4 py-4 text-center"><a href="{{ route('dhiran.show', $loan) }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800">View</a></td>
+                                    <td class="px-4 py-4 text-center"><a href="{{ route('dhiran.show', $loan) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a></td>
                                 </tr>
                             @endforeach
                         </tbody>

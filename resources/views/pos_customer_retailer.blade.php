@@ -1668,7 +1668,7 @@
                 <div class="items-desktop-view">
                     <div class="items-table-shell">
                         <div class="items-table-scroll">
-                            <table class="items-table">
+                            <table class="items-table jf-grid">
                                 <colgroup>
                                     <col style="width: 29%;">
                                     <col style="width: 9%;">
@@ -1744,7 +1744,7 @@
                 <div class="items-tablet-view">
                     <div class="items-tablet-shell">
                         <div class="items-tablet-scroll">
-                            <table class="items-tablet-table">
+                            <table class="items-tablet-table jf-grid">
                                 <colgroup>
                                     <col style="width: 46%;">
                                     <col style="width: 12%;">

@@ -79,6 +79,24 @@
 .jf-table > thead > tr > th:last-child,
 .jf-table > tbody > tr > td:last-child { padding-right: calc(var(--jf-t-pad-x) + 8px); }
 
+/* .jf-table--compact: tighter side padding for tables with many columns in a narrow card */
+.jf-table--compact { --jf-t-pad-x: 8px; }
+/* .jf-table--fit: a table with a few short columns fits a phone without the forced scroll width (bill previews, summaries) */
+@media (max-width: 768px) { .jf-table.jf-table--fit { min-width: 0; } }
+
+/* label / value summary rows: the first cell of an indented row (CGST under a taxable total) keeps its indent */
+.jf-table > tbody > tr > td.jf-indent { padding-left: calc(var(--jf-t-pad-x) + 32px); }
+
+/* .jf-grid: editable entry grids (POS cart, historical items, job-order receive) keep their own cell spacing, borders, inputs and keyboard
+   behaviour; only the header text takes the shared look */
+.jf-grid > thead > tr > th {
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
 /* a selection checkbox column stays narrow */
 .jf-table > thead > tr > th:has(> input[type="checkbox"]),
 .jf-table > tbody > tr > td:has(> input[type="checkbox"]) {
@@ -136,6 +154,82 @@
     .jf-table-actions > button,
     .jf-table-actions > form > button,
     .jf-table-actions > form > select { min-height: 44px; }
+}
+
+/* .jf-row-action: icon-only row action (view, edit, print, delete ...) with a floating label above it, as on the Invoice register.
+   The visible text lives in the .jf-sr-only span (screen readers and the accessible name are unchanged) and in data-tip (the floating
+   label, shown on hover and keyboard focus, never inside the button). Variants: --view, --edit, --neutral, --danger, --success, --primary. */
+.jf-row-action {
+    --jf-ra-bg: #f8fafc;
+    --jf-ra-line: #cbd5e1;
+    --jf-ra-fg: #334155;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    box-sizing: border-box;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    border: 1px solid var(--jf-ra-line);
+    border-radius: 9px;
+    background: var(--jf-ra-bg);
+    color: var(--jf-ra-fg);
+    font-size: 0;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
+}
+.jf-row-action--view { --jf-ra-bg: var(--jf-t-focus); --jf-ra-line: var(--jf-t-focus); --jf-ra-fg: #ffffff; }
+.jf-row-action--edit { --jf-ra-bg: #fff7ed; --jf-ra-line: #fed7aa; --jf-ra-fg: #92400e; }
+.jf-row-action--danger { --jf-ra-bg: #fef2f2; --jf-ra-line: #fecaca; --jf-ra-fg: #b91c1c; }
+.jf-row-action--success { --jf-ra-bg: #f0fdf4; --jf-ra-line: #bbf7d0; --jf-ra-fg: #15803d; }
+.jf-row-action--primary { --jf-ra-bg: #1e293b; --jf-ra-line: #1e293b; --jf-ra-fg: #ffffff; }
+.jf-row-action:hover { transform: translateY(-1px); }
+.jf-row-action:active { transform: scale(0.97); }
+.jf-row-action:focus-visible { outline: 2px solid var(--jf-t-focus); outline-offset: 2px; }
+.jf-row-action > svg { width: 16px; height: 16px; flex: none; }
+.jf-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.jf-row-action[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 20;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    display: none;
+    transform: translateX(-50%);
+    padding: 5px 7px;
+    border-radius: 7px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.jf-row-action[data-tip]:focus-visible::after { display: block; }
+@media (hover: hover) and (pointer: fine) {
+    .jf-row-action[data-tip]:hover::after { display: block; }
+}
+@media (pointer: coarse) {
+    .jf-row-action { width: 44px; height: 44px; min-height: 44px; }
 }
 
 /* .jf-table--sticky-end: a wide table keeps its last (action) column pinned at the right edge of the scroll container, so the

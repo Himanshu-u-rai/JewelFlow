@@ -1787,7 +1787,7 @@
                                         </td>
                                         <td class="text-right">
                                             <div class="ri-row-actions">
-                                                <a href="{{ route('returns.show', $ro) }}" class="ri-btn-view customers-row-action customers-row-action--primary">View</a>
+                                                <a href="{{ route('returns.show', $ro) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                                 @if($ro->status === \App\Models\ReturnOrder::STATUS_PENDING_APPROVAL)
                                                     @can('returns.approve')
                                                         <form method="POST" action="{{ route('returns.approve', $ro) }}"

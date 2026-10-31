@@ -667,7 +667,9 @@ class HistoricalMobileUiTest extends TestCase
         $index = $this->actingAs($owner)->get(route('historical.index'))->assertOk();
         $this->assertTapTargets($index->getContent());
         $indexXpath = $this->xpath($index->getContent());
-        $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.batches.show', $batch)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
+        // the batch "Open" link is an icon-only row action (tooltip in data-tip, accessible name kept; 44px on touch screens via tables.css)
+        $this->assertNodesHaveClasses($indexXpath, "//*[@data-historical-register='batches-desktop']//a[@href='".route('historical.batches.show', $batch)."']", ['jf-row-action']);
+        $this->assertNodesHaveClasses($indexXpath, "//*[@data-historical-register='batches-mobile']//a[@href='".route('historical.batches.show', $batch)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
         $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.documents.show', $document)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
 
         $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
@@ -728,7 +730,7 @@ class HistoricalMobileUiTest extends TestCase
         );
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//a",
+            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//a[not(contains(@class,'jf-row-action'))]",
             ['border', 'rounded-lg', 'min-h-[44px]']
         );
     }

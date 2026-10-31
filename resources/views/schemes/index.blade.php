@@ -180,9 +180,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-left">
                                     <div class="flex items-center justify-center gap-2">
-                                        <a href="{{ route('schemes.show', $scheme) }}" class="customers-row-action customers-row-action--primary">
-                                            View
-                                        </a>
+                                        <a href="{{ route('schemes.show', $scheme) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @if($scheme->isGoldSavings())
                                             @can('sales.create')
                                                 <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action">

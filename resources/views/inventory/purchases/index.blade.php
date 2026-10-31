@@ -1208,16 +1208,16 @@
                                     </td>
                                     <td class="px-3.5 py-3 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-row-action">View</a>
+                                            <a href="{{ route('inventory.purchases.show', $purchase) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @if($purchase->isDraft())
                                                 @can('inventory.edit')
-                                                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="sp-row-action sp-row-action--edit">Edit</a>
+                                                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                                 @endcan
                                                 @can('inventory.delete')
                                                 <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="sp-row-action sp-row-action--delete">Delete</button>
+                                                    <button type="submit" class="jf-row-action jf-row-action--danger" data-tip="Delete"><x-icon name="trash-2" size="16" /><span class="jf-sr-only">Delete</span></button>
                                                 </form>
                                                 @endcan
                                             @endif

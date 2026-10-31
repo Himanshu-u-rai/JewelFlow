@@ -1229,14 +1229,8 @@
                                         </td>
                                         <td class="is-right">
                                             <div class="qb-actions">
-                                                <a href="{{ route('quick-bills.show', $quickBill) }}" class="qb-action is-view">
-                                                    <x-icon name="eye" />
-                                                    View
-                                                </a>
-                                                <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action is-print">
-                                                    <x-icon name="printer" />
-                                                    Print
-                                                </a>
+                                                <a href="{{ route('quick-bills.show', $quickBill) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
+                                                <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="jf-row-action jf-row-action--neutral" data-tip="Print"><x-icon name="printer" size="16" /><span class="jf-sr-only">Print</span></a>
                                             </div>
                                         </td>
                                     </tr>

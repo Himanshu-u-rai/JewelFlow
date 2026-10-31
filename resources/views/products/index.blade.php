@@ -115,16 +115,10 @@
                                         </a>
                                         @endcan
                                         <a href="{{ route('products.show', $product) }}"
-                                           class="inline-flex items-center px-2.5 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 text-xs font-medium transition-colors">
-                                            <x-icon name="eye" class="w-3 h-3 mr-1" />
-                                            View
-                                        </a>
+                                           class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @can('catalog.manage')
                                         <a href="{{ route('products.edit', $product) }}"
-                                           class="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-xs font-medium transition-colors">
-                                            <x-icon name="square-pen" class="w-3 h-3 mr-1" />
-                                            Edit
-                                        </a>
+                                           class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="square-pen" size="16" /><span class="jf-sr-only">Edit</span></a>
                                         @endcan
                                     </div>
                                 </td>

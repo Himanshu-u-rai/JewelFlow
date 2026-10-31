@@ -62,7 +62,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('admin.users.show', $user) }}" class="admin-btn admin-btn-secondary admin-btn-xs">Inspect</a>
+                                <a href="{{ route('admin.users.show', $user) }}" class="jf-row-action jf-row-action--view" data-tip="Inspect"><x-icon name="eye" size="16" /><span class="jf-sr-only">Inspect</span></a>
                             </td>
                         </tr>
                     @empty

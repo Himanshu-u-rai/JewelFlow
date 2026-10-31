@@ -92,7 +92,7 @@
                                 <td class="px-6 py-4 text-sm text-right tabular-nums text-slate-600">{{ number_format($batch->rows_count) }}</td>
                                 <td class="px-6 py-4 text-sm text-right tabular-nums text-slate-600">{{ number_format($batch->documents_count) }}</td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('historical.batches.show', $batch) }}" class="inline-flex items-center justify-center min-h-[44px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">Open</a>
+                                    <a href="{{ route('historical.batches.show', $batch) }}" class="jf-row-action jf-row-action--view" data-tip="Open"><x-icon name="eye" size="16" /><span class="jf-sr-only">Open</span></a>
                                 </td>
                             </tr>
                         @empty

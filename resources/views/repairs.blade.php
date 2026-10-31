@@ -335,6 +335,12 @@
         .repairs-data-table tbody tr:hover {
             background: #fff7ed !important;
         }
+        /* table layout: Customer and Item wrap instead of widening the table; the action cell is two rows of controls */
+        .repairs-table > tbody > tr > td:nth-child(2),
+        .repairs-table > tbody > tr > td:nth-child(3) { white-space: normal; min-width: 96px; overflow-wrap: anywhere; }
+        .repairs-table > thead > tr > th:last-child,
+        .repairs-table > tbody > tr > td.repairs-action-cell { width: 1%; white-space: nowrap; }
+        .repairs-action-row { flex-wrap: nowrap; justify-content: flex-start; }
         .repairs-chip {
             display: inline-flex;
             align-items: center;
@@ -952,7 +958,7 @@
                     </div>
 
                     <div class="overflow-auto repairs-table-shell repairs-data-table-shell" style="height:560px;padding-bottom:12px">
-                        <table class="w-full repairs-table jf-table jf-table--sticky-end">
+                        <table class="w-full repairs-table jf-table jf-table--compact">
                             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:1">
                                 <tr>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repair #</th>
@@ -1016,10 +1022,7 @@
                                         <td class="px-3 py-4 text-sm text-center repairs-action-cell">
                                             <div class="jf-table-actions jf-table-actions--center repairs-action-row">
                                                 <a href="{{ route('repairs.show', $r) }}"
-                                                   class="btn btn-primary btn-xs">
-                                                    <x-icon name="eye" class="w-3 h-3 mr-1" />
-                                                    View
-                                                </a>
+                                                   class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                                 @if($r->status !== 'delivered')
                                                     @can('repairs.edit')
                                                     <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
@@ -1033,21 +1036,14 @@
                                                         </select>
                                                     </form>
                                                     <a href="{{ route('repairs.edit', $r) }}"
-                                                       class="btn btn-secondary btn-xs">
-                                                        <x-icon name="square-pen" class="w-3 h-3 mr-1" />
-                                                        Edit
-                                                    </a>
-                                                    <button onclick="openDeliverModal({{ $r->id }}, @js($r->customer->name), @js($r->item_description), {{ $r->estimated_cost ?? 0 }})"
-                                                            class="btn btn-success btn-xs" title="Complete & Bill">
-                                                        <x-icon name="check" class="w-3 h-3 mr-1" />Bill
-                                                    </button>
+                                                       class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="square-pen" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                                    <button type="button" onclick="openDeliverModal({{ $r->id }}, @js($r->customer->name), @js($r->item_description), {{ $r->estimated_cost ?? 0 }})"
+                                                            class="jf-row-action jf-row-action--primary" data-tip="Complete &amp; bill"><x-icon name="receipt" size="16" /><span class="jf-sr-only">Complete &amp; bill</span></button>
                                                     @endcan
                                                 @endif
                                                 @if($r->status === 'delivered' && $r->invoice_id)
                                                     <a href="{{ route('invoices.show', $r->invoice_id) }}"
-                                                       class="btn btn-primary btn-xs">
-                                                        <x-icon name="file-text" class="w-3 h-3 mr-1" />View Invoice
-                                                    </a>
+                                                       class="jf-row-action jf-row-action--view" data-tip="View invoice"><x-icon name="file-text" size="16" /><span class="jf-sr-only">View invoice</span></a>
                                                 @endif
                                             </div>
                                         </td>

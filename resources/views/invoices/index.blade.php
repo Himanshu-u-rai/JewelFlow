@@ -365,29 +365,20 @@
                                 <td class="px-7 py-5 whitespace-nowrap text-center invoice-actions-cell">
                                     <div class="invoice-inline-actions">
                                         <a href="{{ route('invoices.show', $invoice) }}"
-                                           class="invoice-action-icon-link invoice-action-icon-link--view"
+                                          
                                            aria-label="View invoice"
-                                           title="View">
-                                            <x-icon name="eye" size="16" />
-                                            <span class="invoice-action-tooltip">View</span>
-                                        </a>
+                                           class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @can('sales.void')
                                         <a href="{{ route('invoices.edit', $invoice) }}"
-                                           class="invoice-action-icon-link invoice-action-icon-link--edit"
+                                          
                                            aria-label="Edit invoice"
-                                           title="Edit">
-                                            <x-icon name="pencil" size="16" />
-                                            <span class="invoice-action-tooltip">Edit</span>
-                                        </a>
+                                           class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                         @endcan
                                         <a href="{{ route('invoices.print', $invoice) }}"
                                            target="_blank"
-                                           class="invoice-action-icon-link invoice-action-icon-link--print"
+                                          
                                            aria-label="Print invoice"
-                                           title="Print">
-                                            <x-icon name="printer" size="16" />
-                                            <span class="invoice-action-tooltip">Print</span>
-                                        </a>
+                                           class="jf-row-action jf-row-action--neutral" data-tip="Print"><x-icon name="printer" size="16" /><span class="jf-sr-only">Print</span></a>
                                     </div>
                                 </td>
                             </tr>

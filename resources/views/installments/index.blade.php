@@ -161,7 +161,7 @@
                                     <span class="installments-status-badge {{ $rowStatusClass }}">{{ ucfirst($plan->status) }}</span>
                                 </td>
                                 <td class="is-center">
-                                    <a href="{{ route('installments.show', $plan) }}" class="customers-row-action customers-row-action--primary">View</a>
+                                    <a href="{{ route('installments.show', $plan) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                 </td>
                             </tr>
                         @empty

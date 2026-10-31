@@ -365,41 +365,10 @@
             overflow-x: auto;
         }
 
-        .qb-items-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
 
-        .qb-items-table th {
-            padding: 12px 18px;
-            border-bottom: 1px solid var(--qb-line-soft);
-            background: #f8fafc;
-            color: var(--qb-text);
-            font-size: 12px;
-            font-weight: 600;
-            line-height: 1.2;
-            text-align: left;
-            white-space: nowrap;
-        }
 
-        .qb-items-table th.is-right,
-        .qb-items-table td.is-right {
-            text-align: right;
-        }
 
-        .qb-items-table td {
-            padding: 15px 18px;
-            border-bottom: 1px solid #edf2f7;
-            color: var(--qb-text);
-            font-size: 14px;
-            font-weight: 400;
-            line-height: 1.35;
-            vertical-align: middle;
-        }
 
-        .qb-items-table tbody tr:last-child td {
-            border-bottom: 0;
-        }
 
         .qb-item-title {
             color: var(--qb-ink);
@@ -986,17 +955,17 @@
                     </div>
 
                     <div class="qb-items-table-wrap">
-                        <table class="qb-items-table">
+                        <table class="qb-items-table jf-table jf-table--fit">
                             <thead>
                                 <tr>
                                     <th>Description</th>
                                     <th>Metal</th>
                                     <th>Purity</th>
-                                    <th>Pcs</th>
-                                    <th>Gross</th>
-                                    <th>Net</th>
-                                    <th>Rate</th>
-                                    <th class="is-right">Amount</th>
+                                    <th class="text-right">Pcs</th>
+                                    <th class="text-right">Gross</th>
+                                    <th class="text-right">Net</th>
+                                    <th class="text-right">Rate</th>
+                                    <th class="text-right">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1025,11 +994,11 @@
                                         </td>
                                         <td>{{ $item->metal_type ?: 'Not set' }}</td>
                                         <td>{{ $item->purity ?: 'Not set' }}</td>
-                                        <td>{{ $item->pcs }}</td>
-                                        <td>{{ number_format((float) $item->gross_weight, 3) }}</td>
-                                        <td>{{ number_format((float) $item->net_weight, 3) }}</td>
-                                        <td>₹{{ number_format((float) $item->rate, 2) }}</td>
-                                        <td class="is-right"><span class="qb-money">₹{{ number_format((float) $item->line_total, 2) }}</span></td>
+                                        <td class="text-right">{{ $item->pcs }}</td>
+                                        <td class="text-right">{{ number_format((float) $item->gross_weight, 3) }}</td>
+                                        <td class="text-right">{{ number_format((float) $item->net_weight, 3) }}</td>
+                                        <td class="text-right">₹{{ number_format((float) $item->rate, 2) }}</td>
+                                        <td class="text-right"><span class="qb-money">₹{{ number_format((float) $item->line_total, 2) }}</span></td>
                                     </tr>
                                 @endforeach
                             </tbody>

@@ -138,7 +138,7 @@
         </div>
 
         <div class="mt-4 hidden max-w-full overflow-hidden rounded-xl border border-slate-300 bg-white xl:block" data-historical-item-grid-desktop>
-            <table class="w-full table-fixed text-sm" data-historical-item-table>
+            <table class="w-full table-fixed text-sm jf-grid" data-historical-item-table>
                 <colgroup>
                     <col class="w-[3%]"><col class="w-[19%]"><col class="w-[11%]"><col class="w-[9%]"><col class="w-[7%]"><col class="w-[11%]"><col class="w-[13%]"><col class="w-[14%]"><col class="w-[13%]">
                 </colgroup>

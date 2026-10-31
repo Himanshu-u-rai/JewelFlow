@@ -175,9 +175,7 @@
                                             </td>
                                             <td>{{ $payment->notes ?? '—' }}</td>
                                             <td class="is-center">
-                                                <a href="{{ route('installments.receipt', [$plan, $payment]) }}" target="_blank" class="installments-show-receipt-link">
-                                                    Print
-                                                </a>
+                                                <a href="{{ route('installments.receipt', [$plan, $payment]) }}" target="_blank" class="jf-row-action jf-row-action--neutral" data-tip="Print"><x-icon name="printer" size="16" /><span class="jf-sr-only">Print</span></a>
                                             </td>
                                         </tr>
                                     @endforeach

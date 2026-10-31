@@ -165,7 +165,7 @@
                                                     <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
                                                 </form>
                                             @endif
-                                            <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
+                                            <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                         </div>
                                         @endcan
                                     </td>

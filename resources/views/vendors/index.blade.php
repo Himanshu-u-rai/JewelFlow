@@ -371,40 +371,9 @@
             overflow-x: auto;
         }
 
+        /* header, cells, separators and hover come from the shared .jf-table pattern (tables.css) */
         .vendors-index-page .vendors-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
             min-width: 820px;
-        }
-
-        .vendors-index-page .vendors-table thead th {
-            padding: 14px 24px;
-            border-bottom: 1px solid var(--vendors-border);
-            background: #f8fafc;
-            color: var(--vendors-text-soft);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-        }
-
-        .vendors-index-page .vendors-table tbody td {
-            padding: 18px 24px;
-            border-bottom: 1px solid #e8eef7;
-            vertical-align: middle;
-        }
-
-        .vendors-index-page .vendors-table tbody tr:last-child td {
-            border-bottom: 0;
-        }
-
-        .vendors-index-page .vendors-table tbody tr {
-            transition: background-color 0.18s ease;
-        }
-
-        .vendors-index-page .vendors-table tbody tr:hover {
-            background: #fffaf3;
         }
 
         .vendors-index-page .vendors-index-cell {
@@ -1052,15 +1021,9 @@
                                     </td>
                                     <td class="text-left">
                                         <div class="vendors-table-actions">
-                                            <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">
-                                                <x-icon name="eye" size="12" />
-                                                View
-                                            </a>
+                                            <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @can('vendors.manage')
-                                            <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">
-                                                <x-icon name="pencil" size="12" />
-                                                Edit
-                                            </a>
+                                            <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                             {{-- MASTERS PART 3: explicit lifecycle action, right where
                                                  the status badge is, so it is never mistaken for an edit. --}}
                                             @if($vendor->is_active)
@@ -1068,13 +1031,13 @@
                                                       onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="vendors-link-btn vendors-link-btn--archive" aria-label="Archive this vendor">Archive</button>
+                                                    <button type="submit" aria-label="Archive this vendor" class="jf-row-action jf-row-action--danger" data-tip="Archive"><x-icon name="archive" size="16" /><span class="jf-sr-only">Archive</span></button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="vendors-link-btn vendors-link-btn--reactivate" aria-label="Reactivate this vendor">Reactivate</button>
+                                                    <button type="submit" aria-label="Reactivate this vendor" class="jf-row-action jf-row-action--success" data-tip="Reactivate"><x-icon name="rotate-ccw" size="16" /><span class="jf-sr-only">Reactivate</span></button>
                                                 </form>
                                             @endif
                                             @endcan

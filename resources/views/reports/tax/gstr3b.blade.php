@@ -25,16 +25,16 @@
     <div class="content-inner">
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden max-w-3xl">
             <div class="px-5 py-3 border-b border-gray-100"><h2 class="font-semibold text-gray-900">Tax Summary</h2></div>
-            <table class="min-w-full text-sm">
+            <table class="min-w-full text-sm jf-table jf-table--fit">
                 <tbody class="divide-y divide-gray-100">
                     <tr><td class="px-5 py-3 text-gray-600">3.1(a) Outward taxable supplies</td><td class="px-5 py-3 text-right font-medium">₹{{ number_format($data->outwardTaxable, 2) }}</td></tr>
-                    <tr><td class="px-5 py-3 pl-10 text-gray-500">CGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardCgst, 2) }}</td></tr>
-                    <tr><td class="px-5 py-3 pl-10 text-gray-500">SGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardSgst, 2) }}</td></tr>
-                    <tr><td class="px-5 py-3 pl-10 text-gray-500">IGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardIgst, 2) }}</td></tr>
+                    <tr><td class="px-5 py-3 pl-10 text-gray-500 jf-indent">CGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardCgst, 2) }}</td></tr>
+                    <tr><td class="px-5 py-3 pl-10 text-gray-500 jf-indent">SGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardSgst, 2) }}</td></tr>
+                    <tr><td class="px-5 py-3 pl-10 text-gray-500 jf-indent">IGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardIgst, 2) }}</td></tr>
                     <tr><td class="px-5 py-3 font-medium text-gray-700">Total output tax</td><td class="px-5 py-3 text-right font-semibold text-emerald-700">₹{{ number_format($data->outwardGst, 2) }}</td></tr>
-                    <tr class="bg-rose-50"><td class="px-5 py-3 text-gray-600">Less: GST reversed via credit notes</td><td class="px-5 py-3 text-right text-rose-600">−₹{{ number_format($data->cnGst, 2) }}</td></tr>
+                    <tr class="bg-rose-50" style="--jf-t-zebra:#fff1f2;--jf-t-hover:#ffe4e6;background:#fff1f2"><td class="px-5 py-3 text-gray-600">Less: GST reversed via credit notes</td><td class="px-5 py-3 text-right text-rose-600">−₹{{ number_format($data->cnGst, 2) }}</td></tr>
                     <tr><td class="px-5 py-3 text-gray-600">Less: ITC (input tax credit)</td><td class="px-5 py-3 text-right text-gray-500">−₹{{ number_format($data->itc, 2) }} <span class="text-xs">(not tracked in JewelFlows)</span></td></tr>
-                    <tr class="bg-emerald-50 border-t-2 border-emerald-200"><td class="px-5 py-4 font-bold text-emerald-900">Net GST payable</td><td class="px-5 py-4 text-right font-bold text-lg text-emerald-700">₹{{ number_format($data->netGst, 2) }}</td></tr>
+                    <tr class="bg-emerald-50 border-t-2 border-emerald-200" style="--jf-t-zebra:#ecfdf5;--jf-t-hover:#d1fae5;background:#ecfdf5"><td class="px-5 py-4 font-bold text-emerald-900">Net GST payable</td><td class="px-5 py-4 text-right font-bold text-lg text-emerald-700">₹{{ number_format($data->netGst, 2) }}</td></tr>
                 </tbody>
             </table>
         </div>

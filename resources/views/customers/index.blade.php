@@ -224,27 +224,21 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="jf-table-actions jf-table-actions--center">
-                                        <a href="{{ route('customers.show', $customer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <x-icon name="eye" size="12" />
-                                            View
-                                        </a>
-                                        <a href="{{ route('customers.edit', $customer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <x-icon name="pencil" size="12" />
-                                            Edit
-                                        </a>
+                                        <a href="{{ route('customers.show', $customer) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
+                                        <a href="{{ route('customers.edit', $customer) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                         @can('customers.delete')
                                             @if($customer->is_active)
                                                 <form action="{{ route('customers.archive', $customer) }}" method="POST" class="inline"
                                                       onsubmit="return confirm('Archive {{ addslashes(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''))) }}? Invoices, balances, EMIs and repairs are all kept — the customer just stops appearing when you start a new transaction.')">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" aria-label="Archive customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg px-3 text-xs font-semibold bg-amber-700 text-white shadow-sm transition-colors hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">Archive</button>
+                                                    <button type="submit" aria-label="Archive customer" class="jf-row-action jf-row-action--danger" data-tip="Archive"><x-icon name="archive" size="16" /><span class="jf-sr-only">Archive</span></button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('customers.reactivate', $customer) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" aria-label="Reactivate customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg px-3 text-xs font-semibold bg-emerald-700 text-white shadow-sm transition-colors hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Reactivate</button>
+                                                    <button type="submit" aria-label="Reactivate customer" class="jf-row-action jf-row-action--success" data-tip="Reactivate"><x-icon name="rotate-ccw" size="16" /><span class="jf-sr-only">Reactivate</span></button>
                                                 </form>
                                             @endif
                                         @endcan
@@ -479,7 +473,7 @@
                                 <td class="px-6 py-4 text-sm text-right text-slate-700 tabular-nums">₹{{ number_format($lCustomer->loyalty_points * 0.25, 2) }}</td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex flex-wrap items-center justify-center gap-2">
-                                        <a href="{{ route('customers.show', $lCustomer) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="eye" size="12" />View Profile</a>
+                                        <a href="{{ route('customers.show', $lCustomer) }}" class="jf-row-action jf-row-action--view" data-tip="View Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">View Profile</span></a>
                                         <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="sliders-vertical" size="12" />Adjust</a>
                                     </div>
                                 </td>
@@ -648,7 +642,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('installments.show', $plan) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="eye" size="12" />View</a>
+                                    <a href="{{ route('installments.show', $plan) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                 </td>
                             </tr>
                             @empty
@@ -807,10 +801,7 @@
                                         {{ (int) $occasion['days_until'] === 0 ? 'Today' : ((int) $occasion['days_until'] . ' days') }}
                                     </td>
                                     <td class="px-6 py-4 text-center">
-                                        <a href="{{ route('customers.show', $occasion['customer_id']) }}" class="customers-row-action customers-row-action--primary inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                            <x-icon name="eye" size="12" />
-                                            View Profile
-                                        </a>
+                                        <a href="{{ route('customers.show', $occasion['customer_id']) }}" class="jf-row-action jf-row-action--view" data-tip="View Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">View Profile</span></a>
                                     </td>
                                 </tr>
                             @empty

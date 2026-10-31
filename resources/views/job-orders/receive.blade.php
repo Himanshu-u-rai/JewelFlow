@@ -105,7 +105,7 @@
                 </div>
 
                 <div class="job-receive-line-table">
-                <table class="w-full text-sm mb-3">
+                <table class="w-full text-sm mb-3 jf-grid">
                     <thead>
                         <tr class="text-[10px] uppercase tracking-wide text-gray-500">
                             <th class="text-left py-1 font-semibold">Description *</th>

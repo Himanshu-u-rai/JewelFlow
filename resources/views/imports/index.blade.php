@@ -883,7 +883,7 @@
                                 <td class="px-4 py-3 text-sm text-right text-red-700 font-semibold">{{ $import->invalid_rows }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $import->created_at?->format('d M Y, h:i A') }}</td>
                                 <td class="px-4 py-3 text-sm text-right">
-                                    <a href="{{ route('imports.show', $import) }}" class="btn btn-secondary btn-sm"><x-icon name="external-link" size="14" class="mr-1" />Open</a>
+                                    <a href="{{ route('imports.show', $import) }}" class="jf-row-action jf-row-action--view" data-tip="Open"><x-icon name="external-link" size="16" /><span class="jf-sr-only">Open</span></a>
                                 </td>
                             </tr>
                         @empty

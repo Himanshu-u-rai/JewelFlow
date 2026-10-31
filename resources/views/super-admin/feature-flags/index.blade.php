@@ -88,7 +88,7 @@
                                       class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="admin-btn admin-btn-rose admin-btn-xs">Delete</button>
+                                    <button type="submit" class="jf-row-action jf-row-action--danger" data-tip="Delete"><x-icon name="trash-2" size="16" /><span class="jf-sr-only">Delete</span></button>
                                 </form>
                             </td>
                         </tr>
@@ -144,7 +144,7 @@
                                           class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="admin-btn admin-btn-rose admin-btn-xs">Delete</button>
+                                        <button type="submit" class="jf-row-action jf-row-action--danger" data-tip="Delete"><x-icon name="trash-2" size="16" /><span class="jf-sr-only">Delete</span></button>
                                     </form>
                                 </td>
                             </tr>

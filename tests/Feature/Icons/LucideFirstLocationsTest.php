@@ -129,16 +129,17 @@ class LucideFirstLocationsTest extends TestCase
         $this->assertIconsAreDecorativeInsideNamedControls($xp);
     }
 
-    public function test_the_customers_list_draws_edit_with_lucide_at_its_current_12px(): void
+    public function test_the_customers_list_draws_edit_with_lucide_in_an_icon_only_row_action(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $this->createCustomer($shop->id, ['first_name' => 'Imran', 'last_name' => 'Khan']);
 
         $xp = $this->page($owner, route('customers.index'));
 
-        $edit = $xp->query('//a[contains(@class,"customers-row-action") and normalize-space(.)="Edit"]//svg[@data-icon="pencil" and @width="12" and @height="12"]');
+        // the row action is icon-only (16px glyph, accessible name in a visually hidden span, floating label in data-tip)
+        $edit = $xp->query('//a[contains(@class,"jf-row-action--edit") and @data-tip="Edit" and normalize-space(.)="Edit"]//svg[@data-icon="pencil" and @width="16" and @height="16"]');
         $this->assertGreaterThanOrEqual(1, $edit->length);
-        $this->assertSame(0, $xp->query('//a[contains(@class,"customers-row-action")]//path[starts-with(@d,"M17 3a2.828")]')->length, 'the old edit drawing is still there');
+        $this->assertSame(0, $xp->query('//a[contains(@class,"jf-row-action")]//path[starts-with(@d,"M17 3a2.828")]')->length, 'the old edit drawing is still there');
         $this->assertIconsAreDecorativeInsideNamedControls($xp);
     }
 

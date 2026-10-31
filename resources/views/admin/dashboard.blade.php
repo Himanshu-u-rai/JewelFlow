@@ -258,7 +258,7 @@
                         <td class="px-4 py-2">
                             <span class="admin-badge {{ $typeBadge }}">{{ $typeLabel }}</span>
                         </td>
-                        <td class="px-4 py-2 text-center">{{ $userCount }}</td>
+                        <td class="px-4 py-2">{{ $userCount }}</td>
                         <td class="px-4 py-2 text-sm">
                             <x-super-admin.access-mode-badge :shop="$shop" />
                         </td>

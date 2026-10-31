@@ -93,20 +93,20 @@
             <p style="color:#64748b;">No supplier opening balances recorded.</p>
         @else
             <div class="onboarding-summary-card">
-                <table style="width:100%;border-collapse:collapse;">
+                <table class="jf-table jf-table--fit">
                     <thead>
-                        <tr style="text-align:left;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
-                            <th style="padding:10px 12px;width:36px;">#</th>
-                            <th style="padding:10px 12px;">Supplier</th>
-                            <th style="padding:10px 12px;text-align:right;">Net payable (₹)</th>
+                        <tr>
+                            <th class="w-9">#</th>
+                            <th>Supplier</th>
+                            <th class="text-right">Net payable (₹)</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($rows as $r)
-                            <tr style="border-bottom:1px solid #f1f5f9;">
-                                <td style="padding:10px 12px;color:#94a3b8;">{{ $loop->iteration }}</td>
-                                <td style="padding:10px 12px;">{{ $r->vendor->name ?? 'Unknown vendor' }}</td>
-                                <td style="padding:10px 12px;text-align:right;">{{ number_format((float) $r->net_payable, 2) }}</td>
+                            <tr>
+                                <td class="text-slate-400">{{ $loop->iteration }}</td>
+                                <td>{{ $r->vendor->name ?? 'Unknown vendor' }}</td>
+                                <td class="text-right">{{ number_format((float) $r->net_payable, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>

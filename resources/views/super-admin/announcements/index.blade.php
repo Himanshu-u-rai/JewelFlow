@@ -172,14 +172,14 @@
                                         "update_url" => route("admin.announcements.update", $ann),
                                     ];
                                 @endphp
-                                <button type="button" class="admin-btn admin-btn-xs"
+                                <button type="button"
                                         data-ann-edit
-                                        data-ann='@json($annPayload)'>Edit</button>
+                                        data-ann='@json($annPayload)' class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></button>
                                 <form method="POST" action="{{ route('admin.announcements.destroy', $ann) }}" class="inline"
                                       onsubmit="return confirm('Delete this message?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="admin-btn admin-btn-danger admin-btn-xs">Delete</button>
+                                    <button class="jf-row-action jf-row-action--danger" data-tip="Delete"><x-icon name="trash-2" size="16" /><span class="jf-sr-only">Delete</span></button>
                                 </form>
                             </td>
                         </tr>

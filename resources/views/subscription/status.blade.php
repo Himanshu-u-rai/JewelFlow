@@ -940,7 +940,7 @@
                                             @endif
                                         </td>
                                         <td class="text-right sub-billing-action">
-                                            <a href="{{ route('billing.invoices.show', $inv) }}" class="sub-billing-view">View invoice</a>
+                                            <a href="{{ route('billing.invoices.show', $inv) }}" class="jf-row-action jf-row-action--view" data-tip="View invoice"><x-icon name="file-text" size="16" /><span class="jf-sr-only">View invoice</span></a>
                                         </td>
                                     </tr>
                                 @empty

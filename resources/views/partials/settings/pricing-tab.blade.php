@@ -908,7 +908,7 @@
 @if($todayRate)
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
         <div class="overflow-x-auto pricing-table-shell">
-            <table class="w-full">
+            <table class="w-full jf-table">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Metal') }}</th>

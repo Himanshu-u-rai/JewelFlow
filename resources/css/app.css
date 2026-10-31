@@ -17126,72 +17126,6 @@ input::-webkit-calendar-picker-indicator {
     gap: 7px;
 }
 
-.invoices-index-page .invoice-action-icon-link {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--invoice-border);
-    border-radius: 9px;
-    background: #ffffff;
-    color: var(--invoice-text);
-    text-decoration: none;
-    box-shadow: none !important;
-    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
-}
-
-.invoices-index-page .invoice-action-icon-link--view {
-    border-color: var(--invoice-gold);
-    background: var(--invoice-gold);
-    color: #ffffff;
-}
-
-.invoices-index-page .invoice-action-icon-link--edit {
-    border-color: #fed7aa;
-    background: #fff7ed;
-    color: var(--invoice-gold-dark);
-}
-
-.invoices-index-page .invoice-action-icon-link--print {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-    color: #334155;
-}
-
-.invoices-index-page .invoice-action-icon-link:hover {
-    transform: translateY(-1px);
-}
-
-.invoices-index-page .invoice-action-icon-link:active {
-    transform: scale(0.97);
-}
-
-.invoices-index-page .invoice-action-tooltip {
-    position: absolute;
-    z-index: 20;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    display: none;
-    transform: translateX(-50%);
-    border: 1px solid #0f172a;
-    border-radius: 7px;
-    padding: 5px 7px;
-    background: #0f172a;
-    color: #ffffff;
-    font-size: 11px;
-    line-height: 1;
-    white-space: nowrap;
-    pointer-events: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-    .invoices-index-page .invoice-action-icon-link:hover .invoice-action-tooltip {
-        display: inline-flex;
-    }
-}
-
 .invoices-index-page .invoices-badge {
     display: inline-flex;
     align-items: center;
@@ -28421,32 +28355,9 @@ input[type="date"] {
     overflow-x: auto;
 }
 
-.invoice-preview-table {
-    width: 100%;
-    border: 1px solid #cbd5e1;
-    border-collapse: collapse;
-    color: #111827;
-    font-size: 13px;
-}
 
-.invoice-preview-table th,
-.invoice-preview-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e2e8f0;
-    text-align: left;
-    vertical-align: top;
-}
 
-.invoice-preview-table th {
-    background: #f8fafc;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 600;
-}
 
-.invoice-preview-table tr:last-child td {
-    border-bottom: 0;
-}
 
 .invoice-preview-total-list,
 .invoice-preview-payments {
@@ -28759,16 +28670,7 @@ input[type="date"] {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .invoice-preview-table {
-        min-width: 100%;
-        font-size: 12px;
-        table-layout: auto;
-    }
 
-    .invoice-preview-table th,
-    .invoice-preview-table td {
-        padding: 8px 9px;
-    }
 
     .invoice-preview-total-list div,
     .invoice-preview-payments div {
@@ -31383,9 +31285,10 @@ body.admin-shell :where(.admin-main, [role="dialog"], .modal, .drawer-panel)
 }
 
 body.app-shell :where(.content-area, .content-body, .content-inner, [role="dialog"], .modal, .drawer-panel)
-:is(table, .table-card, .mobile-card, .data-card) :is(.font-bold, .font-semibold),
+:is(table, .table-card, .mobile-card, .data-card) :is(.font-bold, .font-semibold):not(.jf-table thead th),
 body.admin-shell :where(.admin-main, [role="dialog"], .modal, .drawer-panel)
-:is(table, .table-card, .mobile-card, .data-card) :is(.font-bold, .font-semibold) {
+:is(table, .table-card, .mobile-card, .data-card) :is(.font-bold, .font-semibold):not(.jf-table thead th) {
+    /* shared-table header cells are excluded: their weight comes from tables.css so every header reads the same */
     font-weight: 500 !important;
 }
 
