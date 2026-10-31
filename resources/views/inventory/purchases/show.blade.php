@@ -130,7 +130,7 @@
                     @csrf @method('PATCH')
                     <button type="submit" onclick="return confirm('Reverse this purchase back to a draft? Any items it added to stock will be removed (only if still in stock).')"
                             class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 0 1 0 10h-1M3 10l4-4M3 10l4 4"/></svg>
+                        <x-icon name="undo-2" class="w-4 h-4" />
                         Reverse to Draft
                     </button>
                 </form>
@@ -296,7 +296,7 @@
                         </a>
                     @else
                         <a href="{{ $invoiceImageUrl }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">
-                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <x-icon name="file" class="w-5 h-5 text-red-500" />
                             View PDF Invoice
                         </a>
                     @endif

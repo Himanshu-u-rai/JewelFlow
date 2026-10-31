@@ -139,9 +139,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--money">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m10 0V6a3 3 0 10-6 0v2m6 0H7"/>
-                        </svg>
+                        <x-icon name="briefcase" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">This Month</p>

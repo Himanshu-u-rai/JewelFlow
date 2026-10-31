@@ -65,9 +65,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m8-10a4 4 0 11-8 0 4 4 0 018 0z"/>
-                        </svg>
+                        <x-icon name="square-user" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Customers</p>
@@ -80,9 +78,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-                        </svg>
+                        <x-icon name="dollar-sign" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Gold on This Page</p>
@@ -554,7 +550,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <x-icon name="clipboard" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Active Plans</p>

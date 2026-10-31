@@ -38,9 +38,7 @@
             @endif
             @if($returnOrder->status === 'settled' && !$returnOrder->exchangeOrder)
                 <a href="{{ route('exchanges.create', $returnOrder) }}" class="returns-show-header-action returns-show-header-action--exchange">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m4 6H8m0 0l4 4m-4-4l4-4"/>
-                    </svg>
+                    <x-icon name="arrow-right-left" size="15" />
                     Link as Exchange
                 </a>
             @elseif($returnOrder->exchangeOrder)

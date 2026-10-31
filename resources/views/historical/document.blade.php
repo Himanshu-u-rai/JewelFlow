@@ -257,9 +257,7 @@
                 <section class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50" data-historical-customer-link-panel>
                     <div class="flex items-start gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
                         <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700" aria-hidden="true">
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
-                                <path d="M7.75 12.25l4.5-4.5M6.25 14.75l-1 1a2.12 2.12 0 0 1-3-3l3-3a2.12 2.12 0 0 1 3 0M13.75 5.25l1-1a2.12 2.12 0 1 1 3 3l-3 3a2.12 2.12 0 0 1-3 0" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
+                            <x-icon name="link" class="h-4 w-4" stroke-width="1.75" />
                         </span>
                         <div class="min-w-0">
                             <h3 class="text-sm font-semibold text-slate-900">Customer link</h3>

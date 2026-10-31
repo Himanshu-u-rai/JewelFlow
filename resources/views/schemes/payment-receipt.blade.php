@@ -473,9 +473,7 @@
             {{-- ── Scheme banner ── --}}
             <div class="scheme-row">
                 <div class="scheme-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
+                    <x-icon name="clock" size="14" stroke-width="2.2" />
                 </div>
                 <div>
                     <div class="scheme-name">{{ $scheme?->name ?? 'Gold Savings Scheme' }}</div>

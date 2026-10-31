@@ -47,7 +47,7 @@
             @can('returns.create')
                 @if($invoice->status === \App\Models\Invoice::STATUS_FINALIZED)
                 <a href="{{ route('returns.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11a4 4 0 014 4v0a4 4 0 01-4 4H7m-4-8l4-4m-4 4l4 4"/></svg>
+                    <x-icon name="undo-2" class="w-4 h-4 mr-2" />
                     Return
                 </a>
                 <a href="{{ route('exchanges.unified.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
@@ -86,7 +86,7 @@
                     </a>
                     @endif
                     <a href="{{ route('invoices.print', $invoice) }}" target="_blank" class="invoice-emi-mobile-fab-link" @click="invoiceEmiFabOpen = false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2m2 4h6a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2zm8-12V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4h10z"/></svg>
+                        <x-icon name="printer" size="14" />
                         <span>Print</span>
                     </a>
                 </nav>

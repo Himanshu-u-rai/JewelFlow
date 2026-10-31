@@ -656,7 +656,7 @@
                 </a>
                 <a href="{{ route('report.metal-exchange', ['view' => 'lots', 'from' => $from, 'to' => $to]) }}"
                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight: 700;text-decoration:none;border:1px solid {{ $view === 'lots' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'lots' ? '#0f172a' : '#fff' }};color:{{ $view === 'lots' ? '#fff' : '#475569' }};">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    <x-icon name="briefcase" size="13" stroke-width="2.5" />
                     Weekly Lots
                 </a>
             </div>

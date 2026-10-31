@@ -22,20 +22,14 @@
             @if(!empty($publicShareUrl))
                 <a href="{{ $publicShareUrl }}" target="_blank" rel="noopener noreferrer"
                    class="btn btn-dark">
-                    <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7m0 0v7m0-7L10 14"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v14a1 1 0 001 1h14"/>
-                    </svg>
+                    <x-icon name="external-link" class="w-4 h-4 sm:mr-2" />
                     <span class="hidden sm:inline">Public Page</span>
                 </a>
                 <button type="button"
                         data-share-url="{{ $publicShareUrl }}"
                         onclick="copyShareLink(this.dataset.shareUrl)"
                         class="btn btn-secondary">
-                    <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
+                    <x-icon name="copy" class="w-4 h-4 sm:mr-2" />
                     <span class="hidden sm:inline">Copy Link</span>
                 </button>
             @endif
@@ -272,9 +266,7 @@
                             </div>
                             <a href="{{ route('pos.index') }}?barcode={{ $item->barcode }}"
                                class="inventory-item-retailer-action inventory-item-retailer-action--primary inventory-item-retailer-action--inline-cta {{ $item->status == 'in_stock' ? '' : 'is-disabled' }}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/>
-                                </svg>
+                                <x-icon name="shopping-cart" class="w-4 h-4" />
                                 Sell in POS
                             </a>
                         </div>
@@ -676,9 +668,7 @@
                     <a href="{{ route('pos.index') }}?barcode={{ $item->barcode }}"
                        class="inline-flex items-center justify-center px-3 py-2.5 rounded-lg font-medium transition-colors text-sm
                               {{ $item->status == 'in_stock' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none' }}">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
+                        <x-icon name="shopping-cart" class="w-5 h-5 mr-2" />
                         Sell in POS
                     </a>
 

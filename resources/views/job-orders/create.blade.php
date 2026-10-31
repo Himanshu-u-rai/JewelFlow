@@ -1000,7 +1000,7 @@
                     <section class="job-section">
                         <div class="job-actions">
                             <button type="submit" class="job-submit">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1"/><path d="M3 12v7c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-7"/></svg>
+                                <x-icon name="square-check-big" size="16" stroke-width="2.4" />
                                 Issue & Print Challan
                             </button>
                             <a href="{{ route('job-orders.index') }}" class="job-cancel">Cancel</a>

@@ -4,16 +4,16 @@
         <x-icon name="users" size="20" />
         @break
     @case('vendors')
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <x-icon name="truck" size="20" />
         @break
     @case('karigars')
-        <x-icon name="wrench" size="20" />
+        <x-icon name="hammer" size="20" />
         @break
     @case('categories')
         <x-icon name="tag" size="20" />
         @break
     @case('products')
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <x-icon name="layout-grid" size="20" />
         @break
     @case('gst')
         <x-icon name="file-text" size="20" />

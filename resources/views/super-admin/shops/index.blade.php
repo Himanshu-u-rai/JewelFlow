@@ -136,7 +136,7 @@
                     <span class="text-sm text-slate-300">shop<span x-show="selected.length !== 1">s</span></span>
                     <button type="button" @click="selected = []"
                             class="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-1">
-                        ✕ clear
+                        <x-icon name="x" size="12" style="display:inline-block;vertical-align:-1px;margin-right:2px" />clear
                     </button>
                 </div>
 

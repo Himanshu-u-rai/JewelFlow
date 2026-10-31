@@ -280,17 +280,19 @@
                 @forelse($recentAudit as $log)
                     @php
                         $iconMap = [
-                            'platform_admin.login_failed' => '⚠️',
-                            'shop.suspend' => '⛔',
-                            'shop.restore' => '✅',
-                            'shop.subscription_changed' => '💳',
-                            'platform_admin.created' => '👤',
+                            'platform_admin.login_failed' => 'triangle-alert',
+                            'shop.suspend' => 'ban',
+                            'shop.restore' => 'circle-check',
+                            'shop.subscription_changed' => 'credit-card',
+                            'platform_admin.created' => 'user',
                         ];
-                        $icon = $iconMap[$log->action] ?? '•';
+                        $icon = isset($iconMap[$log->action])
+                            ? \App\View\Icons::svg($iconMap[$log->action], ['style' => 'display:inline-block;vertical-align:-2px'], 14)
+                            : '•';
                     @endphp
                     <tr class="border-t border-slate-800 text-slate-200">
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
-                        <td class="px-4 py-2">{{ $icon }} {{ $log->action }}</td>
+                        <td class="px-4 py-2">{!! $icon !!} {{ $log->action }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ $log->actor?->name ?? 'System' }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ class_basename($log->target_type) }} #{{ $log->target_id }}</td>
                         <td class="px-4 py-2 text-sm text-slate-400">{{ $log->created_at?->format('d M Y, H:i') ?? '—' }}</td>

@@ -94,9 +94,7 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg pnl-stat-row">
                         <div class="flex items-center gap-3">
                             <div class="bg-amber-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                </svg>
+                                <x-icon name="shopping-bag" class="w-5 h-5 text-amber-700" />
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-gray-600">Total Sales</div>
@@ -113,9 +111,7 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg pnl-stat-row">
                         <div class="flex items-center gap-3">
                             <div class="bg-slate-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <x-icon name="smile" class="w-5 h-5 text-slate-700" />
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-gray-600">Making Charges</div>
@@ -134,9 +130,7 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg pnl-stat-row">
                         <div class="flex items-center gap-3">
                             <div class="bg-amber-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                                </svg>
+                                <x-icon name="sparkles" class="w-5 h-5 text-amber-700" />
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-gray-600">Stone Charges</div>
@@ -155,9 +149,7 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 pnl-stat-row">
                         <div class="flex items-center gap-3">
                             <div class="bg-blue-100 rounded-full p-2">
-                                <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
+                                <x-icon name="refresh-ccw" class="w-5 h-5 text-blue-700" />
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-gray-600">Wastage Recovered</div>

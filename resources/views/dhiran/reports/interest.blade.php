@@ -67,7 +67,7 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-100 flex items-center justify-center rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+                        <x-icon name="banknote" size="18" class="text-blue-600" />
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Principal Collected</p>

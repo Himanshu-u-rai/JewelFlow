@@ -1053,9 +1053,7 @@
             <div class="qb-stats" aria-label="Quick bill summary">
                 <div class="qb-stat">
                     <span class="qb-stat__icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 6h10M8 10h10M8 14h7M5 4h.01M5 10h.01M5 16h.01M4 20h16"/>
-                        </svg>
+                        <x-icon name="list" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Total bills</div>
@@ -1073,10 +1071,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-warning" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                        </svg>
+                        <x-icon name="pencil-line" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Drafts</div>
@@ -1085,9 +1080,7 @@
                 </div>
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-money" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 8h12M7 4c5 0 7 2 7 5s-2 5-7 5l8 6"/>
-                        </svg>
+                        <x-icon name="indian-rupee" stroke-width="1.9" />
                     </span>
                     <div class="qb-stat__body">
                         <div class="qb-stat__label">Today's value</div>

@@ -380,9 +380,7 @@
                     <section class="item-create-panel item-create-panel--supplier">
                         <div class="item-create-panel-head">
                             <span class="item-create-panel-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5 1.343 3.5 3 3.5ZM8 12c1.657 0 3-1.567 3-3.5S9.657 5 8 5 5 6.567 5 8.5 6.343 12 8 12Zm8 2c-2.21 0-4 1.343-4 3v1h8v-1c0-1.657-1.79-3-4-3ZM8 15c-2.21 0-4 1.343-4 3v1h6"/>
-                                </svg>
+                                <x-icon name="users" size="18" stroke-width="2.2" />
                             </span>
                             <div>
                                 <p class="item-create-kicker">Source Details</p>

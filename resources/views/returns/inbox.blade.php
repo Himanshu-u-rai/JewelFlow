@@ -1593,9 +1593,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12M6 8h12M7 13h5a4 4 0 010 8H8m4-8L8 3"/>
-                            </svg>
+                            <x-icon name="indian-rupee" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Visible refunds</p>
@@ -1606,9 +1604,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
-                            </svg>
+                            <x-icon name="calendar" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's refunds</p>
@@ -1619,9 +1615,7 @@
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <x-icon name="clock" class="w-5 h-5" />
                         </div>
                         <div>
                             <p class="ri-kpi-label text-[11px] uppercase tracking-[0.18em] text-slate-500">Pending approval</p>

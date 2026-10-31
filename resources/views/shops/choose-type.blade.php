@@ -311,7 +311,7 @@
                         <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <div class="type-icon">
-                        <svg width="22" height="22" fill="none" stroke="#fbbf24" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 2L3 7v13a1 1 0 001 1h16a1 1 0 001-1V7l-3-5H6z" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 7h18M16 11a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <x-icon name="shopping-bag" size="22" stroke="#fbbf24" stroke-width="1.8" />
                     </div>
                     <h3>{{ __('Retailer') }}</h3>
                     <p class="type-subtitle">{{ __('Buy ready-made jewellery, sell to customers.') }}</p>

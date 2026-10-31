@@ -1410,16 +1410,7 @@
         </div>
         <div class="pos-topbar-links">
             <button id="btnScanMobile" class="btn-scan-mobile" onclick="openScanModal()" title="Scan via Mobile Camera" aria-label="Scan via Mobile Camera">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M4 7V5h2"/>
-                    <path d="M20 7V5h-2"/>
-                    <path d="M4 17v2h2"/>
-                    <path d="M20 17v2h-2"/>
-                    <path d="M7 5v14"/>
-                    <path d="M10 5v14"/>
-                    <path d="M14 5v14"/>
-                    <path d="M17 5v14"/>
-                </svg>
+                <x-icon name="scan-barcode" size="18" stroke-width="1.8" />
                 <span class="scan-mobile-label">Scan via Mobile</span>
             </button>
             <a href="{{ route('repairs.index') }}">Repairs</a>
@@ -1436,16 +1427,7 @@
         <div class="pos-mobile-fab-shell" x-bind:class="{ 'is-open': posMobileNavOpen }" @click.outside="posMobileNavOpen = false">
             <nav class="pos-mobile-fab-nav" aria-label="POS mobile navigation">
                 <button type="button" class="pos-mobile-fab-link" onclick="openScanModal()" @click="posMobileNavOpen = false">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14213d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 7V5h2"/>
-                        <path d="M20 7V5h-2"/>
-                        <path d="M4 17v2h2"/>
-                        <path d="M20 17v2h-2"/>
-                        <path d="M7 5v14"/>
-                        <path d="M10 5v14"/>
-                        <path d="M14 5v14"/>
-                        <path d="M17 5v14"/>
-                    </svg>
+                    <x-icon name="scan-barcode" size="16" stroke="#14213d" stroke-width="1.8" />
                     <span>Scan via Mobile</span>
                 </button>
                 <a href="{{ route('inventory.items.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">

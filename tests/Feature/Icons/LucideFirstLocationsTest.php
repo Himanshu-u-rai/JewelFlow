@@ -152,6 +152,6 @@ class LucideFirstLocationsTest extends TestCase
         $this->assertSame(1, $card->length);
         $this->assertSame(1, $xp->query('//a[@data-masters-card="customers"]//svg[@data-icon="users" and @width="20" and @height="20"]')->length);
         $this->assertStringContainsString('Customers', $card->item(0)->textContent);
-        $this->assertSame(0, $xp->query('//a[@data-masters-card="vendors"]//svg[@data-icon]')->length, 'only the Customers card changes in this step');
+        $this->assertGreaterThan(0, $xp->query('//a[@data-masters-card="vendors"]//svg[@data-icon]')->length, 'the rollout reached the other Masters cards too');
     }
 }

@@ -56,9 +56,7 @@
                 <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
                     <div class="flex items-center gap-3">
                         <div class="categories-kpi-icon">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
-                            </svg>
+                            <x-icon name="list" class="h-4 w-4" />
                         </div>
                         <div>
                             <p class="categories-kpi-label">{{ __('Sub-Categories') }}</p>
@@ -69,9 +67,7 @@
                 <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
                     <div class="flex items-center gap-3">
                         <div class="categories-kpi-icon categories-kpi-icon--quiet">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M4.93 19h14.14a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16a2 2 0 001.73 3z"/>
-                            </svg>
+                            <x-icon name="triangle-alert" class="h-4 w-4" />
                         </div>
                         <div>
                             <p class="categories-kpi-label">{{ __('Need Setup') }}</p>

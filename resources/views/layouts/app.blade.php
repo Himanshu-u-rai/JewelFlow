@@ -227,7 +227,7 @@
                             {{ __('Save today\'s rates so the team can price stock and bill at the counter.') }}
                         </p>
                         <span class="rate-modal__date">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                            <x-icon name="calendar" stroke-width="1.9" />
                             {{ $pricingShellState['business_date'] ?? '-' }}
                             <span class="tz">{{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }}</span>
                         </span>
@@ -347,7 +347,7 @@
                         </a>
                         @if($authShop?->preferences?->quick_bill_enabled ?? true)
                         <a href="{{ route('quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></span>
+                            <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Quick Bills') }}
                         </a>
                         @endif
@@ -386,17 +386,17 @@
                         @endcan
                         @if($hasRetailer)
                         <a href="{{ route('schemes.index') }}" class="nav-link {{ request()->routeIs('schemes.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="gift" size="16" /></span>
                             {{ __('Schemes') }}
                         </a>
                         @if($strandedInstallments)
                         <a href="{{ route('installments.index') }}" class="nav-link {{ request()->routeIs('installments.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+                            <span class="nav-icon"><x-icon name="credit-card" size="16" /></span>
                             {{ __('Installments') }}
                         </a>
                         @endif
                         <a href="{{ route('catalog.index') }}" class="nav-link {{ request()->routeIs('catalog.*') && ! request()->routeIs('catalog.website.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+                            <span class="nav-icon"><x-icon name="message-circle" size="16" /></span>
                             {{ __('Catalog') }}
                         </a>
                         @endif
@@ -443,11 +443,11 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Job Work') }}</div>
                         <a href="{{ route('vault.index') }}" class="nav-link {{ request()->routeIs('vault.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16.5" r="1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="lock" size="16" /></span>
                             {{ __('Metal Vault') }}
                         </a>
                         <a href="{{ route('karigars.index') }}" class="nav-link {{ request()->routeIs('karigars.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><x-icon name="wrench" size="16" /></span>
+                            <span class="nav-icon"><x-icon name="hammer" size="16" /></span>
                             {{ __('Karigars') }}
                         </a>
                         <a href="{{ route('job-orders.index') }}" class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}">
@@ -484,7 +484,7 @@
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
                         <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="layout-grid" size="16" /></span>
                             {{ __('All Reports') }}
                         </a>
                         @if($canOpenCashBook)
@@ -528,7 +528,7 @@
                 
                 <div class="sidebar-footer">
                     <a href="{{ route('settings.edit', ['tab' => 'profile']) }}" class="sidebar-footer-link {{ (request()->routeIs('profile.*') || (request()->routeIs('settings.*') && request()->query('tab') === 'profile')) ? 'is-active' : '' }}" data-nav-match="/profile">
-                        <span class="nav-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                        <span class="nav-icon"><x-icon name="user" size="16" /></span>
                         {{ __('Profile') }}
                     </a>
                     <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link {{ request()->routeIs('settings.*') || ($canOpenSettings && request()->routeIs('export.*', 'imports.*')) ? 'is-active' : '' }}" @if($canOpenSettings) data-nav-match="/export,/imports" @endif>
@@ -538,7 +538,7 @@
                     </a>
                     <div x-data="{ showLogout: false }">
                         <button @click="showLogout = true" type="button" class="sidebar-footer-link sidebar-footer-link--danger sidebar-button-reset">
-                            <span class="nav-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></span>
+                            <span class="nav-icon"><x-icon name="log-out" size="16" /></span>
                             {{ __('Log out') }}
                         </button>
 

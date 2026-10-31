@@ -555,11 +555,7 @@
 <section class="reorder-stats-grid" aria-label="Reorder overview">
             <article class="reorder-stat-card">
                 <span class="reorder-stat-icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 7.5 12 3l9 4.5-9 4.5L3 7.5Z"/>
-                        <path d="M3 12l9 4.5 9-4.5"/>
-                        <path d="M3 16.5 12 21l9-4.5"/>
-                    </svg>
+                    <x-icon name="layers" size="20" stroke-width="1.9" />
                 </span>
                 <div>
                     <p class="reorder-stat-label">Rules</p>

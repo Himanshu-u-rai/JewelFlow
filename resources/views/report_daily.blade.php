@@ -41,9 +41,7 @@
             <div class="bg-white shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="bg-blue-100 text-blue-700 p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h3.586a1 1 0 01.707.293l1.414 1.414a1 1 0 00.707.293H20a1 1 0 011 1v2H3V4zM3 9h18v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9z" />
-                        </svg>
+                        <x-icon name="folder" class="h-5 w-5" />
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Movement Types</p>

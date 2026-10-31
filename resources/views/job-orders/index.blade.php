@@ -519,7 +519,7 @@
             </section>
             <section class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    <x-icon name="clock" />
                 </span>
                 <div>
                     <p>Open on Page</p>
@@ -537,7 +537,7 @@
             </section>
             <section class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <x-icon name="triangle-alert" />
                 </span>
                 <div>
                     <p>Flagged</p>

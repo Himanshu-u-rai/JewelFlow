@@ -144,9 +144,7 @@
                                     <label class="flex-1 flex items-center justify-center px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 hover:border-amber-400 transition-colors">
                                         <input type="file" name="image" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" class="hidden" id="imageFileInput">
                                         <div class="text-center">
-                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                                            </svg>
+                                            <x-icon name="cloud-upload" class="mx-auto h-8 w-8 text-gray-400" />
                                             <p class="mt-1 text-sm text-gray-600"><span class="font-medium text-amber-600">Click to upload</span> or drag and drop</p>
                                             <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 2MB</p>
                                         </div>
@@ -165,9 +163,7 @@
                                             data-remove-image-state="0"
                                             class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12"/>
-                                            </svg>
+                                            <x-icon name="trash-2" class="h-4 w-4" />
                                             <span id="removeImageButtonLabel">Delete current image</span>
                                         </button>
                                     </div>
@@ -210,9 +206,7 @@
                         </div>
                         
                         <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 flex items-start gap-2">
-                            <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <x-icon name="info" class="w-5 h-5 flex-shrink-0 mt-0.5" />
                             <span>Cost price will be recalculated automatically: Gold Cost + Making + Stone Charges</span>
                         </div>
                     </div>
@@ -223,9 +217,7 @@
                     <!-- Weight & Purity (Read-only) -->
                     <div class="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
                         <h2 class="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
+                            <x-icon name="lock" class="w-5 h-5 text-gray-500" />
                             Weight & Purity
                         </h2>
                         <p class="text-xs text-gray-500 mb-4">Cannot be changed (affects gold accounting)</p>

@@ -58,10 +58,7 @@
         <section class="returns-create-kpis" aria-label="Return summary">
             <article class="returns-create-kpi-card">
                 <span class="returns-create-kpi-icon" aria-hidden="true">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h7l4 4v14H7z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3v5h5M9 13h6M9 17h4"/>
-                    </svg>
+                    <x-icon name="file-text" size="18" />
                 </span>
                 <div>
                     <span>Invoice</span>
@@ -72,11 +69,7 @@
 
             <article class="returns-create-kpi-card">
                 <span class="returns-create-kpi-icon" aria-hidden="true">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4" stroke-width="2"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                    </svg>
+                    <x-icon name="users" size="18" />
                 </span>
                 <div>
                     <span>Customer</span>
@@ -98,10 +91,7 @@
 
             <article class="returns-create-kpi-card returns-create-kpi-card--amount">
                 <span class="returns-create-kpi-icon" aria-hidden="true">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6h12M6 10h12M8 14h5a4 4 0 0 0 0-8"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 14 6 6"/>
-                    </svg>
+                    <x-icon name="indian-rupee" size="18" />
                 </span>
                 <div>
                     <span>Estimated refund</span>
