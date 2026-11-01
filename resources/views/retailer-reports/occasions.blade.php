@@ -11,7 +11,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner customers-index-page">
+    <div class="content-inner customers-index-page" data-list-workspace>
         @php
             $occasionRows = collect($upcoming ?? []);
             $thisWeek = $occasionRows->where('days_until', '<=', 7)->count();
@@ -70,12 +70,12 @@
             </form>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions" data-list-frame>
             <div class="customers-table-card-header p-5 border-b border-slate-200">
                 <h2 class="text-lg font-semibold text-slate-900">Occasion Register</h2>
                 <p class="text-sm text-slate-500 mt-1">Customers with dates due in the next {{ (int) $daysAhead }} days</p>
             </div>
-            <div class="overflow-x-auto ui-table-shell customers-table-shell">
+            <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
                 <table class="w-full customers-data-table customers-data-table--occasions jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
@@ -115,6 +115,7 @@
                     </tbody>
                 </table>
             </div>
+            @include('customers._occasion-cards', ['occasions' => $occasionRows])
         </div>
     </div>
 </x-app-layout>
