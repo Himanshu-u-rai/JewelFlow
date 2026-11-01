@@ -31764,4 +31764,35 @@ a.notice-bell-item:focus-visible {
         width: min(380px, calc(100vw - 24px));
         max-width: none;
     }
+
+    /* Customer views need a full row, not the legacy single-line phone header.
+       Keep the bell in the title row and let this taller header scroll normally. */
+    .content-header.customers-directory-header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        position: static;
+    }
+
+    .content-header.customers-directory-header:has(> .notice-bell) {
+        padding-right: 16px !important;
+    }
+
+    .content-header.customers-directory-header > .page-actions {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .content-header.customers-directory-header > .notice-bell {
+        position: relative;
+        inset: auto;
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .content-header.customers-directory-header .customers-add-btn {
+        min-height: 44px;
+    }
 }

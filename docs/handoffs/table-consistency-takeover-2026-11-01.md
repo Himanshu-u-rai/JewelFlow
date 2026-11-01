@@ -2,7 +2,55 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Customer header views
+## Latest checkpoint — Customer header phone correction
+
+Starting clean HEAD `ec176852e639aba9837699a96112b9cf9f8b0fd8`, same isolated
+worktree/branch/sole writer. Owner-supplied 427x952 Chrome-emulation screenshot
+confirmed overlapping header controls and a clipped Add Customer after the prior
+header move. The earlier source-only checks did not establish mobile visual
+acceptance. Later 640px legacy Customers rules set nowrap and actions flex:0 0 auto;
+the global mobile notice bell also reserves header padding for an absolute bell.
+
+Narrow correction in the existing 768px media query: only Customer Directory uses
+a grid with menu/title/notice on its first row and full-width actions below.
+Existing two-column view switches and Add Customer wrap within that full width.
+The bell occupies its own column instead of overlaying controls, and its obsolete
+reserved right padding is removed for this header only. Add Customer has a 44px
+minimum target. The taller phone header scrolls normally, avoiding a fixed block
+over rows on short/zoomed screens. Desktop header, other page headers, tab state,
+labels, filters, pagination, financial data and permissions are unchanged. No JS,
+Blade/component, backend or data changes in this correction.
+
+Exact files: `resources/css/app.css`,
+`tests/Frontend/customer-header-layout.test.mjs` and this handoff.
+
+Fresh verification:
+
+- Explicit resolved guard: testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing
+  before RefreshDatabase; automatic per-test guard retained.
+- RED: five phone CSS-cascade cases failed on the old flex header; desktop passed.
+  GREEN: 6/6 cases passed at 320/390/427/640/768px and desktop 1280px. This limited
+  contract resolves known competing selectors; it is NOT browser geometry,
+  keyboard, real-device, zoom or full CSS-engine evidence.
+- `node --test tests/Frontend/*.test.mjs`: 63 passed, 22 existing optional browser
+  skips, 0 failures. `node --check tests/Frontend/customer-header-layout.test.mjs`
+  passed.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php`:
+  68 passed / 473 assertions, 0 failures/skips.
+- `npm run build`: 79 modules, success; assets rebuilt for local preview only and
+  ignored/uncommitted. Guarded Blade compile, 384 PHP lints, clear and diff check passed.
+- Ten actual-demo controller/Blade cases passed. 43 directory records and synthetic
+  24-customer / 32-sale / 24-EMI batch preserved without mutation.
+- Impeccable layout scan: 0 mechanical findings, NOT visual acceptance.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-header-mobile-20261101.eKjKGL/`.
+Existing Browser Use URL-policy block was not retried or circumvented. No new
+screenshots or browser-driven mobile/desktop/keyboard/zoom acceptance performed.
+Next: owner refresh `http://localhost:8001/customers` at the same phone width to
+confirm actual geometry. Preview 8001/private PG 55432 and companion 8000 preserved;
+no push/deploy, primary checkout/DB, OTP/SMTP or mobile-app changes.
+
+## Previous checkpoint — Compact Customer header views
 
 Starting clean HEAD `ebc8731d6f08351fcaeabb4d32af57c3563d6a0a`, same isolated
 worktree/branch/sole writer. Local commit only; no push or deployment.
