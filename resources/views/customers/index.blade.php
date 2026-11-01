@@ -338,8 +338,6 @@
         <div data-list-panel x-show="view === 'loyalty'" x-cloak>
             @php
                 $loyaltyCustomers = $loyaltyData['loyaltyCustomers'];
-                $totalPointsIssued = $loyaltyData['totalPointsIssued'];
-                $totalPointsRedeemed = $loyaltyData['totalPointsRedeemed'];
             @endphp
 
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--loyalty" data-list-frame>
@@ -347,8 +345,6 @@
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Loyalty Points</h2>
                         <dl class="customers-directory-summary" aria-label="Loyalty summary">
-                            <div><dt>Total Issued</dt><dd>{{ number_format($totalPointsIssued) }}</dd></div>
-                            <div><dt>Total Redeemed</dt><dd>{{ number_format($totalPointsRedeemed) }}</dd></div>
                             <div><dt>Members with Points</dt><dd>{{ number_format($loyaltyCustomers->total()) }}</dd></div>
                         </dl>
                     </div>

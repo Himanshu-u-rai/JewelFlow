@@ -2,7 +2,24 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Directory mobile totals and Filters share a row
+## Latest checkpoint — Remove Loyalty issued/redeemed header totals
+
+Starting clean HEAD `345b683fe95f906a6c1b22f058da7d43fcd591e9`, same branch,
+worktree and sole writer. Removed Total Issued and Total Redeemed from the Loyalty
+Points header at owner request; Members with Points remains. Removed their two
+unused local Blade aliases, not the controller queries or any loyalty data/logic.
+No CSS/JS, other summaries, filters, pagination or permission changes.
+
+Fresh guard: testing / pgsql / 127.0.0.1:5432 / exactly jewelflow_testing.
+Updated summary regression failed before removal, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php`
+passed 9 tests / 134 assertions. Guarded preview Blade compile, 385 compiled PHP
+lints, view clear, scoped Pint and diff check passed. No asset rebuild or broader
+suite needed for deletion-only markup. Browser visual check still unverified;
+prior URL-policy restriction honored. Evidence: customer-mobile-filters directory,
+`loyalty-*` logs. No push, deployment or remote changes. Next: owner visual review.
+
+## Previous checkpoint — Directory mobile totals and Filters share a row
 
 Starting clean HEAD `f2daada979abf30cd41cb754ca11f0e95259a6c9`, same worktree,
 branch and sole writer. Owner requested Filters beside the two small Directory
