@@ -2,7 +2,75 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — intake polish and repair-detail closure
+## Latest checkpoint — Masters hub consistency
+
+- Owner approved the preceding Masters comparison findings. Clean start
+  `821f9513068c483272d637c8f86e04dd5d1422ac`, sole writer, same branch/worktree.
+- Source commit `43188c17927c207f08b48477db03003e74a32d6b`, parent
+  `821f9513068c483272d637c8f86e04dd5d1422ac`, subject
+  `fix(masters): align hub navigation with the shared UI`.
+- Exact files: `resources/css/app.css`, `resources/views/masters/index.blade.php`,
+  `tests/Feature/Masters/MastersHubTest.php`,
+  `tests/Feature/Masters/MastersHubUiTest.php`. This handoff update is docs only.
+- Kept grouped navigation; replaced generic shadowed utility cards with flat
+  links using existing ERP tokens,10px corners/gaps,24px group spacing, smaller
+  unboxed icons and decorative chevrons. Wrapping links grow into incomplete rows:
+  one fills the group; two split it; tablet's third link fills the next row.
+  No fixed/min card width forces phone overflow. Hover does not move the link.
+- Visible titles supply accessible names, descriptions remain associated via
+  aria-describedby, and decorative icons/arrows stay hidden from the name.
+  Native links keep focus-visible2px outlines and existing navigation behavior.
+  Card set/order, destinations/fragments/copy, edition/permission filtering and
+  empty-state explanation are unchanged. No controller, route, shared layout,
+  JavaScript, pricing or business-rule change. CSS remains in the existing Vite
+  pipeline rather than a new inline-style system; Reports itself was not rewritten.
+
+Verification actually performed:
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Masters tests/Feature/Tables/TableConsistencyUiTest.php
+npx vite build
+php8.2 artisan view:cache
+find storage/framework/views -name '*.php' -print0 | xargs -0 -r -n 1 php8.2 -l
+php8.2 artisan view:clear
+php8.2 -l resources/views/masters/index.blade.php
+php8.2 -l tests/Feature/Masters/MastersHubTest.php
+php8.2 -l tests/Feature/Masters/MastersHubUiTest.php
+git diff --check
+```
+
+Guard again resolved testing/pgsql/127.0.0.1:5432/jewelflow_testing, including URL
+expansion, before tests. **272PHP tests /1183assertions passed; no failures/skips.**
+Three new render cases failed before implementation. Initial broader run had
+270pass/2fail because two existing UI tests required the intentionally removed
+focus:ring/grid-cols utilities. Updated only those UI expectations; all permission,
+edition, route and business tests stayed intact. Final fresh run is green.
+Vite78modules;384 compiled Blade files linted then cleared; syntax/diff checks pass.
+Scoped Impeccable source scan returned[]; visual evidence is separate. No new JS,
+so frontend suites were not repeated; no full-repository suite or benchmark.
+
+Actual owner page at1440/1024/390/320px: no horizontal page overflow or title/arrow
+overlap. Desktop links94px high, singleton1116px wide, two links553px each; tablet
+third-party link fills764px. At320px, text wraps and cards grow to111.69px as needed
+rather than clipping. Hover background changes without moving geometry/transform.
+Keyboard-visible focus has2px primary outline with2px offset; accessibility tree
+uses concise link names. Clicking Customers opens the existing directory and Back
+returns to Masters. Restricted/empty/multi-edition states verified by actual PHP
+renders, not claimed as separately browsed role sessions. No business actions or
+demo-data edits. Physical phone, screen reader and complete native Tab walk remain
+unrun. No staging/production work, and paused OTP/photo work remains untouched.
+
+External evidence in `/home/himanshu/jf-table-evidence/takeover-20261101.KzNebv/`:
+`masters-red-php.log`, `masters-final-php.log`, `masters-build.log`,
+`masters-blade-lint.log`, `masters-final-detector.json`,
+`masters-final-browser-measurements.json`; screenshots
+`masters-polished-desktop.jpg`, `masters-polished-tablet.jpg`,
+`masters-polished-phone.jpg`, `masters-polished-small-phone.jpg`.
+Source commit was completely clean. Preview remains running at localhost:8001,
+Masters retained for owner review. Next: visual review only; no broader redesign
+or deployment without a new request.
+
+## Previous checkpoint — intake polish and repair-detail closure
 
 - Verified clean start `cbf984bc3a4294034d19826bb87b5316072d7934`, sole writer.
   Code commit `5a12c201022e14f10461103fb4e634bca59ccf04`, parent `cbf984bc`,
