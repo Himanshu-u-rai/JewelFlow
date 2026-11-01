@@ -2,7 +2,26 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Remove EMI overdue/outstanding header totals
+## Latest checkpoint — Simplify Occasions header
+
+Starting clean HEAD `5cfaa054b693412c7ea88ed7c0e00b62587d0684`, same branch,
+worktree and sole writer. Removed the birthday/anniversary description and the
+Upcoming / Next 7 Days / Customers summary from Customer Occasions at owner request.
+Also removed two now-unused local summary calculations. Title, reminder-window
+selector/value, filters, record table/mobile cards, dates and permissions remain.
+No CSS/JS/controller/data changes or broader redesign.
+
+Fresh guard: testing / pgsql / 127.0.0.1:5432 / exactly jewelflow_testing.
+Summary regression failed before removal, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php`
+passed 9 tests / 138 assertions, including the populated occasion row remaining.
+Guarded preview Blade compile, 385 compiled PHP lints, view clear, scoped Pint
+and diff check passed. No asset rebuild or broader suite needed for markup removal.
+Browser visual check still unverified; URL-policy restriction honored. Evidence:
+customer-mobile-filters directory, `occasions-*` logs. No push, deployment or
+remote work. Next: owner refresh Occasions for visual review.
+
+## Previous checkpoint — Remove EMI overdue/outstanding header totals
 
 Starting clean HEAD `a01d8ad0b7fc48867aba4740cb1fef5aad990940`, same branch,
 worktree and sole writer. Owner requested removing Overdue and Total Outstanding

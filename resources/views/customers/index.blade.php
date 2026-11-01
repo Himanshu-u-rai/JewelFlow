@@ -611,20 +611,12 @@
             @php
                 $upcomingOccasions = collect($occasionsData['upcoming'] ?? []);
                 $occasionDaysAhead = (int) ($occasionsData['daysAhead'] ?? 30);
-                $occasionThisWeek = $upcomingOccasions->where('days_until', '<=', 7)->count();
-                $occasionCustomersCount = $upcomingOccasions->pluck('customer_id')->unique()->count();
             @endphp
 
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions" data-list-frame>
                 <div class="customers-table-card-header customers-register-head customers-directory-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Customer Occasions</h2>
-                        <p class="text-sm text-slate-500 mt-1">Birthdays and anniversaries due in the next {{ $occasionDaysAhead }} days</p>
-                        <dl class="customers-directory-summary" aria-label="Occasions summary">
-                            <div><dt>Upcoming</dt><dd>{{ number_format($upcomingOccasions->count()) }}</dd></div>
-                            <div><dt>Next 7 Days</dt><dd>{{ number_format($occasionThisWeek) }}</dd></div>
-                            <div><dt>Customers</dt><dd>{{ number_format($occasionCustomersCount) }}</dd></div>
-                        </dl>
                     </div>
 
                     <x-responsive-filter-panel id="occasions-filter-panel" label="Occasion filters">
