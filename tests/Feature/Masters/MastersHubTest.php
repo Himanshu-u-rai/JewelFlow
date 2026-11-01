@@ -328,8 +328,9 @@ class MastersHubTest extends TestCase
             $this->assertSame(1, substr_count($block, '<a'), 'Cards must not nest anchors.');
             // Decorative icon hidden from the a11y tree.
             $this->assertStringContainsString('aria-hidden="true"', $block, 'Card icon must be aria-hidden.');
-            // Visible keyboard-focus styling.
-            $this->assertStringContainsString('focus:ring', $block, 'Card must carry a visible focus ring.');
+            // The scoped Vite class supplies :focus-visible; actual focus is checked in browser QA.
+            $this->assertStringContainsString('class="masters-card"', $block, 'Card must use the scoped focusable link styling.');
+            $this->assertStringNotContainsString('tabindex="-1"', $block, 'Native links must stay keyboard reachable.');
             // No inline style attribute on the hub's own markup.
             $this->assertStringNotContainsString('style="', $block, 'Cards must not use inline styles.');
         }
@@ -374,7 +375,7 @@ class MastersHubTest extends TestCase
 
     // ---- Responsive structure ------------------------------------------
 
-    public function test_hub_grid_is_responsive_without_fixed_widths(): void
+    public function test_hub_layout_supports_wrapping_without_fixed_card_widths(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
         ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER);
@@ -382,11 +383,9 @@ class MastersHubTest extends TestCase
 
         $html = $this->get(route('masters.index'))->assertOk()->getContent();
 
-        // Responsive column utilities present (compiled-CSS presence is verified
-        // separately in the build step; 1280px/390px pixel QA is staging work).
-        $this->assertStringContainsString('grid-cols-1', $html);
-        $this->assertStringContainsString('md:grid-cols-2', $html);
-        $this->assertStringContainsString('lg:grid-cols-3', $html);
+        // The scoped wrapping layout fills partial rows rather than reserving empty columns.
+        // Actual widths and compiled styling are verified in local browser QA.
+        $this->assertSame(3, substr_count($html, 'class="masters-links"'));
 
         // No fixed/min pixel widths on cards that could force horizontal overflow.
         foreach ($this->cardBlocks($html) as $block) {

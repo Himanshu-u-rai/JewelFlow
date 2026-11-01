@@ -15595,6 +15595,98 @@ input::-webkit-calendar-picker-indicator {
     }
 }
 
+/* Masters hub: flat navigation links using the incumbent ERP palette. */
+.content-inner.masters-page {
+    max-width: none;
+    gap: 24px;
+}
+
+.masters-section h2 {
+    margin: 0 0 10px;
+    color: var(--jf-erp-ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.masters-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.masters-card {
+    display: flex;
+    align-items: flex-start;
+    flex: 1 1 260px;
+    gap: 12px;
+    min-width: 0;
+    min-height: 94px;
+    border: 1px solid var(--jf-border);
+    border-radius: var(--jf-radius);
+    background: var(--jf-erp-card);
+    padding: 14px 16px;
+    color: var(--jf-erp-ink);
+    text-decoration: none;
+}
+
+.masters-card:hover {
+    border-color: var(--jf-erp-border-strong);
+    background: var(--jf-erp-panel);
+}
+
+.masters-card:focus-visible {
+    outline: 2px solid var(--jf-erp-primary);
+    outline-offset: 2px;
+}
+
+.masters-card-icon,
+.masters-card-arrow {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--jf-erp-primary);
+}
+
+.masters-card-arrow { color: var(--jf-erp-muted); }
+.masters-card:hover .masters-card-arrow { color: var(--jf-erp-primary); }
+
+.masters-card-copy {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 5px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.masters-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.masters-card-description {
+    max-width: 70ch;
+    color: var(--jf-text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.masters-empty {
+    border: 1px solid var(--jf-border);
+    border-radius: var(--jf-radius-md);
+    background: var(--jf-erp-card);
+    padding: 24px;
+    color: var(--jf-erp-ink);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.masters-empty p { margin: 0; }
+.masters-empty p + p { margin-top: 6px; color: var(--jf-text-muted); font-size: 13px; font-weight: 400; line-height: 1.5; }
+
 /* Repair detail + edit: flat JewelFlow ERP record workflow. */
 .content-header.repairs-show-header,
 .content-header.repairs-edit-header {
