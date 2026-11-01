@@ -15610,63 +15610,62 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .masters-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--jf-border);
+    list-style: none;
 }
 
-.masters-card {
+.masters-links > li { border-bottom: 1px solid var(--jf-border); }
+
+.masters-link {
     display: flex;
-    align-items: flex-start;
-    flex: 1 1 260px;
-    gap: 12px;
+    align-items: center;
+    gap: 16px;
     min-width: 0;
-    min-height: 94px;
-    border: 1px solid var(--jf-border);
-    border-radius: var(--jf-radius);
-    background: var(--jf-erp-card);
-    padding: 14px 16px;
+    min-height: 64px;
+    padding: 12px 8px;
     color: var(--jf-erp-ink);
     text-decoration: none;
 }
 
-.masters-card:hover {
-    border-color: var(--jf-erp-border-strong);
+.masters-link:hover {
     background: var(--jf-erp-panel);
 }
 
-.masters-card:focus-visible {
+.masters-link:focus-visible {
     outline: 2px solid var(--jf-erp-primary);
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 
-.masters-card-icon,
-.masters-card-arrow {
+.masters-link-icon,
+.masters-link-arrow {
     display: inline-flex;
     flex-shrink: 0;
     margin-top: 1px;
     color: var(--jf-erp-primary);
 }
 
-.masters-card-arrow { color: var(--jf-erp-muted); }
-.masters-card:hover .masters-card-arrow { color: var(--jf-erp-primary); }
+.masters-link-arrow { color: var(--jf-erp-muted); }
+.masters-link:hover .masters-link-arrow { color: var(--jf-erp-primary); }
 
-.masters-card-copy {
-    display: flex;
-    flex-direction: column;
+.masters-link-copy {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    align-items: baseline;
     flex: 1;
-    gap: 5px;
+    gap: 20px;
     min-width: 0;
     overflow-wrap: anywhere;
 }
 
-.masters-card-title {
+.masters-link-title {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.3;
 }
 
-.masters-card-description {
+.masters-link-description {
     max-width: 70ch;
     color: var(--jf-text-muted);
     font-size: 13px;
@@ -15674,18 +15673,19 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .masters-empty {
-    border: 1px solid var(--jf-border);
-    border-radius: var(--jf-radius-md);
-    background: var(--jf-erp-card);
-    padding: 24px;
+    padding: 24px 8px;
     color: var(--jf-erp-ink);
-    text-align: center;
     font-size: 14px;
     font-weight: 600;
 }
 
 .masters-empty p { margin: 0; }
 .masters-empty p + p { margin-top: 6px; color: var(--jf-text-muted); font-size: 13px; font-weight: 400; line-height: 1.5; }
+
+@media (max-width: 900px) {
+    .masters-link { align-items: flex-start; gap: 12px; }
+    .masters-link-copy { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
 
 /* Repair detail + edit: flat JewelFlow ERP record workflow. */
 .content-header.repairs-show-header,

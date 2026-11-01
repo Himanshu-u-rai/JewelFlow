@@ -18,26 +18,28 @@
                 @continue(! ($cards->has($key) && $cards[$key]->isNotEmpty()))
                 <section class="masters-section" aria-labelledby="masters-{{ $key }}-heading">
                     <h2 id="masters-{{ $key }}-heading">{{ $label }}</h2>
-                    <div class="masters-links">
+                    <ul class="masters-links" role="list">
                         @foreach($cards[$key] as $card)
-                            <a href="{{ route($card['route'], $card['params'] ?? []) . (isset($card['fragment']) ? '#' . $card['fragment'] : '') }}"
-                               data-masters-card="{{ $card['icon'] }}"
-                               class="masters-card"
-                               aria-labelledby="masters-{{ $card['icon'] }}-title"
-                               aria-describedby="masters-{{ $card['icon'] }}-description">
-                                <span class="masters-card-icon" aria-hidden="true">
-                                    @include('masters._icon', ['icon' => $card['icon']])
-                                </span>
-                                <span class="masters-card-copy">
-                                    <span id="masters-{{ $card['icon'] }}-title" class="masters-card-title">{{ $card['title'] }}</span>
-                                    <span id="masters-{{ $card['icon'] }}-description" class="masters-card-description">{{ $card['description'] }}</span>
-                                </span>
-                                <span class="masters-card-arrow" aria-hidden="true">
-                                    <x-icon name="chevron-right" size="16" />
-                                </span>
-                            </a>
+                            <li>
+                                <a href="{{ route($card['route'], $card['params'] ?? []) . (isset($card['fragment']) ? '#' . $card['fragment'] : '') }}"
+                                   data-masters-card="{{ $card['icon'] }}"
+                                   class="masters-link"
+                                   aria-labelledby="masters-{{ $card['icon'] }}-title"
+                                   aria-describedby="masters-{{ $card['icon'] }}-description">
+                                    <span class="masters-link-icon" aria-hidden="true">
+                                        @include('masters._icon', ['icon' => $card['icon']])
+                                    </span>
+                                    <span class="masters-link-copy">
+                                        <span id="masters-{{ $card['icon'] }}-title" class="masters-link-title">{{ $card['title'] }}</span>
+                                        <span id="masters-{{ $card['icon'] }}-description" class="masters-link-description">{{ $card['description'] }}</span>
+                                    </span>
+                                    <span class="masters-link-arrow" aria-hidden="true">
+                                        <x-icon name="chevron-right" size="16" />
+                                    </span>
+                                </a>
+                            </li>
                         @endforeach
-                    </div>
+                    </ul>
                 </section>
             @endforeach
         @else

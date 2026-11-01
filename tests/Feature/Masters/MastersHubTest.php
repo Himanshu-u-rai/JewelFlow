@@ -329,7 +329,7 @@ class MastersHubTest extends TestCase
             // Decorative icon hidden from the a11y tree.
             $this->assertStringContainsString('aria-hidden="true"', $block, 'Card icon must be aria-hidden.');
             // The scoped Vite class supplies :focus-visible; actual focus is checked in browser QA.
-            $this->assertStringContainsString('class="masters-card"', $block, 'Card must use the scoped focusable link styling.');
+            $this->assertStringContainsString('class="masters-link"', $block, 'Navigation must use the scoped focusable link styling.');
             $this->assertStringNotContainsString('tabindex="-1"', $block, 'Native links must stay keyboard reachable.');
             // No inline style attribute on the hub's own markup.
             $this->assertStringNotContainsString('style="', $block, 'Cards must not use inline styles.');
@@ -375,7 +375,7 @@ class MastersHubTest extends TestCase
 
     // ---- Responsive structure ------------------------------------------
 
-    public function test_hub_layout_supports_wrapping_without_fixed_card_widths(): void
+    public function test_hub_layout_uses_grouped_lists_without_fixed_link_widths(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
         ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER);
@@ -383,7 +383,7 @@ class MastersHubTest extends TestCase
 
         $html = $this->get(route('masters.index'))->assertOk()->getContent();
 
-        // The scoped wrapping layout fills partial rows rather than reserving empty columns.
+        // The scoped list layout keeps every destination in a full-width row.
         // Actual widths and compiled styling are verified in local browser QA.
         $this->assertSame(3, substr_count($html, 'class="masters-links"'));
 

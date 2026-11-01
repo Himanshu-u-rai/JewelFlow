@@ -49,9 +49,9 @@ class MastersHubUiTest extends TestCase
             $this->assertNotEmpty($link->getAttribute('href'));
             $this->assertNotEmpty($link->getAttribute('aria-labelledby'));
             $this->assertNotEmpty($link->getAttribute('aria-describedby'));
-            $this->assertSame(1, $xp->query('.//span[@id="'.$link->getAttribute('aria-labelledby').'" and contains(@class,"masters-card-title")]', $link)->length);
-            $this->assertSame(1, $xp->query('.//span[@id="'.$link->getAttribute('aria-describedby').'" and contains(@class,"masters-card-description")]', $link)->length);
-            $this->assertSame(1, $xp->query('.//span[@aria-hidden="true" and contains(@class,"masters-card-arrow")]', $link)->length);
+            $this->assertSame(1, $xp->query('.//span[@id="'.$link->getAttribute('aria-labelledby').'" and contains(@class,"masters-link-title")]', $link)->length);
+            $this->assertSame(1, $xp->query('.//span[@id="'.$link->getAttribute('aria-describedby').'" and contains(@class,"masters-link-description")]', $link)->length);
+            $this->assertSame(1, $xp->query('.//span[@aria-hidden="true" and contains(@class,"masters-link-arrow")]', $link)->length);
             $this->assertSame(0, $xp->query('.//button | .//input', $link)->length);
         }
     }
@@ -66,6 +66,16 @@ class MastersHubUiTest extends TestCase
         $this->assertSame(1, $xp->query('//a[@data-masters-card="customers" and @href="'.route('customers.index').'"]')->length);
         $this->assertSame(1, $xp->query('//a[@data-masters-card]')->length);
         $this->assertSame(0, $xp->query('//h2[@id="masters-product-heading" or @id="masters-config-heading"]')->length);
+    }
+
+    public function test_navigation_destinations_are_items_in_their_named_group_lists(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $xp = $this->pageFor($owner);
+
+        $this->assertSame(3, $xp->query('//section[contains(@class,"masters-section")]/ul[@role="list" and contains(@class,"masters-links")]')->length);
+        $this->assertSame(6, $xp->query('//ul[contains(@class,"masters-links")]/li/a[@data-masters-card]')->length);
+        $this->assertSame(0, $xp->query('//a[@data-masters-card and not(parent::li/parent::ul)]')->length);
     }
 
     public function test_empty_access_state_preserves_its_explanation_without_placeholder_cards(): void
