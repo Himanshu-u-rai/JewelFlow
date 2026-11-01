@@ -2,7 +2,83 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — responsive list workspaces and scrollbars
+## Latest checkpoint — Loyalty / EMI / Occasions follow-up
+
+Source `5a8169974f9d861b0ceac7c3d06aad9124039229`, parent
+`8202a7adaf9116f7b7c20e7c4f3845520a8277aa`, subject
+`fix(customers): complete occasion workspace and mobile records`.
+Clean starting tree, same branch/worktree/sole writer; this update is docs only.
+
+All three Customers tabs already inherited the preceding shared viewport layout.
+Verified actual tab switches, filters, sticky headings and phone fallbacks without
+duplicating layout code. `/loyalty` redirects to its Customers tab; `/installments`
+already opts in. Found and closed a separate live-page gap: `/report/occasions`
+had neither workspace markers nor mobile cards. Its inherited Customers CSS hides
+the table on phones, leaving records/empty feedback unavailable. It now uses the
+same fitted rows/amber scrollbar and reuses the inline tab's existing mobile cards.
+
+Exact source files:
+
+- `resources/views/retailer-reports/occasions.blade.php`: workspace/frame/named
+  focusable scroll-region markers; include shared mobile cards after the table.
+- `resources/views/customers/_occasion-cards.blade.php`: extracted unchanged
+  mobile markup, including date/due-in/profile link and empty feedback.
+- `resources/views/customers/index.blade.php`: replace the original card block
+  with that include, preserving the same fields, routes, copy and framing.
+- `tests/Feature/Tables/ListWorkspaceUiTest.php`: report contract, populated mobile
+  records for both routes, filtered Loyalty pagination and unsaved EMI snapshots.
+
+No CSS/JS/controller/route/model/permission/calculation changes. Existing Loyalty/
+EMI pagination remains outside rows. Occasions is an existing unpaginated collection;
+no new business paging rule. Static table inventory unchanged; now25 explicit
+workspace templates/28 row regions (previous24/27 plus the Occasion report).
+
+Fresh verification:
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php
+#60 passed /392 assertions, no failures/skips
+node --test tests/Frontend/list-workspace.test.mjs tests/Frontend/table-row-actions.test.mjs
+#18 passed, no failures/skips
+npx vite build
+#79 modules
+php8.2 artisan view:cache
+find storage/framework/views -maxdepth 1 -name '*.php' -print0 | xargs -0 -r -n1 php8.2 -l
+#384 compiled Blade views linted
+php8.2 artisan view:clear
+```
+
+All4 changed/new PHP/Blade files linted; diff check passed; scoped Impeccable scan
+returned[]. Guard resolved testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing
+before RefreshDatabase. RED caught both missing report markers and mobile cards.
+Date fixture frozen at midnight; Loyalty assertions scoped to its panel because
+the hidden Directory also renders names. No application behavior altered to pass.
+PHP covers2 actual synthetic occasion records on both routes and Loyalty page2
+of16 test members. EMI renders15 unsaved snapshots with31-total paginator: NO
+persisted invoices, plans or payments. Demo data untouched.
+
+Actual local browser: all3 tabs fit588px row regions at1440x1000 with sticky
+headings/page1000. Loyalty3 demo records, search retainsview; EMI Completed GET
+retainsview; Occasions90-day GET retainsview. Enhanced menus visible over rows.
+Standalone Installments fits; Loyalty alias stays local. Separate Occasion report
+now fits515px rows with sticky head/amber thumb.390x844: before had0 visible tables
+and0 card containers; after shows the shared mobile feedback/card container.
+All3 tabs at390px retain normal flow/no horizontal page overflow; Loyalty3cards,
+EMI/Occasions empty feedback. The latter have no populated browser fixtures: the
+populated PHP renders above are not presented as populated browser acceptance.
+
+Evidence under the same external directory: `customer-tabs-{red,php,frontend,build,
+blade}.log`, `customer-tabs-detector.json` and `customer-tabs-phone-checks.json`.
+Screenshots: `customer-loyalty-desktop.jpg`, `customer-emi-desktop.jpg`,
+`customer-occasions-tab-desktop.jpg`, `customer-{loyalty,emi,occasions}-phone.jpg`,
+`customer-occasions-report-desktop-after.jpg`,
+`customer-occasions-report-phone-before.jpg`, `customer-occasions-report-phone-after.jpg`.
+Physical phone, native keyboard traversal/real zoom and dense populated browser
+EMI/Occasions remain unrun. Full PHP suite not repeated for this focused Blade
+change. Local preview/private PostgreSQL preserved; no deployment/financial actions.
+Next: owner visual review. Viewport override reset and Loyalty retained for review.
+
+## Previous checkpoint — responsive list workspaces and scrollbars
 
 Source commit `07b42d0a9e4aee1eabea83c44d13f1e30177ef36`, parent
 `76a331220d22381268e0746d6f8f61e4f76cc345`, subject
