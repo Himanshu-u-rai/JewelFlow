@@ -34,6 +34,7 @@
                     <table class="min-w-full text-sm jf-table">
                         <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <th class="px-4 py-3 text-left">{{ $tab === 'repairs' ? 'Repair' : 'Bill' }}</th>
                                 <th class="px-4 py-3 text-left">Date</th>
                                 <th class="px-4 py-3 text-left">Status</th>
@@ -51,6 +52,7 @@
                                     };
                                 @endphp
                                 <tr>
+                                    <td class="jf-table-index">{{ $rows->firstItem() + $loop->index }}</td>
                                     <td class="px-4 py-3"><a href="{{ $href }}" class="text-indigo-600 hover:underline font-semibold">{{ $label }}</a></td>
                                     <td class="px-4 py-3 text-slate-600">{{ optional($date)->format('d M Y') }}</td>
                                     <td class="px-4 py-3 text-slate-600">{{ $words($row->status) }}</td>

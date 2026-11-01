@@ -153,7 +153,7 @@
                             <table class="installments-show-table jf-table">
                                 <thead>
                                     <tr>
-                                        <th>#</th>
+                                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                         <th>Date</th>
                                         <th class="is-right text-right">Amount</th>
                                         <th>Method</th>
@@ -162,9 +162,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($payments as $i => $payment)
+                                    @foreach($payments as $payment)
                                         <tr>
-                                            <td>{{ $payments->count() - $i }}</td>
+                                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                                             <td>{{ $payment->payment_date->format('d M Y') }}</td>
                                             <td class="is-right text-right">₹{{ number_format($payment->amount, 2) }}</td>
                                             <td>
@@ -184,10 +184,10 @@
                         </div>
 
                         <div class="installments-show-mobile-payments">
-                            @foreach($payments as $i => $payment)
+                            @foreach($payments as $payment)
                                 <article class="installments-show-payment-card">
                                     <div>
-                                        <strong>₹{{ number_format($payment->amount, 2) }}</strong>
+                                        <strong><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loop->iteration }}</span>₹{{ number_format($payment->amount, 2) }}</strong>
                                         <span>{{ $payment->payment_date->format('d M Y') }} · {{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}@if($payment->paymentMethod) · {{ $payment->paymentMethod->account_label }}@endif</span>
                                     </div>
                                     <a href="{{ route('installments.receipt', [$plan, $payment]) }}" target="_blank">Print</a>

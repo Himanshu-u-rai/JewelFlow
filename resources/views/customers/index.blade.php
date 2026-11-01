@@ -173,6 +173,7 @@
                 <table class="w-full jf-table customers-data-table customers-data-table--directory">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Contact</th>
                             @if(!$isRetailer)
@@ -189,6 +190,7 @@
                                 $searchText = strtolower(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '') . ' ' . ($customer->mobile ?? '')));
                             @endphp
                             <tr class="customers-table-row hover:bg-slate-50/70 transition-colors" data-search="{{ $searchText }}">
+                                <td class="jf-table-index">{{ $customers->firstItem() + $loop->index }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
                                         <x-customer-avatar :customer="$customer" />
@@ -249,7 +251,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="jf-table-empty customers-empty-cell">
+                                <td colspan="5" class="jf-table-empty customers-empty-cell">
                                     <div class="customers-empty-state">
                                         <span class="customers-empty-icon" aria-hidden="true">
                                             <x-icon name="user-plus" size="20" />
@@ -282,7 +284,7 @@
                             </tr>
                         @endforelse
                         <tr data-no-match-row style="display:none;">
-                            <td colspan="4" class="jf-table-empty">
+                            <td colspan="5" class="jf-table-empty">
                                 <div class="customers-inline-empty">
                                     <strong>No customers match this page search.</strong>
                                     <span>Press Enter to search all customer records.</span>
@@ -301,6 +303,7 @@
                                 <x-customer-avatar :customer="$customer" />
                                 <span>
                                     <span class="customers-mobile-card__title">
+                                        <span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $customers->firstItem() + $loop->index }}</span>
                                         {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
                                         @unless($customer->is_active)
                                             <span class="ml-1 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Archived</span>
@@ -453,6 +456,7 @@
                     <table class="w-full jf-table customers-data-table customers-data-table--loyalty">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Mobile</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Points</th>
@@ -463,6 +467,7 @@
                         <tbody class="bg-white divide-y divide-slate-100">
                             @forelse($loyaltyCustomers as $lCustomer)
                             <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="jf-table-index">{{ $loyaltyCustomers->firstItem() + $loop->index }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-900">
                                     <a href="{{ route('customers.show', $lCustomer) }}" class="hover:text-amber-700 transition-colors">{{ $lCustomer->name }}</a>
                                 </td>
@@ -482,7 +487,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="jf-table-empty">
+                                <td colspan="6" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loyalty members yet</p>
                                     <p class="text-sm">Points are earned automatically when customers make purchases.</p>
                                 </td>
@@ -497,7 +502,7 @@
                         <article class="customers-mobile-card">
                             <div class="customers-mobile-card__top">
                                 <div>
-                                    <span class="customers-mobile-card__title">{{ $lCustomer->name }}</span>
+                                    <span class="customers-mobile-card__title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loyaltyCustomers->firstItem() + $loop->index }}</span>{{ $lCustomer->name }}</span>
                                     <span class="customers-mobile-card__sub">{{ \App\Support\Mobile::forDisplay($lCustomer->mobile) ?: 'No mobile' }}</span>
                                 </div>
                                 <span class="customers-mobile-pill">{{ number_format($lCustomer->loyalty_points) }} pts</span>
@@ -614,6 +619,7 @@
                     <table class="w-full jf-table customers-data-table customers-data-table--emi">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">EMI</th>
@@ -627,6 +633,7 @@
                             @forelse($installmentPlans as $plan)
                             @php $isOverdue = $plan->next_due_date && $plan->next_due_date < now()->toDateString() && $plan->status === 'active'; @endphp
                             <tr class="transition-colors {{ $isOverdue ? 'bg-rose-50 hover:bg-rose-100/70' : 'hover:bg-slate-50/70' }}">
+                                <td class="jf-table-index">{{ $installmentPlans->firstItem() + $loop->index }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-900">{{ $plan->customer->name ?? '—' }}</td>
                                 <td class="px-6 py-4 text-sm text-right text-slate-700 tabular-nums">₹{{ number_format($plan->total_amount, 2) }}</td>
                                 <td class="px-6 py-4 text-sm text-right text-slate-700 tabular-nums">₹{{ number_format($plan->emi_amount, 2) }}</td>
@@ -649,7 +656,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="jf-table-empty">
+                                <td colspan="8" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No installment plans found</p>
                                     <p class="text-sm">Create an EMI plan from Invoices or the EMI module.</p>
                                 </td>
@@ -665,7 +672,7 @@
                         <article class="customers-mobile-card {{ $isOverdue ? 'is-warning' : '' }}">
                             <div class="customers-mobile-card__top">
                                 <div>
-                                    <span class="customers-mobile-card__title">{{ $plan->customer->name ?? '—' }}</span>
+                                    <span class="customers-mobile-card__title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $installmentPlans->firstItem() + $loop->index }}</span>{{ $plan->customer->name ?? '—' }}</span>
                                     <span class="customers-mobile-card__sub">{{ $plan->next_due_date ? \Carbon\Carbon::parse($plan->next_due_date)->format('d M Y') : 'No due date' }}</span>
                                 </div>
                                 <span class="customers-mobile-pill {{ $isOverdue ? 'is-danger' : '' }}">{{ ucfirst($plan->status) }}</span>
@@ -781,6 +788,7 @@
                     <table class="w-full jf-table customers-data-table customers-data-table--occasions">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Occasion</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
@@ -791,6 +799,7 @@
                         <tbody class="bg-white divide-y divide-slate-100">
                             @forelse($upcomingOccasions as $occasion)
                                 <tr class="hover:bg-slate-50/70 transition-colors">
+                                    <td class="jf-table-index">{{ $loop->iteration }}</td>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-semibold text-slate-900">{{ $occasion['customer_name'] }}</div>
                                         <div class="text-xs text-slate-500">{{ $occasion['mobile'] ?: 'No mobile' }}</div>
@@ -808,7 +817,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="jf-table-empty">
+                                    <td colspan="6" class="jf-table-empty">
                                         <p class="text-lg font-semibold mb-1 text-slate-700">No occasions in this window</p>
                                         <p class="text-sm">Increase the reminder window or add occasion dates on customer profiles.</p>
                                     </td>

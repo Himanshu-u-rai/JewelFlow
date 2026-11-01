@@ -79,6 +79,7 @@
                 <table class="w-full customers-data-table customers-data-table--occasions jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Occasion</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
@@ -89,6 +90,7 @@
                     <tbody class="bg-white divide-y divide-slate-100">
                         @forelse($occasionRows as $occasion)
                             <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-semibold text-slate-900">{{ $occasion['customer_name'] }}</div>
                                     <div class="text-xs text-slate-500">{{ $occasion['mobile'] ?: 'No mobile' }}</div>
@@ -106,7 +108,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="jf-table-empty">
+                                <td colspan="6" class="jf-table-empty">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No occasions in this window</p>
                                     <p class="text-sm">Increase the reminder window or add occasion dates on customer profiles.</p>
                                 </td>

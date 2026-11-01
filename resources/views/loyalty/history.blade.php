@@ -16,6 +16,7 @@
                 <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Points</th>
@@ -27,6 +28,7 @@
                     <tbody class="divide-y divide-gray-200">
                         @forelse($transactions as $txn)
                         <tr class="hover:bg-gray-50">
+                            <td class="jf-table-index">{{ $transactions->firstItem() + $loop->index }}</td>
                             <td class="px-6 py-3 text-sm text-gray-500">{{ $txn->created_at->format('d M Y, h:i A') }}</td>
                             <td class="px-6 py-3">
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $txn->type === 'earn' ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800' }}">
@@ -48,7 +50,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="jf-table-empty">No loyalty transactions yet.</td>
+                            <td colspan="7" class="jf-table-empty">No loyalty transactions yet.</td>
                         </tr>
                         @endforelse
                     </tbody>

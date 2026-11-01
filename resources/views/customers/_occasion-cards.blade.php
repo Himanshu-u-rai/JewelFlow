@@ -3,7 +3,7 @@
         <article class="customers-mobile-card">
             <div class="customers-mobile-card__top">
                 <div>
-                    <span class="customers-mobile-card__title">{{ $occasion['customer_name'] }}</span>
+                    <span class="customers-mobile-card__title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loop->iteration }}</span>{{ $occasion['customer_name'] }}</span>
                     <span class="customers-mobile-card__sub">{{ $occasion['mobile'] ?: 'No mobile' }}</span>
                 </div>
                 <span class="customers-mobile-pill">{{ $occasion['type'] }}</span>

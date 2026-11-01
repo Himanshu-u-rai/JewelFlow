@@ -226,6 +226,7 @@
                             <table class="customers-show-retailer-table jf-table">
                                 <thead>
                                     <tr>
+                                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                         <th>Date</th>
                                         <th>Type</th>
                                         <th class="text-right">Points</th>
@@ -236,6 +237,7 @@
                                 <tbody>
                                     @forelse($loyaltyTransactions as $ltxn)
                                         <tr>
+                                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                                             <td>{{ $ltxn->created_at->format('d M Y') }}</td>
                                             <td>
                                                 <span class="customers-show-retailer-chip {{ $ltxn->type === 'earn' ? 'is-earned' : 'is-redeemed' }}">
@@ -255,7 +257,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="customers-show-retailer-empty">No loyalty transactions yet.</td>
+                                            <td colspan="6" class="customers-show-retailer-empty">No loyalty transactions yet.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -267,7 +269,7 @@
                                 <article class="customers-show-retailer-history-card">
                                     <div class="customers-show-retailer-history-card-head">
                                         <div>
-                                            <strong>{{ $ltxn->created_at->format('d M Y') }}</strong>
+                                            <strong><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loop->iteration }}</span>{{ $ltxn->created_at->format('d M Y') }}</strong>
                                             <span>{{ $ltxn->description }}</span>
                                         </div>
                                         <span class="customers-show-retailer-chip {{ $ltxn->type === 'earn' ? 'is-earned' : 'is-redeemed' }}">
@@ -443,6 +445,7 @@
                             <table class="customers-show-table w-full customers-show-data-table customers-show-data-table--gold jf-table">
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
+                                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Fine Gold</th>
@@ -452,6 +455,7 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @forelse($transactions as $txn)
                                         <tr class="hover:bg-gray-50">
+                                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $txn->created_at->format('d M Y') }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ ucfirst($txn->type) }}</td>
                                             <td class="px-4 py-3 text-sm text-right font-medium {{ $txn->fine_gold >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ number_format($txn->fine_gold, 3) }} g</td>
@@ -459,7 +463,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="jf-table-empty">No transactions found.</td>
+                                            <td colspan="5" class="jf-table-empty">No transactions found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

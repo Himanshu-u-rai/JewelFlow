@@ -166,6 +166,30 @@
     text-transform: uppercase;
 }
 
+/* Row position is separate from a customer/bill identifier; opt-in, never nth-child. */
+.jf-table > thead > tr > th.jf-table-index,
+.jf-table > tbody > tr > td.jf-table-index {
+    width: 4rem;
+    min-width: 3.5rem;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    border-inline-end: 1px solid var(--jf-t-row-line);
+}
+.jf-table > tbody > tr > td.jf-table-index {
+    color: var(--jf-t-muted);
+    font-size: 12px;
+}
+.jf-row-number {
+    display: inline-block;
+    margin-inline-end: 0.5rem;
+    color: var(--jf-t-muted, #64748b);
+    font-size: 12px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* a selection checkbox column stays narrow */
 .jf-table > thead > tr > th:has(> input[type="checkbox"]),
 .jf-table > tbody > tr > td:has(> input[type="checkbox"]) {

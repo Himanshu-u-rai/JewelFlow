@@ -22775,7 +22775,7 @@ body:has(.customers-show-page--retailer) .customers-show-mobile-fab-link {
         line-height: 1.3;
     }
 
-    .customers-show-retailer-history-card-head span:not(.customers-show-retailer-chip) {
+    .customers-show-retailer-history-card-head span:not(.customers-show-retailer-chip):not(.jf-row-number):not(.jf-sr-only) {
         display: block;
         margin-top: 3px;
         font-size: 12px;
@@ -26375,7 +26375,7 @@ input[type="date"] {
         font-variant-numeric: tabular-nums;
     }
 
-    .installments-show-payment-card span,
+    .installments-show-payment-card span:not(.jf-row-number):not(.jf-sr-only),
     .installments-show-payment-card p {
         display: block;
         margin: 3px 0 0;
@@ -26683,36 +26683,37 @@ input[type="date"] {
     min-width: 960px;
 }
 
-.installments-index-page .installments-data-table th:nth-child(1),
-.installments-index-page .installments-data-table td:nth-child(1) {
-    width: 22%;
-}
-
+/* Keep the existing column proportions in the space left by the 4rem row index. */
 .installments-index-page .installments-data-table th:nth-child(2),
 .installments-index-page .installments-data-table td:nth-child(2) {
-    width: 14%;
+    width: calc(22% - 0.88rem);
 }
 
 .installments-index-page .installments-data-table th:nth-child(3),
 .installments-index-page .installments-data-table td:nth-child(3) {
-    width: 13%;
+    width: calc(14% - 0.56rem);
 }
 
 .installments-index-page .installments-data-table th:nth-child(4),
 .installments-index-page .installments-data-table td:nth-child(4) {
-    width: 15%;
+    width: calc(13% - 0.52rem);
 }
 
 .installments-index-page .installments-data-table th:nth-child(5),
 .installments-index-page .installments-data-table td:nth-child(5) {
-    width: 14%;
+    width: calc(15% - 0.6rem);
 }
 
 .installments-index-page .installments-data-table th:nth-child(6),
-.installments-index-page .installments-data-table td:nth-child(6),
+.installments-index-page .installments-data-table td:nth-child(6) {
+    width: calc(14% - 0.56rem);
+}
+
 .installments-index-page .installments-data-table th:nth-child(7),
-.installments-index-page .installments-data-table td:nth-child(7) {
-    width: 11%;
+.installments-index-page .installments-data-table td:nth-child(7),
+.installments-index-page .installments-data-table th:nth-child(8),
+.installments-index-page .installments-data-table td:nth-child(8) {
+    width: calc(11% - 0.44rem);
 }
 
 .installments-index-page .installments-data-table th.is-right,

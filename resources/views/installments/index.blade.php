@@ -117,6 +117,7 @@
                 <table class="w-full customers-data-table installments-data-table jf-table">
                     <thead>
                         <tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th>Customer</th>
                             <th class="is-right text-right">Total</th>
                             <th class="is-right text-right">EMI</th>
@@ -137,6 +138,7 @@
                                 $rowStatusClass = $statusTone[$plan->status] ?? 'is-neutral';
                             @endphp
                             <tr class="{{ $isOverdue ? 'is-overdue' : '' }}">
+                                <td class="jf-table-index">{{ $plans->firstItem() + $loop->index }}</td>
                                 <td>
                                     <div class="installments-customer-cell">
                                         <strong>{{ $customerName }}</strong>
@@ -166,7 +168,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7">
+                                <td colspan="8">
                                     <div class="customers-mobile-empty installments-empty-state">
                                         <strong>No installment plans found</strong>
                                         <span>Create a plan from an invoice or use the create button when the customer needs EMI tracking.</span>
@@ -193,7 +195,7 @@
                             <div class="customers-mobile-card__identity">
                                 <span class="customers-mobile-avatar">{{ Str::of($customerName)->trim()->substr(0, 1)->upper() }}</span>
                                 <div>
-                                    <a href="{{ route('installments.show', $plan) }}" class="customers-mobile-card__title">{{ $customerName }}</a>
+                                    <a href="{{ route('installments.show', $plan) }}" class="customers-mobile-card__title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $plans->firstItem() + $loop->index }}</span>{{ $customerName }}</a>
                                     <span class="customers-mobile-card__sub">{{ $customerMobile ? $customerMobile . ' · ' . $invoiceLabel : $invoiceLabel }}</span>
                                 </div>
                             </div>

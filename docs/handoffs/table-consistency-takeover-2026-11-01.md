@@ -2,7 +2,78 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Loyalty / EMI / Occasions follow-up
+## Latest checkpoint — Customer table row numbering
+
+Starting HEAD `85233dbc98a8178451935cee2fb0490a1172e4c9`, clean tree on
+`feature/table-consistency`, same isolated ui-integration worktree/sole writer.
+This checkpoint is one local commit; no push or deployment authorized/performed.
+
+Added a narrow, right-aligned `#` column, tabular figures and subtle separator
+using the existing shared table palette. Header is named "Row number" for
+assistive technology. Directory/Loyalty/EMI use their own paginator offsets:
+page2 starts16, and history page2 starts21. Filtered results start1. Unpaginated
+occasion/recent-history lists use displayed order. Mobile cards carry matching
+numbers. Empty/no-match colspans include the new column. These are row positions,
+not persistent customer/invoice/payment IDs. All routes/IDs and receipt targets
+are preserved. EMI payment rows now count1..N in their existing newest-first order.
+
+Exact source files (plus this handoff):
+
+- `resources/css/tables.css`: opt-in number-column/mobile-label styles.
+- `resources/css/app.css`: preserve EMI column proportions after reserving4rem;
+  exclude number/screen-reader spans from mobile metadata's block styles.
+- `resources/views/customers/{index,show,history}.blade.php` and
+  `resources/views/customers/_occasion-cards.blade.php`.
+- `resources/views/installments/{index,show}.blade.php`.
+- `resources/views/loyalty/history.blade.php`.
+- `resources/views/retailer-reports/occasions.blade.php`.
+- `tests/Feature/Tables/CustomerRowNumbersUiTest.php`:6 focused render tests.
+
+No controller/model/service/route/permission/financial/JavaScript changes. Existing
+viewport scrolling, pagination, filters and product palettes retained. No changes
+to primary checkout, staging/production, OTP/SMTP or mobile applications.
+
+Fresh checks actually performed:
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php
+#66 passed /456 assertions, no failures/skips
+node --test tests/Frontend/*.test.mjs
+#57 passed /22 existing optional browser tests skipped /0 failed
+npm run build
+#79 modules, succeeded; generated assets stay ignored/uncommitted
+php8.2 /home/himanshu/jf-table-evidence/local-preview-20261101.U5Egtv/preview.php view:cache
+find storage/framework/views -maxdepth 1 -name '*.php' -print0 | xargs -0 -r -n1 php8.2 -l
+#384 compiled views linted
+php8.2 /home/himanshu/jf-table-evidence/local-preview-20261101.U5Egtv/preview.php view:clear
+git diff --check
+```
+
+Resolved test guard verified testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing
+before RefreshDatabase; guard also runs automatically before each test setup.
+RED: main/history tests failed on missing row header, then passed. Extra profile/
+payment tests likewise failed before their markup edits. Test fixture corrections
+provided explicit tenant binding context, created_at and shared form errors; no
+application gates were bypassed. EMI/history payment snapshots remain unsaved;
+receipt targets are checked against deliberately non-sequential fixture IDs.
+
+Ten fresh actual-demo controller+Blade checks passed, including populated
+Directory pages1/2/3, Loyalty/EMI page2, searches and both occasion routes. The24
+customer/32sales/24EMI synthetic batch is preserved. These are server-render checks,
+NOT browser/keyboard/computed-style acceptance. Browser Use URL policy previously
+blocked access; no workaround/retry or new screenshots. Desktop/tablet/phone visual
+review, keyboard interaction and actual zoom for this addition remain manual.
+Full PHP suite not repeated for this scoped presentation change, per task scope.
+
+Impeccable reused incumbent table styling, not a new design. One detector pass
+reported6 warnings in unchanged app.css sections (baseline line contents verified
+against starting HEAD); none touch the new rules. No unrelated cleanup performed.
+Logs: `/home/himanshu/jf-table-evidence/customer-row-numbers-20261101.h2pNoH/`.
+Preview remains running at `http://localhost:8001/customers`; refresh to load rebuilt
+CSS. Private database55432 and companion8000 processes preserved. Next: user visual
+review; no broader redesign/push/deployment.
+
+## Previous checkpoint — Loyalty / EMI / Occasions follow-up
 
 Source `5a8169974f9d861b0ceac7c3d06aad9124039229`, parent
 `8202a7adaf9116f7b7c20e7c4f3845520a8277aa`, subject
