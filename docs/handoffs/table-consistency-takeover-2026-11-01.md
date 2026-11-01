@@ -2,6 +2,153 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
+## Current checkpoint — Codex continuation, 2026-11-01
+
+This section supersedes the outstanding-work and verification statements in the
+original Claude handoff below; those remain as historical evidence.
+
+- Verified takeover: `636273ce9026bf0ee3550156d2cd0fa54c754f45`, clean tree,
+  branch `feature/table-consistency`, same `ui-integration` worktree. Claude stopped.
+- Tested source commit: `5c69a7b76be840c4072b0c5af989dd4a0414cf2b`, parent
+  `636273ce9026bf0ee3550156d2cd0fa54c754f45`, subject
+  `fix(ui): finish table consistency and accessible repair intake`.
+- This handoff update is documentation only. No staging or production deployment.
+  The owner authorized an ordinary scoped branch push, not a main merge.
+
+### Completed changes
+
+- Forfeiture is an interactive shared table, with its existing numeric values and
+  alignment preserved, actual paginator links exposed, and accurate “Page totals”.
+- Shared icon labels use one body/native-popover layer instead of clipped table
+  pseudo-elements; focus, hover, Escape and Turbo cleanup are covered. Accessible
+  names remain on the actual controls. No further blind icon conversions.
+- The legacy30px button rule now excludes `.jf-table`, allowing shared36/44px
+  targets. Customer Edit follows `customers.edit`. POS remove controls and action
+  headers have meaningful names; entry calculations/validation are unchanged.
+- At the owner's explicit request, Repairs intake is above the full-width register,
+  with a horizontal desktop form and no four KPI cards. Active/Delivered links sit
+  beside search and reflow on phones. Status is in its own column; identifiers are
+  plain text and Complete & bill remains explicit text.
+- Repairs web pages show10 rows with continuous numbering; existing JSON pagination
+  remains25. Search submits through the existing GET endpoint across all pages,
+  retaining status; local preview filtering remains available while typing.
+  The fixed560px nested vertical scroller is removed; narrow table scrolling stays
+  within its card. Clicking non-interactive row space follows the native view link.
+- Four subsequently audited issues are fixed: delegated row clicks preserve native
+  TR semantics and child keys; placeholder contrast4.52–4.76:1; dynamically rebuilt
+  purity choices are native buttons; named native delivery dialog supplies modal
+  focus entry/return, Cancel autofocus, Escape/backdrop and before-cache cleanup.
+  Customer/metal/purity triggers announce field/expanded state. Quick-created
+  customer choices follow the same button presentation; endpoints remain unchanged.
+
+### Exact source/test files in the code commit
+
+```text
+app/Http/Controllers/RepairController.php
+resources/css/app.css
+resources/css/tables.css
+resources/js/app.js
+resources/js/table-row-actions.js
+resources/views/customers/index.blade.php
+resources/views/dhiran/reports/forfeiture.blade.php
+resources/views/pos_customer_retailer.blade.php
+resources/views/repairs.blade.php
+tests/Feature/Repair/RepairPageRevisitTest.php
+tests/Feature/Tables/TableConsistencyUiTest.php
+tests/Frontend/repair-a11y.test.mjs
+tests/Frontend/repair-row-navigation.test.mjs
+tests/Frontend/table-row-actions.test.mjs
+```
+
+The controller change is only the web/JSON paginator size split, not delivery,
+pricing, permissions or financial behavior. The existing revisit test still
+requires null-safe off-page Escape handling, now using the native close API.
+
+### Checks actually performed
+
+The destructive test guard explicitly resolved `APP_ENV=testing`,
+`DB_CONNECTION=pgsql`, `DB_HOST=127.0.0.1`, `DB_PORT=5432`,
+`DB_DATABASE=jewelflow_testing`, including URL expansion, before test setup.
+No overlapping PHPUnit processes. Preview remains on its separate private55432 DB.
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/TableConsistencyUiTest.php tests/Feature/Customer/CustomerManagementTest.php tests/Feature/Repair tests/Feature/RepairDeliveredVisibilityTest.php tests/Feature/RepairWebImageUploadFlowTest.php tests/Feature/Historical/HistoricalMobileUiTest.php tests/Feature/Icons/LucideFirstLocationsTest.php tests/Feature/PosSalesTest.php
+node --test tests/Frontend/table-row-actions.test.mjs tests/Frontend/repair-row-navigation.test.mjs tests/Frontend/repair-a11y.test.mjs tests/Frontend/toast.test.mjs tests/Frontend/repair-challan-share.test.mjs tests/Frontend/customer-photo.test.mjs
+npx vite build
+php8.2 artisan view:cache
+find storage/framework/views -name '*.php' -print0 | xargs -0 -r -n 1 php8.2 -l
+php8.2 artisan view:clear
+git diff --check
+```
+
+Results: **114 PHP tests /4674 assertions;46 frontend tests**, zero failures/skips.
+Vite78modules;384 compiled Blade files linted; PHP/JS syntax and diff checks passed.
+The old3851PASS/1SKIP full-suite result is Claude's supplied evidence, not a newly
+rerun full repository suite. These scoped regressions failed for their intended
+reasons before the relevant fixes. The row regression now runs the real global
+onclick upgrader, not only the isolated row handler that missed the integration.
+
+Actual local browser checks used synthetic accounts/records, not injected rows:
+
+- Customers search across3 true pages:15/15/1 rows,31 distinct links; Archived2.
+  View-only role sees no Create/Edit/Archive; direct edit is access restricted.
+- View-only Repairs has View/history, no intake/status/edit/bill controls. Actual
+  web paginator shows10 rows, page2 starts11; an off-page synthetic repair is found
+  through normal search. Row mouse click opens its view without a business action.
+- Day Book7 current-month and3 previous-month rows; numeric credit sorting asc/desc;
+  running balances return on date sorting. Safe Back/Forward checked.
+- POS1440/1024/390: actual item picker and discount recomputation53560→53457 for
+  discount100, then reset; Historical actual10g×7200.1234→72001.23, automatic blank
+  row and details/purity controls. Nothing sold, saved, paid, delivered or published.
+- Repairs1440/1024/390: no page overflow, readable fields/actions, contained tablet
+  scrolling. Coarse-pointer actions44px. Shared focus label uses BODY/top-layer,
+  stays inside viewport and dismisses on Escape without losing control focus.
+- Actual contrast, rebuilt Silver925 and scrolled Custom, native dialog entry,
+  named close, cancellation/Escape focus return were checked. Native Tab synthesis
+  was unreliable in this tool: a complete physical/native Tab walk is NOT claimed.
+
+### Inventory, evidence and remaining exceptions
+
+Static inventory reconciles214 tables:178 shared,4 editable grids,32 exceptions
+(13 headerless onboarding,19 print/PDF/email). The old20-document count was off by
+one. The old72-of-73 crawl was a subset, not whole-inventory coverage. No full
+recrawl or performance benchmarking.48 row-action source locations have names/tips.
+
+Evidence is local, outside Git: `/home/himanshu/jf-table-evidence/takeover-20261101.KzNebv/`.
+Representative images: `repairs-a11y-desktop.jpg`,
+`repairs-a11y-dialog-desktop.jpg`, `repairs-a11y-phone-form.jpg`,
+`repairs-a11y-dialog-phone.jpg`, `repairs-register-tablet.jpg`,
+`forfeiture-desktop.png`, `pos-tablet.png`, `historical-desktop.png`.
+Logs: `final-focused-php.log`, `final-frontend.log`, `final-build.log`,
+`blade-lint.log`; audit/closure and live measurements are in the same directory.
+Old scaled/tiled screenshots are superseded by the final viewport-only JPGs.
+
+Local fixtures retained for owner review: customers8..40 (31 active/2 archived),
+repairs3..14, view-only role7/user5. Existing financial row counts did not change
+when these fixtures were created. A later repair15 appeared during owner's preview
+use; it was preserved, not created or removed by the audit. Existing users/roles,
+other worktrees/processes and private PostgreSQL were preserved. No clean/stash/reset.
+
+Impeccable was installed globally for Codex at the owner's request, without hooks
+or repository dependency changes. Operate/hardening guidance kept the incumbent
+design; scoped detector's hidden-image warning was verified as intentional preview
+markup, not a visible broken image. Inherited decorative CSS elsewhere was not
+used as justification for a blanket rewrite.
+
+**Latest separate request: read-only Receive New Repair visual review.** No further
+layout edits were made for it. Confirmed polish remains:41.5px selectors vs46px
+inputs; narrow13px picker text vs16px inputs;40px label reservations; tablet notes
+textareas offset20px; generic short-value/file widths; pale field edges; file type/
+size guidance missing; spacious action footer. Outer18/14px padding and16px desktop
+gaps are consistent. Full details: `RECEIVE-NEW-REPAIR-UI-REVIEW.md` in evidence.
+
+Still not checked: physical phone, actual screen-reader session, complete native
+Tab order, populated forfeiture in the browser (PHP-rendered unsaved snapshots
+cover its values/paging), populated onboarding, new admin MFA/permission panels.
+Earlier baseline admin2fa500 remains outside this task. No staging/production,
+mobile app/APK/OTA, OTP or SMTP work. The local preview is deliberately left running
+at `http://localhost:8001/repairs` for the owner's visual review.
+
 - **Branch:** `feature/table-consistency` (pushed, no force). **Base:** `3df1baf7` (the integrated UI branch). **Worktree:** `/home/himanshu/Desktop/jewelflow-worktrees/ui-integration`.
 - **Commits on top of the base:** `2f928975` shared table pattern + Customers/Invoices/Repairs, `5fec8462` all other tables, `7d4758e3` first review notes, `9971976b` Customers filter row, `a71ea974` action-cell heights, `5032f245` table round 2 (below), then this handoff. `git log 3df1baf7..HEAD` is the full list.
 - The older [table-consistency-review-2026-11-01.md](table-consistency-review-2026-11-01.md) describes only the first two commits; where it differs from this file, this file is current.
