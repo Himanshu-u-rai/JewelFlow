@@ -23,6 +23,75 @@
     overscroll-behavior-x: contain;
 }
 
+/* Native scrollbars, with the same restrained surfaces as each list palette.
+   Keep the normal-width drag target; touch platforms retain their own overlay bars. */
+[data-list-scroll] {
+    --sb-track-color: #f1f5f9;
+    --sb-thumb-color: #b45309;
+    --sb-size: 14px;
+}
+.dh-app [data-list-scroll] { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; }
+.admin-main [data-list-scroll] { --sb-thumb-color: #b45309; --sb-track-color: #f1f3f9; }
+[data-list-scroll]::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+[data-list-scroll]::-webkit-scrollbar-track,
+[data-list-scroll]::-webkit-scrollbar-corner { background: var(--sb-track-color); border-radius: 3px; }
+[data-list-scroll]::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 3px;
+}
+@supports not selector(::-webkit-scrollbar) {
+    [data-list-scroll] { scrollbar-color: var(--sb-thumb-color) var(--sb-track-color); }
+}
+@media (forced-colors: active) { [data-list-scroll] { scrollbar-color: auto; } }
+
+/* Explicit list workspaces only. Short/zoomed/phone layouts and print keep normal page flow.
+   Height is the measured remaining viewport, never a fixed table height. */
+@media screen and (min-width: 1024px) and (min-height: 800px) {
+    [data-list-workspace][data-list-fit] {
+        display: flex;
+        flex-direction: column;
+        height: var(--jf-list-available);
+        min-height: 0;
+    }
+    [data-list-workspace][data-list-fit] [data-list-panel],
+    [data-list-workspace][data-list-fit] [data-list-frame] {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+    }
+    [data-list-workspace][data-list-fit] > :not([data-list-panel]):not([data-list-frame]),
+    [data-list-workspace][data-list-fit] [data-list-panel] > :not([data-list-frame]),
+    [data-list-workspace][data-list-fit] [data-list-frame] > :not([data-list-scroll]) { flex-shrink: 0; }
+    [data-list-workspace][data-list-fit] [data-list-scroll] {
+        flex: 1 1 auto;
+        min-height: 12rem;
+        min-width: 0;
+        overflow: auto;
+        scrollbar-gutter: stable;
+        scroll-padding-block: calc(var(--jf-list-head-size, 3rem) + 8px) 8px;
+    }
+    [data-list-workspace][data-list-fit] [data-list-scroll]:focus-visible {
+        outline: 2px solid var(--jf-t-focus, #b45309);
+        outline-offset: -2px;
+    }
+    /* Selected-shop actions reserve their own space instead of covering the footer. */
+    [data-list-workspace][data-list-fit] > [data-list-toolbar] {
+        position: static;
+        transform: none;
+        max-width: none;
+        padding: 12px 0 0;
+    }
+    [data-list-workspace][data-list-fit] [data-list-scroll] > .jf-table { border-collapse: separate; }
+    [data-list-workspace][data-list-fit] [data-list-scroll] > .jf-table > thead > tr > th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+    [data-list-workspace][data-list-fit] [data-list-scroll] > .jf-table--sticky-end > thead > tr > th:last-child { z-index: 4; }
+}
+
 .jf-table {
     /* values are the pattern the inventory, repairs and invoices tables had already converged on */
     --jf-t-head-bg: #f8fafc;

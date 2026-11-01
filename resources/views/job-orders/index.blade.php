@@ -493,7 +493,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner job-orders-index-page">
+    <div class="content-inner job-orders-index-page" data-list-workspace>
 
         @unless(auth()->user()->can('job_order.manage'))
             @include('partials.view-only-banner', ['permission' => 'job_order.manage', 'message' => 'job orders'])
@@ -546,7 +546,7 @@
             </section>
         </div>
 
-        <div x-data="{
+        <div data-list-panel x-data="{
                   statusOpen: false,
                   statusMenuStyle: '',
                   status: @js($filterStatus ?? ''),
@@ -810,7 +810,7 @@
                 </form>
             </div>
 
-            <div class="jo-table-card bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div class="jo-table-card bg-white rounded-xl border border-gray-200 shadow-sm" data-list-frame>
                 <div class="jobwork-register-head">
                     <div class="jobwork-register-titleblock">
                         <h2>Job Order Register</h2>
@@ -879,7 +879,7 @@
                     @endcan
                 </div>
             @else
-                <div class="jo-table-wrap">
+                <div class="jo-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Job order records">
                     <table class="jo-table w-full text-sm jf-table">
                         <thead>
                             <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">

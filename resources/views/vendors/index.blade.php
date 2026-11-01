@@ -892,7 +892,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner ops-treatment-page vendors-index-page">
+    <div class="content-inner ops-treatment-page vendors-index-page" data-list-workspace>
 
         @unless(auth()->user()->can('vendors.manage'))
             @include('partials.view-only-banner', ['permission' => 'vendors.manage', 'message' => 'vendor management'])
@@ -932,7 +932,7 @@
             </div>
         </div>
 
-        <section class="vendors-list-card ui-filter-enhanced-wrap">
+        <section class="vendors-list-card ui-filter-enhanced-wrap" data-list-frame>
             <div class="vendors-list-head">
                 <div class="vendors-list-titleblock">
                     <h3 class="vendors-list-title">Vendor Directory</h3>
@@ -989,7 +989,7 @@
             </div>
 
             @if($vendors->count())
-                <div class="vendors-table-wrap">
+                <div class="vendors-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Vendor records">
                     <table class="vendors-table jf-table">
                         <thead>
                             <tr>

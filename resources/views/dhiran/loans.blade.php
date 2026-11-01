@@ -16,7 +16,7 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner">
+    <div class="content-inner" data-list-workspace>
 
         {{-- Filters --}}
         <div class="dh-filter-card">
@@ -54,8 +54,8 @@
         </div>
 
         {{-- Loans Table --}}
-        <div class="dh-table-card">
-            <div class="dh-table-wrap">
+        <div class="dh-table-card" data-list-frame>
+            <div class="dh-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Loan records">
                 <table class="dh-table min-w-[900px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>

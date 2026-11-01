@@ -1,4 +1,5 @@
 <x-super-admin.layout title="Edition Requests" subtitle="Review tenant edition upgrade requests.">
+    <div data-list-workspace>
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
             <h2 class="text-xl font-semibold text-white">Edition Requests</h2>
@@ -19,13 +20,13 @@
         </div>
     </div>
 
-<div class="admin-panel admin-table-panel">
+<div class="admin-panel admin-table-panel" data-list-frame>
         @if($requests->isEmpty())
             <div class="px-6 py-12 text-center text-slate-500 text-sm">
                 No {{ $status }} requests.
             </div>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Edition request records">
                 <table class="w-full text-sm admin-table jf-table">
                     <thead class="bg-slate-800/80 text-slate-300">
                         <tr>
@@ -105,5 +106,6 @@
                 {{ $requests->links() }}
             </div>
         @endif
+    </div>
     </div>
 </x-super-admin.layout>

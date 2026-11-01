@@ -1,4 +1,5 @@
 <x-super-admin.layout title="Subscriptions" subtitle="Monitor tenant subscriptions, billing state, and renewal health.">
+    <div data-list-workspace>
     @php
         $allStatuses = ['active', 'trial', 'grace', 'read_only', 'expired', 'cancelled'];
         $statusTone = [
@@ -64,8 +65,8 @@
         </form>
     </div>
 
-    <div class="admin-panel admin-table-panel">
-        <div class="overflow-x-auto">
+    <div class="admin-panel admin-table-panel" data-list-frame>
+        <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Subscription records">
             <table class="min-w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
@@ -127,5 +128,6 @@
         <div class="mt-4 px-4 pb-4">
             {{ $subscriptions->links() }}
         </div>
+    </div>
     </div>
 </x-super-admin.layout>

@@ -196,7 +196,7 @@
     </script>
     @endif
 
-    <div class="content-inner inventory-items-page jf-skeleton-host is-loading" x-data="{ view: '{{ $viewDefault }}' }">
+    <div class="content-inner inventory-items-page jf-skeleton-host is-loading" data-list-workspace x-data="{ view: '{{ $viewDefault }}' }">
 
         @php
             $canModifyInventory = auth()->user()->can('inventory.create')
@@ -254,7 +254,7 @@
         </nav>
 
         {{-- ==================== STOCK ITEMS VIEW ==================== --}}
-        <div x-show="view === 'items'" x-cloak class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">
+        <div x-show="view === 'items'" x-cloak data-list-panel class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">
         <x-app-alerts class="mb-6" />
 
         <!-- Stats Cards -->
@@ -467,7 +467,7 @@
         </div>
 
         <!-- Items Table -->
-        <div class="items-table-card items-table-card--stock">
+        <div class="items-table-card items-table-card--stock" data-list-frame>
             <div class="items-table-header">
                 <div>
                     <p class="items-filter-kicker">Stock Register</p>
@@ -480,7 +480,7 @@
                     @endif
                 </p>
             </div>
-            <div class="overflow-x-auto ui-table-shell items-stock-table-shell">
+            <div class="overflow-x-auto ui-table-shell items-stock-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Stock item records">
                 <table class="w-full items-data-table items-data-table--stock jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>

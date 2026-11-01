@@ -12,7 +12,7 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner">
+    <div class="content-inner" data-list-workspace>
         {{-- Search --}}
         <form method="GET" action="{{ route('dhiran.borrowers.index') }}" class="mb-5 flex flex-wrap items-center gap-2">
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, mobile, or code"
@@ -25,8 +25,8 @@
 
         @forelse($borrowers as $borrower)
             @if($loop->first)
-                <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
+                <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden" data-list-frame>
+                    <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Borrower records">
                         <table class="w-full min-w-[820px] jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>

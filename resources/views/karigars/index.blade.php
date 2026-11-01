@@ -10,7 +10,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner karigars-index-page">
+    <div class="content-inner karigars-index-page" data-list-workspace>
 
         @unless(auth()->user()->can('karigar.manage'))
             @include('partials.view-only-banner', ['permission' => 'karigar.manage', 'message' => 'karigar management'])
@@ -83,7 +83,7 @@
             @endforeach
         </nav>
 
-        <div class="karigars-surface-card jobwork-register-card">
+        <div class="karigars-surface-card jobwork-register-card" data-list-frame>
             <div class="karigars-surface-head jobwork-register-head">
                 <div class="jobwork-register-titleblock">
                     <h2>Karigar Directory</h2>
@@ -109,7 +109,7 @@
                     @endif
                 </div>
             @else
-                <div class="karigars-table-shell">
+                <div class="karigars-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Karigar records">
                     <table class="karigars-table jf-table">
                         <thead>
                             <tr>

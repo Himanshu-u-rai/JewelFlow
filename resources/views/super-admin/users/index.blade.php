@@ -1,4 +1,5 @@
 <x-super-admin.layout title="User Management" subtitle="Control user status, scope, and password recovery.">
+    <div data-list-workspace>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h3 class="text-lg font-semibold text-white">All Users</h3>
@@ -32,8 +33,8 @@
         </form>
     </div>
 
-    <div class="admin-panel admin-table-panel">
-        <div class="overflow-x-auto">
+    <div class="admin-panel admin-table-panel" data-list-frame>
+        <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Platform user records">
             <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
@@ -72,5 +73,6 @@
             </table>
         </div>
         <div class="px-4 py-3 border-t border-slate-800">{{ $users->links() }}</div>
+    </div>
     </div>
 </x-super-admin.layout>

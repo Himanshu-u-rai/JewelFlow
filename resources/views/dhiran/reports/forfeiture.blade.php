@@ -13,10 +13,10 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner">
+    <div class="content-inner" data-list-workspace>
         {{-- Table --}}
-        <div class="bg-white rounded-lg shadow-sm">
-            <div class="overflow-x-auto jf-table-wrap">
+        <div class="bg-white rounded-lg shadow-sm" data-list-frame>
+            <div class="overflow-x-auto jf-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Forfeited loan records">
                 <table class="w-full border-collapse jf-table">
                     <thead>
                         <tr class="bg-gray-50 border-b">

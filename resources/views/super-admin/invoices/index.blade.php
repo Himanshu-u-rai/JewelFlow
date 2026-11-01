@@ -1,4 +1,5 @@
 <x-super-admin.layout title="Platform Invoices" subtitle="All subscription billing invoices generated across all shops.">
+    <div data-list-workspace>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h3 class="text-lg font-semibold text-white">Platform Invoices</h3>
@@ -66,8 +67,8 @@
         </form>
     </div>
 
-    <div class="admin-panel admin-table-panel">
-        <div class="overflow-x-auto">
+    <div class="admin-panel admin-table-panel" data-list-frame>
+        <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Platform invoice records">
             <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
@@ -126,5 +127,6 @@
         @if($invoices->hasPages())
             <div class="px-4 py-3 border-t border-slate-800">{{ $invoices->links() }}</div>
         @endif
+    </div>
     </div>
 </x-super-admin.layout>

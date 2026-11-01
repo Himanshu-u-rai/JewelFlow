@@ -1,5 +1,5 @@
 <x-super-admin.layout title="Shop Management" subtitle="Search, inspect, activate, and deactivate tenant shops.">
-    <div x-data="shopBulk()" x-init="init()">
+    <div data-list-workspace x-data="shopBulk()" x-init="init()">
 
     <div class="admin-toolbar mb-4">
         <div>
@@ -50,8 +50,8 @@
     </div>
 
     {{-- Shop table --}}
-    <div class="admin-panel admin-table-panel">
-        <div class="admin-table-wrap">
+    <div class="admin-panel admin-table-panel" data-list-frame>
+        <div class="admin-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Shop records">
             <table class="w-full text-sm admin-table jf-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
@@ -114,7 +114,7 @@
     </div>
 
     {{-- Bulk action bar — slides up from bottom when rows are selected --}}
-    <div x-show="selected.length > 0"
+    <div data-list-toolbar x-show="selected.length > 0"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="translate-y-4 opacity-0"
          x-transition:enter-end="translate-y-0 opacity-100"

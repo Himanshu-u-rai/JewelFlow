@@ -1040,7 +1040,7 @@
     @endphp
 
     <div
-        class="content-inner qb-page"
+        class="content-inner qb-page" data-list-workspace
         x-data="{ filterOpen: false }"
         x-effect="document.body.style.overflow = filterOpen ? 'hidden' : ''"
         @keydown.escape.window="filterOpen = false"
@@ -1049,7 +1049,7 @@
             @include('partials.view-only-banner', ['permission' => 'sales.create', 'message' => 'creating quick bills'])
         @endunless
 
-        <div class="qb-shell">
+        <div class="qb-shell" data-list-panel>
             <div class="qb-stats" aria-label="Quick bill summary">
                 <div class="qb-stat">
                     <span class="qb-stat__icon" aria-hidden="true">
@@ -1098,7 +1098,7 @@
                 </div>
             </div>
 
-            <section class="qb-register" aria-label="Quick bill register">
+            <section class="qb-register" aria-label="Quick bill register" data-list-frame>
                 <div class="qb-register__head">
                     <div>
                         <h2 class="qb-register__title">Bill register</h2>
@@ -1192,7 +1192,7 @@
                 @endif
 
                 @if($quickBills->count())
-                    <div class="qb-table-wrap">
+                    <div class="qb-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Quick bill records">
                         <table class="qb-table jf-table">
                             <thead>
                                 <tr>

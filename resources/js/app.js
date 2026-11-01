@@ -8,10 +8,12 @@ import { initializeCustomerPhotos } from './customer-photo';
 import { showFlashes, toastSettings } from './toast';
 import { initializeChallanShare } from './repair-challan-share';
 import { initializeRowActionLabels } from './table-row-actions';
+import { initializeListWorkspaces } from './list-workspace';
 
 initializeCustomerPhotos();
 initializeChallanShare();
 initializeRowActionLabels();
+initializeListWorkspaces();
 
 let toastTimer = null;
 let toastDuration = 4000;

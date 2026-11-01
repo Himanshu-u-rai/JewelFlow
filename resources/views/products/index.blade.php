@@ -10,7 +10,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner jf-skeleton-host is-loading">
+    <div class="content-inner jf-skeleton-host is-loading" data-list-workspace>
 
         @unless(auth()->user()->can('catalog.manage'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'product catalog management'])
@@ -54,8 +54,8 @@
                 @endcan
             </div>
         @else
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="overflow-x-auto">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" data-list-frame>
+                <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Product records">
                 <table class="w-full min-w-[860px] jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>

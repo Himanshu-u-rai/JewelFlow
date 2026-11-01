@@ -20,7 +20,7 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner">
+    <div class="content-inner" data-list-workspace>
         <div class="dh-filter-card">
             <form method="GET" action="{{ route('dhiran.reports.cashbook') }}" class="dh-filter-row">
                 <div class="dh-filter-field">
@@ -78,8 +78,8 @@
         </div>
 
         {{-- Table --}}
-        <div class="bg-white rounded-lg shadow-sm">
-            <div class="overflow-x-auto">
+        <div class="bg-white rounded-lg shadow-sm" data-list-frame>
+            <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Dhiran cashbook entries">
                 <table class="w-full border-collapse jf-table">
                     <thead>
                         <tr class="bg-gray-50 border-b">

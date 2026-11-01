@@ -399,7 +399,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner ki-shell karigar-invoices-index-page space-y-5">
+    <div class="content-inner ki-shell karigar-invoices-index-page space-y-5" data-list-workspace>
 
         @unless(auth()->user()->can('karigar_invoice.manage'))
             @include('partials.view-only-banner', ['permission' => 'karigar_invoice.manage', 'message' => 'karigar invoices'])
@@ -563,7 +563,7 @@
             <button type="submit" class="ki-filter-button">Filter Invoices</button>
         </form>
 
-        <section class="ki-card ki-register">
+        <section class="ki-card ki-register" data-list-frame>
             <div class="ki-head">
                 <div>
                     <h2 class="ki-title">Invoice Register</h2>
@@ -605,7 +605,7 @@
                     <p class="text-sm">No karigar invoices match.</p>
                 </div>
             @else
-                <div class="ki-desktop overflow-x-auto">
+                <div class="ki-desktop overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Karigar invoice records">
                     <table class="ki-table w-full text-sm jf-table">
                         <thead>
                             <tr>

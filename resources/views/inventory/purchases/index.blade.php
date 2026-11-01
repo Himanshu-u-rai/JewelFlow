@@ -851,7 +851,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner inventory-purchases-page"
+    <div class="content-inner inventory-purchases-page" data-list-workspace
          x-data="{
              search: @js((string) request('search', '')),
              status: @js((string) request('status', '')),
@@ -1153,7 +1153,7 @@
             </form>
         </div>
 
-        <div class="sp-register-card">
+        <div class="sp-register-card" data-list-frame>
             <div class="sp-register-head">
                 <div>
                     <h2 class="sp-register-title">Purchase Register</h2>
@@ -1172,7 +1172,7 @@
                     @endcan
                 </div>
             @else
-                <div class="sp-register-table-wrap">
+                <div class="sp-register-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Stock purchase records">
                     <table class="sp-register-table jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>

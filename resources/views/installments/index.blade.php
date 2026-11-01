@@ -31,7 +31,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner customers-index-page installments-index-page jf-skeleton-host is-loading">
+    <div class="content-inner customers-index-page installments-index-page jf-skeleton-host is-loading" data-list-workspace>
         <section class="installments-index-kpi-grid" aria-label="Installment summary">
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--gold">
@@ -92,7 +92,7 @@
             </article>
         </section>
 
-        <section class="customers-table-card installments-register-card">
+        <section class="customers-table-card installments-register-card" data-list-frame>
             <div class="customers-table-card-header customers-register-head installments-register-head">
                 <div class="customers-register-titleblock">
                     <h2>EMI register</h2>
@@ -113,7 +113,7 @@
                 </nav>
             </div>
 
-            <div class="overflow-x-auto ui-table-shell customers-table-shell installments-table-shell">
+            <div class="overflow-x-auto ui-table-shell customers-table-shell installments-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Installment plan records">
                 <table class="w-full customers-data-table installments-data-table jf-table">
                     <thead>
                         <tr>

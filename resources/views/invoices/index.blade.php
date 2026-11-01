@@ -62,7 +62,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner invoices-index-page jf-skeleton-host is-loading"
+    <div class="content-inner invoices-index-page jf-skeleton-host is-loading" data-list-workspace
          x-data="{ invoiceFiltersOpen: false }"
          :class="{ 'invoices-filters-open': invoiceFiltersOpen }"
          x-effect="document.body.style.overflow = invoiceFiltersOpen ? 'hidden' : ''"
@@ -150,7 +150,7 @@
         </div>
 
         <!-- Invoices Table -->
-        <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden invoices-table-card invoices-table-card--main">
+        <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden invoices-table-card invoices-table-card--main" data-list-frame>
             <div class="invoices-register-head">
                 <div class="invoices-register-titleblock">
                     <h2>Invoice register</h2>
@@ -269,7 +269,7 @@
                 </div>
             @endif
 
-            <div class="overflow-x-auto invoices-table-shell">
+            <div class="overflow-x-auto invoices-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Invoice records">
                 <table class="w-full jf-table jf-table--sticky-end">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>

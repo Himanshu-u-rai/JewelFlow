@@ -23,7 +23,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner customers-index-page jf-skeleton-host is-loading" x-data="{ view: '{{ $viewDefault }}' }">
+    <div class="content-inner customers-index-page jf-skeleton-host is-loading" data-list-workspace x-data="{ view: '{{ $viewDefault }}' }">
 
         @php
             $canModifyCustomers = auth()->user()->can('customers.create')
@@ -59,7 +59,7 @@
         @endif
 
         {{-- ==================== CUSTOMERS VIEW ==================== --}}
-        <div x-show="view === 'customers'" x-cloak>
+        <div data-list-panel x-show="view === 'customers'" x-cloak>
 
         <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
@@ -113,7 +113,7 @@
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--directory">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--directory" data-list-frame>
             <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
                 <div class="customers-register-titleblock">
                     <h2 class="text-lg font-semibold text-slate-900">Customer Directory</h2>
@@ -169,7 +169,7 @@
                 </form>
             </div>
 
-            <div class="overflow-x-auto ui-table-shell customers-table-shell">
+            <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Customer records">
                 <table class="w-full jf-table customers-data-table customers-data-table--directory">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
@@ -379,7 +379,7 @@
 
         {{-- ==================== LOYALTY POINTS VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $loyaltyData)
-        <div x-show="view === 'loyalty'" x-cloak>
+        <div data-list-panel x-show="view === 'loyalty'" x-cloak>
             @php
                 $loyaltyCustomers = $loyaltyData['loyaltyCustomers'];
                 $totalPointsIssued = $loyaltyData['totalPointsIssued'];
@@ -422,7 +422,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--loyalty">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--loyalty" data-list-frame>
                 <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Loyalty Points</h2>
@@ -449,7 +449,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="overflow-x-auto ui-table-shell customers-table-shell">
+                <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Loyalty records">
                     <table class="w-full jf-table customers-data-table customers-data-table--loyalty">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
@@ -530,7 +530,7 @@
 
         {{-- ==================== EMI / INSTALLMENTS VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $installmentData)
-        <div x-show="view === 'emi'" x-cloak>
+        <div data-list-panel x-show="view === 'emi'" x-cloak>
             @php
                 $installmentPlans = $installmentData['installmentPlans'];
                 $overduePlans = $installmentData['overduePlans'];
@@ -574,7 +574,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--emi">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--emi" data-list-frame>
                 <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">EMI / Installments</h2>
@@ -610,7 +610,7 @@
                         @endcan
                     </div>
                 </div>
-                <div class="overflow-x-auto ui-table-shell customers-table-shell">
+                <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Installment records">
                     <table class="w-full jf-table customers-data-table customers-data-table--emi">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
@@ -711,7 +711,7 @@
 
         {{-- ==================== CUSTOMER OCCASIONS VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $occasionsData)
-        <div x-show="view === 'occasions'" x-cloak>
+        <div data-list-panel x-show="view === 'occasions'" x-cloak>
             @php
                 $upcomingOccasions = collect($occasionsData['upcoming'] ?? []);
                 $occasionDaysAhead = (int) ($occasionsData['daysAhead'] ?? 30);
@@ -755,7 +755,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions" data-list-frame>
                 <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Customer Occasions</h2>
@@ -777,7 +777,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="overflow-x-auto ui-table-shell customers-table-shell">
+                <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
                     <table class="w-full jf-table customers-data-table customers-data-table--occasions">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
