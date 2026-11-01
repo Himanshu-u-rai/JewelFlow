@@ -13805,6 +13805,14 @@ input::-webkit-calendar-picker-indicator {
     transition: none !important;
 }
 
+.customers-index-page .customers-directory-status .ui-filter-select-menu {
+    scrollbar-width: none;
+}
+
+.customers-index-page .customers-directory-status .ui-filter-select-menu::-webkit-scrollbar {
+    display: none;
+}
+
 .customers-index-page .customers-row-action {
     display: inline-flex;
     align-items: center;

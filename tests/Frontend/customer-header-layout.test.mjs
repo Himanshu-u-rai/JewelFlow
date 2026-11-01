@@ -20,6 +20,7 @@ const selectors = {
     emiChevron: ['.ui-filter-select-chevron', '.customers-index-page .customers-register-inline-form .ui-filter-select-chevron'],
     directoryStatus: ['.customers-directory-status'],
     directoryStatusFocus: ['.customers-directory-status', '.customers-directory-status:has(:focus-visible)'],
+    directoryMenuScrollbar: ['.customers-index-page .customers-directory-status .ui-filter-select-menu::-webkit-scrollbar'],
 };
 
 function cascade(part, width) {
@@ -71,7 +72,10 @@ test('desktop keeps the compact flex header and sticky page context', () => {
 for (const part of ['Trigger', 'Menu', 'Chevron']) {
     test(`Directory Status ${part.toLowerCase()} shares the EMI filter treatment`, () => {
         for (const width of [427, 1280]) {
-            assert.deepEqual(cascade('directory' + part, width), cascade('emi' + part, width));
+            const directory = cascade('directory' + part, width);
+            // The owner requested a hidden scrollbar only for Directory Status.
+            if (part === 'Menu') delete directory['scrollbar-width'];
+            assert.deepEqual(directory, cascade('emi' + part, width));
         }
     });
 }
@@ -88,4 +92,13 @@ test('Directory Status stays content-sized and capped instead of inheriting wide
 
 test('Directory wrapper does not add a second focus ring around the shared EMI trigger', () => {
     assert.equal(cascade('directoryStatusFocus', 1280).outline, undefined);
+});
+
+test('Directory menu hides the scrollbar without disabling its scroll container', () => {
+    for (const width of [427, 1280]) {
+        const menu = cascade('directoryMenu', width);
+        assert.equal(menu['scrollbar-width'], 'none');
+        assert.equal(menu.overflow, 'auto', 'hiding the scrollbar must not become overflow:hidden');
+        assert.equal(cascade('directoryMenuScrollbar', width).display, 'none');
+    }
 });

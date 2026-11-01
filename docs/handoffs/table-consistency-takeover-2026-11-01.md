@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Reuse EMI dropdown for compact Customer Status
+## Latest checkpoint — Hide Customer Status menu scrollbar
+
+Starting clean HEAD `54af151ea0849d7c09bdd7a89398fc013ef14840`, same isolated
+worktree/branch/sole writer. Owner requested hiding only this dropdown's scrollbar.
+Directory-only Firefox/WebKit scrollbar rules leave the existing `overflow:auto`
+and all shared menu behavior intact. Table scrollbar, EMI styling, compact width,
+options and filtering are unchanged. No JavaScript, Blade, backend or data edits.
+
+Impeccable refinement stayed scoped to the incumbent dropdown. Regression contract
+failed before the CSS edit, then passed12/12 at427/1280px. Full frontend run:
+72passed/22existing optional-browser skips/0failures. `npm run build` succeeded
+(79modules); Node syntax and `git diff --check` passed. PHP/database tests not
+rerun for this CSS-only change. Built assets ignored/uncommitted.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-dropdown-scrollbar-20261102.1e4lwz/`.
+These are source/CSS contracts, not rendered gesture checks. Existing Browser Use
+URL-policy block respected; post-change visual, wheel/touch and keyboard acceptance
+remain UNVERIFIED. Owner should refresh Customers and open Status. Local only;
+no push/deployment or process/database changes. Exact source files: app.css,
+customer-header-layout.test.mjs and this handoff.
+
+## Previous checkpoint — Reuse EMI dropdown for compact Customer Status
 
 Starting clean HEAD `dd3906bd501f531259cf801d38b65389596407c5`, same isolated
 worktree/branch/sole writer. Owner explicitly requested the existing inline
