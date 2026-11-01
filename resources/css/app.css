@@ -13653,17 +13653,23 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .customers-directory-status select {
+    appearance: auto;
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+    display: block;
     width: auto;
     min-width: 0;
     height: 36px;
     min-height: 36px;
     margin: 0;
-    padding: 0 30px 0 10px;
+    padding: 0 10px;
     border: 1px solid var(--cust-line);
     border-radius: 8px;
     background-color: #fff;
+    background-image: none;
     color: var(--cust-text);
     font-size: 13px;
+    line-height: normal;
     box-shadow: none;
     outline: none;
     cursor: pointer;
@@ -13676,52 +13682,6 @@ input::-webkit-calendar-picker-indicator {
 
 .customers-directory-controls :is(.customers-directory-apply, .customers-directory-clear) {
     min-height: 44px;
-}
-
-/* Native picker: themed top-layer menu where supported, ordinary select elsewhere. */
-@supports (appearance: base-select) {
-    .customers-directory-status select {
-        appearance: base-select;
-        gap: 8px;
-        padding-inline: 10px;
-        background-image: none;
-    }
-
-    .customers-directory-status select::picker(select) {
-        appearance: base-select;
-        min-width: 10rem;
-        max-width: calc(100vw - 24px);
-        margin-block-start: 6px;
-        padding: 4px;
-        border: 1px solid var(--cust-line);
-        border-radius: 12px;
-        background: #fff;
-        color: var(--cust-ink);
-        box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
-    }
-
-    .customers-directory-status option {
-        min-height: 36px;
-        padding: 10px 12px;
-        border-radius: 8px;
-        font-size: 13px;
-    }
-
-    .customers-directory-status option:is(:hover, :focus-visible) {
-        background: var(--cust-soft);
-    }
-
-    .customers-directory-status option:checked {
-        background: #fff7ed;
-        color: var(--cust-gold);
-        font-weight: 600;
-    }
-
-    .customers-directory-status option::checkmark {
-        order: 1;
-        margin-inline-start: auto;
-        color: var(--cust-gold);
-    }
 }
 
 .customers-index-page .customers-register-toolbar {
@@ -14346,11 +14306,6 @@ input::-webkit-calendar-picker-indicator {
     .customers-directory-status select {
         height: 44px;
         min-height: 44px;
-    }
-
-    .customers-directory-status option {
-        min-height: 44px;
-        font-size: 16px;
     }
 
     .customers-directory-search input,

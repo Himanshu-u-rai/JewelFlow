@@ -12,13 +12,18 @@ const selectors = {
     actions: ['.page-actions', '.content-header .page-actions', '.customers-page-header .page-actions', '.customers-directory-header .page-actions', '.content-header > :nth-child(n+3)', '.customers-page-header > :nth-child(n+3)', '.content-header.customers-directory-header > .page-actions'],
     bell: ['.notice-bell', '.content-header > .notice-bell', '.content-header.customers-directory-header > .notice-bell'],
     add: ['.customers-page-header .customers-add-btn', '.customers-directory-header .customers-add-btn', '.content-header.customers-directory-header .customers-add-btn'],
+    status: ['select', '.customers-directory-status select'],
 };
 
-function cascade(part, width) {
+function cascade(part, width, supportsBaseSelect = false) {
     const values = new Map();
     css.walkRules(rule => {
         for (let parent = rule.parent; parent?.type !== 'root'; parent = parent.parent) {
             if (parent.type !== 'atrule') continue;
+            if (parent.name === 'supports' && parent.params === '(appearance: base-select)') {
+                if (!supportsBaseSelect) return;
+                continue;
+            }
             if (parent.name !== 'media' || !/^\(max-width: \d+px\)$/.test(parent.params)) return;
             if (width > Number(parent.params.match(/\d+/)[0])) return;
         }
@@ -59,3 +64,16 @@ test('desktop keeps the compact flex header and sticky page context', () => {
     assert.equal(header.position, 'sticky');
     assert.equal(cascade('actions', 1280)['grid-row'], undefined);
 });
+
+for (const supportsBaseSelect of [false, true]) {
+    test(`status keeps one native arrow without mixing image/picker treatments (base-select support: ${supportsBaseSelect})`, () => {
+        for (const width of [427, 1280]) {
+            const status = cascade('status', width, supportsBaseSelect);
+            assert.equal(status.appearance, 'auto', 'do not combine the customizable picker with legacy select resets');
+            assert.equal(status['-webkit-appearance'], 'auto');
+            assert.equal(status['background-image'], 'none', 'a native arrow must not also have the app SVG arrow');
+            assert.equal(status['line-height'], 'normal', 'native text alignment must not inherit the custom picker line box');
+            assert.equal(status.height, width < 769 ? '44px' : '36px');
+        }
+    });
+}

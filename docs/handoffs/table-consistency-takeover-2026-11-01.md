@@ -2,7 +2,48 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Customer Directory register tools
+## Latest checkpoint — Plain native Customer Status dropdown
+
+Starting clean HEAD `63e70ea38177a19494478e1769cb6a80d15cc765`, same isolated
+worktree/branch/sole writer. Owner's desktop screenshot shows two arrows and high
+text in the closed Status control. Source contains legacy global select resets
+and an image arrow plus the new base-select rendering mode. Exact live browser
+computed-style/engine interaction remains unverified because of the existing
+Browser Use URL-policy block; the screenshot is owner-supplied rendered evidence.
+
+Removed the optional base-select picker/option/checkmark styling entirely.
+Directory Status now explicitly uses ordinary native appearance, including the
+prefixed aliases; no background-image arrow, normal native text line height and
+less padding. Its open menu is intentionally the platform's standard menu.
+Kept the subtle border,36px desktop/44px phone sizing, accessible label and native
+Status field/values. No Blade, JavaScript, backend, filter behavior or data change;
+compact summaries, icon search, Apply and other tabs remain unchanged.
+
+Exact files: `resources/css/app.css`,
+`tests/Frontend/customer-header-layout.test.mjs` and this handoff.
+
+Fresh checks:
+
+- RED: two new Status CSS-contract cases failed before editing; six existing
+  header cases passed. GREEN:8/8, including427px/1280px, with base-select support
+  enabled/disabled in the limited known-selector cascade contract.
+- `node --test tests/Frontend/*.test.mjs`:68passed,22existing optional browser
+  skips,0failures. New/changed Node test syntax and diff checks passed.
+- `npm run build`:79modules, success. Built stylesheet rules inspected through
+  PostCSS confirm native appearance, no background image and normal line height;
+  generated assets ignored/uncommitted. No live computed-style claim.
+- Impeccable layout detector:0mechanical findings. Not visual acceptance.
+- No PHP/Blade/database tests repeated for this CSS-only correction. Prior
+  candidate's72PHP/511assertion result remains prior evidence, not a fresh run.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-status-native-20261101.cXyXRt/`.
+No browser retry/workaround or new screenshots. Native popup/keyboard, actual
+text centering/arrow count and phone geometry still need owner visual confirmation.
+Next: refresh `http://localhost:8001/customers`. Local-only; no push/deploy,
+primary checkout/DB, staging/production, OTP/SMTP or mobile-app work. Preview8001,
+privatePG55432 and companion8000 preserved.
+
+## Previous checkpoint — Compact Customer Directory register tools
 
 Starting clean HEAD `11487080590c23a7fe7d09878390a925b9bb24fb`, same isolated
 worktree/branch/sole writer. Local-only presentation change requested by owner:
