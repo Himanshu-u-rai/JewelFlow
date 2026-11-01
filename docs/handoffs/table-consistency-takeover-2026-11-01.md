@@ -2,7 +2,53 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Customer table row numbering
+## Latest checkpoint — Compact Customer header views
+
+Starting clean HEAD `ebc8731d6f08351fcaeabb4d32af57c3563d6a0a`, same isolated
+worktree/branch/sole writer. Local commit only; no push or deployment.
+
+Moved the four existing Retail view switches into the Customers page header,
+removing the separate content row. Existing labels/icons and gold active state
+remain. Header/table share the same existing Alpine `view` state through one
+parent wrapper; no store, extra controller, duplicate controls or JS module.
+Server-rendered and dynamic aria-pressed indicate the active view. Add Customer
+keeps its permission check; manufacturers still have no Retail view switches.
+Desktop buttons use compact spacing; phones retain the incumbent two-column
+wrapping pattern with44px targets and full labels allowed to wrap. No shared
+header component or unrelated page/header selectors were changed.
+
+Exact files: `resources/views/customers/index.blade.php`, `resources/css/app.css`,
+`tests/Feature/Tables/ListWorkspaceUiTest.php` and this handoff. New CSS is scoped
+to customers-directory-header; incumbent Customer tab styling is extended to it.
+List-workspace markers, KPI/filter/pagination location, row indexing, routes and
+financial data are unchanged. Header remains outside the table's row scroller.
+
+Fresh checks:
+
+- Test guard resolved testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing before
+  RefreshDatabase; same automatic per-test guard remains in force.
+- RED:2new tests failed on absent header navigation before implementation.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php`
+  →68passed/473assertions, no failures/skips. Tests cover one header group,
+  unchanged labels, direct EMI selection, common Alpine ancestor with4panels,
+  read-only Add-action denial and manufacturer variant.
+- `node --test tests/Frontend/*.test.mjs` →57pass/22existing optional browser skips.
+- `npm run build` →79modules, success. Assets ignored/uncommitted.
+- Guarded preview launcher `view:cache`;384compiled Blade PHP files linted;
+  guarded `view:clear`; changed Blade/test PHP lint and git diff check passed.
+-10fresh actual-demo controller+Blade cases passed; synthetic24customer/32sale/
+  24EMIbatch preserved. No fixture/data mutation for this UI change.
+- Impeccable layout scans before/after both0findings. This is mechanical/source
+  evidence, NOT browser/computed-style acceptance. Existing Browser Use URL policy
+  block was not retried/circumvented. New desktop/phone visual, native keyboard
+  and real zoom checks remain manual; no new screenshots or full PHP suite run.
+
+Logs: `/home/himanshu/jf-table-evidence/customer-header-tabs-20261101.nNZLyh/`.
+Preview8001/privatePG55432 and companion8000 remain running. Primary checkout/DB,
+staging/production, OTP/SMTP and mobile apps untouched. Next: owner refresh
+`http://localhost:8001/customers` for visual review; no broader redesign scheduled.
+
+## Previous checkpoint — Customer table row numbering
 
 Starting HEAD `85233dbc98a8178451935cee2fb0490a1172e4c9`, clean tree on
 `feature/table-consistency`, same isolated ui-integration worktree/sole writer.

@@ -7,12 +7,33 @@
         $viewDefault = in_array($viewParam, $validViews) ? $viewParam : 'customers';
     @endphp
 
+    <div class="customers-workspace" x-data="{ view: '{{ $viewDefault }}' }">
     <x-page-header
-        class="customers-page-header"
+        class="customers-page-header customers-directory-header"
         title="Customers"
         :subtitle="'Manage customer profiles' . ($isRetailer ? '' : ' and balances')"
     >
         <x-slot:actions>
+            @if($isRetailer)
+            <nav aria-label="Customer views" class="ui-toggle-strip customers-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                <button type="button" @click="view = 'customers'" aria-pressed="{{ $viewDefault === 'customers' ? 'true' : 'false' }}" :aria-pressed="view === 'customers'" :class="view === 'customers' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <x-icon name="users" size="14" />
+                    Customer Directory
+                </button>
+                <button type="button" @click="view = 'loyalty'" aria-pressed="{{ $viewDefault === 'loyalty' ? 'true' : 'false' }}" :aria-pressed="view === 'loyalty'" :class="view === 'loyalty' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <x-icon name="star" size="14" />
+                    Loyalty Points
+                </button>
+                <button type="button" @click="view = 'emi'" aria-pressed="{{ $viewDefault === 'emi' ? 'true' : 'false' }}" :aria-pressed="view === 'emi'" :class="view === 'emi' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <x-icon name="credit-card" size="14" />
+                    EMI / Installments
+                </button>
+                <button type="button" @click="view = 'occasions'" aria-pressed="{{ $viewDefault === 'occasions' ? 'true' : 'false' }}" :aria-pressed="view === 'occasions'" :class="view === 'occasions' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <x-icon name="calendar" size="14" />
+                    Occasions
+                </button>
+            </nav>
+            @endif
             @can('customers.create')
             <a href="{{ route('customers.create') }}"
                class="btn btn-success btn-sm customers-add-btn">
@@ -23,7 +44,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner customers-index-page jf-skeleton-host is-loading" data-list-workspace x-data="{ view: '{{ $viewDefault }}' }">
+    <div class="content-inner customers-index-page jf-skeleton-host is-loading" data-list-workspace>
 
         @php
             $canModifyCustomers = auth()->user()->can('customers.create')
@@ -33,30 +54,6 @@
         @unless($canModifyCustomers)
             @include('partials.view-only-banner', ['permission' => 'customers.edit', 'message' => 'customer management'])
         @endunless
-
-        {{-- View Toggle for Retailers --}}
-        @if($isRetailer)
-        <div class="mt-1 mb-3">
-            <div class="ui-toggle-strip customers-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-            <button type="button" @click="view = 'customers'" :class="view === 'customers' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <x-icon name="users" size="14" />
-                Customer Directory
-            </button>
-            <button type="button" @click="view = 'loyalty'" :class="view === 'loyalty' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <x-icon name="star" size="14" />
-                Loyalty Points
-            </button>
-            <button type="button" @click="view = 'emi'" :class="view === 'emi' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <x-icon name="credit-card" size="14" />
-                EMI / Installments
-            </button>
-            <button type="button" @click="view = 'occasions'" :class="view === 'occasions' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                <x-icon name="calendar" size="14" />
-                Occasions
-            </button>
-            </div>
-        </div>
-        @endif
 
         {{-- ==================== CUSTOMERS VIEW ==================== --}}
         <div data-list-panel x-show="view === 'customers'" x-cloak>
@@ -832,5 +829,6 @@
         </div>
         @endif
 
+    </div>
     </div>
 </x-app-layout>

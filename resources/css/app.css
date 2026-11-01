@@ -13276,6 +13276,7 @@ input::-webkit-calendar-picker-indicator {
 
 /* Customers page + subpages makeover (UI only, scoped) */
 .customers-index-page,
+.customers-directory-header,
 .customers-show-page {
     /* Codex "Quick Bills" look: warm white surfaces, JewelFlow gold accent.
        (Replaces the older charcoal-KPI treatment so Customers reads like the
@@ -13442,7 +13443,21 @@ input::-webkit-calendar-picker-indicator {
     outline-offset: 2px;
 }
 
-.customers-index-page .customers-view-toggle {
+.customers-directory-header {
+    padding-block: 16px;
+}
+
+.customers-directory-header .page-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 12px;
+}
+
+.customers-directory-header .customers-add-btn {
+    flex: 0 0 auto;
+}
+
+:is(.customers-index-page, .customers-directory-header) .customers-view-toggle {
     border-radius: 14px !important;
     border-color: var(--cust-line-soft) !important;
     box-shadow: none !important;
@@ -13450,7 +13465,7 @@ input::-webkit-calendar-picker-indicator {
     background: #fff !important;
 }
 
-.customers-index-page .customers-view-toggle .customers-view-tab {
+:is(.customers-index-page, .customers-directory-header) .customers-view-toggle .customers-view-tab {
     border-radius: 10px !important;
     box-shadow: none !important;
     font-size: 13px !important;
@@ -13459,15 +13474,26 @@ input::-webkit-calendar-picker-indicator {
     transition: background-color .16s ease, color .16s ease, transform .12s cubic-bezier(.23, 1, .32, 1);
 }
 
-.customers-index-page .customers-view-toggle .customers-view-tab.bg-slate-900 {
+:is(.customers-index-page, .customers-directory-header) .customers-view-toggle .customers-view-tab.bg-slate-900 {
     background-color: var(--cust-gold) !important;
     color: #fff !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .customers-index-page .customers-view-toggle .customers-view-tab:active {
+    :is(.customers-index-page, .customers-directory-header) .customers-view-toggle .customers-view-tab:active {
         transform: scale(.98);
     }
+}
+
+.customers-directory-header .customers-view-toggle {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.customers-directory-header .customers-view-toggle .customers-view-tab {
+    min-height: 36px;
+    padding: 7px 10px;
 }
 
 .customers-index-page .customers-table-card,
@@ -14069,14 +14095,14 @@ input::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 768px) {
-    .customers-index-page .customers-view-toggle {
+    :is(.customers-index-page, .customers-directory-header) .customers-view-toggle {
         width: 100%;
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 5px !important;
     }
 
-    .customers-index-page .customers-view-toggle .customers-view-tab {
+    :is(.customers-index-page, .customers-directory-header) .customers-view-toggle .customers-view-tab {
         min-height: 34px;
         justify-content: flex-start;
         padding: 7px 9px !important;
@@ -14084,10 +14110,21 @@ input::-webkit-calendar-picker-indicator {
         line-height: 1.15 !important;
     }
 
-    .customers-index-page .customers-view-toggle .customers-view-tab svg {
+    :is(.customers-index-page, .customers-directory-header) .customers-view-toggle .customers-view-tab svg {
         flex: 0 0 auto;
         width: 13px;
         height: 13px;
+    }
+
+    .customers-directory-header .page-actions {
+        flex-basis: 100%;
+        gap: 8px;
+    }
+
+    .customers-directory-header .customers-view-toggle .customers-view-tab {
+        min-height: 44px;
+        white-space: normal;
+        text-align: left;
     }
 
     .customers-index-page .customers-register-head {

@@ -17,6 +17,47 @@ class ListWorkspaceUiTest extends TestCase
     use CreatesTestTenant;
     use RefreshDatabase;
 
+    public function test_customer_view_switches_live_once_in_the_header_and_share_the_workspace_state(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $html = $this->actingAs($owner)->get('/customers?view=emi')->assertOk()->getContent();
+        $dom = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xp = new \DOMXPath($dom);
+        $navigation = '//*[@aria-label="Customer views"]';
+        $this->assertSame(1, $xp->query($navigation)->length);
+        $this->assertSame(1, $xp->query('//*[contains(@class,"customers-page-header")]'.$navigation)->length);
+        $this->assertSame(0, $xp->query('//*[@data-list-workspace]'.$navigation)->length);
+        $this->assertSame(4, $xp->query($navigation.'/button[@type="button"]')->length);
+        $labels = [];
+        foreach ($xp->query($navigation.'/button') as $button) {
+            $labels[] = trim(preg_replace('/\s+/', ' ', $button->textContent));
+        }
+        $this->assertSame(['Customer Directory', 'Loyalty Points', 'EMI / Installments', 'Occasions'], $labels);
+        $this->assertSame('EMI / Installments', trim(preg_replace('/\s+/', ' ', $xp->evaluate('string('.$navigation.'/button[@aria-pressed="true"])'))));
+        $state = $xp->query($navigation.'/ancestor::*[@x-data][1]')->item(0);
+        $this->assertNotNull($state);
+        $this->assertStringContainsString("view: 'emi'", $state->getAttribute('x-data'));
+        $this->assertSame(1, $xp->query('.//*[@data-list-workspace]', $state)->length);
+        $this->assertSame(4, $xp->query('.//*[@data-list-panel]', $state)->length);
+    }
+
+    public function test_header_views_preserve_read_only_actions_and_are_absent_for_manufacturers(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['customers.view']);
+        $this->withoutVite();
+        $response = $this->actingAs($owner)->get('/customers?view=loyalty')->assertOk();
+        $response->assertSee('aria-label="Customer views"', false)->assertDontSee('Add Customer');
+        [$owner] = $this->createManufacturerTenant();
+        $response = $this->actingAs($owner)->get('/customers')->assertOk();
+        $response->assertDontSee('aria-label="Customer views"', false)->assertSee('Add Customer');
+    }
+
     public static function listRoutes(): array
     {
         return [
