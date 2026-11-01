@@ -253,21 +253,81 @@
             min-width: 0;
         }
         .repairs-form {
+            --app-control-bg: var(--r-field);
+            --app-control-border: var(--r-border);
+            --app-control-border-focus: var(--r-accent);
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             align-items: start;
-            gap: 16px;
+            gap: 12px 16px;
             padding: 18px;
         }
         .repairs-form > * { min-width: 0; }
         .repairs-form .r-label { flex-wrap: wrap; row-gap: 2px; }
-        .repairs-form .r-textarea { min-height: 64px; }
+        .repairs-form .r-input,
+        .repairs-form .r-dd-trigger {
+            height: 44px;
+            min-height: 44px;
+            padding-block: 10px;
+            font-size: 14px;
+            line-height: 22px;
+        }
+        .repairs-form .r-textarea { min-height: 64px; font-size: 14px; }
+        .repairs-form .r-dd-trigger { display: flex; align-items: center; }
+        .repairs-form .r-dd-trigger > span {
+            min-width: 0;
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .repairs-form .r-dd-trigger > span:first-child { flex: 1; }
+        .repairs-form :is(.r-input, .r-textarea, .r-dd-trigger, .btn):focus-visible {
+            outline: 2px solid var(--r-accent);
+            outline-offset: 2px;
+        }
+        .repairs-field-hint {
+            margin-top: 4px;
+            color: var(--r-muted);
+            font-size: 11px;
+            line-height: 16px;
+        }
+        .repairs-form input[type="file"] {
+            padding: 0 10px 0 0;
+            overflow: hidden;
+            color: var(--r-ink-soft);
+        }
+        .repairs-form input[type="file"]::file-selector-button {
+            height: 42px;
+            margin-right: 10px;
+            padding-inline: 12px;
+            border: 0;
+            border-right: 1px solid var(--r-border);
+            background: var(--r-bg);
+            color: var(--r-ink-soft);
+            font: inherit;
+            cursor: pointer;
+        }
+        .repairs-form input[type="file"]::file-selector-button:hover { background: var(--r-border-soft); }
+        .repairs-photo-controls,
+        #repair_image_preview { display: flex; align-items: center; gap: 8px; }
+        .repairs-photo-controls > input { flex: 1; min-width: 0; }
+        #repair_image_preview { flex: none; }
+        #repair_image_preview.hidden { display: none; }
+        #repair_image_preview_img {
+            width: 44px;
+            height: 44px;
+            flex: none;
+            object-fit: contain;
+            border: 1px solid var(--r-border);
+            border-radius: 6px;
+            background: var(--r-bg);
+        }
+        #repair_image_preview .btn { min-height: 44px; flex: none; }
         .repairs-form-actions {
             grid-column: 1 / -1;
             display: flex;
             justify-content: flex-end;
-            border-top: 1px solid var(--r-border-soft);
-            padding-top: 14px;
         }
         .repairs-form-actions .btn { min-height: 44px; }
         .repairs-register-toolbar {
@@ -315,21 +375,38 @@
             .repairs-table-card .repairs-card-header { flex-wrap: wrap; }
             .repairs-register-toolbar { flex-basis: 100%; justify-content: space-between; }
         }
-        @media (min-width: 640px) {
-            .repairs-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .repairs-field--photo { grid-column: 1 / -1; }
-            .repairs-form-pair .r-label, .repairs-field--photo > .r-label {
-                min-height: 40px;
-                align-content: flex-start;
-            }
-        }
-        @media (min-width: 1100px) {
+        @container repair-intake (min-width: 540px) {
             .repairs-form { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+            .repairs-field--customer, .repairs-field--item,
+            .repairs-field--notes,
+            .repairs-field--metal, .repairs-field--cost,
+            .repairs-field--weight, .repairs-field--purity { grid-column: span 6; }
+            .repairs-field--quantity { grid-column: span 4; max-width: 100px; }
+            .repairs-field--date { grid-column: span 8; max-width: 200px; }
+            .repairs-field--photo { grid-column: span 12; max-width: 420px; }
+            .repairs-field--cost { max-width: 180px; }
+            .repairs-field--metal, .repairs-field--purity { max-width: 200px; }
+            .repairs-field--weight { max-width: 180px; }
+        }
+        @container repair-intake (min-width: 660px) {
+            .repairs-field--metal, .repairs-field--cost,
+            .repairs-field--weight, .repairs-field--purity { grid-column: span 3; }
+            .repairs-field--quantity { grid-column: span 2; }
+            .repairs-field--date { grid-column: span 4; }
+            .repairs-field--photo { grid-column: span 6; }
+        }
+        @container repair-intake (min-width: 920px) {
             .repairs-field--customer { grid-column: span 3; }
             .repairs-field--item { grid-column: span 5; }
-            .repairs-field--metal, .repairs-field--cost { grid-column: span 2; }
-            .repairs-form-pair, .repairs-field--photo { grid-column: span 4; }
-            .repairs-field--notes { grid-column: span 6; }
+            .repairs-field--metal, .repairs-field--cost,
+            .repairs-field--weight, .repairs-field--purity,
+            .repairs-field--quantity, .repairs-field--date { grid-column: span 2; }
+            .repairs-field--photo { grid-column: span 4; }
+        }
+        @media (max-width: 1024px) {
+            .repairs-form .r-input,
+            .repairs-form .r-dd-trigger,
+            .repairs-form .r-textarea { font-size: 16px; }
         }
 
         .repairs-form-card,
@@ -341,6 +418,7 @@
         }
 
         .repairs-form-card {
+            container: repair-intake / inline-size;
             overflow: visible !important;
         }
         .repairs-card-header {
@@ -791,71 +869,76 @@
                             @enderror
                         </div>
 
-                        <!-- Gross Weight + Purity row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 repairs-form-pair">
-                            <div class="r-form-group">
-                                <label for="gross_weight" class="r-label"><x-icon name="scale" />Gross Weight (g)</label>
-                                <input type="number" step="0.001" name="gross_weight" id="gross_weight"
-                                       placeholder="0.000"
-                                       class="r-input" required>
-                                @error('gross_weight')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="r-form-group">
-                                <label for="purityDdTrigger" class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span> <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
-                                <input type="hidden" name="purity" id="purity">
-                                <div class="r-dd-wrap" id="purityDdWrap">
-                                    <button type="button" class="r-dd-trigger" id="purityDdTrigger" aria-label="Purity: Select Purity" aria-controls="purityDdPanel" aria-expanded="false" onclick="toggleDd('purity')">
-                                        <span class="r-dd-placeholder">Select Purity</span>
-                                    </button>
-                                    <div class="r-dd-panel" id="purityDdPanel">
-                                        <div class="r-dd-list" id="purityDdList">
-                                            {{-- Options injected by JS based on the selected metal --}}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Custom purity input (hidden by default) -->
-                                <input type="number" step="0.01" id="custom_purity" aria-labelledby="purityLabelText" placeholder="Enter a custom value"
-                                       class="hidden r-input mt-2" oninput="document.getElementById('purity').value = this.value">
-
-                                @error('purity')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+                        <!-- Gross Weight -->
+                        <div class="r-form-group repairs-field--weight">
+                            <label for="gross_weight" class="r-label"><x-icon name="scale" />Gross Weight (g)</label>
+                            <input type="number" step="0.001" name="gross_weight" id="gross_weight"
+                                   placeholder="0.000"
+                                   class="r-input" required>
+                            @error('gross_weight')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
 
-                        <!-- Quantity + Expected ready by row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 repairs-form-pair">
-                            <div class="r-form-group">
-                                <label for="item_quantity" class="r-label">Quantity (pieces) <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
-                                <input type="number" step="1" min="1" max="999" name="item_quantity" id="item_quantity" placeholder="e.g., 2" class="r-input">
-                                @error('item_quantity')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                        <!-- Purity -->
+                        <div class="r-form-group repairs-field--purity">
+                            <label for="purityDdTrigger" class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span></label>
+                            <input type="hidden" name="purity" id="purity">
+                            <div class="r-dd-wrap" id="purityDdWrap">
+                                <button type="button" class="r-dd-trigger" id="purityDdTrigger" aria-label="Purity: Select Purity" aria-describedby="purity_hint" aria-controls="purityDdPanel" aria-expanded="false" onclick="toggleDd('purity')">
+                                    <span class="r-dd-placeholder">Select Purity</span>
+                                </button>
+                                <div class="r-dd-panel" id="purityDdPanel">
+                                    <div class="r-dd-list" id="purityDdList">
+                                        {{-- Options injected by JS based on the selected metal --}}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="r-form-group">
-                                <label for="due_date" class="r-label">Expected ready by <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
-                                <input type="date" name="due_date" id="due_date" class="r-input">
-                                @error('due_date')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+
+                            <!-- Custom purity input (hidden by default) -->
+                            <input type="number" step="0.01" id="custom_purity" aria-labelledby="purityLabelText" placeholder="Enter a custom value"
+                                   class="hidden r-input mt-2" oninput="document.getElementById('purity').value = this.value">
+                            <p id="purity_hint" class="repairs-field-hint">Optional</p>
+
+                            @error('purity')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Quantity -->
+                        <div class="r-form-group repairs-field--quantity">
+                            <label for="item_quantity" class="r-label">Quantity</label>
+                            <input type="number" step="1" min="1" max="999" name="item_quantity" id="item_quantity" aria-describedby="item_quantity_hint" placeholder="e.g., 2" class="r-input">
+                            <p id="item_quantity_hint" class="repairs-field-hint">Pieces · optional</p>
+                            @error('item_quantity')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Expected ready by -->
+                        <div class="r-form-group repairs-field--date">
+                            <label for="due_date" class="r-label">Expected ready by</label>
+                            <input type="date" name="due_date" id="due_date" class="r-input" aria-label="Expected ready by (optional)" aria-describedby="due_date_hint">
+                            <p id="due_date_hint" class="repairs-field-hint">Optional</p>
+                            @error('due_date')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <!-- Item Photo -->
                         <div class="r-form-group repairs-field--photo">
                             <label for="repair_image" class="r-label">
                                 <x-icon name="image" />
-                                Item Photo <span class="text-gray-400 text-xs font-normal">(optional)</span>
+                                Item Photo
                             </label>
-                            <input type="file" name="image" id="repair_image" accept="image/*" class="r-input" onchange="previewRepairImage(event)">
-                            <div id="repair_image_preview" class="mt-2 hidden">
-                                <img id="repair_image_preview_img" src="" alt="Preview" style="max-width:100%;max-height:180px;border-radius:8px;border:1px solid #e5e7eb;">
-                                <button type="button" class="text-xs text-red-600 mt-1 underline" onclick="clearRepairImage()">Remove</button>
+                            <div class="repairs-photo-controls">
+                                <input type="file" name="image" id="repair_image" accept="image/jpeg,image/png,image/webp" aria-describedby="repair_image_hint" class="r-input" onchange="previewRepairImage(event)">
+                                <div id="repair_image_preview" class="hidden">
+                                    <img id="repair_image_preview_img" src="" alt="Selected item photo preview" width="44" height="44">
+                                    <button type="button" class="btn btn-secondary btn-sm" aria-label="Remove selected item photo" onclick="clearRepairImage()">Remove</button>
+                                </div>
                             </div>
+                            <p id="repair_image_hint" class="repairs-field-hint">JPEG, PNG or WebP · up to 5 MB · optional</p>
                             @error('image')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -874,10 +957,11 @@
 
                         <!-- Condition at receipt -->
                         <div class="r-form-group repairs-field--notes">
-                            <label for="intake_condition" class="r-label">Condition at receipt <span style="color:var(--muted);font-weight:normal">(optional, printed on the customer's challan)</span></label>
-                            <textarea name="intake_condition" id="intake_condition" rows="2" maxlength="500"
+                            <label for="intake_condition" class="r-label">Condition at receipt</label>
+                            <textarea name="intake_condition" id="intake_condition" rows="2" maxlength="500" aria-describedby="intake_condition_hint"
                                       placeholder="e.g., Clasp bent, one stone missing, scratches on the back"
                                       class="r-textarea"></textarea>
+                            <p id="intake_condition_hint" class="repairs-field-hint">Optional; printed on the customer's challan.</p>
                             @error('intake_condition')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror

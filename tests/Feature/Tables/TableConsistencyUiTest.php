@@ -251,6 +251,53 @@ class TableConsistencyUiTest extends TestCase
         }
     }
 
+    public function test_repair_optional_hints_describe_their_controls_without_expanding_labels(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs'))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        foreach (['purityDdTrigger', 'item_quantity', 'due_date', 'repair_image', 'intake_condition'] as $id) {
+            $control = $xp->query('//*[@id="'.$id.'"]')->item(0);
+            $hintId = $control->getAttribute('aria-describedby');
+            $this->assertNotEmpty($hintId, $id.' needs an associated optional/unit hint');
+            $hint = $xp->query('//*[@id="'.$hintId.'" and not(ancestor::label)]');
+            $this->assertSame(1, $hint->length, $id.' hint must not stretch its field label');
+            $this->assertStringContainsString('optional', strtolower($hint->item(0)->textContent));
+        }
+        $this->assertStringContainsString('pieces', strtolower($xp->query('//*[@id="item_quantity_hint"]')->item(0)->textContent));
+        $this->assertStringContainsString("customer's challan", $xp->query('//*[@id="intake_condition_hint"]')->item(0)->textContent);
+    }
+
+    public function test_repair_photo_chooser_explains_supported_types_and_size_without_replacing_native_upload(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs'))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(1, $xp->query('//form[contains(@class,"repairs-form")]//input[@type="file" and @name="image" and @id="repair_image" and @accept="image/jpeg,image/png,image/webp" and @onchange="previewRepairImage(event)"]')->length);
+        $hint = $xp->query('//*[@id="repair_image_hint"]')->item(0);
+        $this->assertNotNull($hint);
+        foreach (['JPEG', 'PNG', 'WebP', '5 MB', 'optional'] as $guidance) {
+            $this->assertStringContainsString($guidance, $hint->textContent);
+        }
+        $this->assertSame(1, $xp->query('//*[@id="repair_image_preview"]//img[@id="repair_image_preview_img"]')->length);
+        $this->assertSame(1, $xp->query('//*[@id="repair_image_preview"]//button[@type="button" and @onclick="clearRepairImage()"]')->length);
+    }
+
+    public function test_selected_repair_photo_stays_a_bounded_thumbnail_beside_the_chooser(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs'))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(1, $xp->query('//div[contains(@class,"repairs-photo-controls")]/input[@id="repair_image"]/following-sibling::*[@id="repair_image_preview"]')->length,
+            'The preview belongs beside the chooser, not in a new full-height grid row.');
+        $preview = $xp->query('//img[@id="repair_image_preview_img"]')->item(0);
+        $this->assertGreaterThan(0, (int) $preview->getAttribute('width'));
+        $this->assertLessThanOrEqual(64, (int) $preview->getAttribute('width'));
+        $this->assertGreaterThan(0, (int) $preview->getAttribute('height'));
+        $this->assertLessThanOrEqual(64, (int) $preview->getAttribute('height'));
+        $this->assertSame(1, $xp->query('//*[@id="repair_image_preview"]//button[@type="button" and @aria-label="Remove selected item photo" and @onclick="clearRepairImage()"]')->length);
+    }
+
     public function test_repair_picker_triggers_announce_their_field_and_popup_state(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
