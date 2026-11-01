@@ -2,7 +2,56 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Hide Customer Status menu scrollbar
+## Latest checkpoint — Match Loyalty, EMI and Occasions to Directory
+
+Starting clean HEAD `d148caf53299189433edda3bcedf39bf0cd56879`, same isolated
+worktree/branch/sole writer. Owner requested the Directory treatment for the
+three other Customers tabs, including buttons and tables. Impeccable refinement
+reuses incumbent patterns rather than introducing another design system.
+
+Removed nine separate KPI cards; their unchanged values now live in compact
+definition lists inside each table header, outside scrolling rows. Reused
+Directory header/summary/controls classes without new CSS. Loyalty uses the same
+search-icon disclosure, focus-on-open and Escape-to-close. EMI Status and Occasion
+window use Directory's compact shared-enhancer wrapper, viewport placement and
+hidden scrollbar without disabling scrolling. Visible labels remain available to
+assistive technology; native GET controls/fallback and query names are preserved.
+Apply remains available alongside Clear after filtering (previously replaced).
+EMI's filtered total is labelled Plans in View, not misleadingly Active Plans.
+Create EMI Plan keeps its existing sales.create gate. Loyalty Adjust uses the
+shared named icon action on desktop; mobile retains explicit text actions.
+
+Shared tables, row numbering, contained scrolling/sticky headings, mobile cards,
+pagination/query propagation and business calculations remain unchanged. Scope:
+Customers tabs only, not standalone EMI/Occasion reports or backend permissions.
+
+Checks actually performed:
+
+- Guard resolved testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing before
+  RefreshDatabase; preview/primary development databases not used by tests.
+- RED:2new rendered-toolbar tests failed before layout edits (old KPI cards;
+  absent Apply after filtering). Initial broader run caught an old Directory
+  assertion counting every newly shared form; scoped it to its intended form.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php`
+  →75passed/562assertions/0failures/skips, covering pagination/indexing and roles.
+- `node --test tests/Frontend/*.test.mjs` →75passed/22existing optional-browser
+  skips/0failures. Actual Directory/Loyalty Alpine handlers exercised with focus
+  boundaries, not claimed as browser interaction.
+- Vite build79modules; scoped Pint, PHP/Node syntax and diff checks passed.
+  Guarded preview Blade compile,384compiled PHP lints, then view:clear passed.
+- Existing synthetic-demo read-only controller/Blade harness --verify passed
+  10cases, including page2 and filtering; no fixture/business-data writes.
+- Impeccable source layout detector returned0mechanical findings. No visual claim.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-tabs-match-20261102.gYYfpd/`.
+Existing browser URL-policy block respected; no retry/bypass, screenshots or
+post-change rendered geometry/wheel/touch/keyboard/Turbo acceptance claimed.
+Owner should refresh Customers and inspect all three tabs, including phone width.
+No full PHP suite/benchmark needed for scoped presentation changes. Local only;
+no push/deployment, production/staging, OTP/SMTP or mobile-app work. Processes and
+existing synthetic preview data preserved.
+
+## Previous checkpoint — Hide Customer Status menu scrollbar
 
 Starting clean HEAD `54af151ea0849d7c09bdd7a89398fc013ef14840`, same isolated
 worktree/branch/sole writer. Owner requested hiding only this dropdown's scrollbar.

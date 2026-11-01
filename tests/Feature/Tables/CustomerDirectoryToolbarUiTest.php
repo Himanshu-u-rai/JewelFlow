@@ -100,7 +100,7 @@ class CustomerDirectoryToolbarUiTest extends TestCase
         $form = $xp->query('//form[contains(@class,"customers-directory-controls")]')->item(0);
         $this->assertFalse($form->hasAttribute('hidden') || $form->hasAttribute('x-cloak'));
         $this->assertSame(0, $xp->query('.//*[@hidden or @x-cloak][.//input[@name="search"]]', $form)->length, 'The disclosure must not add a JavaScript dependency to its native input; existing tab visibility remains unchanged.');
-        $this->assertSame(1, $xp->query('//form[contains(@class,"customers-directory-controls")]//button[@type="submit" and not(@hidden) and not(@x-cloak)]')->length);
+        $this->assertSame(1, $xp->query('.//button[@type="submit" and not(@hidden) and not(@x-cloak)]', $form)->length);
         $this->assertSame('0', $xp->evaluate('string(//dl[@aria-label="Customer summary"]/div[dt="Total Customers"]/dd)'));
     }
 
@@ -112,6 +112,47 @@ class CustomerDirectoryToolbarUiTest extends TestCase
         $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
         $this->assertSame('0.000 g', $xp->evaluate('string(//dl[@aria-label="Customer summary"]/div[dt="Gold on This Page"]/dd)'));
         $this->assertSame(0, $xp->query('//dl[@aria-label="Customer summary"]//dt[text()="Total Purchases"]')->length);
+    }
+
+    public function test_related_registers_keep_summaries_and_controls_outside_scrolling_rows(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->createCustomer($shop->id, ['loyalty_points' => 120, 'date_of_birth' => today()->addDays(3)->subYears(30)]);
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        foreach (['loyalty', 'emi', 'occasions'] as $view) {
+            $panel = $xp->query('//*[@data-list-panel][@x-show="view === \''.$view.'\'"]')->item(0);
+            $this->assertNotNull($panel);
+            $this->assertSame(0, $xp->query('.//*[contains(@class,"customers-kpi-grid")]', $panel)->length);
+            $this->assertSame(1, $xp->query('.//*[@data-list-frame]//dl', $panel)->length);
+            $this->assertSame(3, $xp->query('.//*[@data-list-frame]//dl/div/dd', $panel)->length);
+            $this->assertSame(0, $xp->query('.//*[@data-list-scroll]//dl', $panel)->length);
+            $this->assertSame(1, $xp->query('.//form[contains(@class,"customers-directory-controls")]/input[@name="view" and @value="'.$view.'"]', $panel)->length);
+        }
+        $this->assertSame('1', $xp->evaluate('string(//dl[@aria-label="Loyalty summary"]/div[dt="Members with Points"]/dd)'));
+        $this->assertSame('1', $xp->evaluate('string(//dl[@aria-label="Occasions summary"]/div[dt="Upcoming"]/dd)'));
+    }
+
+    public function test_related_filters_can_be_applied_again_and_keep_active_query_values(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite()->actingAs($owner);
+        foreach (['loyalty' => ['loyalty_search', 'Example'], 'emi' => ['emi_status', 'completed'], 'occasions' => ['occasion_days', '60']] as $view => [$name, $value]) {
+            $xp = $this->xpath($this->get('/customers?view='.$view.'&'.$name.'='.$value)->assertOk()->getContent());
+            $form = $xp->query('//input[@name="view" and @value="'.$view.'"]/ancestor::form[1]')->item(0);
+            $this->assertSame('GET', $form->getAttribute('method'));
+            $this->assertSame(route('customers.index'), $form->getAttribute('action'));
+            $this->assertSame(1, $xp->query('.//button[@type="submit"]', $form)->length, 'An active filter must retain Apply, not replace it with Clear.');
+            if ($view === 'loyalty') {
+                $toggle = $xp->query('.//button[@data-customer-search-toggle]', $form)->item(0);
+                $this->assertNotNull($toggle);
+                $this->assertSame('true', $toggle->getAttribute('aria-expanded'));
+                $this->assertSame($value, $xp->evaluate('string(.//input[@name="'.$name.'"]/@value)', $form));
+            } else {
+                $this->assertSame($value, $xp->evaluate('string(.//select[@name="'.$name.'"]/option[@selected]/@value)', $form));
+                $this->assertSame(1, $xp->query('.//*[contains(@class,"customers-directory-status")][@data-enhance-selects-placement="viewport"]', $form)->length);
+            }
+        }
     }
 
     private function xpath(string $html): \DOMXPath

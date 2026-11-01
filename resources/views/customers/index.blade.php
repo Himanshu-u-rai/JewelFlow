@@ -339,67 +339,41 @@
                 $totalPointsRedeemed = $loyaltyData['totalPointsRedeemed'];
             @endphp
 
-            <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <x-icon name="star" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Issued</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($totalPointsIssued) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-rose-100 text-rose-700 rounded-xl p-2.5">
-                            <x-icon name="gift" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Redeemed</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($totalPointsRedeemed) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-green-100 text-green-700 rounded-xl p-2.5">
-                            <x-icon name="award" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Members with Points</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($loyaltyCustomers->total()) }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--loyalty" data-list-frame>
-                <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
+                <div class="customers-table-card-header customers-register-head customers-directory-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Loyalty Points</h2>
-                        <p class="text-sm text-slate-500 mt-1">{{ $loyaltyCustomers->total() }} customers with loyalty balances</p>
+                        <dl class="customers-directory-summary" aria-label="Loyalty summary">
+                            <div><dt>Total Issued</dt><dd>{{ number_format($totalPointsIssued) }}</dd></div>
+                            <div><dt>Total Redeemed</dt><dd>{{ number_format($totalPointsRedeemed) }}</dd></div>
+                            <div><dt>Members with Points</dt><dd>{{ number_format($loyaltyCustomers->total()) }}</dd></div>
+                        </dl>
                     </div>
 
-                    <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-toolbar customers-register-toolbar--search">
+                    <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
+                          x-data="{ searchOpen: {{ request()->filled('loyalty_search') ? 'true' : 'false' }} }">
                         <input type="hidden" name="view" value="loyalty">
-                        <div class="ui-filter-field">
-                            <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                                    <x-icon name="search" size="16" />
-                                </span>
-                                <input type="text" name="loyalty_search" value="{{ request('loyalty_search') }}" placeholder="Customer name or mobile..." class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                        <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                             @keydown.escape.stop.prevent="searchOpen = false; $refs.searchToggle.focus()">
+                            <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
+                                    class="customers-directory-search-toggle" aria-label="Search loyalty members"
+                                    aria-controls="loyalty-search-panel" aria-expanded="{{ request()->filled('loyalty_search') ? 'true' : 'false' }}"
+                                    :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide loyalty search' : 'Search loyalty members'"
+                                    :title="searchOpen ? 'Hide search' : 'Search loyalty members'"
+                                    @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                                <x-icon name="search" size="18" />
+                            </button>
+                            <div id="loyalty-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                                <label for="loyalty-search" class="jf-sr-only">Search loyalty members</label>
+                                <input id="loyalty-search" type="search" x-ref="searchInput" name="loyalty_search"
+                                       value="{{ request('loyalty_search') }}" placeholder="Customer name or mobile..."
+                                       autocomplete="off" enterkeyhint="search">
                             </div>
                         </div>
-                        <div class="ui-filter-actions">
-                            @if(filled(request('loyalty_search')))
-                                <a href="{{ route('customers.index', ['view' => 'loyalty']) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Clear</a>
-                            @else
-                                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Search</button>
-                            @endif
-                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                        @if(request()->filled('loyalty_search'))
+                            <a href="{{ route('customers.index', ['view' => 'loyalty']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                        @endif
                     </form>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Loyalty records">
@@ -429,9 +403,9 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right text-slate-700 tabular-nums">₹{{ number_format($lCustomer->loyalty_points * 0.25, 2) }}</td>
                                 <td class="px-6 py-4 text-center">
-                                    <div class="flex flex-wrap items-center justify-center gap-2">
+                                    <div class="jf-table-actions jf-table-actions--center">
                                         <a href="{{ route('customers.show', $lCustomer) }}" class="jf-row-action jf-row-action--view" data-tip="View Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">View Profile</span></a>
-                                        <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"><x-icon name="sliders-vertical" size="12" />Adjust</a>
+                                        <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="jf-row-action jf-row-action--edit" data-tip="Adjust points"><x-icon name="sliders-vertical" size="16" /><span class="jf-sr-only">Adjust points</span></a>
                                     </div>
                                 </td>
                             </tr>
@@ -493,72 +467,37 @@
                 $installmentStatus = $installmentData['installmentStatus'];
             @endphp
 
-            <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <x-icon name="clipboard" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Active Plans</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($installmentPlans->total()) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-rose-100 text-rose-700 rounded-xl p-2.5">
-                            <x-icon name="clock" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Overdue</p>
-                            <p class="text-2xl font-semibold text-rose-600 tabular-nums">{{ number_format($overduePlans) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <x-icon name="coins" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Outstanding</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">₹{{ number_format($totalOutstanding, 2) }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--emi" data-list-frame>
-                <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
+                <div class="customers-table-card-header customers-register-head customers-directory-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">EMI / Installments</h2>
-                        <p class="text-sm text-slate-500 mt-1">{{ $installmentPlans->total() }} plans in this view</p>
+                        <dl class="customers-directory-summary" aria-label="Installment summary">
+                            <div><dt>Plans in View</dt><dd>{{ number_format($installmentPlans->total()) }}</dd></div>
+                            <div><dt>Overdue</dt><dd>{{ number_format($overduePlans) }}</dd></div>
+                            <div><dt>Total Outstanding</dt><dd>₹{{ number_format($totalOutstanding, 2) }}</dd></div>
+                        </dl>
                     </div>
 
-                    <div class="customers-register-toolbar customers-register-toolbar--emi">
-                        <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-inline-form" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                    <div class="customers-directory-controls">
+                        <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
                             <input type="hidden" name="view" value="emi">
-                            <div class="ui-filter-field">
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Status</label>
-                                <select name="emi_status" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                            <div class="customers-directory-status" role="group" aria-label="Installment status"
+                                 data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                                <label for="customers-emi-status" class="jf-sr-only">Status</label>
+                                <select id="customers-emi-status" name="emi_status">
                                     <option value="active" {{ $installmentStatus === 'active' ? 'selected' : '' }}>Active</option>
                                     <option value="completed" {{ $installmentStatus === 'completed' ? 'selected' : '' }}>Completed</option>
                                     <option value="defaulted" {{ $installmentStatus === 'defaulted' ? 'selected' : '' }}>Defaulted</option>
                                     <option value="" {{ $installmentStatus === '' ? 'selected' : '' }}>All</option>
                                 </select>
                             </div>
-                            <div class="ui-filter-actions">
-                                @if(request()->has('emi_status'))
-                                    <a href="{{ route('customers.index', ['view' => 'emi']) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Clear</a>
-                                @else
-                                    <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Filter</button>
-                                @endif
-                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                            @if(request()->has('emi_status'))
+                                <a href="{{ route('customers.index', ['view' => 'emi']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                            @endif
                         </form>
-
                         @can('sales.create')
-                            <a href="{{ route('installments.create') }}" class="btn btn-dark btn-sm customers-primary-action">
+                            <a href="{{ route('installments.create') }}" class="btn btn-primary btn-sm customers-directory-apply">
                                 <x-icon name="plus" size="14" class="mr-1.5" />
                                 Create EMI Plan
                             </a>
@@ -676,62 +615,30 @@
                 $occasionCustomersCount = $upcomingOccasions->pluck('customer_id')->unique()->count();
             @endphp
 
-            <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <x-icon name="calendar" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Upcoming</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($upcomingOccasions->count()) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                            <x-icon name="clock" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Next 7 Days</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($occasionThisWeek) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                            <x-icon name="users" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Customers</p>
-                            <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($occasionCustomersCount) }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions" data-list-frame>
-                <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
+                <div class="customers-table-card-header customers-register-head customers-directory-head p-5 border-b border-slate-200">
                     <div class="customers-register-titleblock">
                         <h2 class="text-lg font-semibold text-slate-900">Customer Occasions</h2>
                         <p class="text-sm text-slate-500 mt-1">Birthdays and anniversaries due in the next {{ $occasionDaysAhead }} days</p>
+                        <dl class="customers-directory-summary" aria-label="Occasions summary">
+                            <div><dt>Upcoming</dt><dd>{{ number_format($upcomingOccasions->count()) }}</dd></div>
+                            <div><dt>Next 7 Days</dt><dd>{{ number_format($occasionThisWeek) }}</dd></div>
+                            <div><dt>Customers</dt><dd>{{ number_format($occasionCustomersCount) }}</dd></div>
+                        </dl>
                     </div>
 
-                    <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-toolbar customers-register-toolbar--select" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                    <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
                         <input type="hidden" name="view" value="occasions">
-                        <div class="ui-filter-field">
-                            <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Reminder window</label>
-                            <select name="occasion_days" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                        <div class="customers-directory-status" role="group" aria-label="Reminder window"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="customers-occasion-days" class="jf-sr-only">Reminder window</label>
+                            <select id="customers-occasion-days" name="occasion_days">
                                 @foreach([7, 15, 30, 60, 90] as $days)
                                     <option value="{{ $days }}" {{ $occasionDaysAhead === $days ? 'selected' : '' }}>Next {{ $days }} days</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="ui-filter-actions">
-                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Apply</button>
-                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
                     </form>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
