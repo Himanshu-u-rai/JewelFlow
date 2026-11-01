@@ -2,7 +2,79 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Masters hub consistency
+## Latest checkpoint — Masters grouped list (supersedes cards)
+
+- Owner explicitly approved a non-card design: plain grouped headings and slim
+  full-width clickable rows with icons, titles, descriptions, chevrons and light
+  dividers; no card boxes/shadows. Start was clean at
+  `148ce45000cb0e57a4adae255d861ca2a1300aec`, same branch/worktree, sole writer.
+- Source commit `14106255ffb8302596c7381d1225de541d47970b`, parent
+  `148ce45000cb0e57a4adae255d861ca2a1300aec`, subject
+  `refactor(masters): replace cards with grouped navigation rows`.
+  Exact files: `resources/css/app.css`, `resources/views/masters/index.blade.php`,
+  `tests/Feature/Masters/MastersHubTest.php`,
+  `tests/Feature/Masters/MastersHubUiTest.php`. This handoff update is docs only.
+- Follow-up heading hierarchy source commit
+  `9aa6dc84373d8f4ed6200817fe11333a565d4209`, parent
+  `14106255ffb8302596c7381d1225de541d47970b`, subject
+  `fix(masters): distinguish section headings from link labels`.
+  Exact file: `resources/css/app.css`. Owner identified group headings that were
+  visually too similar to links: actual browser group/row sizes were both14px.
+  Groups now18px/700 vs rows14px/600,12px heading clearance and28px between groups.
+  Actual size comparison failed before the CSS change and passed after it, at
+ 1440px and320px with no overflow. Vite78modules and diff check passed again.
+  No PHP/JS rerun for this CSS-only follow-up; the preceding273/25 results remain
+  application/render evidence, not a new full-suite claim.
+- Native ul/li groups retain list semantics, named sections, accessible link
+  titles/descriptions and existing destination/fragments/order/permissions.
+  The stable data-masters-card attribute is deliberately preserved for the
+  existing route/access tests; it no longer describes the visual treatment.
+  All other Masters-card presentation selectors were removed/renamed.
+- Desktop descriptions sit beside titles; at900px and below they stack under
+  titles. Row links have transparent backgrounds,0px borders/radii and no shadows;
+  li elements provide1px separators. Even the no-access explanation is unboxed.
+  Hover supplies a flat tint without movement; focus-visible uses a2px inset
+  outline. Existing header/sidebar, controllers, routes and JavaScript unchanged.
+
+Verification:
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Masters tests/Feature/Tables/TableConsistencyUiTest.php
+# 273 passed /1187assertions, no failures/skips
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Masters/MastersHubUiTest.php tests/Feature/Masters/MastersHubTest.php
+# final explicit list-role/indentation refinement:25 passed /190assertions
+```
+
+Guard again resolved testing/pgsql/127.0.0.1:5432/jewelflow_testing, including URL
+expansion. The new real-render grouped-list test failed before implementation.
+No unrelated business/permission tests changed. Vite78modules passed;384 compiled
+Blade views linted then cleared; all three changed PHP/Blade files linted and diff
+check passed. The same cache/lint/build commands are recorded in the preceding
+checkpoint. Detail-only Impeccable scan for Masters returned[]; rendered QA is
+separate. No JS changed, no frontend/full-repository rerun or benchmark.
+
+Actual owner UI at1440/1024/390/320px: every row fills its list width; no page or
+row overflow, title/arrow overlap or clipped text. Desktop1116px rows and tablet
+764px rows are64px high; phone rows grow85.19..104.69px to retain all copy.
+Focus outline and named links verified; actual Customers click and Back return to
+Masters passed. Hover has no transform/geometry movement. Restricted, multi-edition
+and empty states remain actual PHP-render evidence, not separate browser sessions.
+No business actions/data changes. Physical phone, screen reader and a complete
+native Tab traversal remain unrun. No staging/production deployment.
+
+External evidence directory unchanged: `masters-list-red.log`,
+`masters-list-final-php.log`, `masters-list-render-final.log`,
+`masters-list-build.log`, `masters-list-blade-lint.log`,
+`masters-list-detector.json`, `masters-list-final-measurements.json` and
+`masters-list-desktop.jpg`, `masters-list-tablet.jpg`, `masters-list-phone.jpg`,
+`masters-list-small-phone.jpg`. Final heading-refinement screenshots:
+`masters-list-hierarchy-desktop.jpg`, `masters-list-hierarchy-phone.jpg`;
+`masters-list-hierarchy-build.log` records the final asset build. Earlier card and
+pre-hierarchy screenshots are superseded, preserved as review history.
+Source changes committed; this handoff is documentation-only. Preview remains running at
+localhost:8001 with Masters retained for owner review. Next: visual review only.
+
+## Previous checkpoint — Masters hub card refinement (superseded)
 
 - Owner approved the preceding Masters comparison findings. Clean start
   `821f9513068c483272d637c8f86e04dd5d1422ac`, sole writer, same branch/worktree.
