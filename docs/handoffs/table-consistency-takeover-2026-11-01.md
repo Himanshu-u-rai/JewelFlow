@@ -2,7 +2,27 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Customer mobile filters and header action
+## Latest checkpoint — Directory mobile totals and Filters share a row
+
+Starting clean HEAD `f2daada979abf30cd41cb754ca11f0e95259a6c9`, same worktree,
+branch and sole writer. Owner requested Filters beside the two small Directory
+totals on mobile. CSS-only, Directory-scoped grid now keeps the heading full width
+above a row containing two shrinkable metric columns and the 44px Filters control.
+Metric labels/values can wrap instead of forcing page overflow. The existing
+inline no-JavaScript form spans the available width. Desktop and other customer
+tabs are unchanged; filter dialog/fields/handlers/permissions are untouched.
+
+New known-selector CSS contract failed before the edit, then passed for widths
+320/390/427/640/768 and unchanged desktop rules. Both focused frontend files:
+`node --test tests/Frontend/customer-header-layout.test.mjs tests/Frontend/customer-directory-search.test.mjs`
+→ 31 passed, no skips/failures. `npm run build` (79 modules), `git diff --check`
+and Impeccable source layout scan passed (no mechanical findings). No PHP/DB tests
+rerun for a CSS-only change. Browser-policy restriction remains honored: rendered
+geometry, focus, touch and physical phone acceptance are still unverified.
+Evidence/logs: previous customer mobile filter evidence directory, `row-*` files.
+No push or deployment. Next: owner refresh Customers for mobile visual review.
+
+## Previous checkpoint — Customer mobile filters and header action
 
 Starting clean HEAD `31e5426f290677516585b317c10538d70146ef42`, same worktree,
 branch and sole writer. Owner requested the invoice-style mobile filter sheet on

@@ -34,6 +34,11 @@ const selectors = {
     filterPanel: ['.jf-filter-panel', '.jf-filter-panel[data-ready]'],
     filterPanelOpen: ['.jf-filter-panel', '.jf-filter-panel[data-ready]', '.jf-filter-panel[data-ready]:modal'],
     filterShell: ['.jf-filter-shell'],
+    directoryHead: ['.customers-index-page .customers-register-head', '.customers-index-page .customers-directory-head'],
+    directoryTitleblock: ['.customers-index-page .customers-register-titleblock', '.customers-index-page .customers-directory-head > .customers-register-titleblock'],
+    directoryTitle: ['.customers-index-page .customers-register-titleblock h2', '.customers-index-page .customers-directory-head h2'],
+    directorySummary: ['.customers-index-page .customers-directory-summary', '.customers-index-page .customers-directory-head .customers-directory-summary'],
+    directoryFilter: ['.jf-filter-toggle', '.customers-index-page .jf-filter-toggle', '.customers-index-page .customers-directory-head .jf-filter-toggle'],
 };
 
 function cascade(part, width) {
@@ -89,6 +94,23 @@ test('desktop keeps the compact flex header and sticky page context', () => {
     assert.equal(header.position, 'sticky');
     assert.equal(cascade('actions', 1280)['grid-row'], undefined);
     assert.equal(cascade('addLabel', 1280).display, undefined, 'desktop retains the full Add Customer label');
+});
+
+test('Directory mobile totals share their row with Filters below the full-width heading', () => {
+    for (const width of [320, 390, 427, 640, 768]) {
+        assert.equal(cascade('directoryHead', width).display, 'grid');
+        assert.equal(cascade('directoryHead', width)['grid-template-columns'], 'minmax(0, 1fr) auto');
+        assert.equal(cascade('directoryTitleblock', width).display, 'contents');
+        assert.equal(cascade('directoryTitle', width)['grid-column'], '1 / -1');
+        assert.equal(cascade('directorySummary', width)['grid-row'], '2');
+        assert.equal(cascade('directorySummary', width)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+        assert.equal(cascade('directoryFilter', width)['grid-row'], '2');
+        assert.equal(cascade('directoryFilter', width)['grid-column'], '2');
+        assert.equal(cascade('directoryFilter', width)['min-height'], '44px');
+    }
+    assert.equal(cascade('directoryHead', 1280).display, 'flex');
+    assert.equal(cascade('directoryTitleblock', 1280).display, undefined);
+    assert.equal(cascade('directoryFilter', 1280).display, 'none');
 });
 
 for (const part of ['Trigger', 'Menu', 'Chevron']) {

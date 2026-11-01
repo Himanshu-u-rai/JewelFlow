@@ -17363,6 +17363,35 @@ input::-webkit-calendar-picker-indicator {
         align-self: flex-end;
     }
 
+    .customers-index-page .customers-directory-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 12px;
+        align-items: center;
+    }
+
+    .customers-index-page .customers-directory-head > .customers-register-titleblock {
+        display: contents;
+    }
+
+    .customers-index-page .customers-directory-head h2,
+    .customers-index-page .customers-directory-head .jf-filter-panel {
+        grid-column: 1 / -1;
+    }
+
+    .customers-index-page .customers-directory-head .customers-directory-summary {
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: 0;
+    }
+
+    .customers-index-page .customers-directory-head .jf-filter-toggle {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: center;
+    }
+
     .jf-filter-panel[data-ready] {
         display: none;
         position: fixed;
