@@ -103,7 +103,8 @@
                          filter as the list, so a count always matches what the
                          option shows. Both values ride through pagination via the
                          paginator's withQueryString(). --}}
-                    <div class="customers-directory-status">
+                    <div class="customers-directory-status" role="group" aria-label="Customer status"
+                         data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
                         <label for="customers-status" class="jf-sr-only">Status</label>
                         <select id="customers-status" name="status">
                             <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>

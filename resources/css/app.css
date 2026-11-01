@@ -13592,8 +13592,7 @@ input::-webkit-calendar-picker-indicator {
     background: #fff;
 }
 
-.customers-directory-search:has(:focus-visible),
-.customers-directory-status:has(:focus-visible) {
+.customers-directory-search:has(:focus-visible) {
     outline: 2px solid var(--cust-gold);
     outline-offset: 2px;
 }
@@ -13646,38 +13645,17 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .customers-directory-status {
-    display: flex;
-    min-width: 0;
-    max-width: 100%;
-    border-radius: 8px;
+    display: inline-flex;
+    flex: 0 1 auto;
+    width: max-content;
+    min-width: 8rem;
+    max-width: 10rem;
+    border-radius: 10px;
 }
 
-.customers-directory-status select {
-    appearance: auto;
-    -webkit-appearance: auto;
-    -moz-appearance: auto;
-    display: block;
-    width: auto;
-    min-width: 0;
-    height: 36px;
-    min-height: 36px;
-    margin: 0;
-    padding: 0 10px;
-    border: 1px solid var(--cust-line);
-    border-radius: 8px;
-    background-color: #fff;
-    background-image: none;
-    color: var(--cust-text);
-    font-size: 13px;
-    line-height: normal;
-    box-shadow: none;
-    outline: none;
-    cursor: pointer;
-}
-
-.customers-directory-status select:focus {
-    border-color: var(--cust-line);
-    box-shadow: none;
+/* Once enhanced, only the visible shared trigger belongs in the tab order. */
+.customers-directory-status .ui-filter-native-select {
+    visibility: hidden;
 }
 
 .customers-directory-controls :is(.customers-directory-apply, .customers-directory-clear) {
@@ -13730,6 +13708,7 @@ input::-webkit-calendar-picker-indicator {
 
 .customers-index-page .customers-register-toolbar input,
 .customers-index-page .customers-register-toolbar select,
+.customers-index-page .customers-directory-status select,
 .customers-index-page .customers-register-inline-form select {
     width: 100%;
     height: 40px;
@@ -13759,6 +13738,7 @@ input::-webkit-calendar-picker-indicator {
 
 .customers-index-page .customers-register-toolbar input:focus,
 .customers-index-page .customers-register-toolbar select:focus,
+.customers-index-page .customers-directory-status select:focus,
 .customers-index-page .customers-register-inline-form select:focus {
     outline: none !important;
     border-color: var(--cust-gold) !important;
@@ -13779,6 +13759,7 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .customers-index-page .customers-register-toolbar .ui-filter-select-trigger,
+.customers-index-page .customers-directory-status .ui-filter-select-trigger,
 .customers-index-page .customers-register-inline-form .ui-filter-select-trigger {
     min-height: 40px;
     border: 1px solid var(--cust-line);
@@ -13792,10 +13773,13 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .customers-index-page .customers-register-toolbar .ui-filter-select-trigger:hover,
+.customers-index-page .customers-directory-status .ui-filter-select-trigger:hover,
 .customers-index-page .customers-register-inline-form .ui-filter-select-trigger:hover,
 .customers-index-page .customers-register-toolbar .ui-filter-select-trigger.is-open,
+.customers-index-page .customers-directory-status .ui-filter-select-trigger.is-open,
 .customers-index-page .customers-register-inline-form .ui-filter-select-trigger.is-open,
 .customers-index-page .customers-register-toolbar .ui-filter-select-trigger:focus-visible,
+.customers-index-page .customers-directory-status .ui-filter-select-trigger:focus-visible,
 .customers-index-page .customers-register-inline-form .ui-filter-select-trigger:focus-visible {
     border-color: var(--cust-gold);
     background: #fff;
@@ -13803,12 +13787,14 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .customers-index-page .customers-register-toolbar .ui-filter-select-chevron,
+.customers-index-page .customers-directory-status .ui-filter-select-chevron,
 .customers-index-page .customers-register-inline-form .ui-filter-select-chevron {
     transition: none;
     transform: none !important;
 }
 
 .customers-index-page .customers-register-toolbar .ui-filter-select-menu,
+.customers-index-page .customers-directory-status .ui-filter-select-menu,
 .customers-index-page .customers-register-inline-form .ui-filter-select-menu {
     z-index: 1800;
     border: 1px solid var(--cust-line);
@@ -14303,13 +14289,7 @@ input::-webkit-calendar-picker-indicator {
         flex: 0 1 auto;
     }
 
-    .customers-directory-status select {
-        height: 44px;
-        min-height: 44px;
-    }
-
-    .customers-directory-search input,
-    .customers-directory-status select {
+    .customers-directory-search input {
         font-size: 16px;
     }
 

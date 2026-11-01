@@ -12,18 +12,21 @@ const selectors = {
     actions: ['.page-actions', '.content-header .page-actions', '.customers-page-header .page-actions', '.customers-directory-header .page-actions', '.content-header > :nth-child(n+3)', '.customers-page-header > :nth-child(n+3)', '.content-header.customers-directory-header > .page-actions'],
     bell: ['.notice-bell', '.content-header > .notice-bell', '.content-header.customers-directory-header > .notice-bell'],
     add: ['.customers-page-header .customers-add-btn', '.customers-directory-header .customers-add-btn', '.content-header.customers-directory-header .customers-add-btn'],
-    status: ['select', '.customers-directory-status select'],
+    directoryTrigger: ['.ui-filter-select-trigger', '.customers-index-page .customers-directory-status .ui-filter-select-trigger'],
+    emiTrigger: ['.ui-filter-select-trigger', '.customers-index-page .customers-register-inline-form .ui-filter-select-trigger'],
+    directoryMenu: ['.ui-filter-select-menu', '.customers-index-page .customers-directory-status .ui-filter-select-menu'],
+    emiMenu: ['.ui-filter-select-menu', '.customers-index-page .customers-register-inline-form .ui-filter-select-menu'],
+    directoryChevron: ['.ui-filter-select-chevron', '.customers-index-page .customers-directory-status .ui-filter-select-chevron'],
+    emiChevron: ['.ui-filter-select-chevron', '.customers-index-page .customers-register-inline-form .ui-filter-select-chevron'],
+    directoryStatus: ['.customers-directory-status'],
+    directoryStatusFocus: ['.customers-directory-status', '.customers-directory-status:has(:focus-visible)'],
 };
 
-function cascade(part, width, supportsBaseSelect = false) {
+function cascade(part, width) {
     const values = new Map();
     css.walkRules(rule => {
         for (let parent = rule.parent; parent?.type !== 'root'; parent = parent.parent) {
             if (parent.type !== 'atrule') continue;
-            if (parent.name === 'supports' && parent.params === '(appearance: base-select)') {
-                if (!supportsBaseSelect) return;
-                continue;
-            }
             if (parent.name !== 'media' || !/^\(max-width: \d+px\)$/.test(parent.params)) return;
             if (width > Number(parent.params.match(/\d+/)[0])) return;
         }
@@ -65,15 +68,24 @@ test('desktop keeps the compact flex header and sticky page context', () => {
     assert.equal(cascade('actions', 1280)['grid-row'], undefined);
 });
 
-for (const supportsBaseSelect of [false, true]) {
-    test(`status keeps one native arrow without mixing image/picker treatments (base-select support: ${supportsBaseSelect})`, () => {
+for (const part of ['Trigger', 'Menu', 'Chevron']) {
+    test(`Directory Status ${part.toLowerCase()} shares the EMI filter treatment`, () => {
         for (const width of [427, 1280]) {
-            const status = cascade('status', width, supportsBaseSelect);
-            assert.equal(status.appearance, 'auto', 'do not combine the customizable picker with legacy select resets');
-            assert.equal(status['-webkit-appearance'], 'auto');
-            assert.equal(status['background-image'], 'none', 'a native arrow must not also have the app SVG arrow');
-            assert.equal(status['line-height'], 'normal', 'native text alignment must not inherit the custom picker line box');
-            assert.equal(status.height, width < 769 ? '44px' : '36px');
+            assert.deepEqual(cascade('directory' + part, width), cascade('emi' + part, width));
         }
     });
 }
+
+test('Directory Status stays content-sized and capped instead of inheriting wide EMI form columns', () => {
+    for (const width of [320, 427, 1280]) {
+        const status = cascade('directoryStatus', width);
+        assert.equal(status.width, 'max-content');
+        assert.equal(status['min-width'], '8rem');
+        assert.equal(status['max-width'], '10rem');
+        assert.equal(status.flex, '0 1 auto');
+    }
+});
+
+test('Directory wrapper does not add a second focus ring around the shared EMI trigger', () => {
+    assert.equal(cascade('directoryStatusFocus', 1280).outline, undefined);
+});

@@ -10,6 +10,23 @@ class CustomerDirectoryToolbarUiTest extends TestCase
 {
     use CreatesTestTenant, RefreshDatabase;
 
+    public function test_directory_status_uses_the_same_dropdown_configuration_as_the_emi_filter(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $directory = $xp->query('//select[@name="status"]/ancestor::*[@data-enhance-selects][1]')->item(0);
+        $emi = $xp->query('//select[@name="emi_status"]/ancestor::*[@data-enhance-selects][1]')->item(0);
+        $this->assertNotNull($directory, 'Directory Status must opt into the existing EMI dropdown, not another native or custom picker.');
+        $this->assertNotNull($emi);
+        foreach (['data-enhance-selects' => 'true', 'data-enhance-selects-variant' => 'standard', 'data-enhance-selects-placement' => 'viewport'] as $attribute => $value) {
+            $this->assertSame($value, $emi->getAttribute($attribute));
+            $this->assertSame($value, $directory->getAttribute($attribute));
+        }
+        $this->assertSame(1, $xp->query('.//select', $directory)->length);
+        $this->assertSame(0, $xp->query('.//input[@name="search"]', $directory)->length, 'Enhance Status only; the search disclosure stays independent.');
+    }
+
     public function test_customer_totals_are_present_once_in_the_table_header_outside_scrolling_rows(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

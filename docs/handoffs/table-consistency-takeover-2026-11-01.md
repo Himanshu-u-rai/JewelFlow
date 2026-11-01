@@ -2,7 +2,59 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Plain native Customer Status dropdown
+## Latest checkpoint — Reuse EMI dropdown for compact Customer Status
+
+Starting clean HEAD `dd3906bd501f531259cf801d38b65389596407c5`, same isolated
+worktree/branch/sole writer. Owner explicitly requested the existing inline
+EMI / Installments dropdown, with a small width rather than its wide form layout.
+
+Directory Status now opts into the SAME existing shared select enhancer as EMI:
+standard variant, viewport placement. Existing EMI trigger/hover/open/focus/menu/
+chevron selector groups also apply to Directory, instead of another dropdown
+implementation. No application JS or shared enhancer behavior changed. All native
+field names, values/counts, selection, explicit GET Apply and Clear are preserved.
+
+Only the Directory wrapper differs: content-sized,8rem minimum/10rem maximum
+(normally128–160px), no flex growth. It does not inherit EMI's wide grid or
+ui-filter-field minimum width. The menu uses the same existing viewport placement
+and trigger width. Superseded standalone/native-picker CSS is removed. A named
+Status group provides context; after enhancement the invisible native select is
+visibility-hidden so only the visible trigger enters the tab order. Before that
+marker exists, the native select remains available. Other tabs and search unchanged.
+
+Exact five files: `resources/views/customers/index.blade.php`,
+`resources/css/app.css`, `tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php`,
+`tests/Frontend/customer-header-layout.test.mjs` and this handoff.
+
+Fresh checks:
+
+- Resolved guard confirmed testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing
+  before RefreshDatabase. Demo database not used for destructive tests.
+- RED: new opt-in Feature test failed on missing enhancement;4CSS parity/width
+  tests failed before edits. A later focus-ring contract failed before removing
+  the obsolete Directory-wrapper outline, so it does not double EMI's own ring.
+  GREEN: focused5Feature/49assertions and11header/CSS
+  cases passed. Native-only contracts were superseded by owner-requested EMI
+  parity contracts, not retained as contradictory design requirements.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php`
+  →73passed/522assertions,0failures/skips.
+- `node --test tests/Frontend/*.test.mjs` →71passed/22existing optional browser
+  skips/0failures. CSS contracts compare known selector declarations at427/1280px
+  and compact wrapper at320/427/1280px; NOT rendered geometry/interaction evidence.
+- `npm run build` →79modules, success; assets ignored/uncommitted. Scoped Pint,
+  PHP/Node lint, guarded Blade compile/lint384files/clear and diff check passed.
+-10guarded actual-demo controller/Blade cases passed; synthetic batch preserved
+  without mutation. Impeccable layout detector0mechanical findings.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-status-emi-20261101.u2PoXT/`.
+Browser Use URL-policy block not retried/circumvented. Actual popup, width,
+keyboard focus, phone layout and Turbo navigation remain visually UNVERIFIED;
+no screenshots or full PHP suite/benchmark claimed. Next: owner refresh
+`http://localhost:8001/customers` and compare Directory Status with EMI.
+Local-only; no push/deploy, primary checkout/DB, staging/production, OTP/SMTP or
+mobile-app changes. Preview8001/privatePG55432 and companion8000 preserved.
+
+## Previous checkpoint — Plain native Customer Status dropdown
 
 Starting clean HEAD `63e70ea38177a19494478e1769cb6a80d15cc765`, same isolated
 worktree/branch/sole writer. Owner's desktop screenshot shows two arrows and high
