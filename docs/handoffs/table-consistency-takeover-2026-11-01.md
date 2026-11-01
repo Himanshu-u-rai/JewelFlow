@@ -2,7 +2,24 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Remove Loyalty issued/redeemed header totals
+## Latest checkpoint — Remove EMI overdue/outstanding header totals
+
+Starting clean HEAD `a01d8ad0b7fc48867aba4740cb1fef5aad990940`, same branch,
+worktree and sole writer. Owner requested removing Overdue and Total Outstanding
+from the EMI / Installments header. Plans in View remains. Removed their two
+unused Blade aliases only; controller queries, balances, table/card amounts,
+overdue row indicators, filters, pagination and permissions are unchanged.
+
+Fresh guard: testing / pgsql / 127.0.0.1:5432 / exactly jewelflow_testing.
+Summary regression failed before removal, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php`
+passed 9 tests / 136 assertions. Guarded preview Blade compile, 385 compiled PHP
+lints, view clear, scoped Pint and diff check passed. No asset rebuild or broader
+suite needed for deletion-only markup. Browser visual check still unverified;
+prior URL-policy restriction honored. Evidence: customer-mobile-filters directory,
+`emi-*` logs. No push, deployment or remote changes. Next: owner visual review.
+
+## Previous checkpoint — Remove Loyalty issued/redeemed header totals
 
 Starting clean HEAD `345b683fe95f906a6c1b22f058da7d43fcd591e9`, same branch,
 worktree and sole writer. Removed Total Issued and Total Redeemed from the Loyalty

@@ -464,8 +464,6 @@
         <div data-list-panel x-show="view === 'emi'" x-cloak>
             @php
                 $installmentPlans = $installmentData['installmentPlans'];
-                $overduePlans = $installmentData['overduePlans'];
-                $totalOutstanding = $installmentData['totalOutstanding'];
                 $installmentStatus = $installmentData['installmentStatus'];
             @endphp
 
@@ -475,8 +473,6 @@
                         <h2 class="text-lg font-semibold text-slate-900">EMI / Installments</h2>
                         <dl class="customers-directory-summary" aria-label="Installment summary">
                             <div><dt>Plans in View</dt><dd>{{ number_format($installmentPlans->total()) }}</dd></div>
-                            <div><dt>Overdue</dt><dd>{{ number_format($overduePlans) }}</dd></div>
-                            <div><dt>Total Outstanding</dt><dd>₹{{ number_format($totalOutstanding, 2) }}</dd></div>
                         </dl>
                     </div>
 

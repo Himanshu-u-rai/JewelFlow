@@ -139,17 +139,19 @@ class CustomerDirectoryToolbarUiTest extends TestCase
         $this->createCustomer($shop->id, ['loyalty_points' => 120, 'date_of_birth' => today()->addDays(3)->subYears(30)]);
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
-        foreach (['loyalty', 'emi', 'occasions'] as $view) {
+        foreach (['loyalty' => 1, 'emi' => 1, 'occasions' => 3] as $view => $metricCount) {
             $panel = $xp->query('//*[@data-list-panel][@x-show="view === \''.$view.'\'"]')->item(0);
             $this->assertNotNull($panel);
             $this->assertSame(0, $xp->query('.//*[contains(@class,"customers-kpi-grid")]', $panel)->length);
             $this->assertSame(1, $xp->query('.//*[@data-list-frame]//dl', $panel)->length);
-            $this->assertSame($view === 'loyalty' ? 1 : 3, $xp->query('.//*[@data-list-frame]//dl/div/dd', $panel)->length);
+            $this->assertSame($metricCount, $xp->query('.//*[@data-list-frame]//dl/div/dd', $panel)->length);
             $this->assertSame(0, $xp->query('.//*[@data-list-scroll]//dl', $panel)->length);
             $this->assertSame(1, $xp->query('.//form[contains(@class,"customers-directory-controls")]/input[@name="view" and @value="'.$view.'"]', $panel)->length);
         }
         $this->assertSame('1', $xp->evaluate('string(//dl[@aria-label="Loyalty summary"]/div[dt="Members with Points"]/dd)'));
         $this->assertSame(0, $xp->query('//dl[@aria-label="Loyalty summary"]//dt[text()="Total Issued" or text()="Total Redeemed"]')->length);
+        $this->assertSame('0', $xp->evaluate('string(//dl[@aria-label="Installment summary"]/div[dt="Plans in View"]/dd)'));
+        $this->assertSame(0, $xp->query('//dl[@aria-label="Installment summary"]//dt[text()="Overdue" or text()="Total Outstanding"]')->length);
         $this->assertSame('1', $xp->evaluate('string(//dl[@aria-label="Occasions summary"]/div[dt="Upcoming"]/dd)'));
     }
 
