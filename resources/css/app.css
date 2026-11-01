@@ -13538,6 +13538,192 @@ input::-webkit-calendar-picker-indicator {
     line-height: 1.35;
 }
 
+/* Directory totals belong to the register, not a separate row of KPI cards. */
+.customers-index-page .customers-directory-head {
+    flex-wrap: wrap;
+}
+
+.customers-index-page .customers-directory-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 8px 0 0;
+}
+
+.customers-directory-summary > div {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.customers-directory-summary dt {
+    color: var(--cust-muted);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.customers-directory-summary dd {
+    margin: 0;
+    color: var(--cust-ink);
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.customers-directory-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+}
+
+.customers-directory-search {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid var(--cust-line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.customers-directory-search:has(:focus-visible),
+.customers-directory-status:has(:focus-visible) {
+    outline: 2px solid var(--cust-gold);
+    outline-offset: 2px;
+}
+
+.customers-directory-search-toggle {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--cust-gold);
+    cursor: pointer;
+}
+
+.customers-directory-search-toggle:hover {
+    background: var(--cust-soft);
+}
+
+.customers-directory-search-panel {
+    flex: 1 1 15rem;
+    width: 15rem;
+    min-width: 0;
+}
+
+.customers-directory-search input {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    margin: 0;
+    border: 0 !important;
+    border-radius: 9px;
+    background-color: transparent;
+    color: var(--cust-ink);
+    font-size: 14px;
+    box-shadow: none !important;
+    outline: none;
+}
+
+.customers-directory-search input {
+    padding: 0 12px;
+}
+
+.customers-directory-search input::placeholder {
+    color: var(--cust-muted);
+}
+
+.customers-directory-status {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.customers-directory-status select {
+    width: auto;
+    min-width: 0;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0 30px 0 10px;
+    border: 1px solid var(--cust-line);
+    border-radius: 8px;
+    background-color: #fff;
+    color: var(--cust-text);
+    font-size: 13px;
+    box-shadow: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.customers-directory-status select:focus {
+    border-color: var(--cust-line);
+    box-shadow: none;
+}
+
+.customers-directory-controls :is(.customers-directory-apply, .customers-directory-clear) {
+    min-height: 44px;
+}
+
+/* Native picker: themed top-layer menu where supported, ordinary select elsewhere. */
+@supports (appearance: base-select) {
+    .customers-directory-status select {
+        appearance: base-select;
+        gap: 8px;
+        padding-inline: 10px;
+        background-image: none;
+    }
+
+    .customers-directory-status select::picker(select) {
+        appearance: base-select;
+        min-width: 10rem;
+        max-width: calc(100vw - 24px);
+        margin-block-start: 6px;
+        padding: 4px;
+        border: 1px solid var(--cust-line);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--cust-ink);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    }
+
+    .customers-directory-status option {
+        min-height: 36px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .customers-directory-status option:is(:hover, :focus-visible) {
+        background: var(--cust-soft);
+    }
+
+    .customers-directory-status option:checked {
+        background: #fff7ed;
+        color: var(--cust-gold);
+        font-weight: 600;
+    }
+
+    .customers-directory-status option::checkmark {
+        order: 1;
+        margin-inline-start: auto;
+        color: var(--cust-gold);
+    }
+}
+
 .customers-index-page .customers-register-toolbar {
     display: grid !important;
     align-items: end;
@@ -14132,6 +14318,44 @@ input::-webkit-calendar-picker-indicator {
         align-items: stretch;
         gap: 11px;
         padding: 13px 12px !important;
+    }
+
+    .customers-index-page .customers-directory-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .customers-directory-summary > div {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .customers-directory-controls {
+        width: 100%;
+    }
+
+    .customers-directory-search.is-search-open {
+        flex: 1 1 100%;
+    }
+
+    .customers-directory-status {
+        flex: 0 1 auto;
+    }
+
+    .customers-directory-status select {
+        height: 44px;
+        min-height: 44px;
+    }
+
+    .customers-directory-status option {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .customers-directory-search input,
+    .customers-directory-status select {
+        font-size: 16px;
     }
 
     .customers-index-page .customers-register-toolbar,

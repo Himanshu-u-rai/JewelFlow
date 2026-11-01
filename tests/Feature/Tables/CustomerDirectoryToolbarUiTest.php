@@ -1,0 +1,110 @@
+<?php
+
+namespace Tests\Feature\Tables;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Traits\CreatesTestTenant;
+use Tests\TestCase;
+
+class CustomerDirectoryToolbarUiTest extends TestCase
+{
+    use CreatesTestTenant, RefreshDatabase;
+
+    public function test_customer_totals_are_present_once_in_the_table_header_outside_scrolling_rows(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->createCustomer($shop->id, ['email' => 'first@example.test']);
+        $this->createCustomer($shop->id, ['email' => null]);
+        $this->createCustomer($shop->id, ['email' => 'archived@example.test', 'is_active' => false]);
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $summary = $xp->query('//dl[@aria-label="Customer summary"]')->item(0);
+        $this->assertNotNull($summary);
+        $this->assertSame(1, $xp->query('//dl[@aria-label="Customer summary"]')->length);
+        $this->assertSame(1, $xp->query('//div[contains(@class,"customers-directory-head")]//dl[@aria-label="Customer summary"]')->length);
+        $this->assertSame(0, $xp->query('//*[@data-list-scroll]//dl[@aria-label="Customer summary"]')->length);
+        $directory = $xp->query('//*[@data-list-panel][@x-show="view === \'customers\'"]')->item(0);
+        $this->assertSame(0, $xp->query('.//*[contains(@class,"customers-kpi-grid")]', $directory)->length);
+        $values = [];
+        foreach ($xp->query('./div', $summary) as $metric) {
+            $values[trim($xp->evaluate('string(dt)', $metric))] = trim($xp->evaluate('string(dd)', $metric));
+        }
+        // Keep the incumbent scopes: selected customer total, all invoices, all email addresses.
+        $this->assertSame(['Total Customers' => '2', 'Total Purchases' => '0', 'With Email' => '2'], $values);
+    }
+
+    public function test_expanded_search_preserves_query_status_counts_and_filtered_pagination_for_view_only_users(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['customers.view']);
+        for ($i = 0; $i < 17; $i++) {
+            $this->createCustomer($shop->id, ['first_name' => 'Toolbar '.$i, 'is_active' => $i !== 16]);
+        }
+        $this->withoutVite();
+        $response = $this->actingAs($owner)->get('/customers?search=Toolbar&status=all&page=2')->assertOk();
+        $response->assertDontSee('Add Customer')->assertDontSee('Archive customer');
+        $xp = $this->xpath($response->getContent());
+        $form = $xp->query('//form[contains(@class,"customers-directory-controls")]')->item(0);
+        $this->assertNotNull($form);
+        $this->assertSame('GET', $form->getAttribute('method'));
+        $this->assertSame(route('customers.index'), $form->getAttribute('action'));
+        $toggle = $xp->query('.//button[@data-customer-search-toggle]', $form)->item(0);
+        $this->assertNotNull($toggle);
+        $this->assertSame('button', $toggle->getAttribute('type'));
+        $this->assertSame('true', $toggle->getAttribute('aria-expanded'));
+        $panel = $xp->query('//*[@id="'.$toggle->getAttribute('aria-controls').'"]')->item(0);
+        $this->assertNotNull($panel);
+        $input = $xp->query('.//input[@name="search"]', $panel)->item(0);
+        $this->assertSame('Toolbar', $input->getAttribute('value'));
+        $this->assertSame('customers-tbody', $input->getAttribute('data-live-filter'));
+        $this->assertSame('customers', $input->getAttribute('data-suggest'));
+        $this->assertSame(1, $xp->query('//label[@for="'.$input->getAttribute('id').'"]')->length);
+        $this->assertSame(1, $xp->query('.//select[@name="status" and @id="customers-status"]', $form)->length);
+        $this->assertSame('all', $xp->evaluate('string(.//select[@name="status"]/option[@selected]/@value)', $form));
+        $labels = [];
+        foreach ($xp->query('.//select[@name="status"]/option', $form) as $option) {
+            $labels[] = trim($option->textContent);
+        }
+        $this->assertSame(['Active (16)', 'Archived (1)', 'All (17)'], $labels);
+        $this->assertSame(1, $xp->query('.//button[@type="submit"]', $form)->length);
+        $this->assertGreaterThan(0, $xp->query('//nav//a[contains(@href,"status=all") and contains(@href,"search=Toolbar") and contains(@href,"page=1")]')->length);
+    }
+
+    public function test_empty_directory_retains_native_form_controls_and_collapsed_search_state(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $toggle = $xp->query('//button[@data-customer-search-toggle]')->item(0);
+        $this->assertNotNull($toggle);
+        $this->assertSame('false', $toggle->getAttribute('aria-expanded'));
+        $this->assertSame('Search customers', $toggle->getAttribute('aria-label'));
+        $this->assertSame(1, $xp->query('//input[@name="search" and not(@disabled)]')->length);
+        $form = $xp->query('//form[contains(@class,"customers-directory-controls")]')->item(0);
+        $this->assertFalse($form->hasAttribute('hidden') || $form->hasAttribute('x-cloak'));
+        $this->assertSame(0, $xp->query('.//*[@hidden or @x-cloak][.//input[@name="search"]]', $form)->length, 'The disclosure must not add a JavaScript dependency to its native input; existing tab visibility remains unchanged.');
+        $this->assertSame(1, $xp->query('//form[contains(@class,"customers-directory-controls")]//button[@type="submit" and not(@hidden) and not(@x-cloak)]')->length);
+        $this->assertSame('0', $xp->evaluate('string(//dl[@aria-label="Customer summary"]/div[dt="Total Customers"]/dd)'));
+    }
+
+    public function test_manufacturer_summary_keeps_gold_page_scope_instead_of_retail_purchases(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->createCustomer($shop->id);
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $this->assertSame('0.000 g', $xp->evaluate('string(//dl[@aria-label="Customer summary"]/div[dt="Gold on This Page"]/dd)'));
+        $this->assertSame(0, $xp->query('//dl[@aria-label="Customer summary"]//dt[text()="Total Purchases"]')->length);
+    }
+
+    private function xpath(string $html): \DOMXPath
+    {
+        $dom = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        return new \DOMXPath($dom);
+    }
+}

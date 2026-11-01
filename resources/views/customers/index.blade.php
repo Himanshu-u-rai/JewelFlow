@@ -58,81 +58,43 @@
         {{-- ==================== CUSTOMERS VIEW ==================== --}}
         <div data-list-panel x-show="view === 'customers'" x-cloak>
 
-        <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="square-user" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Customers</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value tabular-nums">{{ number_format($customers->total()) }}</p>
-                    </div>
-                </div>
-            </div>
-
-            @if(!$isRetailer)
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="dollar-sign" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Gold on This Page</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value tabular-nums">{{ number_format($pageGoldTotal, 3) }} g</p>
-                    </div>
-                </div>
-            </div>
-            @else
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                        <x-icon name="receipt-text" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Purchases</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value tabular-nums">{{ number_format($retailerInvoiceCount) }}</p>
-                    </div>
-                </div>
-            </div>
-            @endif
-
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                        <x-icon name="mail" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">With Email</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value tabular-nums">{{ number_format($withEmail) }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--directory" data-list-frame>
-            <div class="customers-table-card-header customers-register-head p-5 border-b border-slate-200">
+            <div class="customers-table-card-header customers-register-head customers-directory-head p-5 border-b border-slate-200">
                 <div class="customers-register-titleblock">
                     <h2 class="text-lg font-semibold text-slate-900">Customer Directory</h2>
-                    <p class="text-sm text-slate-500 mt-1">{{ $customers->total() }} total customers</p>
+                    <dl class="customers-directory-summary" aria-label="Customer summary">
+                        <div><dt>Total Customers</dt><dd>{{ number_format($customers->total()) }}</dd></div>
+                        @if($isRetailer)
+                            <div><dt>Total Purchases</dt><dd>{{ number_format($retailerInvoiceCount) }}</dd></div>
+                        @else
+                            <div><dt>Gold on This Page</dt><dd>{{ number_format($pageGoldTotal, 3) }} g</dd></div>
+                        @endif
+                        <div><dt>With Email</dt><dd>{{ number_format($withEmail) }}</dd></div>
+                    </dl>
                 </div>
 
-                <form method="GET" action="{{ route('customers.index') }}" class="ui-filter-bar customers-register-toolbar customers-register-toolbar--search customers-register-toolbar--with-status">
-                    <div class="ui-filter-field">
-                        <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
-                        <div class="relative">
-                            <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                                <x-icon name="search" size="16" />
-                            </span>
+                <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
+                      x-data="{ searchOpen: {{ $searchActive ? 'true' : 'false' }} }">
+                    <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                         @keydown.escape.stop.prevent="searchOpen = false; $refs.searchToggle.focus()">
+                        <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
+                                class="customers-directory-search-toggle" aria-label="Search customers"
+                                aria-controls="customers-search-panel" aria-expanded="{{ $searchActive ? 'true' : 'false' }}"
+                                :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide customer search' : 'Search customers'"
+                                :title="searchOpen ? 'Hide search' : 'Search customers'"
+                                @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                            <x-icon name="search" size="18" />
+                        </button>
+                        <div id="customers-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                            <label for="customers-search" class="jf-sr-only">Search customers</label>
                             <input
-                                type="text"
+                                id="customers-search" type="search" x-ref="searchInput"
                                 name="search"
                                 value="{{ request('search') }}"
                                 placeholder="Name or mobile number..."
-                                class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none"
                                 data-suggest="customers"
                                 data-live-filter="customers-tbody"
-                                autocomplete="off"
+                                autocomplete="off" enterkeyhint="search"
                             >
                         </div>
                     </div>
@@ -141,28 +103,18 @@
                          filter as the list, so a count always matches what the
                          option shows. Both values ride through pagination via the
                          paginator's withQueryString(). --}}
-                    <div class="ui-filter-field">
-                        <label for="customers-status" class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Status</label>
-                        <select id="customers-status" name="status"
-                                class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                    <div class="customers-directory-status">
+                        <label for="customers-status" class="jf-sr-only">Status</label>
+                        <select id="customers-status" name="status">
                             <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
                             <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
                             <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
                         </select>
                     </div>
-                    <div class="ui-filter-actions">
-                        {{-- The submit button is always rendered now: with a status
-                             filter in the bar, hiding it would leave no way to apply
-                             a status change once a search was active. --}}
-                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                            {{ $searchActive ? 'Apply' : 'Search' }}
-                        </button>
-                        @if($searchActive)
-                            <a href="{{ route('customers.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                Clear
-                            </a>
-                        @endif
-                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                    @if($searchActive)
+                        <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                    @endif
                 </form>
             </div>
 

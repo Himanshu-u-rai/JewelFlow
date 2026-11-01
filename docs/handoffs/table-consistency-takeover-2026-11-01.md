@@ -2,7 +2,78 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Customer header phone correction
+## Latest checkpoint — Compact Customer Directory register tools
+
+Starting clean HEAD `11487080590c23a7fe7d09878390a925b9bb24fb`, same isolated
+worktree/branch/sole writer. Local-only presentation change requested by owner:
+smaller totals inside the table header, icon-expand search, redesigned Status.
+Scope is Customer Directory (Retail and manufacturer variant); other three tab
+KPI/filter layouts remain unchanged, not part of this completion claim.
+
+Moved the existing three values into a semantic definition list beside/below the
+register title. No separate Directory KPI cards or duplicate total subtitle.
+Counts retain their exact controller scopes: selected customer paginator total,
+all Retail invoices or manufacturer's current-page gold, and shop-wide With Email.
+No model/controller/query/accounting/permission/route/data changes.
+
+Search uses the existing Alpine runtime, with no new application JS module:
+named44px icon toggles the field, nextTick focuses it, Escape closes it and returns
+focus without clearing typed text. A server-applied search starts expanded.
+The original suggestion/live-filter hooks, GET route and field names remain.
+Apply still explicitly submits the chosen status/search; Clear retains its prior
+reset behavior. Native input/submit have no new cloak; existing whole-page Alpine
+tab dependency is unchanged (not a claim that the whole app works without JS).
+
+Owner rejected the first wide Status-label/tinted-wrapper treatment before any
+commit. Final Status is one plain native select:36px desktop,44px on phones,
+natural content width with no flex growth,8px radius, white background and subtle border.
+Its associated Status label remains for assistive technology, visually hidden.
+Native CSS base-select enhancement themes its top-layer picker, compact desktop
+options/44px phone options, selected
+state/checkmark where supported; other browsers retain the ordinary native picker.
+No custom JS dropdown, hidden duplicate select, shared enhancer change or dependency.
+Reference checked: https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Customizable_select
+Supporting-browser popup styling is not universal visual acceptance. Phone layout
+wraps controls, uses three small summary columns and16px inputs; long values wrap.
+New controls/header remain outside the existing row-scrolling region.
+
+Exact five files:
+
+- `resources/views/customers/index.blade.php`
+- `resources/css/app.css`
+- `tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php`
+- `tests/Frontend/customer-directory-search.test.mjs`
+- This handoff.
+
+Fresh checks actually run:
+
+- Resolved guard verified testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing
+  before RefreshDatabase. Automatic per-test guard retained; demo DB untouched.
+- RED:4feature tests and3handler tests failed before implementation on missing
+  summary/form/disclosure. Test scope subsequently corrected to exclude the other
+  three tabs' intentional KPIs and the pre-existing ancestor tab cloak.
+- Focused Feature4pass/38assertions. Handler tests3pass exercise actual Alpine
+  expressions with focus/nextTick doubles; NOT native browser keyboard evidence.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php`
+  →72passed/511assertions,0failures/skips. Includes filtered page2/status counts,
+  restricted-role actions, empty/default/search states and manufacturer summary.
+- `node --test tests/Frontend/*.test.mjs` →66passed/22existing optional browser
+  skips/0failures; new Node syntax and scoped Pint checks passed.
+- `npm run build` →79modules, success; generated assets ignored/uncommitted.
+  Guarded Blade compile/lint384files/clear, changed PHP lint and diff check passed.
+- Guarded actual-demo controller/Blade verifier:10cases passed; synthetic batch
+  24customers/32sales/24EMIs and43directory records preserved without mutation.
+- Impeccable layout detector:0mechanical findings. Not visual acceptance.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-directory-toolbar-20261101.3dw29A/`.
+Existing Browser Use URL-policy block not retried/circumvented. Actual popup
+rendering, mobile geometry, native keyboard/phone/zoom and Turbo Back/Forward
+interaction remain NOT RUN; no new screenshots/full PHP suite/benchmarks claimed.
+Next: owner refresh `http://localhost:8001/customers` on desktop and phone to review.
+Preview8001/privatePG55432 and companion8000 preserved. No push/deploy, primary
+checkout/DB, staging/production, OTP/SMTP or mobile-app changes.
+
+## Previous checkpoint — Customer header phone correction
 
 Starting clean HEAD `ec176852e639aba9837699a96112b9cf9f8b0fd8`, same isolated
 worktree/branch/sole writer. Owner-supplied 427x952 Chrome-emulation screenshot
