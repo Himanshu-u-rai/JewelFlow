@@ -2,7 +2,131 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Current checkpoint — Codex continuation, 2026-11-01
+## Latest checkpoint — intake polish and repair-detail closure
+
+- Verified clean start `cbf984bc3a4294034d19826bb87b5316072d7934`, sole writer.
+  Code commit `5a12c201022e14f10461103fb4e634bca59ccf04`, parent `cbf984bc`,
+  `fix(repairs): align intake fields and contain photo previews`.
+- Exact intake code files: `resources/views/repairs.blade.php` and
+  `tests/Feature/Tables/TableConsistencyUiTest.php`.
+- Subsequent detail code commit `22337fcef010d91500c5078cee9aae8017abd8de`,
+  parent `5a12c201022e14f10461103fb4e634bca59ccf04`,
+  `fix(repairs): polish record progress and accessible actions`.
+  Exact files: `resources/css/app.css`, `resources/js/table-row-actions.js`,
+  `resources/views/repairs/show.blade.php`,
+  `tests/Feature/Tables/TableConsistencyUiTest.php`,
+  `tests/Frontend/table-row-actions.test.mjs`. This handoff change is docs only.
+- Owner approved all intake-review refinements. Controls now44px, consistent
+  font sizing, form-scoped existing border/background tokens, optional hints outside
+  labels, compact quantity/cost/date/file widths, aligned tablet notes and tighter
+  footer. Container-width breakpoints prevent sidebar-related label wrapping.
+- Owner's subsequent tall-photo screenshot exposed grid-row growth. Preview is
+  now a44x44 contained thumbnail beside the native chooser with44px Remove.
+  Native chooser guidance matches existing JPEG/PNG/WebP/5MB constraints.
+  Form action/names/error blocks and server rules unchanged; intake JavaScript
+  verified byte-for-byte identical to parent. No business behavior changes.
+- Real browser file selection, portrait300x900 and landscape900x300, replacement
+  and removal checked without submitting. At320/390/1024/1440/1920, selection leaves
+  form height and notes' form-relative positions unchanged; no page overflow.
+  Filled customer name/mobile fits within the control; Silver925 and date popup
+  work. Desktop form399.5→385px;1024px tablet622.375→489.375px. Phone remains
+  full-width single-column1125.734px with explicit hints, not a claimed phone-height
+  reduction. Remove preserves all other typed inputs.
+
+Scoped commands (intake and subsequent detail verification):
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/TableConsistencyUiTest.php tests/Feature/Repair tests/Feature/RepairDeliveredVisibilityTest.php tests/Feature/RepairWebImageUploadFlowTest.php
+node --test tests/Frontend/table-row-actions.test.mjs tests/Frontend/repair-row-navigation.test.mjs tests/Frontend/repair-a11y.test.mjs tests/Frontend/toast.test.mjs tests/Frontend/repair-challan-share.test.mjs tests/Frontend/customer-photo.test.mjs
+npx vite build
+php8.2 artisan view:cache
+find storage/framework/views -name '*.php' -print0 | xargs -0 -r -n 1 php8.2 -l
+php8.2 artisan view:clear
+php8.2 -l resources/views/repairs.blade.php
+php8.2 -l resources/views/repairs/show.blade.php
+php8.2 -l tests/Feature/Tables/TableConsistencyUiTest.php
+node --check resources/js/table-row-actions.js
+node --check tests/Frontend/table-row-actions.test.mjs
+git diff --check
+```
+
+Guard resolved testing/pgsql/127.0.0.1:5432/jewelflow_testing, including URL
+expansion, before destructive setup. Intake results:64PHP tests/427assertions;
+46frontend tests; zero failures/skips.
+Vite78modules;383 compiled views linted/cleared; syntax/diff checks passed. Full
+repository suite not rerun for these scoped refinements; no performance benchmark.
+Impeccable's scoped intake scan flags only the known hidden empty-src preview,
+which actually loads selected files. No blanket ignore or design-system rewrite.
+
+The initial **read-only Impeccable audit of `/repairs/14`** found the following.
+The owner then explicitly approved all fixes and requested a modern progress
+indicator instead of connecting lines. The original audit is retained as baseline.
+
+1. P1: mobile Back/Edit/Print/PDF links lose all accessible/visible labels (36px).
+2. P2: view-only role sees Edit, which correctly reaches Access Restricted.
+3. P2: desktop/tablet progress connectors strike through labels; current step is
+   class-only rather than aria-current.
+4. P2: nested main landmarks (shell + detail layout).
+5. P3: challan buttons have0px top clearance from header divider.
+6. P3: lengthy sharing help persists in the missing-mobile state.
+
+All six are closed in `22337fce`:
+
+- RD01: only compact header text is hidden; links have explicit matching names
+  and reuse the existing body/popover focus labels with Escape dismissal. Header
+  controls44x44 on narrow screens; challan actions retain their visible text and
+  minimum44px height. The320px title fits alongside actions and existing notice bell.
+- RD02: Edit now follows `repairs.edit`, within the unchanged lifecycle condition.
+  The view-only browser session has no Edit link; direct edit remains403 in tests.
+- RD03: connector pseudo-elements removed. Four numbered/checkmarked stage tiles
+  distinguish complete/current/upcoming using the existing Retail palette.
+  Four columns on desktop;2x2 at1024px and below. One current step uses aria-current.
+  This is a read-only display, not a new status mutation control.
+- RD04: replaced the nested main with a div; one shell main remains.
+- RD05: challan actions have16px header clearance,13px on phones.
+- RD06 refined: the existing challan regression requires attachment instructions
+  even without a number. Preserve exact instructions inside native expandable
+  help, with the missing-number message always visible and live sharing status
+  unchanged. No required help was removed.
+
+Four new PHP render/permission tests and a real-controller frontend label test
+failed first for the intended defects. A subsequent progress-heading assertion
+also failed before the redesign. Final focused checks on the detail source:
+**68PHP tests /450assertions;47frontend tests; zero failures/skips**. Vite78modules;
+383 compiled Blade files linted then cleared; source PHP/JS lint and diff check
+passed. The detail-only Impeccable source scan returned[]; actual browser evidence,
+not the detector alone, supports closure. No broad/full-suite rerun or benchmark.
+
+Actual owner browser widths320/390/769/820/1024/1440: no horizontal page overflow,
+readable stage labels and responsive actions; one main/current step. At769px,
+four tiles initially cramped their inner right padding: tablet2x2 fixes that.
+Actual focus label appears in BODY, remains within viewport, and Escape dismisses
+without moving focus. Native help click open/close verified; focus-visible summary
+verified, but a complete native Tab walk/keyboard-only toggle is not claimed.
+View-only rendering checked in its separate existing synthetic session. The bounded
+item photo and neutral header treatment were intentional and remain unchanged.
+No repair, delivery, billing, payment, messaging, print or download was performed.
+No physical phone, screen reader or fresh final Back/Forward pass; an optional
+history-tool call timed out and supplied no usable result. No staging/production.
+
+Evidence remains outside Git in `/home/himanshu/jf-table-evidence/takeover-20261101.KzNebv/`:
+`RECEIVE-NEW-REPAIR-UI-CLOSURE.md`, `REPAIR-DETAIL-IMPECCABLE-AUDIT.md`,
+`repair-form-final-php.log`, `repair-form-final-frontend.log`,
+`repair-form-browser-measurements.json`, `repair-detail-audit-measurements.json`,
+`REPAIR-DETAIL-UI-CLOSURE.md`, `repair-detail-final-style-measurements.json`,
+`repair-detail-final-php.log`, `repair-detail-final-frontend.log`.
+Screenshots: `receive-form-polished-photo-wide-desktop.jpg`,
+`receive-form-polished-photo-tablet.jpg`, `receive-form-polished-photo-phone.jpg`,
+`repair-detail-audit-desktop.jpg`, `repair-detail-audit-phone-top.jpg`,
+`repair-detail-modern-desktop.jpg`, `repair-detail-modern-tablet.jpg`,
+`repair-detail-modern-phone.jpg`, `repair-detail-modern-small-phone.jpg`.
+Existing user/demo records, other worktrees/processes, private PostgreSQL and paused
+OTP/photo work preserved. Preview deliberately remains at localhost:8001 and the
+owner's repair-detail page is retained for visual review. Scoped code committed;
+normal branch push authorized. Next: owner visual review, no additional redesign
+or deployment without a new request.
+
+## Previous checkpoint — Codex continuation, 2026-11-01
 
 This section supersedes the outstanding-work and verification statements in the
 original Claude handoff below; those remain as historical evidence.
@@ -135,8 +259,8 @@ design; scoped detector's hidden-image warning was verified as intentional previ
 markup, not a visible broken image. Inherited decorative CSS elsewhere was not
 used as justification for a blanket rewrite.
 
-**Latest separate request: read-only Receive New Repair visual review.** No further
-layout edits were made for it. Confirmed polish remains:41.5px selectors vs46px
+**Prior separate request: read-only Receive New Repair visual review.** It was
+subsequently implemented in `5a12c201`, recorded above. That review found41.5px selectors vs46px
 inputs; narrow13px picker text vs16px inputs;40px label reservations; tablet notes
 textareas offset20px; generic short-value/file widths; pale field edges; file type/
 size guidance missing; spacious action footer. Outer18/14px padding and16px desktop
