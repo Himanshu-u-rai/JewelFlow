@@ -327,4 +327,65 @@ class TableConsistencyUiTest extends TestCase
             $this->assertGreaterThan(0, $xp->query('//dialog//form[@id="deliverForm" and @method="POST"]//input[@name="'.$name.'"]')->length);
         }
     }
+
+    private function repairDetailFixture(): array
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $customer = $this->createCustomer($shop->id, ['first_name' => 'Synthetic detail', 'mobile' => null]);
+        $repair = TenantContext::runFor($shop->id, fn () => Repair::create([
+            'customer_id' => $customer->id, 'item_description' => 'Synthetic chain clasp',
+            'gross_weight' => 5, 'metal_type' => 'gold', 'status' => 'ready',
+        ]));
+
+        return [$owner, $shop, $repair];
+    }
+
+    public function test_repair_detail_header_controls_keep_names_when_their_text_is_compact(): void
+    {
+        [$owner, $shop, $repair] = $this->repairDetailFixture();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs/'.$repair->id))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $links = $xp->query('//div[contains(@class,"repairs-show-header-actions")]/a');
+        $this->assertSame(2, $links->length);
+        foreach ($links as $link) {
+            $this->assertSame(trim($link->textContent), $link->getAttribute('aria-label'));
+            $this->assertSame($link->getAttribute('aria-label'), $link->getAttribute('data-tip'));
+        }
+        $this->assertSame(1, $xp->query('//a[contains(@href,"/repairs/'.$repair->id.'/challan") and normalize-space(.)="Print challan"]')->length);
+        $this->assertSame(1, $xp->query('//a[contains(@href,"/repairs/'.$repair->id.'/challan/pdf") and @data-turbo="false" and normalize-space(.)="Download PDF"]')->length);
+    }
+
+    public function test_repair_detail_has_one_main_landmark_and_announces_the_current_step(): void
+    {
+        [$owner, $shop, $repair] = $this->repairDetailFixture();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs/'.$repair->id))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(1, $xp->query('//main')->length);
+        $this->assertSame(1, $xp->query('//section[contains(@class,"repairs-show-workflow")]//h2[normalize-space(.)="Repair progress"]')->length);
+        $this->assertSame(4, $xp->query('//ol[contains(@class,"repairs-show-steps")]/li')->length);
+        $this->assertSame(1, $xp->query('//ol[contains(@class,"repairs-show-steps")]/li[@aria-current="step"]')->length);
+        $this->assertStringContainsString('Ready', $xp->query('//li[@aria-current="step"]')->item(0)->textContent);
+    }
+
+    public function test_repair_detail_does_not_offer_edit_to_a_view_only_user(): void
+    {
+        [$viewer, $shop, $repair] = $this->repairDetailFixture();
+        $this->grantOnlyPermissions($viewer, ['repairs.view']);
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($viewer)->get('/repairs/'.$repair->id))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(0, $xp->query('//a[contains(@href,"/repairs/'.$repair->id.'/edit")]')->length);
+        $this->assertSame(1, $xp->query('//a[normalize-space(.)="Print challan"]')->length);
+        TenantContext::runFor($shop->id, fn () => $this->get('/repairs/'.$repair->id.'/edit'))->assertForbidden();
+    }
+
+    public function test_repair_detail_keeps_missing_number_help_and_optional_sharing_instructions(): void
+    {
+        [$owner, $shop, $repair] = $this->repairDetailFixture();
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('/repairs/'.$repair->id))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(1, $xp->query('//p[not(ancestor::details) and contains(.,"No mobile number is saved for this customer.")]')->length);
+        $this->assertSame(1, $xp->query('//details[contains(@class,"repairs-show-share-help") and not(@open)]/summary[normalize-space(.)="How to share the challan PDF"]')->length);
+        $this->assertSame(1, $xp->query('//details[contains(@class,"repairs-show-share-help")]//p[contains(.,"tap Download PDF") and contains(.,"Attach")]')->length);
+        $this->assertSame(1, $xp->query('//p[@data-challan-share-status and @role="status" and @aria-live="polite"]')->length);
+    }
 }

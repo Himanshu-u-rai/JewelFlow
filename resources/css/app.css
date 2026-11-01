@@ -15668,6 +15668,8 @@ input::-webkit-calendar-picker-indicator {
     margin: 0 !important;
 }
 
+.repairs-show-action { min-height: 44px; }
+
 .repairs-show-action:hover,
 .repairs-edit-back:hover,
 .repairs-edit-button--secondary:hover {
@@ -15743,9 +15745,8 @@ input::-webkit-calendar-picker-indicator {
     margin-bottom: 15px;
 }
 
-.repairs-show-workflow-head strong {
-    display: block;
-    margin-top: 4px;
+.repairs-show-progress-title {
+    margin: 0;
     color: var(--jf-erp-ink);
     font-size: 17px;
     font-weight: 600;
@@ -15805,38 +15806,29 @@ input::-webkit-calendar-picker-indicator {
 .repairs-show-steps {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
+    gap: 8px;
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
 .repairs-show-steps li {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 9px;
     min-width: 0;
+    min-height: 56px;
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 10px;
     color: #64748b;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.25;
 }
 
-.repairs-show-steps li:not(:last-child)::after {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    left: 43px;
-    z-index: 0;
-    height: 1px;
-    background: #e2e8f0;
-    content: "";
-}
-
 .repairs-show-step-dot {
-    position: relative;
-    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -15856,9 +15848,16 @@ input::-webkit-calendar-picker-indicator {
     height: 14px;
 }
 
-.repairs-show-steps li.is-current,
+.repairs-show-steps li.is-current {
+    border-color: var(--jf-erp-primary);
+    background: #fff7ed;
+    color: #92400e;
+}
+
 .repairs-show-steps li.is-complete {
-    color: var(--jf-erp-ink);
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #065f46;
 }
 
 .repairs-show-steps li.is-current .repairs-show-step-dot {
@@ -15871,10 +15870,6 @@ input::-webkit-calendar-picker-indicator {
     border-color: #059669;
     background: #ecfdf5;
     color: #047857;
-}
-
-.repairs-show-steps li.is-complete:not(:last-child)::after {
-    background: #6ee7b7;
 }
 
 .repairs-show-layout {
@@ -15914,6 +15909,31 @@ input::-webkit-calendar-picker-indicator {
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
+
+.repairs-show-challan-body { padding: 16px; }
+.repairs-show-challan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.repairs-show-help {
+    max-width: 72ch;
+    margin: 12px 0 0;
+    color: #64748b;
+    font-size: 13.6px;
+    line-height: 1.5;
+}
+.repairs-show-help:empty { display: none; }
+.repairs-show-share-help { margin-top: 8px; }
+.repairs-show-share-help summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    color: var(--jf-erp-ink);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.repairs-show-share-help summary:focus-visible { outline: 2px solid var(--jf-erp-primary); outline-offset: 2px; border-radius: 6px; }
+.repairs-show-share-help[open] summary svg { transform: rotate(180deg); }
+.repairs-show-share-help .repairs-show-help { margin-top: 0; }
 
 .repairs-show-description {
     padding: 16px;
@@ -16220,6 +16240,10 @@ input::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 1024px) {
+    .repairs-show-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .repairs-show-layout {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -16280,7 +16304,6 @@ input::-webkit-calendar-picker-indicator {
         gap: 5px;
     }
 
-    .repairs-show-action,
     .repairs-edit-back {
         width: 36px !important;
         min-width: 36px !important;
@@ -16291,10 +16314,23 @@ input::-webkit-calendar-picker-indicator {
         font-size: 0;
     }
 
-    .repairs-show-action span,
     .repairs-edit-back span {
         display: none;
     }
+
+    .content-header.repairs-show-header {
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+        gap: 6px;
+        padding-inline: 12px;
+    }
+    .repairs-show-header-actions .repairs-show-action {
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0;
+    }
+    .repairs-show-header-actions .repairs-show-action span { display: none; }
 
     .repairs-show-action svg,
     .repairs-edit-back svg {
@@ -16316,12 +16352,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .repairs-show-steps {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px 8px;
-    }
-
-    .repairs-show-steps li::after {
-        display: none;
     }
 
     .repairs-show-layout {
@@ -16337,6 +16368,8 @@ input::-webkit-calendar-picker-indicator {
     .repairs-show-card-head {
         padding: 13px;
     }
+
+    .repairs-show-challan-body { padding: 13px; }
 
     .repairs-show-description {
         padding: 13px;

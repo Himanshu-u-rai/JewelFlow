@@ -8,7 +8,7 @@ const module = available ? await import(source) : {};
 const css = readFileSync(new URL('../../resources/css/tables.css', import.meta.url), 'utf8');
 
 // Only the DOM/event boundaries are stubbed; these exercise the real label controller.
-function fixture({ left = 150, top = 100, fine = true, popover = true } = {}) {
+function fixture({ left = 150, top = 100, fine = true, popover = true, header = false } = {}) {
     assert.ok(available, 'Shared row labels must escape table overflow and support dismissal.');
     const listeners = new Map();
     const frames = new Map();
@@ -44,7 +44,7 @@ function fixture({ left = 150, top = 100, fine = true, popover = true } = {}) {
     const action = {
         dataset: { tip: 'View Profile' }, disabled: false, isConnected: true,
         box: { left, top, width: 36, height: 36, right: left + 36, bottom: top + 36 },
-        closest: () => action,
+        closest: selector => selector.split(',').map(s => s.trim()).includes(header ? '.repairs-show-header-actions [data-tip]' : '.jf-row-action[data-tip]') ? action : null,
         matches: () => doc.activeElement === action,
         contains: other => other === action,
         getBoundingClientRect() { return this.box; },
@@ -68,6 +68,18 @@ test('keyboard labels mount outside the table, use native popovers and keep the 
     assert.equal(f.doc.activeElement, f.action, 'labels never steal keyboard focus');
     assert.match(css, /\.jf-row-action-label\s*\{[^}]*position:\s*fixed/s);
     assert.doesNotMatch(css, /\.jf-row-action\[data-tip\]::after\s*\{/);
+});
+
+test('compact repair header actions reuse the same focus label and Escape dismissal', () => {
+    const f = fixture({ header: true, top: 5 });
+    f.action.dataset.tip = 'Back to Repairs';
+    f.focus();
+    assert.equal(f.nodes.length, 1);
+    assert.equal(f.nodes[0].textContent, 'Back to Repairs');
+    assert.equal(f.nodes[0].style.top, '47px');
+    f.send('keydown', { key: 'Escape' });
+    assert.equal(f.nodes[0].removed, true);
+    assert.equal(f.doc.activeElement, f.action);
 });
 
 test('labels clamp at both viewport edges and flip below a top-edge control', () => {

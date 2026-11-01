@@ -49,7 +49,7 @@ export function initializeRowActionLabels(doc = document, win = window) {
         try { label.showPopover?.(); } catch { label.removeAttribute('popover'); }
         queuePlace();
     };
-    const control = (target) => target?.closest?.('.jf-row-action[data-tip]');
+    const control = (target) => target?.closest?.('.jf-row-action[data-tip], .repairs-show-header-actions [data-tip]');
     const focused = () => action === doc.activeElement && action?.matches(':focus-visible');
 
     doc.addEventListener('focusin', (event) => {
