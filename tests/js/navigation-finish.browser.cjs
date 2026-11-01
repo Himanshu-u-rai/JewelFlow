@@ -35,7 +35,7 @@ function header(invoices) {
       <div class="content-header-nav"><button class="mobile-menu-btn" aria-label="Menu">☰</button></div>
       <div><h1 class="page-title">${invoices ? 'Invoices' : 'Categories'}</h1></div>
       <div class="page-actions">${invoices
-        ? '<a href="/other" class="btn btn-primary invoices-open-pos-btn">Open POS</a>'
+        ? '<a href="/other" class="btn btn-primary invoices-historical-btn">Historical Sales</a>'
         : '<button type="button" class="categories-add-btn btn" onclick="openAddCategoryModal()">Add Category</button>'}</div></div>`;
 }
 
@@ -66,8 +66,6 @@ function html(url) {
     const isCategory = url.pathname === '/categories';
     const isAdmin = url.pathname === '/admin-fixture';
     const inner = isCategory ? categories(invalid) : `${header(true)}<div class="content-inner invoices-index-page">
-      <nav class="invoices-page-nav" aria-label="Invoices navigation"><a class="invoices-page-nav-link" href="/other">Invoices</a>
-      <a class="invoices-page-nav-link" href="/other">Historical Sales</a><a class="invoices-page-nav-link" href="/other">Returns / Exchange</a></nav>
       <a href="/categories?q=Band&page=2">Categories</a><p>Synthetic frontend fixture — not a Laravel response.</p></div>`;
     return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="csrf-token" content="synthetic-only"><title>Frontend component check</title>
@@ -179,11 +177,11 @@ const server = http.createServer((req, res) => {
         });
         for (const width of [320, 390, 430, 768, 820, 1440]) await check(`Invoices touch target / toast clearance at ${width}px`, async page => {
             await page.setViewportSize({ width, height: 844 }); await open(page);
-            const box = await page.locator('.invoices-open-pos-btn').boundingBox();
+            const box = await page.locator('.invoices-historical-btn').boundingBox();
             assert(box);
             if (width <= 768) {
                 for (const y of [box.y - 4, box.y + box.height + 4]) {
-                    assert(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.invoices-open-pos-btn'), { x: box.x + box.width / 2, y }), 'Extended hit area not clickable');
+                    assert(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.invoices-historical-btn'), { x: box.x + box.width / 2, y }), 'Extended hit area not clickable');
                 }
             }
             await page.evaluate(() => showToast('Saved successfully.'));
@@ -247,10 +245,10 @@ const server = http.createServer((req, res) => {
             assert.equal(await page.locator('.content-body').evaluate(el => el.scrollTop), 0);
             assert.equal(await page.locator('[data-category-toggle]').nth(3).getAttribute('aria-expanded'), 'false');
         });
-        await check('Open POS responds to its extended hit area and keyboard', async page => {
+        await check('Historical Sales responds to its extended hit area and keyboard', async page => {
           for (const cached of [true, false]) {
             await open(page, '/invoices');
-            const button = page.locator('.invoices-open-pos-btn');
+            const button = page.locator('.invoices-historical-btn');
             const box = await button.boundingBox();
             await page.mouse.click(box.x + box.width / 2, box.y - 4);
             await page.waitForURL(origin + '/other');
@@ -264,13 +262,13 @@ const server = http.createServer((req, res) => {
                 });
             }
             await page.evaluate(() => {
-                window.posHistoryReady = false;
+                window.invoiceHistoryReady = false;
                 document.addEventListener('turbo:load', () => {
-                    window.posHistoryReady = location.pathname === '/invoices';
+                    window.invoiceHistoryReady = location.pathname === '/invoices';
                 }, { once: true });
             });
             await page.goBack(); await page.waitForURL(origin + '/invoices');
-            await page.waitForFunction(() => window.posHistoryReady);
+            await page.waitForFunction(() => window.invoiceHistoryReady);
             const restoration = await page.evaluate(() => ({
                 url: location.pathname, rendered: document.body.dataset.fixturePage,
                 preview: document.documentElement.hasAttribute('data-turbo-preview'),
@@ -278,7 +276,7 @@ const server = http.createServer((req, res) => {
             assert.equal(restoration.rendered, '/invoices', 'URL changed before invoices DOM restoration');
             assert.equal(restoration.preview, false, 'Keyboard action requires the final restored DOM');
             await button.focus();
-            assert(await button.evaluate(el => document.activeElement === el), 'POS link receives keyboard focus');
+            assert(await button.evaluate(el => document.activeElement === el), 'Historical Sales link receives keyboard focus');
             await page.keyboard.press('Enter');
             await page.waitForURL(origin + '/other');
           }

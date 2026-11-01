@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 /**
  * The main sidebar keeps the everyday workspaces and gives the rest a home on
- * the page it belongs to: reports on the reports hub, Historical Sales and
- * Returns / Exchange on Invoices, Installments on Customers, Categories, Tag
+ * the page it belongs to: reports on the reports hub, Historical Sales in the
+ * Invoices header, Installments on Customers, Categories, Tag
  * Printing and Reorder Alerts on the Stock page, Vendors and the Product
  * Catalog on the Masters hub, Download Reports and Import Data on Settings.
  *
@@ -21,16 +21,17 @@ use Tests\TestCase;
  * 1. A new home can have a permission of its own that is not the page's: the
  *    hub wants reports.view while Close Day wants reports.daily_closing,
  *    Settings wants settings.view while Download Reports wants reports.export,
- *    Invoices wants sales.view while Returns / Exchange wants returns.view.
+ *    Invoices wants sales.view while Historical Sales wants historical.view.
  *    A role holding only the second of a pair keeps its sidebar shortcut, and
- *    nobody who can reach the new home sees one.
+ *    nobody who can reach the new home sees a duplicate shortcut.
  * 2. Where the new home asks for nothing the page does not (Stock, Categories,
  *    Tag Printing and Reorder Alerts share inventory.view; the Masters hub
  *    shows a card exactly when its page would open), no shortcut is needed and
  *    none is kept.
  *
  * Cash Book is not a moved page: it is a ledger people write in every day, and
- * an ordinary sidebar entry for whoever holds cash.view.
+ * an ordinary sidebar entry for whoever holds cash.view. Returns / Exchange
+ * is likewise a permanent Sales entry for whoever holds returns.view.
  *
  * No route's authorization changed. Where a move leans on what a route asks
  * for (an edition, or a permission its new home does not ask for), the page is
@@ -45,7 +46,6 @@ class MovedShortcutsAccessTest extends TestCase
     private const MOVED = [
         'report.closing' => ['reports.daily_closing', 'reports.view'],
         'historical.index' => ['historical.view', 'sales.view'],
-        'returns.index' => ['returns.view', 'sales.view'],
         'installments.index' => ['sales.view', 'customers.view'],
         'export.index' => ['reports.export', 'settings.view'],
         'imports.index' => ['imports.manage', 'settings.view'],
@@ -236,14 +236,14 @@ class MovedShortcutsAccessTest extends TestCase
             $this->between($this->pageAs($user, ['customers.view'], route('customers.index')), 'customers-view-toggle', '</div>'));
     }
 
-    public function test_the_invoices_navigation_row_offers_each_page_by_its_own_permission(): void
+    public function test_invoices_header_and_sales_sidebar_offer_the_moved_links_by_their_own_permissions(): void
     {
         foreach (['retailer', 'manufacturer'] as $edition) {
             [$user] = $edition === 'retailer' ? $this->createRetailerTenant() : $this->createManufacturerTenant();
 
-            // Returns / Exchange, either edition: one way in for a role that may open both pages, and it is the row.
+            // Returns / Exchange is a Sales sidebar entry, even when Invoices is accessible.
             $page = $this->pageAs($user, ['sales.view', 'returns.view'], route('invoices.index'));
-            $this->assertStringContainsString($this->href('returns.index'), $this->invoicesNav($page), "{$edition}: Returns is not in the Invoices row");
+            $this->assertStringContainsString($this->href('returns.index'), $this->sidebarNav($page), "{$edition}: Returns is not in the sidebar");
             $this->assertSame(1, substr_count($page, $this->href('returns.index')), "{$edition}: Returns is offered twice on one page");
 
             // returns.view without sales.view cannot open Invoices: the sidebar keeps the way in, and it opens.
@@ -260,15 +260,49 @@ class MovedShortcutsAccessTest extends TestCase
             $this->assertStringNotContainsString($this->href('historical.index'), $page, "{$edition}: Historical Sales is offered to a role that may not open it");
             $this->actingAs($user->fresh())->get(route('returns.index'))->assertForbidden();
 
-            // Historical Sales is a retailer module with a permission of its own: in the row, and no longer a header button too.
+            // Historical Sales replaces Open POS in the header, not in a duplicate navigation row.
             $page = $this->pageAs($user, ['sales.view', 'historical.view'], route('invoices.index'));
             if ($edition === 'retailer') {
-                $this->assertStringContainsString($this->href('historical.index'), $this->invoicesNav($page));
+                $this->assertStringContainsString($this->href('historical.index'), $this->pageHeader($page));
                 $this->assertSame(1, substr_count($page, $this->href('historical.index')), 'Historical Sales is offered twice on one page');
             } else {
                 $this->assertStringNotContainsString($this->href('historical.index'), $page, 'a manufacturer is offered a retailer module');
                 $this->actingAs($user->fresh())->get(route('historical.index'))->assertForbidden();
             }
+        }
+    }
+
+    public function test_invoice_header_replaces_pos_and_returns_links_do_not_activate_invoices(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $html = $this->actingAs($owner)->get(route('invoices.index'))->assertOk()->getContent();
+        $header = $this->pageHeader($html);
+        $this->assertStringContainsString($this->href('historical.index'), $header);
+        $this->assertStringNotContainsString($this->href('pos.index'), $header);
+        $this->assertStringNotContainsString($this->href('returns.index'), $this->pageBody($html));
+        $this->assertStringNotContainsString('invoices-page-nav', $html);
+        $dom = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xp = new \DOMXPath($dom);
+        $returns = $xp->query('//a[@href="'.route('returns.index').'"]/ancestor::div[contains(@class,"nav-section")][1]')->item(0);
+        $this->assertNotNull($returns);
+        $this->assertSame('Sales', trim($xp->evaluate('string(div[contains(@class,"nav-section-title")])', $returns)));
+        $invoice = $xp->query('//a[@href="'.route('invoices.index').'"][contains(@class,"nav-link")]')->item(0);
+        $this->assertStringNotContainsString('/returns', $invoice->getAttribute('data-nav-match'));
+        $this->assertStringNotContainsString('/exchanges', $invoice->getAttribute('data-nav-match'));
+
+        foreach (['returns.index', 'returns.control-center'] as $route) {
+            $previous = libxml_use_internal_errors(true);
+            $dom->loadHTML('<?xml encoding="utf-8"?>'.$this->get(route($route))->assertOk()->getContent());
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+            $pageXPath = new \DOMXPath($dom);
+            $active = $pageXPath->query('//*[@id="sidebar-nav"]//a[contains(concat(" ", normalize-space(@class), " "), " active ")]');
+            $this->assertSame(1, $active->length, 'Only the current Sales destination should be highlighted.');
+            $this->assertSame(route($route), $active->item(0)->getAttribute('href'));
         }
     }
 
@@ -301,12 +335,6 @@ class MovedShortcutsAccessTest extends TestCase
     private function stockNav(string $html): string
     {
         return $this->between($html, 'class="items-page-nav', '</nav>');
-    }
-
-    /** The Invoices page's navigation row: this page and the pages that open from it. */
-    private function invoicesNav(string $html): string
-    {
-        return $this->between($html, 'class="invoices-page-nav', '</nav>');
     }
 
     /** One link's markup, from its address to its closing tag. */

@@ -254,26 +254,26 @@ async function consent(form, secret = password) {
         assert.notEqual(await toggle.getAttribute('aria-expanded'), restored);
         assert(!await retail.locator('#global-toast').evaluate(el => el.classList.contains('is-visible')));
         await retail.goto(origins[0]+'/invoices');
-        const pos = retail.getByRole('link', { name: 'Open POS', exact: true });
-        const hitHeight = await pos.evaluate(el => {
+        const historical = retail.getByRole('link', { name: 'Historical Sales', exact: true });
+        const hitHeight = await historical.evaluate(el => {
             const pseudo = getComputedStyle(el, '::after');
             return el.getBoundingClientRect().height - parseFloat(pseudo.top || 0) - parseFloat(pseudo.bottom || 0);
         });
-        assert(hitHeight >= 44, `Open POS touch height ${hitHeight}`);
-        assert(await pos.evaluate(el => {
+        assert(hitHeight >= 44, `Historical Sales touch height ${hitHeight}`);
+        assert(await historical.evaluate(el => {
             const box = el.getBoundingClientRect();
             return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y - 4));
-        }), 'Open POS must receive a tap above its visible border');
-        const posBox = await pos.boundingBox();
-        await retail.mouse.click(posBox.x + posBox.width / 2, posBox.y - 4);
-        await retail.waitForURL(origins[0]+'/pos');
+        }), 'Historical Sales must receive a tap above its visible border');
+        const historicalBox = await historical.boundingBox();
+        await retail.mouse.click(historicalBox.x + historicalBox.width / 2, historicalBox.y - 4);
+        await retail.waitForURL(origins[0]+'/historical');
         await retail.goBack();
-        await pos.waitFor({ state: 'visible' });
-        await pos.focus();
-        assert(await pos.evaluate(el => document.activeElement === el), 'Actual POS link receives keyboard focus');
+        await historical.waitFor({ state: 'visible' });
+        await historical.focus();
+        assert(await historical.evaluate(el => document.activeElement === el), 'Actual Historical Sales link receives keyboard focus');
         await retail.keyboard.press('Enter');
-        await retail.waitForURL(origins[0]+'/pos');
-        pass('phone category cards survive Turbo Back; stale toast removed; real Open POS touch target');
+        await retail.waitForURL(origins[0]+'/historical');
+        pass('phone category cards survive Turbo Back; stale toast removed; real Historical Sales touch target');
         for (const width of [390, 1440]) {
             await retail.setViewportSize({ width, height: 900 });
             await retail.goto(origins[0]+'/historical/manual');

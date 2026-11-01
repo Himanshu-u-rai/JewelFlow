@@ -20,10 +20,10 @@
  * race and interleaving harnesses). This script prints them as NOT RUN.
  *
  * What a browser does with the page (Turbo Back, where the toast sits, the
- * touch area of Open POS) cannot be exercised from PHP. This checks the page
+ * touch area of the Historical Sales header action) cannot be exercised from PHP. This checks the page
  * carries the markup those behaviours hang on and that the built bundle on
- * disk is the one holding them; the behaviours themselves were measured in a
- * real browser against the same commit.
+ * disk is the one holding them. The relocated header action requires renewed
+ * browser acceptance; source checks alone do not prove its touch behaviour.
  */
 
 use App\Models\Category;
@@ -205,19 +205,20 @@ try {
     $dash = http('GET', '/dashboard', [], $a['owner'], $jarA);
     $sidebar = between((string) $dash->getContent(), 'id="sidebar-nav"', 'class="sidebar-footer"');
     check($dash->getStatusCode() === 200 && $sidebar !== ''
-        && ! str_contains($sidebar, href('/tags')) && ! str_contains($sidebar, href('/reorder')) && ! str_contains($sidebar, href('/returns'))
+        && ! str_contains($sidebar, href('/tags')) && ! str_contains($sidebar, href('/reorder')) && str_contains($sidebar, href('/returns'))
         && str_contains($sidebar, href('/inventory/items')) && str_contains($sidebar, href('/invoices')),
-        'owner: the sidebar no longer lists Tag Printing, Reorder Alerts or Returns / Exchange; Jewellery Stock and Invoices stay', (string) $dash->getStatusCode());
+        'owner: the sidebar keeps Returns / Exchange, Jewellery Stock and Invoices; Tag Printing and Reorder Alerts open from Stock', (string) $dash->getStatusCode());
     $stock = http('GET', '/inventory/items', [], $a['owner'], $jarA);
     $stockNav = between((string) $stock->getContent(), 'class="items-page-nav', '</nav>');
     check($stock->getStatusCode() === 200 && str_contains($stockNav, href('/categories')) && str_contains($stockNav, href('/tags')) && str_contains($stockNav, href('/reorder')),
         'owner: the Stock page row offers Categories, Tag Printing and Reorder Alerts', (string) $stock->getStatusCode());
     $invoices = http('GET', '/invoices', [], $a['owner'], $jarA);
     $invoicesHtml = (string) $invoices->getContent();
-    $invoicesNav = between($invoicesHtml, 'class="invoices-page-nav', '</nav>');
-    check($invoices->getStatusCode() === 200 && str_contains($invoicesNav, href('/returns')) && str_contains($invoicesNav, href('/historical'))
+    $invoicesHeader = between($invoicesHtml, 'content-header', 'content-inner');
+    check($invoices->getStatusCode() === 200 && str_contains($invoicesHeader, href('/historical'))
+        && ! str_contains($invoicesHeader, href('/pos')) && ! str_contains($invoicesHtml, 'invoices-page-nav')
         && substr_count($invoicesHtml, href('/returns')) === 1,
-        'owner: the Invoices page row offers Historical Sales and Returns / Exchange, each once', (string) $invoices->getStatusCode());
+        'owner: Historical Sales replaces Open POS in the Invoices header; Returns / Exchange appears once in the sidebar', (string) $invoices->getStatusCode());
     $back = [];
     foreach (['/categories', '/tags', '/reorder'] as $page) {
         $r = http('GET', $page, [], $a['owner'], $jarA);
@@ -289,10 +290,10 @@ try {
     $manifest = json_decode((string) @file_get_contents(public_path('build/manifest.json')), true) ?: [];
     $css = (string) @file_get_contents(public_path('build/'.($manifest['resources/css/app.css']['file'] ?? 'missing')));
     $js = (string) @file_get_contents(public_path('build/'.($manifest['resources/js/app.js']['file'] ?? 'missing')));
-    check(str_contains($invoicesHtml, 'invoices-open-pos-btn') && str_contains($invoicesHtml, 'id="global-toast"')
+    check(str_contains($invoicesHtml, 'invoices-historical-btn') && str_contains($invoicesHtml, 'id="global-toast"')
         && str_contains($invoicesHtml, 'build/'.($manifest['resources/css/app.css']['file'] ?? 'missing'))
-        && str_contains($css, '--toast-space') && str_contains($js, '--toast-space') && (bool) preg_match('~invoices-open-pos-btn::?after\{[^}]*inset:-6px 0~', $css),
-        'bundle: the page loads the built stylesheet on disk, and that bundle holds the toast strip and the Open POS touch area', 'css '.strlen($css).' bytes, js '.strlen($js).' bytes');
+        && str_contains($css, '--toast-space') && str_contains($js, '--toast-space') && (bool) preg_match('~invoices-historical-btn::?after\{[^}]*inset:-6px 0~', $css),
+        'bundle: the page loads the built stylesheet on disk, including the toast strip and Historical Sales touch-area rule', 'css '.strlen($css).' bytes, js '.strlen($js).' bytes');
 
     // ── product preferences (Retail realm) ──────────────────────────────────
     $prefs = http('GET', '/product-preferences', [], $a['owner'], $jarA);
@@ -330,7 +331,7 @@ try {
     check($open === 1 && $requests($a['owner'])->whereNull('consumed_at')->count() === 0,
         'lifecycle: changing the owner\'s password withdraws their pending request in the same save', "open before/after {$open}/".$requests($a['owner'])->whereNull('consumed_at')->count());
     $notRun[] = 'two-product recognition on staging (approval by a Dhiran owner, finish, revoke, per-product cookies and logout): no Dhiran staging host exists and none is to be created; run between two local hosts instead';
-    $notRun[] = 'Turbo Back, toast placement and the Open POS touch area in a signed-in browser on staging: browser-only; measured locally on the same commit, with the bundle identity checked above';
+    $notRun[] = 'Turbo Back, toast placement and the relocated Historical Sales touch area in a signed-in browser on staging: browser-only; requires renewed acceptance, not established by the bundle identity check above';
 } catch (Throwable $e) {
     $failures++;
     printf("FAIL  the run stopped: %s: %s (%s:%d)\n", $e::class, $e->getMessage(), basename($e->getFile()), $e->getLine());

@@ -2,7 +2,51 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Match Loyalty, EMI and Occasions to Directory
+## Latest checkpoint — Invoice header and Returns sidebar placement
+
+Starting clean HEAD `c14634c543c8f7bafeadec0eb8b32c7993164dc8`, same isolated
+worktree/branch/sole writer. User requested removing Open POS from the Invoices
+header, placing Historical Sales there and moving Returns / Exchange into Sales.
+
+Historical Sales now occupies the existing header action position, with the same
+Retail-only/historical.view gate. Renamed its scoped CSS hook and retained existing
+styling/phone hit-area declarations. Removed the redundant navigation strip and
+its orphan CSS. POS remains accessible from Sales Counter; no POS workflow changed.
+Returns / Exchange is one ordinary Sales sidebar entry gated by returns.view,
+including roles without sales.view. Invoices no longer claims Returns/Exchanges
+in its active-route match; Returns and Operations highlight their own destinations.
+Historical-only roles retain their previous sidebar fallback. No route, backend,
+permission definition, business calculation or data changes.
+
+Impeccable refinement preserves the existing palette, icons, header and sidebar.
+Updated the navigation feature expectations, renamed the old POS touch-area test
+to InvoicesHistoricalTouchAreaTest, and synchronized existing browser/staging
+acceptance-script selectors/assertions. Those browser/staging scripts were linted
+only, NOT executed; no staging access or testing occurred.
+
+Fresh checks:
+
+- Test guard resolved testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing first.
+- RED:2navigation tests failed before UI edits;8passed. Added explicit Returns/
+  Operations active-link assertions; corrected a test-only stale DOMXPath context
+  after reparsing a new response. Focused final10tests/423assertions passed.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Navigation tests/Feature/View tests/Feature/Tables tests/Feature/Historical/HistoricalIndexRenderTest.php`
+  →92passed/1014assertions/0failures/skips. Includes both editions and restricted
+  permissions, header placement, no duplicates, sidebar section and active links.
+- `node --test tests/Frontend/*.test.mjs` →75passed/22existing optional-browser
+  skips/0failures. Vite79modules; scoped Pint, PHP/Node syntax and diff checks pass.
+- Guarded preview Blade compile,384compiled PHP lints and view:clear passed.
+- Impeccable source layout detector on the two Blade files:0mechanical findings.
+
+Evidence: `/home/himanshu/jf-table-evidence/invoice-navigation-20261102.kCnpaY/`.
+Existing browser URL-policy block respected: no retry/bypass, screenshots or fresh
+desktop/phone/tap/keyboard/Turbo browser acceptance claimed. The reused hit-area
+source contract is not rendered geometry evidence. Owner should fully refresh
+Invoices (sidebar is Turbo-permanent) and check the new placements.
+No full PHP suite/benchmark, push/deployment, production/staging, OTP/SMTP or mobile
+work. Existing preview processes and synthetic data preserved.
+
+## Previous checkpoint — Match Loyalty, EMI and Occasions to Directory
 
 Starting clean HEAD `d148caf53299189433edda3bcedf39bf0cd56879`, same isolated
 worktree/branch/sole writer. Owner requested the Directory treatment for the

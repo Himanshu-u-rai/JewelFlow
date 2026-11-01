@@ -43,22 +43,18 @@
     @endphp
 
     @php
-        // Pages that open from here since they left the sidebar, each shown by
-        // its own permission: Historical Sales (a retailer module) and Returns /
-        // Exchange. They stand in the navigation row under the header; the
-        // header keeps the invoice actions.
+        // Historical Sales stays Retail-only and uses its own view permission.
         $showHistoricalSales = (bool) auth()->user()->shop?->isRetailer() && auth()->user()->can('historical.view');
-        $showReturns = auth()->user()->can('returns.view');
     @endphp
     <x-page-header class="invoices-page-header" title="Invoices" subtitle="View and manage all sales invoices">
         <x-slot:actions>
-            @can('sales.pos')
-            <a href="{{ route('pos.index') }}"
-               class="btn btn-success btn-sm invoices-open-pos-btn">
-                <x-icon name="shopping-cart" class="w-4 h-4 mr-2" />
-                Open POS
+            @if($showHistoricalSales)
+            <a href="{{ route('historical.index') }}"
+               class="btn btn-success btn-sm invoices-historical-btn">
+                <x-icon name="history" class="w-4 h-4 mr-2" />
+                Historical Sales
             </a>
-            @endcan
+            @endif
         </x-slot:actions>
     </x-page-header>
 
@@ -76,30 +72,6 @@
         @unless($canModifyInvoices)
             @include('partials.view-only-banner', ['permission' => 'sales.void', 'message' => 'invoice management'])
         @endunless
-
-        {{-- The Invoices page's navigation row: this page and the pages that open from it.
-             They are pages of their own, so these are links and the current one is marked;
-             a role with nowhere to go from here gets no row. --}}
-        @if($showHistoricalSales || $showReturns)
-        <nav class="invoices-page-nav" aria-label="Invoices navigation">
-            <a href="{{ route('invoices.index') }}" class="invoices-page-nav-link" aria-current="page">
-                <x-icon name="file-text" size="14" />
-                Invoices
-            </a>
-            @if($showHistoricalSales)
-            <a href="{{ route('historical.index') }}" class="invoices-page-nav-link">
-                <x-icon name="history" size="14" />
-                Historical Sales
-            </a>
-            @endif
-            @if($showReturns)
-            <a href="{{ route('returns.index') }}" class="invoices-page-nav-link">
-                <x-icon name="corner-up-left" size="14" />
-                Returns / Exchange
-            </a>
-            @endif
-        </nav>
-        @endif
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 invoices-kpi-grid">

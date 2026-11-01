@@ -180,7 +180,7 @@
 
             // Pages that left this sidebar for the page they belong to: reports
             // (Close Day among them) open from the reports hub, Historical Sales
-            // and Returns / Exchange from Invoices, Installments from the
+            // from the Invoices header, Installments from the
             // Customers page's own tab, Download Reports and Import Data from
             // Settings. Each of those homes has a permission of its own, so a
             // shortcut stays here for the one user the move would strand: who
@@ -191,8 +191,8 @@
             // Categories, Tag Printing and Reorder Alerts (Stock page), Vendors
             // and Product Catalog (Masters hub) need no such shortcut: their
             // home asks for nothing they do not.
-            // Cash Book is not a moved page but an everyday ledger, and an
-            // ordinary entry for whoever may open it.
+            // Cash Book and Returns / Exchange are ordinary sidebar entries
+            // for whoever may open them.
             $navCan = fn (string $ability): bool => (bool) $authUser?->can($ability);
             $canOpenReportsHub = $navCan('reports.view');
             $canOpenSettings = $navCan('settings.view');
@@ -200,7 +200,6 @@
             $canOpenCashBook = $navCan('cash.view');
             $strandedCloseDay = ! $canOpenReportsHub && $navCan('reports.daily_closing');
             $strandedHistorical = $hasRetailer && ! $canOpenInvoices && $navCan('historical.view');
-            $strandedReturns = ! $canOpenInvoices && $navCan('returns.view');
             $strandedInstallments = $hasRetailer && $canOpenInvoices && ! $navCan('customers.view');
             $strandedExport = ! $canOpenSettings && $navCan('reports.export');
             $strandedImport = ($hasRetailer || $hasManufacturer) && ! $canOpenSettings && $navCan('imports.manage');
@@ -363,21 +362,18 @@
                             <span class="nav-icon"><x-icon name="users" size="16" /></span>
                             {{ __('Customers') }}
                         </a>
-                        {{-- Historical Sales and Returns / Exchange open from the Invoices page, so their pages
-                             light this link too (data-nav-match: see syncActiveNavLink in app.js). Operations
-                             still lights itself on /returns/control-center: the longer address wins. --}}
-                        <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) || (! $strandedReturns && request()->routeIs('returns.index', 'returns.show', 'exchanges.*')) ? 'active' : '' }}" data-nav-match="{{ implode(',', array_filter([$strandedHistorical ? '' : '/historical', $strandedReturns ? '' : '/returns,/exchanges'])) }}">
+                        {{-- Historical Sales opens from the Invoices header, so its pages light this link too. --}}
+                        <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) ? 'active' : '' }}" @unless($strandedHistorical) data-nav-match="/historical" @endunless>
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Invoices') }}
                         </a>
-                        {{-- Kept for a role with returns.view but not sales.view, who cannot open Invoices.
-                             The exchange pages are part of it (they live at /exchanges, not under /returns). --}}
-                        @if($strandedReturns)
+                        {{-- Operations still wins on /returns/control-center: the longer address wins. --}}
+                        @can('returns.view')
                         <a href="{{ route('returns.index') }}" class="nav-link {{ request()->routeIs('returns.index') || request()->routeIs('returns.show') || request()->routeIs('exchanges.*') ? 'active' : '' }}" data-nav-match="/exchanges">
                             <span class="nav-icon"><x-icon name="corner-up-left" size="16" /></span>
                             {{ __('Returns / Exchange') }}
                         </a>
-                        @endif
+                        @endcan
                         @can('returns.approve')
                         <a href="{{ route('returns.control-center') }}" class="nav-link {{ request()->routeIs('returns.control-center') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="activity" size="16" /></span>
