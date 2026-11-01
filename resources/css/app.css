@@ -17125,12 +17125,16 @@ input::-webkit-calendar-picker-indicator {
     min-width: 0;
 }
 
-.invoices-index-page .invoices-mobile-filter-toggle,
-.invoices-index-page .invoices-filter-panel-head {
+.jf-filter-shell {
+    display: contents;
+}
+
+.jf-filter-toggle,
+.jf-filter-panel-head {
     display: none;
 }
 
-.invoices-index-page .invoices-filter-panel {
+.jf-filter-panel {
     display: block;
     position: static;
     width: auto;
@@ -17140,11 +17144,11 @@ input::-webkit-calendar-picker-indicator {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--invoice-ink);
+    color: var(--cust-ink);
     overflow: visible;
 }
 
-.invoices-index-page .invoices-filter-panel::backdrop {
+.jf-filter-panel::backdrop {
     background: rgba(15, 23, 42, 0.42);
 }
 
@@ -17349,13 +17353,17 @@ input::-webkit-calendar-picker-indicator {
         flex: 1;
     }
 
-    .invoices-index-page .invoices-mobile-filter-toggle {
+    .jf-filter-toggle {
         display: inline-flex;
         gap: 7px;
         min-height: 44px;
     }
 
-    .invoices-index-page .invoices-filter-panel[data-ready] {
+    .customers-index-page .jf-filter-toggle {
+        align-self: flex-end;
+    }
+
+    .jf-filter-panel[data-ready] {
         display: none;
         position: fixed;
         top: auto;
@@ -17368,17 +17376,17 @@ input::-webkit-calendar-picker-indicator {
         overflow-y: auto;
         overscroll-behavior: contain;
         padding: 14px 14px calc(16px + env(safe-area-inset-bottom));
-        border: 1px solid var(--invoice-border);
+        border: 1px solid var(--cust-line);
         border-bottom: 0;
         border-radius: 18px 18px 0 0;
         background: #fff;
     }
 
-    .invoices-index-page .invoices-filter-panel[data-ready]:modal {
+    .jf-filter-panel[data-ready]:modal {
         display: block;
     }
 
-    .invoices-index-page .invoices-filter-panel-head {
+    .jf-filter-panel-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -17386,24 +17394,24 @@ input::-webkit-calendar-picker-indicator {
         margin-bottom: 14px;
     }
 
-    .invoices-index-page .invoices-filter-panel-head h3 {
+    .jf-filter-panel-head h3 {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
     }
 
-    .invoices-index-page .invoices-filter-panel-head button {
+    .jf-filter-panel-head button {
         min-width: 44px;
         min-height: 44px;
     }
 
-    .invoices-index-page .invoices-filter-panel .customers-directory-search-toggle {
+    .jf-filter-panel .customers-directory-search-toggle {
         display: none;
     }
 
-    .invoices-index-page .invoices-filter-panel .customers-directory-search,
-    .invoices-index-page .invoices-filter-panel .customers-directory-search-panel,
-    .invoices-index-page .invoices-filter-panel .customers-directory-status {
+    .jf-filter-panel .customers-directory-search,
+    .jf-filter-panel .customers-directory-search-panel,
+    .jf-filter-panel .customers-directory-status {
         flex: 1 1 100%;
         width: 100%;
         max-width: none;
@@ -31544,8 +31552,7 @@ a.notice-bell-item:focus-visible {
         max-width: none;
     }
 
-    /* Customer views need a full row, not the legacy single-line phone header.
-       Keep the bell in the title row and let this taller header scroll normally. */
+    /* Keep phone actions beside the bell, tabs below, and the header in page flow. */
     .content-header.customers-directory-header {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
@@ -31559,9 +31566,17 @@ a.notice-bell-item:focus-visible {
     }
 
     .content-header.customers-directory-header > .page-actions {
+        display: contents;
+    }
+
+    .content-header.customers-directory-header .customers-view-toggle {
         grid-column: 1 / -1;
         grid-row: 2;
         width: 100%;
+    }
+
+    .content-header.customers-directory-header:has(.customers-add-btn) {
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
     }
 
     .content-header.customers-directory-header > .notice-bell {
@@ -31572,6 +31587,29 @@ a.notice-bell-item:focus-visible {
     }
 
     .content-header.customers-directory-header .customers-add-btn {
+        grid-column: 3;
+        grid-row: 1;
+        width: 44px;
         min-height: 44px;
+        padding: 0;
+    }
+
+    .content-header.customers-directory-header .customers-add-label {
+        display: none;
+    }
+
+    .content-header.customers-directory-header .customers-add-btn svg {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+    }
+
+    .content-header.customers-directory-header:has(.customers-add-btn) > .notice-bell {
+        grid-column: 4;
+    }
+
+    .content-header.customers-directory-header .notice-bell-toggle {
+        width: 44px;
+        height: 44px;
     }
 }

@@ -2,7 +2,59 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact invoice register, matching Directory
+## Latest checkpoint — Customer mobile filters and header action
+
+Starting clean HEAD `31e5426f290677516585b317c10538d70146ef42`, same worktree,
+branch and sole writer. Owner requested the invoice-style mobile filter sheet on
+Customer Directory, Loyalty Points, EMI / Installments and Occasions, then moving
+Add Customer beside the bell on mobile instead of leaving a text button below.
+Final follow-up removes the With Email metric from the Directory header only;
+the other two totals and backend queries remain unchanged.
+
+All four tabs now reuse the invoice native-dialog pattern through one shared
+`responsive-filter-panel` Blade component. Each existing GET form stays inline on
+desktop and opens from a 44px Filters button on mobile. Fields, query values,
+permissions, counts, pagination and Clear links remain unchanged; Create EMI Plan
+stays outside the filter sheet. No duplicate form or query state. Close/backdrop/
+Escape dismiss; resize releases the modal for desktop; Turbo closes it before
+cache/render. Native dialog supplies the focus boundary; no custom body lock.
+Directory/Loyalty search stays visible in the phone sheet and retains the desktop
+icon disclosure. Search Escape closes the sheet instead of focusing a hidden icon.
+
+One existing permission-gated Add Customer link now becomes a named 44px icon
+beside the bell at phone widths. Desktop keeps its full label. Customer tabs stay
+on their own full-width second row; view-only users still get no Add link. The
+header stays in normal phone page flow, not a fixed overlay. No global header
+component or backend changes. Impeccable refinement reuses the incumbent palette
+and invoice pattern rather than introducing another visual system.
+
+Checks before the final one-line With Email removal:
+
+- Guard resolved `testing / pgsql / 127.0.0.1:5432 / jewelflow_testing` before tests.
+- New sheet Feature/CSS contracts failed before implementation; the five mobile
+  Add-placement CSS cases also failed before their layout change, then passed.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Navigation tests/Feature/View tests/Feature/Tables tests/Feature/Historical/HistoricalIndexRenderTest.php tests/Feature/InvoiceFlowTest.php tests/Feature/Customer/CustomerManagementTest.php`
+  → 120 passed, 1161 assertions, no failures or skips.
+- `node --test tests/Frontend/*.test.mjs` → 87 passed, 22 existing optional-browser
+  skips, no failures. Actual Alpine handlers exercised at mocked native-API/DOM
+  boundaries; CSS contracts check known selectors, not rendered geometry.
+- Vite build (79 modules), scoped Pint, PHP/Node syntax, `git diff --check`, guarded
+  preview Blade compile, all 385 compiled PHP lints and view clear passed.
+
+The final With Email removal has its own RED-to-GREEN summary test and focused
+Customer/Invoice toolbar rerun: 13 passed, 184 assertions. Blade compile, 385 PHP
+lints, view clear, scoped Pint and diff checks passed again. Broader tests above
+were not repeated for that display-only deletion.
+
+Evidence: `/home/himanshu/jf-table-evidence/customer-mobile-filters-20261102.tGmD7Y/`.
+Browser URL-policy restriction remains honored: no bypass, screenshots or claims
+of real modal focus, menu geometry, touch/keyboard/Turbo or physical-phone
+acceptance. Owner refresh Customers for visual review. No full PHP suite,
+benchmark, push, deployment or remote work. Preview processes/data and other
+worktrees preserved. Next: owner visual review of mobile header and all four
+filter sheets, plus desktop regression appearance.
+
+## Previous checkpoint — Compact invoice register, matching Directory
 
 Starting clean HEAD `7c99efbdcbceb94163a8e6586b5b512f56e46576`, same isolated
 worktree/branch/sole writer. Owner requested removing the four invoice KPI cards,

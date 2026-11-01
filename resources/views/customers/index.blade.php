@@ -36,9 +36,10 @@
             @endif
             @can('customers.create')
             <a href="{{ route('customers.create') }}"
+               aria-label="Add Customer" title="Add Customer"
                class="btn btn-success btn-sm customers-add-btn">
                 <x-icon name="user-plus" class="w-4 h-4 mr-2" />
-                Add Customer
+                <span class="customers-add-label">Add Customer</span>
             </a>
             @endcan
         </x-slot:actions>
@@ -69,54 +70,56 @@
                         @else
                             <div><dt>Gold on This Page</dt><dd>{{ number_format($pageGoldTotal, 3) }} g</dd></div>
                         @endif
-                        <div><dt>With Email</dt><dd>{{ number_format($withEmail) }}</dd></div>
                     </dl>
                 </div>
 
-                <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
-                      x-data="{ searchOpen: {{ $searchActive ? 'true' : 'false' }} }">
-                    <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
-                         @keydown.escape.stop.prevent="searchOpen = false; $refs.searchToggle.focus()">
-                        <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
-                                class="customers-directory-search-toggle" aria-label="Search customers"
-                                aria-controls="customers-search-panel" aria-expanded="{{ $searchActive ? 'true' : 'false' }}"
-                                :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide customer search' : 'Search customers'"
-                                :title="searchOpen ? 'Hide search' : 'Search customers'"
-                                @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
-                            <x-icon name="search" size="18" />
-                        </button>
-                        <div id="customers-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
-                            <label for="customers-search" class="jf-sr-only">Search customers</label>
-                            <input
-                                id="customers-search" type="search" x-ref="searchInput"
-                                name="search"
-                                value="{{ request('search') }}"
-                                placeholder="Name or mobile number..."
-                                data-suggest="customers"
-                                data-live-filter="customers-tbody"
-                                autocomplete="off" enterkeyhint="search"
-                            >
+                <x-responsive-filter-panel id="customers-filter-panel" label="Customer filters">
+                    <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
+                          x-data="{ searchOpen: {{ $searchActive ? 'true' : 'false' }} || window.innerWidth <= 768 }"
+                          @resize.window="if (window.innerWidth <= 768) searchOpen = true">
+                        <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                             @keydown.escape.stop.prevent="const panel = $el.closest('dialog'); if (panel?.matches(':modal')) panel.close(); else { searchOpen = false; $refs.searchToggle.focus(); }">
+                            <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
+                                    class="customers-directory-search-toggle" aria-label="Search customers"
+                                    aria-controls="customers-search-panel" aria-expanded="{{ $searchActive ? 'true' : 'false' }}"
+                                    :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide customer search' : 'Search customers'"
+                                    :title="searchOpen ? 'Hide search' : 'Search customers'"
+                                    @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                                <x-icon name="search" size="18" />
+                            </button>
+                            <div id="customers-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                                <label for="customers-search" class="jf-sr-only">Search customers</label>
+                                <input
+                                    id="customers-search" type="search" x-ref="searchInput"
+                                    name="search"
+                                    value="{{ request('search') }}"
+                                    placeholder="Name or mobile number..."
+                                    data-suggest="customers"
+                                    data-live-filter="customers-tbody"
+                                    autocomplete="off" enterkeyhint="search"
+                                >
+                            </div>
                         </div>
-                    </div>
-                    {{-- MASTERS PART 3: archived customers are retained, not deleted,
-                         so they stay one click away. Counts carry the same search
-                         filter as the list, so a count always matches what the
-                         option shows. Both values ride through pagination via the
-                         paginator's withQueryString(). --}}
-                    <div class="customers-directory-status" role="group" aria-label="Customer status"
-                         data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                        <label for="customers-status" class="jf-sr-only">Status</label>
-                        <select id="customers-status" name="status">
-                            <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
-                            <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
-                            <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
-                    @if($searchActive)
-                        <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
-                    @endif
-                </form>
+                        {{-- MASTERS PART 3: archived customers are retained, not deleted,
+                             so they stay one click away. Counts carry the same search
+                             filter as the list, so a count always matches what the
+                             option shows. Both values ride through pagination via the
+                             paginator's withQueryString(). --}}
+                        <div class="customers-directory-status" role="group" aria-label="Customer status"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="customers-status" class="jf-sr-only">Status</label>
+                            <select id="customers-status" name="status">
+                                <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
+                                <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
+                                <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                        @if($searchActive)
+                            <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                        @endif
+                    </form>
+                </x-responsive-filter-panel>
             </div>
 
             <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Customer records">
@@ -350,31 +353,34 @@
                         </dl>
                     </div>
 
-                    <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
-                          x-data="{ searchOpen: {{ request()->filled('loyalty_search') ? 'true' : 'false' }} }">
-                        <input type="hidden" name="view" value="loyalty">
-                        <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
-                             @keydown.escape.stop.prevent="searchOpen = false; $refs.searchToggle.focus()">
-                            <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
-                                    class="customers-directory-search-toggle" aria-label="Search loyalty members"
-                                    aria-controls="loyalty-search-panel" aria-expanded="{{ request()->filled('loyalty_search') ? 'true' : 'false' }}"
-                                    :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide loyalty search' : 'Search loyalty members'"
-                                    :title="searchOpen ? 'Hide search' : 'Search loyalty members'"
-                                    @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
-                                <x-icon name="search" size="18" />
-                            </button>
-                            <div id="loyalty-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
-                                <label for="loyalty-search" class="jf-sr-only">Search loyalty members</label>
-                                <input id="loyalty-search" type="search" x-ref="searchInput" name="loyalty_search"
-                                       value="{{ request('loyalty_search') }}" placeholder="Customer name or mobile..."
-                                       autocomplete="off" enterkeyhint="search">
+                    <x-responsive-filter-panel id="loyalty-filter-panel" label="Loyalty filters">
+                        <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls"
+                              x-data="{ searchOpen: {{ request()->filled('loyalty_search') ? 'true' : 'false' }} || window.innerWidth <= 768 }"
+                              @resize.window="if (window.innerWidth <= 768) searchOpen = true">
+                            <input type="hidden" name="view" value="loyalty">
+                            <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                                 @keydown.escape.stop.prevent="const panel = $el.closest('dialog'); if (panel?.matches(':modal')) panel.close(); else { searchOpen = false; $refs.searchToggle.focus(); }">
+                                <button type="button" data-customer-search-toggle x-cloak x-ref="searchToggle"
+                                        class="customers-directory-search-toggle" aria-label="Search loyalty members"
+                                        aria-controls="loyalty-search-panel" aria-expanded="{{ request()->filled('loyalty_search') ? 'true' : 'false' }}"
+                                        :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide loyalty search' : 'Search loyalty members'"
+                                        :title="searchOpen ? 'Hide search' : 'Search loyalty members'"
+                                        @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                                    <x-icon name="search" size="18" />
+                                </button>
+                                <div id="loyalty-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                                    <label for="loyalty-search" class="jf-sr-only">Search loyalty members</label>
+                                    <input id="loyalty-search" type="search" x-ref="searchInput" name="loyalty_search"
+                                           value="{{ request('loyalty_search') }}" placeholder="Customer name or mobile..."
+                                           autocomplete="off" enterkeyhint="search">
+                                </div>
                             </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
-                        @if(request()->filled('loyalty_search'))
-                            <a href="{{ route('customers.index', ['view' => 'loyalty']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
-                        @endif
-                    </form>
+                            <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                            @if(request()->filled('loyalty_search'))
+                                <a href="{{ route('customers.index', ['view' => 'loyalty']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                            @endif
+                        </form>
+                    </x-responsive-filter-panel>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Loyalty records">
                     <table class="w-full jf-table customers-data-table customers-data-table--loyalty">
@@ -479,23 +485,25 @@
                     </div>
 
                     <div class="customers-directory-controls">
-                        <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
-                            <input type="hidden" name="view" value="emi">
-                            <div class="customers-directory-status" role="group" aria-label="Installment status"
-                                 data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                                <label for="customers-emi-status" class="jf-sr-only">Status</label>
-                                <select id="customers-emi-status" name="emi_status">
-                                    <option value="active" {{ $installmentStatus === 'active' ? 'selected' : '' }}>Active</option>
-                                    <option value="completed" {{ $installmentStatus === 'completed' ? 'selected' : '' }}>Completed</option>
-                                    <option value="defaulted" {{ $installmentStatus === 'defaulted' ? 'selected' : '' }}>Defaulted</option>
-                                    <option value="" {{ $installmentStatus === '' ? 'selected' : '' }}>All</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
-                            @if(request()->has('emi_status'))
-                                <a href="{{ route('customers.index', ['view' => 'emi']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
-                            @endif
-                        </form>
+                        <x-responsive-filter-panel id="emi-filter-panel" label="Installment filters">
+                            <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
+                                <input type="hidden" name="view" value="emi">
+                                <div class="customers-directory-status" role="group" aria-label="Installment status"
+                                     data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                                    <label for="customers-emi-status" class="jf-sr-only">Status</label>
+                                    <select id="customers-emi-status" name="emi_status">
+                                        <option value="active" {{ $installmentStatus === 'active' ? 'selected' : '' }}>Active</option>
+                                        <option value="completed" {{ $installmentStatus === 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="defaulted" {{ $installmentStatus === 'defaulted' ? 'selected' : '' }}>Defaulted</option>
+                                        <option value="" {{ $installmentStatus === '' ? 'selected' : '' }}>All</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                                @if(request()->has('emi_status'))
+                                    <a href="{{ route('customers.index', ['view' => 'emi']) }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                                @endif
+                            </form>
+                        </x-responsive-filter-panel>
                         @can('sales.create')
                             <a href="{{ route('installments.create') }}" class="btn btn-primary btn-sm customers-directory-apply">
                                 <x-icon name="plus" size="14" class="mr-1.5" />
@@ -627,19 +635,21 @@
                         </dl>
                     </div>
 
-                    <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
-                        <input type="hidden" name="view" value="occasions">
-                        <div class="customers-directory-status" role="group" aria-label="Reminder window"
-                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                            <label for="customers-occasion-days" class="jf-sr-only">Reminder window</label>
-                            <select id="customers-occasion-days" name="occasion_days">
-                                @foreach([7, 15, 30, 60, 90] as $days)
-                                    <option value="{{ $days }}" {{ $occasionDaysAhead === $days ? 'selected' : '' }}>Next {{ $days }} days</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
-                    </form>
+                    <x-responsive-filter-panel id="occasions-filter-panel" label="Occasion filters">
+                        <form method="GET" action="{{ route('customers.index') }}" class="customers-directory-controls">
+                            <input type="hidden" name="view" value="occasions">
+                            <div class="customers-directory-status" role="group" aria-label="Reminder window"
+                                 data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                                <label for="customers-occasion-days" class="jf-sr-only">Reminder window</label>
+                                <select id="customers-occasion-days" name="occasion_days">
+                                    @foreach([7, 15, 30, 60, 90] as $days)
+                                        <option value="{{ $days }}" {{ $occasionDaysAhead === $days ? 'selected' : '' }}>Next {{ $days }} days</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                        </form>
+                    </x-responsive-filter-panel>
                 </div>
                 <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
                     <table class="w-full jf-table customers-data-table customers-data-table--occasions">

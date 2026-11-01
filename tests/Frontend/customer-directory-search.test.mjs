@@ -30,18 +30,21 @@ function fixture(source, index) {
     };
 }
 
-test('Invoice search Escape closes the native mobile filter dialog without discarding the query', () => {
-    const f = fixture(invoices, 0);
-    let closed = 0;
-    f.state.$el.closest = () => ({ matches: selector => selector === ':modal', close: () => closed++ });
-    f.escape();
-    assert.equal(closed, 1);
-    assert.equal(f.state.$refs.searchInput.value, 'Unsaved customer query');
-    assert.equal(f.state.toggleFocus, 0, 'the hidden phone search icon must not receive restored focus');
-});
+for (const [source, index, name] of [[blade, 0, 'Directory'], [blade, 1, 'Loyalty'], [invoices, 0, 'Invoices']]) {
+    test(`${name}: search Escape closes the native mobile filter dialog without discarding the query`, () => {
+        const f = fixture(source, index);
+        let closed = 0;
+        f.state.$el.closest = () => ({ matches: selector => selector === ':modal', close: () => closed++ });
+        f.escape();
+        assert.equal(closed, 1);
+        assert.equal(f.state.$refs.searchInput.value, 'Unsaved customer query');
+        assert.equal(f.state.toggleFocus, 0, 'the hidden phone search icon must not receive restored focus');
+    });
+}
 
-test('Invoice filter initialization, resizing and Turbo cleanup leave the appropriate dialog state', () => {
-    const panel = invoices.slice(invoices.indexOf('<dialog'), invoices.indexOf('<div class="invoices-filter-panel-head">'));
+test('Shared filter initialization, resizing and Turbo cleanup leave the appropriate dialog state', () => {
+    const component = readFileSync(new URL('../../resources/views/components/responsive-filter-panel.blade.php', import.meta.url), 'utf8');
+    const panel = component.slice(component.indexOf('<dialog'), component.indexOf('<div class="jf-filter-panel-head">'));
     const attr = name => panel.match(new RegExp(name + '="([^\"]*)"'))?.[1];
     let modal = false;
     const state = {

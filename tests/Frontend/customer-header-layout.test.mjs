@@ -11,7 +11,11 @@ const selectors = {
     header: ['.content-header', '.customers-page-header', '.customers-directory-header', '.content-header.customers-directory-header'],
     actions: ['.page-actions', '.content-header .page-actions', '.customers-page-header .page-actions', '.customers-directory-header .page-actions', '.content-header > :nth-child(n+3)', '.customers-page-header > :nth-child(n+3)', '.content-header.customers-directory-header > .page-actions'],
     bell: ['.notice-bell', '.content-header > .notice-bell', '.content-header.customers-directory-header > .notice-bell'],
+    bellWithAdd: ['.content-header.customers-directory-header > .notice-bell', '.content-header.customers-directory-header:has(.customers-add-btn) > .notice-bell'],
     add: ['.customers-page-header .customers-add-btn', '.customers-directory-header .customers-add-btn', '.content-header.customers-directory-header .customers-add-btn'],
+    addLabel: ['.content-header.customers-directory-header .customers-add-label'],
+    addIcon: ['.customers-page-header .customers-add-btn svg', '.content-header.customers-directory-header .customers-add-btn svg'],
+    tabs: ['.customers-directory-header .customers-view-toggle', '.content-header.customers-directory-header .customers-view-toggle'],
     directoryTrigger: ['.ui-filter-select-trigger', '.customers-index-page .customers-directory-status .ui-filter-select-trigger'],
     emiTrigger: ['.ui-filter-select-trigger', '.customers-index-page .customers-register-inline-form .ui-filter-select-trigger'],
     directoryMenu: ['.ui-filter-select-menu', '.customers-index-page .customers-directory-status .ui-filter-select-menu'],
@@ -27,8 +31,9 @@ const selectors = {
     invoiceMenuScrollbar: ['.invoices-index-page .customers-directory-status .ui-filter-select-menu::-webkit-scrollbar'],
     invoiceDates: ['.invoices-index-page .invoices-date-range'],
     invoiceDateField: ['.invoices-index-page .invoices-filter-field'],
-    invoicePanel: ['.invoices-index-page .invoices-filter-panel', '.invoices-index-page .invoices-filter-panel[data-ready]'],
-    invoicePanelOpen: ['.invoices-index-page .invoices-filter-panel', '.invoices-index-page .invoices-filter-panel[data-ready]', '.invoices-index-page .invoices-filter-panel[data-ready]:modal'],
+    filterPanel: ['.jf-filter-panel', '.jf-filter-panel[data-ready]'],
+    filterPanelOpen: ['.jf-filter-panel', '.jf-filter-panel[data-ready]', '.jf-filter-panel[data-ready]:modal'],
+    filterShell: ['.jf-filter-shell'],
 };
 
 function cascade(part, width) {
@@ -54,18 +59,26 @@ function cascade(part, width) {
 }
 
 for (const width of [320, 390, 427, 640, 768]) {
-    test(`customer header keeps phone actions below its title at ${width}px despite legacy overrides`, () => {
+    test(`customer header places Add beside the bell and tabs below at ${width}px despite legacy overrides`, () => {
         const header = cascade('header', width);
         const actions = cascade('actions', width);
         const bell = cascade('bell', width);
         assert.equal(header.display, 'grid', 'a nowrap header must not squeeze the title beside the complete tab group');
-        assert.equal(actions['grid-column'], '1 / -1', 'tabs and Add Customer need the full header width');
-        assert.equal(actions['grid-row'], '2', 'actions must not compete with the title row');
-        assert.equal(actions.width, '100%');
+        assert.equal(actions.display, 'contents', 'each action needs its own place in the header grid');
+        assert.equal(cascade('tabs', width)['grid-column'], '1 / -1');
+        assert.equal(cascade('tabs', width)['grid-row'], '2');
+        assert.equal(cascade('tabs', width).width, '100%');
         assert.equal(bell.position, 'relative', 'the notice bell must reserve its own column instead of overlaying tabs');
         assert.equal(bell['grid-column'], '3');
         assert.equal(bell['grid-row'], '1');
-        assert.equal(cascade('add', width)['min-height'], '44px');
+        assert.equal(cascade('bellWithAdd', width)['grid-column'], '4');
+        const add = cascade('add', width);
+        assert.equal(add['grid-column'], '3');
+        assert.equal(add['grid-row'], '1');
+        assert.equal(add.width, '44px');
+        assert.equal(add['min-height'], '44px');
+        assert.equal(cascade('addLabel', width).display, 'none');
+        assert.equal(cascade('addIcon', width).margin, '0');
         assert.equal(header.position, 'static', 'a multi-row phone header must scroll away on short or zoomed screens');
     });
 }
@@ -75,6 +88,7 @@ test('desktop keeps the compact flex header and sticky page context', () => {
     assert.equal(header.display, 'flex');
     assert.equal(header.position, 'sticky');
     assert.equal(cascade('actions', 1280)['grid-row'], undefined);
+    assert.equal(cascade('addLabel', 1280).display, undefined, 'desktop retains the full Add Customer label');
 });
 
 for (const part of ['Trigger', 'Menu', 'Chevron']) {
@@ -134,13 +148,17 @@ test('Invoice dates use two shrinkable columns together on narrow screens', () =
     }
 });
 
-test('Invoice filters stay inline on desktop and become a bounded bottom sheet on phones', () => {
-    assert.equal(cascade('invoicePanel', 1280).position, 'static');
+test('Shared filters stay inline on desktop and become a bounded bottom sheet on phones', () => {
+    assert.equal(cascade('filterPanel', 1280).position, 'static');
     for (const width of [320, 427]) {
-        assert.equal(cascade('invoicePanel', width).display, 'none');
-        assert.equal(cascade('invoicePanelOpen', width).display, 'block');
-        assert.equal(cascade('invoicePanelOpen', width).position, 'fixed');
-        assert.equal(cascade('invoicePanelOpen', width).bottom, '0');
-        assert.equal(cascade('invoicePanelOpen', width)['overflow-y'], 'auto');
+        assert.equal(cascade('filterPanel', width).display, 'none');
+        assert.equal(cascade('filterPanelOpen', width).display, 'block');
+        assert.equal(cascade('filterPanelOpen', width).position, 'fixed');
+        assert.equal(cascade('filterPanelOpen', width).bottom, '0');
+        assert.equal(cascade('filterPanelOpen', width)['overflow-y'], 'auto');
     }
+});
+
+test('Shared filter scope does not introduce an extra layout box into register headers', () => {
+    for (const width of [427, 1280]) assert.equal(cascade('filterShell', width).display, 'contents');
 });

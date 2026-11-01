@@ -10,6 +10,24 @@ class CustomerDirectoryToolbarUiTest extends TestCase
 {
     use CreatesTestTenant, RefreshDatabase;
 
+    public function test_add_customer_remains_one_named_header_link_for_the_mobile_icon_and_desktop_label(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $links = $xp->query('//a[contains(@class,"customers-add-btn")]');
+        $this->assertSame(1, $links->length);
+        $link = $links->item(0);
+        $this->assertSame(route('customers.create'), $link->getAttribute('href'));
+        $this->assertSame('Add Customer', $link->getAttribute('aria-label'));
+        $this->assertSame('Add Customer', trim($xp->evaluate('string(.//span[@class="customers-add-label"])', $link)));
+        $this->assertSame(1, $xp->query('.//svg', $link)->length);
+
+        $this->grantOnlyPermissions($owner, ['customers.view']);
+        $xp = $this->xpath($this->get('/customers')->assertOk()->getContent());
+        $this->assertSame(0, $xp->query('//a[contains(@class,"customers-add-btn")]')->length);
+    }
+
     public function test_directory_status_uses_the_same_dropdown_configuration_as_the_emi_filter(): void
     {
         [$owner] = $this->createRetailerTenant();
@@ -46,8 +64,9 @@ class CustomerDirectoryToolbarUiTest extends TestCase
         foreach ($xp->query('./div', $summary) as $metric) {
             $values[trim($xp->evaluate('string(dt)', $metric))] = trim($xp->evaluate('string(dd)', $metric));
         }
-        // Keep the incumbent scopes: selected customer total, all invoices, all email addresses.
-        $this->assertSame(['Total Customers' => '2', 'Total Purchases' => '0', 'With Email' => '2'], $values);
+        // Keep the incumbent scopes: selected customer total and all invoices.
+        $this->assertSame(['Total Customers' => '2', 'Total Purchases' => '0'], $values);
+        $this->assertSame(0, $xp->query('//dl[@aria-label="Customer summary"]//dt[text()="With Email"]')->length);
     }
 
     public function test_expanded_search_preserves_query_status_counts_and_filtered_pagination_for_view_only_users(): void
@@ -153,6 +172,32 @@ class CustomerDirectoryToolbarUiTest extends TestCase
                 $this->assertSame(1, $xp->query('.//*[contains(@class,"customers-directory-status")][@data-enhance-selects-placement="viewport"]', $form)->length);
             }
         }
+    }
+
+    public function test_each_customer_tab_has_a_mobile_filter_dialog_without_duplicating_its_form(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/customers')->assertOk()->getContent());
+        $ids = [];
+        foreach (['customers' => ['search', 'status'], 'loyalty' => ['view', 'loyalty_search'], 'emi' => ['view', 'emi_status'], 'occasions' => ['view', 'occasion_days']] as $view => $fields) {
+            $panel = $xp->query('//*[@data-list-panel][@x-show="view === \''.$view.'\'"]')->item(0);
+            $toggle = $xp->query('.//button[@data-filter-toggle]', $panel)->item(0);
+            $this->assertNotNull($toggle, $view.' needs the same mobile filter button as Invoices.');
+            $this->assertSame('dialog', $toggle->getAttribute('aria-haspopup'));
+            $id = $toggle->getAttribute('aria-controls');
+            $this->assertNotContains($id, $ids);
+            $ids[] = $id;
+            $dialog = $xp->query('.//dialog[@id="'.$id.'"]', $panel)->item(0);
+            $this->assertNotNull($dialog);
+            $this->assertNotEmpty($dialog->getAttribute('aria-label'));
+            $this->assertSame(1, $xp->query('.//form[@method="GET"]', $panel)->length);
+            foreach ($fields as $field) {
+                $this->assertSame(1, $xp->query('.//input[@name="'.$field.'"] | .//select[@name="'.$field.'"]', $dialog)->length);
+            }
+        }
+        $this->assertSame(0, $xp->query('//dialog//a[@href="'.route('installments.create').'"]')->length, 'Create EMI Plan is an action, not a filter.');
+        $this->assertSame(1, $xp->query('//a[@href="'.route('installments.create').'"]')->length);
     }
 
     private function xpath(string $html): \DOMXPath

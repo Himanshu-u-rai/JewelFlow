@@ -52,7 +52,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner invoices-index-page jf-skeleton-host is-loading" data-list-workspace x-data="{}">
+    <div class="content-inner invoices-index-page jf-skeleton-host is-loading" data-list-workspace>
 
         @php
             $canModifyInvoices = auth()->user()->can('sales.void')
@@ -74,23 +74,7 @@
                     </dl>
                 </div>
 
-                <button type="button" class="btn btn-secondary btn-sm invoices-mobile-filter-toggle" x-cloak
-                        data-invoice-filter-toggle aria-label="Filter invoices" aria-haspopup="dialog" aria-controls="invoices-filter-panel"
-                        @click="$refs.invoiceFilters.close(); $refs.invoiceFilters.showModal()">
-                    <x-icon name="list-filter" size="16" />
-                    Filters
-                </button>
-                <dialog open id="invoices-filter-panel" x-ref="invoiceFilters" class="invoices-filter-panel" aria-label="Invoice filters"
-                        x-init="$el.dataset.ready = 'true'; $el.open = window.innerWidth > 768"
-                        @resize.window="if (window.innerWidth > 768) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) $el.close()"
-                        @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()"
-                        @click="if ($event.target === $el && $event.clientY < $el.getBoundingClientRect().top) $el.close()">
-                    <div class="invoices-filter-panel-head">
-                        <h3>Filters</h3>
-                        <button type="button" class="btn btn-secondary btn-sm" aria-label="Close filters" @click="$refs.invoiceFilters.close()">
-                            <x-icon name="x" size="18" />
-                        </button>
-                    </div>
+                <x-responsive-filter-panel id="invoices-filter-panel" label="Invoice filters">
                     <form method="GET" action="{{ route('invoices.index') }}" class="invoices-register-toolbar customers-directory-controls"
                           x-data="{ searchOpen: {{ request()->filled('search') ? 'true' : 'false' }} || window.innerWidth <= 768 }"
                           @resize.window="if (window.innerWidth <= 768) searchOpen = true">
@@ -148,7 +132,7 @@
                             @endif
                         </span>
                     </form>
-                </dialog>
+                </x-responsive-filter-panel>
             </div>
 
             @if($hasInvoiceFilters)

@@ -89,7 +89,7 @@ class InvoiceRegisterUiTest extends TestCase
         [$owner] = $this->createRetailerTenant();
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get('/invoices')->assertOk()->getContent());
-        $toggle = $xp->query('//button[@data-invoice-filter-toggle]')->item(0);
+        $toggle = $xp->query('//button[@data-filter-toggle]')->item(0);
         $this->assertNotNull($toggle);
         $this->assertSame('button', $toggle->getAttribute('type'));
         $this->assertSame('dialog', $toggle->getAttribute('aria-haspopup'));
