@@ -15598,15 +15598,15 @@ input::-webkit-calendar-picker-indicator {
 /* Masters hub: flat navigation links using the incumbent ERP palette. */
 .content-inner.masters-page {
     max-width: none;
-    gap: 24px;
+    gap: 28px;
 }
 
 .masters-section h2 {
-    margin: 0 0 10px;
+    margin: 0 0 12px;
     color: var(--jf-erp-ink);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .masters-links {
