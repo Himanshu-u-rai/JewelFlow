@@ -2,7 +2,125 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Masters grouped list (supersedes cards)
+## Latest checkpoint — responsive list workspaces and scrollbars
+
+Source commit `07b42d0a9e4aee1eabea83c44d13f1e30177ef36`, parent
+`76a331220d22381268e0746d6f8f61e4f76cc345`, subject
+`fix(tables): retain list controls while records scroll`.
+Same isolated ui-integration worktree/feature/table-consistency, sole writer.
+Clean start; no unidentified work discarded. This checkpoint is documentation only.
+
+Shared opt-in layout measures actual remaining viewport across Retail's internal
+page scroller and Dhiran/admin document layouts. At >=1024x800, actions, tabs,
+KPIs, filters and pagination remain outside vertically scrolling rows; original
+table headers are sticky, including existing pinned action-column intersections.
+No duplicated header table, fixed table height, dependency or body overflow rule.
+Short/narrow, unavailable observers, multiple visible lists, or controls too tall
+for a12rem minimum row area fall back to ordinary page flow. Lifecycle handles
+font/header resizing, Alpine visibility and Turbo cleanup/restoration. Native
+scrollbars use the owner's14px/3px-radius sample in existing amber/light palettes,
+with Firefox fallback and forced-colors reset. No business calculation changes.
+
+Exact source files (29):
+
+- `resources/css/tables.css`, `resources/js/app.js`, new `resources/js/list-workspace.js`.
+- `resources/views/customers/index.blade.php` (4tabs), `vendors/index.blade.php`,
+  `invoices/index.blade.php`, `quick-bills/index.blade.php`, `installments/index.blade.php`,
+  `inventory/items/index.blade.php` (stock register ONLY), `inventory/purchases/index.blade.php`,
+  `karigars/index.blade.php`, `products/index.blade.php`, `job-orders/index.blade.php`,
+  `karigar-invoices/index.blade.php` (all under `resources/views/`).
+- `resources/views/dhiran/borrowers/index.blade.php`, `dhiran/loans.blade.php` and
+  `dhiran/reports/{active,overdue,interest,forfeiture,profitability,cashbook}.blade.php`.
+- `resources/views/super-admin/{shops,users,subscriptions,invoices,edition-requests}/index.blade.php`.
+  Selected-shop toolbar reserves its own space in fitted mode; no business action changed.
+- New `tests/Feature/Tables/ListWorkspaceUiTest.php` and `tests/Frontend/list-workspace.test.mjs`.
+
+24 templates/27regions. Existing static inventory remains214=178shared+32exceptions+
+4editable grids. This does not claim every table is a viewport workspace. Repairs
+includes intake, Historical has two independent registers, Returns/Exchange mixes
+workflows, Reorder mixes alerts/rules, Cash Book has a drawer form, Staff has cards/
+role sections. These, Stock Aging/Sell Trend analytics, detail pages, dashboards,
+onboarding, print/PDF/email/receipts and editable POS/Historical/receive grids stay
+normal flow. Other non-register/reporting documents are not globally opted in.
+
+Verification actually performed:
+
+```bash
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables tests/Feature/Customer/CustomerManagementTest.php
+#56 passed /357 assertions,0 failures/skips
+node --test tests/Frontend/list-workspace.test.mjs tests/Frontend/table-row-actions.test.mjs
+#18 passed,0 failures/skips
+node --test tests/Frontend/*.test.mjs
+#57 passed,22 existing optional customer-photo browser tests skipped,0 failed
+npx vite build
+#79 modules; build artifacts remain ignored/uncommitted
+php8.2 artisan view:cache
+find storage/framework/views -maxdepth 1 -name '*.php' -print0 | xargs -0 -r -n1 php8.2 -l
+#383 compiled views linted
+php8.2 artisan view:clear
+git diff --name-only -- '*.php' | xargs -r -n1 php8.2 -l
+php8.2 -l tests/Feature/Tables/ListWorkspaceUiTest.php
+node --check resources/js/list-workspace.js
+node --check resources/js/app.js
+git diff --check
+```
+
+Resolved guard verified before destructive setup and again at closure: testing,
+pgsql,127.0.0.1:5432,exactly jewelflow_testing. Private demo55432 untouched by tests.
+RED recorded before module/markers. Additional test fixture corrections (Retail
+job-work edition, Dhiran host/email and deterministic created_at ordering) changed
+only the new test file, no middleware bypass/application behavior. Full PHP suite
+not repeated for this scoped layout change; prior full-suite evidence stays prior.
+
+Actual authenticated local browser evidence:
+
+- Customers31 synthetic rows: search plus pages1/2/3(15/15/1); wheel moves rows557px
+  while page stays0. Sticky head top378.375 equals row viewport top. Last real row
+  bottom897.375<=viewport897.797; pager bottom950.797. First/last focused View and
+  BODY/top-layer labels visible; last focused button844.375..880.375 is unobscured.
+  Loyalty panel remeasures. View and repeated safe Back/Forward restore fitting.
+-1440x1000 and1024x800 fit (latter330px row viewport/pager bottom762.5).1440x650
+  and960x640 revert to page flow;390x844 retains mobile cards with no page overflow.
+ 960x640 is an effective-viewport check, NOT actual browser zoom evidence.
+-1024px Invoices horizontal wheel337px: head/cell left both-96, pinned action
+  right both1002.797, no horizontal page overflow. Status dropdown opened/closed.
+- Normal local Dhiran login: existing synthetic borrower/loan; headers sticky,
+  page fits1000px.390px Borrowers table820px stays inside324px region, no page overflow.
+- Normal local admin login via log-mail challenge: Users5 demo records, Shops2.
+  Selection reserves78px toolbar rather than covering rows/footer; cleared without
+  submission.390px Users table720px stays in360px region, no page overflow.
+-23of24templates opened:9Retail registers +8Dhiran +5admin +Customers. Products
+  has manufacturer HTTP/render coverage only. Empty financial/report message rows
+  are NOT evidence of populated reports; no loans/accounting entries created.
+
+Limits: native Tab/PageDown attempts did not advance under this browser driver;
+focus visibility was verified, but a complete real keyboard walkthrough is still
+manual. Physical phone, actual browser zoom, screen reader, Firefox/forced-colors
+rendering, manufacturer browser and densely populated financial reports remain
+unrun. Impeccable's single scoped scan found one inherited hidden Products modal
+img src=""; baseline identical and openImageModal fills src before display. It was
+not changed/waived as an unrelated scrolling defect. No blanket theme/CSS rewrite.
+
+External evidence remains `/home/himanshu/jf-table-evidence/takeover-20261101.KzNebv/`:
+`LIST-WORKSPACE-COVERAGE.md`, `list-workspace-live-coverage.json`, RED/final PHP and
+frontend logs, build/source/Blade lint logs and detector JSON. Representative shots:
+`list-customers-desktop.jpg`, `list-customers-phone.jpg`, `list-customers-short.jpg`,
+`list-customers-reduced-viewport.jpg`, `list-dhiran-borrowers-desktop.jpg`,
+`list-dhiran-loans-desktop.jpg`, `list-dhiran-borrowers-phone.jpg`,
+`list-admin-users-desktop.jpg`, `list-admin-users-phone.jpg`,
+`list-admin-selection-desktop.jpg` (all synthetic data).
+
+No customer/financial mutations/new fixtures, account deletion, service interruption
+or deployment. Synthetic logins/local log-mail challenge and transient GET filters/
+tabs/selection only. Initial localhost /dhiran/login unexpectedly followed its
+existing remote login alias; no remote credentials/forms/actions followed. All
+Dhiran acceptance then used explicit `http://dhiran.localhost:8001` exclusively.
+Preview8001/private PostgreSQL55432 remain running. Next: owner visual review and
+manual native-keyboard/zoom check. Owner additionally asked why Search/Status look
+different: measured both40px height/same border/background/radius/shadow; different
+widths and icon/arrow padding explain proportions. No extra filter redesign made.
+
+## Previous checkpoint — Masters grouped list (supersedes cards)
 
 - Owner explicitly approved a non-card design: plain grouped headings and slim
   full-width clickable rows with icons, titles, descriptions, chevrons and light
