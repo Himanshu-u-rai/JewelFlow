@@ -225,7 +225,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="jf-table-actions jf-table-actions--center">
                                         <a href="{{ route('customers.show', $customer) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
+                                        @can('customers.edit')
                                         <a href="{{ route('customers.edit', $customer) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                        @endcan
                                         @can('customers.delete')
                                             @if($customer->is_active)
                                                 <form action="{{ route('customers.archive', $customer) }}" method="POST" class="inline"

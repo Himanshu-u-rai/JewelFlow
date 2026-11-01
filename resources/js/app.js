@@ -7,9 +7,11 @@ import { registerHistoricalManual } from './historical-manual';
 import { initializeCustomerPhotos } from './customer-photo';
 import { showFlashes, toastSettings } from './toast';
 import { initializeChallanShare } from './repair-challan-share';
+import { initializeRowActionLabels } from './table-row-actions';
 
 initializeCustomerPhotos();
 initializeChallanShare();
+initializeRowActionLabels();
 
 let toastTimer = null;
 let toastDuration = 4000;

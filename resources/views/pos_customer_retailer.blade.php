@@ -1690,7 +1690,7 @@
                                         <th>Rhodium</th>
                                         <th>Other</th>
                                         <th>Total</th>
-                                        <th></th>
+                                        <th><span class="jf-sr-only">Actions</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1731,7 +1731,7 @@
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.otherCharges)"></span></td>
                                             <td><span class="items-table-total" x-text="'₹' + money(itm.selling)"></span></td>
                                             <td class="items-table-action-cell">
-                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove">&times;</button>
+                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -1760,7 +1760,7 @@
                                         <th>Making</th>
                                         <th>Stone</th>
                                         <th>Total</th>
-                                        <th></th>
+                                        <th><span class="jf-sr-only">Actions</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1803,7 +1803,7 @@
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.stoneCharges)"></span></td>
                                             <td><span class="items-table-total" x-text="'₹' + money(itm.selling)"></span></td>
                                             <td class="items-table-action-cell">
-                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove">&times;</button>
+                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -1841,7 +1841,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="items-mobile-total">
-                                                    <button class="items-mobile-remove" @click="removeItem(idx)" title="Remove">&times;</button>
+                                                    <button class="items-mobile-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
                                                     <span class="items-mobile-total-label">Total</span>
                                                     <span class="items-mobile-total-value" x-text="'₹' + money(itm.selling)"></span>
                                                 </div>

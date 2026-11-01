@@ -73,7 +73,7 @@ class RepairPageRevisitTest extends TestCase
         // The handler stays on the document after the user leaves the list, and Escape
         // on any other page reached closeDeliverModal() with no #deliverModal to close.
         $this->assertStringContainsString(
-            "document.getElementById('deliverModal')?.classList.add('hidden')",
+            "document.getElementById('deliverModal')?.close()",
             $this->pageScripts()['list']
         );
     }

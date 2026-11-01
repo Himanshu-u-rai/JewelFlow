@@ -60,7 +60,7 @@
             outline: 2px solid rgba(198, 90, 30, 0.12);
             outline-offset: 1px;
         }
-        .r-input::placeholder, .r-textarea::placeholder { color: #94a3b8; font-weight: 400; }
+        .r-input::placeholder, .r-textarea::placeholder { color: var(--r-muted); font-weight: 400; }
         .r-select {
             appearance: none; -webkit-appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -99,7 +99,7 @@
             background-repeat: no-repeat; background-position: center; transition: transform .15s;
         }
         .r-dd-trigger.open::after { transform: translateY(-50%) rotate(180deg); }
-        .r-dd-trigger .r-dd-placeholder { color: #9ca3af; font-weight: 400; }
+        .r-dd-trigger .r-dd-placeholder { color: var(--r-muted); font-weight: 400; }
         .r-dd-panel {
             display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 18;
             background: #fff; border: 1px solid var(--r-accent); border-top: none;
@@ -125,17 +125,19 @@
             border: none; border-bottom: 1px solid #f1f5f9; background: #f8fafc;
             color: var(--r-ink); outline: none;
         }
-        .r-dd-search::placeholder { color: #9ca3af; }
+        .r-dd-search::placeholder { color: var(--r-muted); }
         .r-dd-search-icon { position: absolute; left: 12px; top: 8px; color: var(--r-muted); }
         .r-dd-list { max-height: 170px; overflow-y: auto; }
         .r-dd-opt {
+            display: block; width: 100%; text-align: left; background: #ffffff;
             padding: 8px 12px; cursor: pointer; transition: background .1s;
             border-bottom: 1px solid #f8fafc;
         }
         .r-dd-opt:last-child { border-bottom: none; }
         .r-dd-opt:hover, .r-dd-opt.active { background: var(--r-accent-soft); }
-        .r-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--r-ink); }
-        .r-dd-opt-sub { font-size: 11px; color: var(--r-muted); margin-top: 1px; }
+        .r-dd-opt:focus-visible { outline: 2px solid var(--r-accent); outline-offset: -2px; background: var(--r-accent-soft); }
+        .r-dd-opt-name { display: block; font-size: 13px; font-weight: 600; color: var(--r-ink); }
+        .r-dd-opt-sub { display: block; font-size: 11px; color: var(--r-muted); margin-top: 1px; }
         .r-dd-empty { padding: 14px; text-align: center; color: var(--r-muted); font-size: 12px; }
         .r-dd-quick-add {
             display: grid;
@@ -214,9 +216,20 @@
 
         .repairs-table-shell {
             overflow-x: auto;
+            overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-x: contain;
             max-width: 100%;
+            scrollbar-width: thin;
+            scrollbar-color: var(--r-border) transparent;
+        }
+        .repairs-table-shell::-webkit-scrollbar { width: 8px; height: 8px; }
+        .repairs-table-shell::-webkit-scrollbar-track { background: transparent; }
+        .repairs-table-shell::-webkit-scrollbar-thumb {
+            border: 2px solid transparent;
+            border-radius: 8px;
+            background: var(--r-border);
+            background-clip: padding-box;
         }
 
         .repairs-table {
@@ -230,47 +243,93 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .repairs-cust-col > div { max-width: 200px; }
-        .repairs-kpi-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        .repairs-cust-col > div { max-width: 200px; white-space: normal; }
+        .repairs-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 20px;
         }
-        .repairs-kpi-card {
-            min-height: 74px;
-            border-color: var(--r-border-soft) !important;
-            border-radius: 12px !important;
-            background: #ffffff !important;
-            color: var(--r-ink) !important;
-            transition: border-color 160ms ease, background-color 160ms ease, transform 120ms ease;
-        }
-        .repairs-kpi-card:hover {
-            border-color: var(--r-border) !important;
-            background: #fffdfb !important;
-        }
-        .repairs-kpi-card:active {
-            transform: scale(0.99);
-        }
-        .repairs-kpi-icon {
-            border: 1px solid var(--r-border-soft);
-            background: var(--r-accent-soft) !important;
-            color: var(--r-accent) !important;
-            border-radius: 10px !important;
-        }
-        .repairs-kpi-title {
-            color: #64748b !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            letter-spacing: .04em !important;
-        }
-        .repairs-kpi-value {
-            color: var(--r-ink) !important;
-            font-size: clamp(22px, 2vw, 28px) !important;
-            font-weight: 600 !important;
-            line-height: 1 !important;
-            font-variant-numeric: tabular-nums;
-        }
-
         .repairs-layout > * {
             min-width: 0;
+        }
+        .repairs-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            align-items: start;
+            gap: 16px;
+            padding: 18px;
+        }
+        .repairs-form > * { min-width: 0; }
+        .repairs-form .r-label { flex-wrap: wrap; row-gap: 2px; }
+        .repairs-form .r-textarea { min-height: 64px; }
+        .repairs-form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid var(--r-border-soft);
+            padding-top: 14px;
+        }
+        .repairs-form-actions .btn { min-height: 44px; }
+        .repairs-register-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+            min-width: 0;
+            gap: 12px;
+        }
+        .repairs-list-views {
+            display: inline-flex;
+            flex-shrink: 0;
+            gap: 2px;
+            border: 1px solid var(--r-border-soft);
+            border-radius: 10px;
+            background: #ffffff;
+            padding: 3px;
+        }
+        .repairs-list-views a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 6px 10px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            color: var(--r-ink-soft);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .repairs-list-views a[aria-current="page"] {
+            border-color: #fed7aa;
+            background: var(--r-accent-soft);
+            color: var(--r-accent-dark);
+        }
+        .repairs-list-views a:focus-visible { outline: 2px solid var(--r-accent); outline-offset: 2px; }
+        .repairs-register-search { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+        .repairs-search-submit { position: absolute; right: 5px; top: 0; bottom: 0; margin-block: auto; width: 34px; height: 34px; min-height: 34px; padding: 0; }
+        .repairs-search-submit,
+        .repairs-search-submit:hover,
+        .repairs-search-submit:active { transform: none; }
+        .repairs-row-view { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+        #repairsTbody tr[data-search] { cursor: pointer; }
+        @media (max-width: 1100px) {
+            .repairs-table-card .repairs-card-header { flex-wrap: wrap; }
+            .repairs-register-toolbar { flex-basis: 100%; justify-content: space-between; }
+        }
+        @media (min-width: 640px) {
+            .repairs-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .repairs-field--photo { grid-column: 1 / -1; }
+            .repairs-form-pair .r-label, .repairs-field--photo > .r-label {
+                min-height: 40px;
+                align-content: flex-start;
+            }
+        }
+        @media (min-width: 1100px) {
+            .repairs-form { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+            .repairs-field--customer { grid-column: span 3; }
+            .repairs-field--item { grid-column: span 5; }
+            .repairs-field--metal, .repairs-field--cost { grid-column: span 2; }
+            .repairs-form-pair, .repairs-field--photo { grid-column: span 4; }
+            .repairs-field--notes { grid-column: span 6; }
         }
 
         .repairs-form-card,
@@ -335,12 +394,12 @@
         .repairs-data-table tbody tr:hover {
             background: #fff7ed !important;
         }
-        /* table layout: Customer and Item wrap instead of widening the table; the action cell is two rows of controls */
-        .repairs-table > tbody > tr > td:nth-child(2),
-        .repairs-table > tbody > tr > td:nth-child(3) { white-space: normal; min-width: 96px; overflow-wrap: anywhere; }
+        /* Descriptions may wrap; identifiers and numeric values stay on one line. */
+        .repairs-table .repairs-cust-col,
+        .repairs-table .repairs-item-col { white-space: normal; min-width: 96px; overflow-wrap: anywhere; }
         .repairs-table > thead > tr > th:last-child,
         .repairs-table > tbody > tr > td.repairs-action-cell { width: 1%; white-space: nowrap; }
-        .repairs-action-row { flex-wrap: nowrap; justify-content: flex-start; }
+        .repairs-action-row { flex-wrap: nowrap; justify-content: flex-end; min-width: max-content; }
         .repairs-chip {
             display: inline-flex;
             align-items: center;
@@ -393,19 +452,28 @@
             color: #ffffff !important;
         }
         .repairs-status-select {
-            min-height: 30px;
+            width: auto;
+            min-width: 118px;
+            min-height: 36px;
             border: 1px solid var(--r-border);
-            border-radius: 9px;
+            border-radius: 8px;
             background-color: #ffffff;
             color: #334155;
             padding: 0 28px 0 10px;
             font-size: 12px;
             font-weight: 600;
         }
-        .repairs-status-select:focus {
-            border-color: var(--r-accent);
-            outline: 2px solid rgba(198, 90, 30, .12);
-            outline-offset: 1px;
+        .content-inner .repairs-status-select:focus {
+            border-color: var(--r-border) !important;
+            box-shadow: none !important;
+            outline: none;
+        }
+        .content-inner .repairs-status-select:focus-visible {
+            outline: 2px solid var(--r-accent);
+            outline-offset: 2px;
+        }
+        @media (pointer: coarse) {
+            .repairs-status-select { min-height: 44px; }
         }
         .repairs-mobile-list {
             display: none;
@@ -449,6 +517,10 @@
             justify-content: flex-start;
             margin-top: 12px;
         }
+        .repairs-mobile-actions .btn,
+        .repairs-mobile-actions .repairs-status-select {
+            min-height: 44px;
+        }
         .repairs-empty-state {
             display: grid;
             place-items: center;
@@ -462,20 +534,11 @@
             color: #cbd5e1;
             margin-bottom: 10px;
         }
-        .repairs-delivered-filter {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 14px;
-            font-size: 13px;
-        }
-        .repairs-delivered-filter a {
-            color: #334155;
-            font-weight: 600;
-        }
         #deliverModal {
-            background: rgba(15, 23, 42, .42) !important;
+            width: 100%; height: 100%; max-width: none; max-height: none;
+            margin: 0; padding: 0; border: 0; background: transparent !important;
         }
+        #deliverModal::backdrop { background: rgba(15, 23, 42, .42); }
         #deliverModal .btn-success {
             border-color: var(--r-accent) !important;
             background: var(--r-accent) !important;
@@ -520,53 +583,8 @@
             .repairs-management-page {
                 padding-inline: 12px !important;
             }
-            .content-inner .repairs-kpi-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: 8px;
-                margin-bottom: 14px;
-            }
-
-            .repairs-kpi-grid > div {
-                padding: 10px 12px;
-                border-radius: 12px;
-            }
-
-            .repairs-kpi-grid > div .flex {
-                gap: 9px;
-            }
-
-            .repairs-kpi-grid > div [class*="p-2"] {
-                padding: 6px;
-                flex-shrink: 0;
-            }
-
-            .repairs-kpi-grid > div [class*="p-2"] svg {
-                width: 14px;
-                height: 14px;
-            }
-
-            .repairs-kpi-grid > div .text-xs {
-                font-size: 10px;
-                letter-spacing: 0.04em;
-            }
-
-            .repairs-kpi-grid > div .text-xl {
-                font-size: 22px;
-                line-height: 1.1;
-            }
-
             .repairs-layout {
                 gap: 14px;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .repairs-register-column {
-                order: 1;
-            }
-
-            .repairs-form-column {
-                order: 2;
             }
 
             .repairs-form-card,
@@ -583,6 +601,11 @@
                 padding: 14px;
                 gap: 14px;
             }
+            .repairs-form-actions .btn { width: 100%; }
+            .repairs-register-toolbar { flex-wrap: wrap; }
+            .repairs-list-views { width: 100%; }
+            .repairs-list-views a { flex: 1; justify-content: center; min-height: 44px; }
+            .repairs-register-search { flex-basis: 100%; min-width: 0; max-width: none; }
 
             .repairs-card-header {
                 padding: 14px;
@@ -612,15 +635,17 @@
             }
 
             .repairs-mobile-actions .btn {
-                min-height: 32px;
+                min-height: 44px;
                 padding: 6px 9px;
                 font-size: 12px;
             }
 
             .repairs-status-select {
-                min-height: 32px;
+                min-height: 44px;
                 font-size: 12px;
             }
+            .repairs-register-search .r-input { min-height: 54px; }
+            .repairs-search-submit { width: 44px; height: 44px; min-height: 44px; }
 
             .repairs-empty-state {
                 min-height: 180px;
@@ -640,7 +665,6 @@
             }
         }
 
-        .repairs-management-page .repairs-kpi-card,
         .repairs-management-page .repairs-surface-card,
         .repairs-management-page .repairs-mobile-card,
         .repairs-management-page .r-modal-card,
@@ -663,10 +687,6 @@
 
     <div class="content-inner repairs-management-page">
         @php
-            $receivedCount   = ($statusCounts['received']   ?? 0) + ($statusCounts['pending'] ?? 0);
-            $inRepairCount   = $statusCounts['in_repair']   ?? 0;
-            $readyCount      = $statusCounts['ready']       ?? 0;
-            $deliveredCount  = $statusCounts['delivered']   ?? 0;
             $canModifyRepairs = auth()->user()->can('repairs.create')
                 || auth()->user()->can('repairs.edit')
                 || auth()->user()->can('repairs.delete');
@@ -675,67 +695,10 @@
             @include('partials.view-only-banner', ['permission' => 'repairs.edit', 'message' => 'repair management'])
         @endunless
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 repairs-kpi-grid">
-            <div class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 text-slate-600 rounded-lg p-2 repairs-kpi-icon">
-                        <x-icon name="inbox" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">Received</p>
-                        <p class="text-xl font-semibold text-gray-900 repairs-kpi-value">{{ $receivedCount }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-lg p-2 repairs-kpi-icon">
-                        <x-icon name="settings" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">In Repair</p>
-                        <p class="text-xl font-semibold text-gray-900 repairs-kpi-value">{{ $inRepairCount }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-blue-100 text-blue-700 rounded-lg p-2 repairs-kpi-icon">
-                        <x-icon name="badge-check" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">Ready</p>
-                        <p class="text-xl font-semibold text-gray-900 repairs-kpi-value">{{ $readyCount }}</p>
-                    </div>
-                </div>
-            </div>
-            {{-- Delivered repairs were hidden from the list forever (H4). This
-                 KPI card now links to the delivered filter so repair history is
-                 reachable after billing. --}}
-            <a href="{{ route('repairs.index', ['status' => 'delivered']) }}" class="bg-white rounded-lg border border-gray-200 p-4 repairs-kpi-card block hover:border-emerald-300 transition" title="View delivered repairs">
-                <div class="flex items-center gap-3">
-                    <div class="bg-emerald-100 text-emerald-700 rounded-lg p-2 repairs-kpi-icon">
-                        <x-icon name="check" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500 repairs-kpi-title">Delivered</p>
-                        <p class="text-xl font-semibold text-gray-900 repairs-kpi-value">{{ $deliveredCount }}</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-        @if(request('status') === 'delivered')
-            <div class="repairs-delivered-filter">
-                <span class="repairs-chip repairs-chip--success">Showing delivered repairs</span>
-                <a href="{{ route('repairs.index') }}">Back to active repairs</a>
-            </div>
-        @endif
-
-        @php $canCreateRepair = auth()->user()->can('repairs.create'); @endphp
-        <div class="grid grid-cols-1 {{ $canCreateRepair ? 'lg:grid-cols-3' : 'lg:grid-cols-1' }} gap-6 repairs-layout">
+        <div class="repairs-layout">
             @can('repairs.create')
             <!-- New Repair Form -->
-            <div class="lg:col-span-1 repairs-form-column">
+            <div class="repairs-form-column">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden repairs-form-card repairs-surface-card">
                     <div class="repairs-card-header">
                         <div>
@@ -747,15 +710,15 @@
                         </div>
                     </div>
                     
-                    <form method="POST" action="{{ route('repairs.store') }}" class="p-6 space-y-6 repairs-form" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('repairs.store') }}" class="repairs-form" enctype="multipart/form-data">
                         @csrf
                         
                         <!-- Customer Selection -->
-                        <div class="r-form-group">
-                            <label class="r-label"><x-icon name="user" />Customer</label>
+                        <div class="r-form-group repairs-field--customer">
+                            <label for="custDdTrigger" class="r-label"><x-icon name="user" />Customer</label>
                             <input type="hidden" name="customer_id" id="customer_id" required>
                             <div class="r-dd-wrap" id="custDdWrap">
-                                <button type="button" class="r-dd-trigger" id="custDdTrigger" onclick="toggleDd('cust')">
+                                <button type="button" class="r-dd-trigger" id="custDdTrigger" aria-label="Customer: Select Customer" aria-controls="custDdPanel" aria-expanded="false" onclick="toggleDd('cust')">
                                     <span class="r-dd-placeholder">Select Customer</span>
                                 </button>
                                 <div class="r-dd-panel" id="custDdPanel">
@@ -765,10 +728,10 @@
                                     </div>
                                     <div class="r-dd-list" id="custDdList">
                                         @foreach($customers as $c)
-                                            <div class="r-dd-opt" data-id="{{ $c->id }}" data-name="{{ $c->name }}" data-mobile="{{ $c->mobile }}" onclick="selectCust(this)">
-                                                <div class="r-dd-opt-name">{{ $c->name }}</div>
-                                                <div class="r-dd-opt-sub">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</div>
-                                            </div>
+                                            <button type="button" class="r-dd-opt" data-id="{{ $c->id }}" data-name="{{ $c->name }}" data-mobile="{{ $c->mobile }}" onclick="selectCust(this)">
+                                                <span class="r-dd-opt-name">{{ $c->name }}</span>
+                                                <span class="r-dd-opt-sub">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</span>
+                                            </button>
                                         @endforeach
                                     </div>
                                     <div class="r-dd-quick-add hidden" id="custQuickAddState" aria-live="polite">
@@ -788,7 +751,7 @@
                         </div>
 
                         <!-- Item Description -->
-                        <div class="r-form-group">
+                        <div class="r-form-group repairs-field--item">
                             <label for="item_description" class="r-label"><x-icon name="package" />Item Description</label>
                             <input type="text" name="item_description" id="item_description" 
                                    placeholder="e.g., Gold Ring, Chain, Bracelet"
@@ -798,38 +761,38 @@
                             @enderror
                         </div>
 
-                        <!-- Repair Description -->
-                        <div class="r-form-group">
-                            <label for="description" class="r-label"><x-icon name="file-text" />Repair Description</label>
-                            <textarea name="description" id="description" rows="3"
-                                      placeholder="e.g., Resize from size 6 to size 7, Broken link in chain needs soldering"
-                                      class="r-textarea"></textarea>
-                            @error('description')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
                         <!-- Metal type -->
-                        <div class="r-form-group">
-                            <label class="r-label"><x-icon name="weight" />Metal</label>
+                        <div class="r-form-group repairs-field--metal">
+                            <label for="metalDdTrigger" class="r-label"><x-icon name="weight" />Metal</label>
                             <input type="hidden" name="metal_type" id="metal_type" value="gold">
                             <div class="r-dd-wrap" id="metalDdWrap">
-                                <button type="button" class="r-dd-trigger" id="metalDdTrigger" onclick="toggleDd('metal')">
+                                <button type="button" class="r-dd-trigger" id="metalDdTrigger" aria-label="Metal: Gold" aria-controls="metalDdPanel" aria-expanded="false" onclick="toggleDd('metal')">
                                     <span style="font-weight:600;color:var(--r-ink)">Gold</span>
                                 </button>
                                 <div class="r-dd-panel" id="metalDdPanel">
                                     <div class="r-dd-list" id="metalDdList">
-                                        <div class="r-dd-opt" data-value="gold" onclick="selectMetal(this)"><div class="r-dd-opt-name">Gold</div><div class="r-dd-opt-sub">Karat purity (24K–14K)</div></div>
-                                        <div class="r-dd-opt" data-value="silver" onclick="selectMetal(this)"><div class="r-dd-opt-name">Silver</div><div class="r-dd-opt-sub">Fineness (999 / 925 / 900)</div></div>
-                                        <div class="r-dd-opt" data-value="platinum" onclick="selectMetal(this)"><div class="r-dd-opt-name">Platinum</div><div class="r-dd-opt-sub">Fineness (999 / 950 / 900)</div></div>
-                                        <div class="r-dd-opt" data-value="other" onclick="selectMetal(this)"><div class="r-dd-opt-name">Other</div><div class="r-dd-opt-sub">Imitation / mixed — purity optional</div></div>
+                                        <button type="button" class="r-dd-opt" data-value="gold" onclick="selectMetal(this)"><span class="r-dd-opt-name">Gold</span><span class="r-dd-opt-sub">Karat purity (24K–14K)</span></button>
+                                        <button type="button" class="r-dd-opt" data-value="silver" onclick="selectMetal(this)"><span class="r-dd-opt-name">Silver</span><span class="r-dd-opt-sub">Fineness (999 / 925 / 900)</span></button>
+                                        <button type="button" class="r-dd-opt" data-value="platinum" onclick="selectMetal(this)"><span class="r-dd-opt-name">Platinum</span><span class="r-dd-opt-sub">Fineness (999 / 950 / 900)</span></button>
+                                        <button type="button" class="r-dd-opt" data-value="other" onclick="selectMetal(this)"><span class="r-dd-opt-name">Other</span><span class="r-dd-opt-sub">Imitation / mixed — purity optional</span></button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Estimated Cost -->
+                        <div class="r-form-group repairs-field--cost">
+                            <label for="estimated_cost" class="r-label"><x-icon name="circle-dollar-sign" />Estimated Cost (₹)</label>
+                            <input type="number" step="0.01" name="estimated_cost" id="estimated_cost"
+                                   placeholder="0.00"
+                                   class="r-input">
+                            @error('estimated_cost')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <!-- Gross Weight + Purity row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 repairs-form-pair">
                             <div class="r-form-group">
                                 <label for="gross_weight" class="r-label"><x-icon name="scale" />Gross Weight (g)</label>
                                 <input type="number" step="0.001" name="gross_weight" id="gross_weight"
@@ -841,10 +804,10 @@
                             </div>
 
                             <div class="r-form-group">
-                                <label class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span> <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
+                                <label for="purityDdTrigger" class="r-label"><x-icon name="shield-check" /><span id="purityLabelText">Purity</span> <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
                                 <input type="hidden" name="purity" id="purity">
                                 <div class="r-dd-wrap" id="purityDdWrap">
-                                    <button type="button" class="r-dd-trigger" id="purityDdTrigger" onclick="toggleDd('purity')">
+                                    <button type="button" class="r-dd-trigger" id="purityDdTrigger" aria-label="Purity: Select Purity" aria-controls="purityDdPanel" aria-expanded="false" onclick="toggleDd('purity')">
                                         <span class="r-dd-placeholder">Select Purity</span>
                                     </button>
                                     <div class="r-dd-panel" id="purityDdPanel">
@@ -855,7 +818,7 @@
                                 </div>
 
                                 <!-- Custom purity input (hidden by default) -->
-                                <input type="number" step="0.01" id="custom_purity" placeholder="Enter a custom value"
+                                <input type="number" step="0.01" id="custom_purity" aria-labelledby="purityLabelText" placeholder="Enter a custom value"
                                        class="hidden r-input mt-2" oninput="document.getElementById('purity').value = this.value">
 
                                 @error('purity')
@@ -865,7 +828,7 @@
                         </div>
 
                         <!-- Quantity + Expected ready by row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 repairs-form-pair">
                             <div class="r-form-group">
                                 <label for="item_quantity" class="r-label">Quantity (pieces) <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
                                 <input type="number" step="1" min="1" max="999" name="item_quantity" id="item_quantity" placeholder="e.g., 2" class="r-input">
@@ -882,19 +845,8 @@
                             </div>
                         </div>
 
-                        <!-- Condition at receipt -->
-                        <div class="r-form-group">
-                            <label for="intake_condition" class="r-label">Condition at receipt <span style="color:var(--muted);font-weight:normal">(optional, printed on the customer's challan)</span></label>
-                            <textarea name="intake_condition" id="intake_condition" rows="2" maxlength="500"
-                                      placeholder="e.g., Clasp bent, one stone missing, scratches on the back"
-                                      class="r-textarea"></textarea>
-                            @error('intake_condition')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
                         <!-- Item Photo -->
-                        <div class="r-form-group">
+                        <div class="r-form-group repairs-field--photo">
                             <label for="repair_image" class="r-label">
                                 <x-icon name="image" />
                                 Item Photo <span class="text-gray-400 text-xs font-normal">(optional)</span>
@@ -909,65 +861,83 @@
                             @enderror
                         </div>
 
-                        <!-- Estimated Cost -->
-                        <div class="r-form-group">
-                            <label for="estimated_cost" class="r-label"><x-icon name="circle-dollar-sign" />Estimated Cost (₹)</label>
-                            <input type="number" step="0.01" name="estimated_cost" id="estimated_cost" 
-                                   placeholder="0.00"
-                                   class="r-input">
-                            @error('estimated_cost')
+                        <!-- Repair Description -->
+                        <div class="r-form-group repairs-field--notes">
+                            <label for="description" class="r-label"><x-icon name="file-text" />Repair Description</label>
+                            <textarea name="description" id="description" rows="2"
+                                      placeholder="e.g., Resize from size 6 to size 7, Broken link in chain needs soldering"
+                                      class="r-textarea"></textarea>
+                            @error('description')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Condition at receipt -->
+                        <div class="r-form-group repairs-field--notes">
+                            <label for="intake_condition" class="r-label">Condition at receipt <span style="color:var(--muted);font-weight:normal">(optional, printed on the customer's challan)</span></label>
+                            <textarea name="intake_condition" id="intake_condition" rows="2" maxlength="500"
+                                      placeholder="e.g., Clasp bent, one stone missing, scratches on the back"
+                                      class="r-textarea"></textarea>
+                            @error('intake_condition')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-dark w-full mt-2">
-                            <x-icon name="plus" size="14" class="mr-1.5" />
-                            Receive Repair Item
-                        </button>
+                        <div class="repairs-form-actions">
+                            <button type="submit" class="btn btn-dark">
+                                <x-icon name="plus" size="14" class="mr-1.5" />
+                                Receive Repair Item
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
             @endcan
 
             <!-- Repairs List -->
-            <div class="{{ $canCreateRepair ? 'lg:col-span-2' : 'lg:col-span-1' }} repairs-register-column">
+            <div class="repairs-register-column">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden repairs-table-card repairs-surface-card">
                     <div class="repairs-card-header">
                         <div>
                         <h2 class="repairs-card-title">
                             <x-icon name="clipboard-list" class="w-5 h-5 text-amber-600" />
-                            Active Repairs
+                            {{ request('status') === 'delivered' ? 'Delivered Repairs' : 'Active Repairs' }}
                         </h2>
                         <p class="repairs-card-subtitle">Search, update status, and bill completed work.</p>
                         </div>
-                        <div class="flex items-center gap-2 flex-1 justify-end">
-                            <div style="position:relative;flex:1;max-width:360px">
-                                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8">
-                                    <x-icon name="search" size="14" />
-                                </span>
-                                <input type="text" id="repairsSearchInput"
+                        <div class="repairs-register-toolbar">
+                            <nav class="repairs-list-views" aria-label="Repair list views">
+                                <a href="{{ route('repairs.index') }}" @if(request('status') !== 'delivered') aria-current="page" @endif>Active repairs</a>
+                                <a href="{{ route('repairs.index', ['status' => 'delivered']) }}" @if(request('status') === 'delivered') aria-current="page" @endif>Delivered repairs</a>
+                            </nav>
+                            <form method="GET" action="{{ route('repairs.index') }}" class="repairs-register-search">
+                                @if(request()->filled('status'))
+                                    <input type="hidden" name="status" value="{{ request('status') }}">
+                                @endif
+                                <input type="text" id="repairsSearchInput" name="search" value="{{ request('search') }}"
                                        placeholder="Search repair #, item, customer, mobile…"
                                        class="r-input"
-                                       style="padding-left:32px;width:100%"
-                                       oninput="filterRepairsList()"
-                                       onkeydown="if(event.key==='Enter'){event.preventDefault();}">
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="clearRepairsSearch()" id="repairsSearchClear" style="display:none">Clear</button>
+                                       style="padding-right:54px;width:100%"
+                                       oninput="filterRepairsList()">
+                                <button type="submit" class="btn btn-secondary btn-sm repairs-search-submit" aria-label="Search all repairs" title="Search all repairs"><x-icon name="search" size="16" /></button>
+                            </form>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="clearRepairsSearch()" id="repairsSearchClear" @if(!request()->filled('search')) style="display:none" @endif>Clear</button>
                         </div>
                     </div>
 
-                    <div class="overflow-auto repairs-table-shell repairs-data-table-shell" style="height:560px;padding-bottom:12px">
+                    <div class="repairs-table-shell repairs-data-table-shell">
                         <table class="w-full repairs-table jf-table jf-table--compact">
                             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:1">
                                 <tr>
+                                    <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500">#</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repair #</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                     <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purity</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200" id="repairsTbody">
@@ -983,10 +953,11 @@
                                         ]))));
                                     @endphp
                                     <tr class="hover:bg-gray-50 transition-colors" data-search="{{ $searchBlob }}">
+                                        <td class="px-3 py-4 text-right text-xs text-slate-500" data-repair-index="{{ $repairs->firstItem() + $loop->index }}">{{ $repairs->firstItem() + $loop->index }}</td>
                                         <td class="px-3 py-4 whitespace-nowrap">
-                                            <span class="repairs-chip repairs-chip--gold font-mono">
+                                            <a href="{{ route('repairs.show', $r) }}" class="repairs-row-view font-mono text-xs font-semibold text-slate-700" aria-label="View repair REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}">
                                                 REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}
-                                            </span>
+                                            </a>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap repairs-cust-col">
                                             <div class="text-sm font-medium text-gray-900" title="{{ $r->customer->name }}">{{ $r->customer->name }}</div>
@@ -1002,7 +973,7 @@
                                             <div class="text-sm text-gray-900">{{ number_format($r->gross_weight, 3) }} g</div>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap">
-                                            <span class="repairs-chip">
+                                            <span class="text-sm text-slate-600">
                                                 {{ $r->purityLabel() ?? '—' }}
                                             </span>
                                         </td>
@@ -1015,9 +986,23 @@
                                                     default      => ['',                    'inbox', 'Received'],
                                                 };
                                             @endphp
-                                            <span class="repairs-chip {{ $statusBadge[0] }}">
-                                                <x-icon :name="$statusBadge[1]" class="w-3 h-3 mr-1" />{{ $statusBadge[2] }}
-                                            </span>
+                                            @if($r->status !== 'delivered' && auth()->user()->can('repairs.edit'))
+                                                <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <select name="status" onchange="this.form.submit()" title="Change status"
+                                                            aria-label="Change status for REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}"
+                                                            class="r-select repairs-status-select">
+                                                        <option value="received" @selected($r->status === 'received')>Received</option>
+                                                        <option value="in_repair" @selected($r->status === 'in_repair')>In Repair</option>
+                                                        <option value="ready" @selected($r->status === 'ready')>Ready</option>
+                                                    </select>
+                                                </form>
+                                            @else
+                                                <span class="repairs-chip {{ $statusBadge[0] }}">
+                                                    <x-icon :name="$statusBadge[1]" class="w-3 h-3 mr-1" />{{ $statusBadge[2] }}
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="px-3 py-4 text-sm text-center repairs-action-cell">
                                             <div class="jf-table-actions jf-table-actions--center repairs-action-row">
@@ -1025,20 +1010,10 @@
                                                    class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                                 @if($r->status !== 'delivered')
                                                     @can('repairs.edit')
-                                                    <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <select name="status" onchange="this.form.submit()" title="Change status"
-                                                                class="repairs-status-select">
-                                                            <option value="received"  @selected($r->status === 'received')>Received</option>
-                                                            <option value="in_repair" @selected($r->status === 'in_repair')>In Repair</option>
-                                                            <option value="ready"     @selected($r->status === 'ready')>Ready</option>
-                                                        </select>
-                                                    </form>
                                                     <a href="{{ route('repairs.edit', $r) }}"
                                                        class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="square-pen" size="16" /><span class="jf-sr-only">Edit</span></a>
                                                     <button type="button" onclick="openDeliverModal({{ $r->id }}, @js($r->customer->name), @js($r->item_description), {{ $r->estimated_cost ?? 0 }})"
-                                                            class="jf-row-action jf-row-action--primary" data-tip="Complete &amp; bill"><x-icon name="receipt" size="16" /><span class="jf-sr-only">Complete &amp; bill</span></button>
+                                                            class="btn btn-success btn-xs"><x-icon name="receipt" size="16" />Complete &amp; bill</button>
                                                     @endcan
                                                 @endif
                                                 @if($r->status === 'delivered' && $r->invoice_id)
@@ -1050,15 +1025,15 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="jf-table-empty">
+                                        <td colspan="8" class="jf-table-empty">
                                             <x-icon name="settings" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                            <div class="text-sm font-medium">No repairs registered yet</div>
-                                            <div class="text-xs mt-1">Receive an item to get started</div>
+                                            <div class="text-sm font-medium">{{ request()->filled('search') ? 'No repairs match your search' : 'No repairs registered yet' }}</div>
+                                            <div class="text-xs mt-1">{{ request()->filled('search') ? 'Try a different repair number, customer, mobile, or item.' : 'Receive an item to get started' }}</div>
                                         </td>
                                     </tr>
                                 @endforelse
                                 <tr id="repairsNoMatchRow" style="display:none">
-                                    <td colspan="7" class="jf-table-empty">No repairs match your search.</td>
+                                    <td colspan="8" class="jf-table-empty">No matching repairs on this page. Use Search to check all repairs.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1084,7 +1059,10 @@
                             @endphp
                             <article class="repairs-mobile-card" data-search="{{ $mobileSearchBlob }}">
                                 <div class="repairs-mobile-top">
-                                    <span class="repairs-chip repairs-chip--gold font-mono">REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-slate-500" data-repair-index="{{ $repairs->firstItem() + $loop->index }}"><span class="jf-sr-only">Row </span>{{ $repairs->firstItem() + $loop->index }}</span>
+                                        <span class="repairs-chip repairs-chip--gold font-mono">REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}</span>
+                                    </div>
                                     <span class="repairs-chip {{ $mobileStatusBadge[0] }}">{{ $mobileStatusBadge[1] }}</span>
                                 </div>
                                 <div class="repairs-mobile-title">{{ $r->customer->name }}</div>
@@ -1106,7 +1084,7 @@
                                             <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
                                                 @csrf
                                                 @method('PATCH')
-                                                <select name="status" onchange="this.form.submit()" title="Change status" class="repairs-status-select">
+                                                <select name="status" onchange="this.form.submit()" title="Change status" aria-label="Change status for REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }}" class="r-select repairs-status-select">
                                                     <option value="received"  @selected($r->status === 'received')>Received</option>
                                                     <option value="in_repair" @selected($r->status === 'in_repair')>In Repair</option>
                                                     <option value="ready"     @selected($r->status === 'ready')>Ready</option>
@@ -1114,7 +1092,7 @@
                                             </form>
                                             <a href="{{ route('repairs.edit', $r) }}" class="btn btn-secondary btn-xs">Edit</a>
                                             <button onclick="openDeliverModal({{ $r->id }}, @js($r->customer->name), @js($r->item_description), {{ $r->estimated_cost ?? 0 }})"
-                                                    class="btn btn-success btn-xs" title="Complete and bill">Bill</button>
+                                                    class="btn btn-success btn-xs" title="Complete and bill">Complete &amp; bill</button>
                                         @endcan
                                     @endif
                                     @if($r->status === 'delivered' && $r->invoice_id)
@@ -1126,15 +1104,15 @@
                             <div class="repairs-empty-state">
                                 <div>
                                     <x-icon name="settings" />
-                                    <div class="text-sm font-medium text-slate-700">No repairs registered yet</div>
-                                    <div class="text-xs mt-1 text-slate-500">Receive an item below to get started.</div>
+                                    <div class="text-sm font-medium text-slate-700">{{ request()->filled('search') ? 'No repairs match your search' : 'No repairs registered yet' }}</div>
+                                    <div class="text-xs mt-1 text-slate-500">{{ request()->filled('search') ? 'Try a different repair number, customer, mobile, or item.' : 'Receive an item above to get started.' }}</div>
                                 </div>
                             </div>
                         @endforelse
                         <div id="repairsMobileNoMatch" class="repairs-empty-state" style="display:none">
                             <div>
-                                <div class="text-sm font-medium text-slate-700">No repairs match your search</div>
-                                <div class="text-xs mt-1 text-slate-500">Try repair number, customer name, mobile, or item.</div>
+                                <div class="text-sm font-medium text-slate-700">No matching repairs on this page</div>
+                                <div class="text-xs mt-1 text-slate-500">Use Search to check all repairs.</div>
                             </div>
                         </div>
                     </div>
@@ -1150,12 +1128,12 @@
     </div>
 
     <!-- Delivery Modal -->
-    <div id="deliverModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50">
+    <dialog id="deliverModal" class="fixed inset-0 z-50" aria-modal="true" aria-labelledby="repairDeliveryTitle">
         <div class="min-h-full w-full flex items-center justify-center p-4">
             <div class="w-full max-w-md p-5 bg-white r-modal-card">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2"><x-icon name="archive" class="w-5 h-5 text-amber-600" />Deliver Repair Item</h3>
-                    <button onclick="closeDeliverModal()" class="text-gray-400 hover:text-gray-600">
+                    <h3 id="repairDeliveryTitle" class="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2"><x-icon name="archive" class="w-5 h-5 text-amber-600" />Deliver Repair Item</h3>
+                    <button type="button" aria-label="Close delivery dialog" onclick="closeDeliverModal()" class="text-gray-400 hover:text-gray-600">
                         <x-icon name="x" class="h-6 w-6" />
                     </button>
                 </div>
@@ -1191,7 +1169,7 @@
                     </div>
 
                     <div class="flex gap-3">
-                        <button type="button" onclick="closeDeliverModal()"
+                        <button type="button" autofocus onclick="closeDeliverModal()"
                                 class="btn btn-secondary flex-1">
                             <x-icon name="x" class="w-3.5 h-3.5 mr-1" />Cancel
                         </button>
@@ -1203,7 +1181,7 @@
                 </form>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <script>
         // Turbo Drive evaluates this script again on every visit, in the same global
@@ -1230,10 +1208,13 @@
             const val = el.dataset.value;
             const label = el.querySelector('.r-dd-opt-name').textContent;
             document.getElementById('metal_type').value = val;
-            document.getElementById('metalDdTrigger').innerHTML =
+            const trigger = document.getElementById('metalDdTrigger');
+            trigger.innerHTML =
                 '<span style="font-weight:600;color:var(--r-ink)">' + escHtml(label) + '</span>';
+            trigger.setAttribute('aria-label', 'Metal: ' + label);
             closeAllDd();
             rebuildPurityOptions(val);
+            focusWithoutScroll(trigger);
         }
 
         // Rebuild the purity dropdown for the chosen metal and reset the current
@@ -1251,23 +1232,26 @@
             let html = '';
             opts.forEach((o) => {
                 const sub = subs[o.value] ? escHtml(subs[o.value]) : '';
-                html += '<div class="r-dd-opt" data-value="' + escHtml(o.value) + '" onclick="selectPurity(this)">'
-                      + '<div class="r-dd-opt-name">' + escHtml(o.label) + '</div>'
-                      + (sub ? '<div class="r-dd-opt-sub">' + sub + '</div>' : '')
-                      + '</div>';
+                html += '<button type="button" class="r-dd-opt" data-value="' + escHtml(o.value) + '" onclick="selectPurity(this)">'
+                      + '<span class="r-dd-opt-name">' + escHtml(o.label) + '</span>'
+                      + (sub ? '<span class="r-dd-opt-sub">' + sub + '</span>' : '')
+                      + '</button>';
             });
             // Always allow a custom value (and it's the only choice for "other").
             const customSub = metal === 'gold' ? 'Enter a custom karat value'
                             : (metal === 'other' ? 'Enter a value if known' : 'Enter a custom fineness');
-            html += '<div class="r-dd-opt" data-value="custom" onclick="selectPurity(this)">'
-                  + '<div class="r-dd-opt-name">Custom</div>'
-                  + '<div class="r-dd-opt-sub">' + customSub + '</div></div>';
+            html += '<button type="button" class="r-dd-opt" data-value="custom" onclick="selectPurity(this)">'
+                  + '<span class="r-dd-opt-name">Custom</span>'
+                  + '<span class="r-dd-opt-sub">' + customSub + '</span></button>';
             list.innerHTML = html;
 
             // Reset current selection for the new metal.
             if (hiddenPurity) hiddenPurity.value = '';
             if (customInput) { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; }
-            if (trigger) trigger.innerHTML = '<span class="r-dd-placeholder">Select Purity</span>';
+            if (trigger) {
+                trigger.innerHTML = '<span class="r-dd-placeholder">Select Purity</span>';
+                trigger.setAttribute('aria-label', 'Purity: Select Purity');
+            }
             if (labelText) labelText.textContent = (metal === 'gold') ? 'Purity (Karat)'
                                                  : (metal === 'other' ? 'Purity' : 'Purity (Fineness)');
         }
@@ -1299,6 +1283,7 @@
 
             if (!isOpen) {
                 trigger.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
                 panel.classList.add('open');
                 if (wrap) {
                     wrap.classList.add('dd-open');
@@ -1321,7 +1306,10 @@
             document.querySelectorAll('.r-dd-wrap').forEach((wrap) => {
                 wrap.classList.remove('dd-open', 'dd-dropup');
             });
-            document.querySelectorAll('.r-dd-trigger').forEach(t => t.classList.remove('open'));
+            document.querySelectorAll('.r-dd-trigger').forEach(t => {
+                t.classList.remove('open');
+                t.setAttribute('aria-expanded', 'false');
+            });
             document.querySelectorAll('.r-dd-panel').forEach(p => p.classList.remove('open'));
             const active = document.activeElement;
             if (active && active.classList && active.classList.contains('r-dd-search')) {
@@ -1394,7 +1382,9 @@
             document.getElementById('customer_id').value = id;
             const trigger = document.getElementById('custDdTrigger');
             trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">' + escHtml(name) + '</span> <span style="font-size:11px;color:var(--r-muted);margin-left:4px">' + escHtml(mobile) + '</span>';
+            trigger.setAttribute('aria-label', 'Customer: ' + name);
             closeAllDd();
+            focusWithoutScroll(trigger);
         }
 
         var pendingQuickCustomerName = '';
@@ -1472,16 +1462,17 @@
             }).then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(j)))
               .then(c => {
                   const list = document.getElementById('custDdList');
-                  const opt = document.createElement('div');
+                  const opt = document.createElement('button');
+                  opt.type = 'button';
                   opt.className = 'r-dd-opt';
                   opt.dataset.id = c.id;
                   opt.dataset.name = c.name;
                   opt.dataset.mobile = c.mobile || '';
                   opt.onclick = function () { selectCust(opt); };
-                  const nameDiv = document.createElement('div');
+                  const nameDiv = document.createElement('span');
                   nameDiv.className = 'r-dd-opt-name';
                   nameDiv.textContent = c.name;
-                  const subDiv = document.createElement('div');
+                  const subDiv = document.createElement('span');
                   subDiv.className = 'r-dd-opt-sub';
                   subDiv.textContent = c.mobile || '—';
                   opt.appendChild(nameDiv);
@@ -1555,9 +1546,16 @@
             const input = document.getElementById('repairsSearchInput');
             if (!input) return;
             input.value = '';
-            filterRepairsList();
-            input.focus();
+            input.form.requestSubmit();
         }
+
+        function openRepairRow(event) {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            if (event.target.closest('a, button, input, select, textarea, label, form')) return;
+            if (window.getSelection()?.toString()) return;
+            event.target.closest('#repairsTbody tr[data-search]')?.querySelector('a.repairs-row-view')?.click();
+        }
+        replaceRepairsListener(document, 'click', '__repairsRowClickHandler', openRepairRow);
 
         /* ─── Purity Dropdown ────────────── */
         function selectPurity(el) {
@@ -1569,20 +1567,24 @@
 
             if (val === 'custom') {
                 trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">Custom</span>';
+                trigger.setAttribute('aria-label', 'Purity: Custom');
                 customInput.classList.remove('hidden');
                 customInput.required = true;
                 hiddenPurity.value = '';
                 closeAllDd();
+                focusWithoutScroll(trigger);
                 if (shouldAutoFocusInlineSearch()) {
                     setTimeout(() => focusWithoutScroll(customInput), 50);
                 }
             } else {
                 trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">' + escHtml(label) + '</span>';
+                trigger.setAttribute('aria-label', 'Purity: ' + label);
                 hiddenPurity.value = val;
                 customInput.classList.add('hidden');
                 customInput.required = false;
                 customInput.value = '';
                 closeAllDd();
+                focusWithoutScroll(trigger);
             }
         }
 
@@ -1595,26 +1597,32 @@
 
         /* ─── Delivery Modal ─────────────── */
         function openDeliverModal(repairId, customerName, itemDesc, estimatedCost) {
-            document.getElementById('deliverModal').classList.remove('hidden');
             document.getElementById('modalCustomerName').textContent = customerName;
             document.getElementById('modalItemDesc').textContent = itemDesc;
             document.getElementById('amount').value = estimatedCost || '';
             document.getElementById('include_gst').checked = false;
             document.getElementById('gstRateWrap').classList.add('hidden');
             document.getElementById('deliverForm').action = `/repairs/${repairId}/deliver`;
+            document.getElementById('deliverModal').showModal();
         }
 
         // Escape still reaches this once the user has left for a page without the modal.
         function closeDeliverModal() {
-            document.getElementById('deliverModal')?.classList.add('hidden');
+            document.getElementById('deliverModal')?.close();
         }
 
         document.getElementById('deliverModal')?.addEventListener('click', function(e) {
-            if (e.target === this) closeDeliverModal();
+            if (!e.target.closest('.r-modal-card')) closeDeliverModal();
         });
+        replaceRepairsListener(document, 'turbo:before-cache', '__repairsDialogCacheHandler', closeDeliverModal);
 
         replaceRepairsListener(document, 'keydown', '__repairsPageEscapeHandler', function(e) {
-            if (e.key === 'Escape') { closeAllDd(); closeDeliverModal(); }
+            if (e.key === 'Escape') {
+                const trigger = document.querySelector('.r-dd-trigger.open');
+                closeAllDd();
+                if (trigger) focusWithoutScroll(trigger);
+                closeDeliverModal();
+            }
         });
 
         document.getElementById('include_gst')?.addEventListener('change', function() {

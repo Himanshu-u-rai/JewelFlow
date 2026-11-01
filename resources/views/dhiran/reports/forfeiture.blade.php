@@ -16,8 +16,8 @@
     <div class="content-inner">
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm">
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
+            <div class="overflow-x-auto jf-table-wrap">
+                <table class="w-full border-collapse jf-table">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
@@ -54,14 +54,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">No forfeited loans found</td>
+                                <td colspan="7" class="jf-table-empty">No forfeited loans found</td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($loans->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="2" class="px-6 py-3 text-sm text-gray-700">Totals</td>
+                            <td colspan="2" class="px-6 py-3 text-sm text-gray-700">Page totals</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($loans->sum('principal_amount'), 2) }}</td>
                             <td class="px-6 py-3 text-sm text-red-700 text-right">{{ number_format($loans->sum(fn($l) => $l->totalOutstanding()), 2) }}</td>
                             <td class="px-6 py-3 text-sm text-gray-700 text-center">{{ $loans->sum(fn($l) => $l->items->count()) }}</td>
@@ -71,6 +71,11 @@
                     @endif
                 </table>
             </div>
+            @if($loans->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">
+                    {{ $loans->links() }}
+                </div>
+            @endif
         </div>
     </div>
 </x-dhiran-layout>

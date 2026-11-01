@@ -7190,10 +7190,10 @@ body.admin-shell {
     border-color: var(--app-card-border, var(--jf-border));
 }
 
-/* Better action affordance inside data rows */
-.content-inner table td .btn,
-.content-inner table td a.btn,
-.content-inner table td button.btn {
+/* Legacy data-row buttons; shared tables own their action target sizes. */
+.content-inner table:not(.jf-table) td .btn,
+.content-inner table:not(.jf-table) td a.btn,
+.content-inner table:not(.jf-table) td button.btn {
     min-height: 30px;
     padding: 6px 10px;
     font-size: 11px;
