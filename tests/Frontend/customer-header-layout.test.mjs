@@ -21,6 +21,14 @@ const selectors = {
     directoryStatus: ['.customers-directory-status'],
     directoryStatusFocus: ['.customers-directory-status', '.customers-directory-status:has(:focus-visible)'],
     directoryMenuScrollbar: ['.customers-index-page .customers-directory-status .ui-filter-select-menu::-webkit-scrollbar'],
+    invoiceToolbar: ['.invoices-index-page .invoices-register-toolbar'],
+    invoiceTrigger: ['.ui-filter-select-trigger', '.invoices-index-page .customers-directory-status .ui-filter-select-trigger'],
+    invoiceMenu: ['.ui-filter-select-menu', '.invoices-index-page .customers-directory-status .ui-filter-select-menu'],
+    invoiceMenuScrollbar: ['.invoices-index-page .customers-directory-status .ui-filter-select-menu::-webkit-scrollbar'],
+    invoiceDates: ['.invoices-index-page .invoices-date-range'],
+    invoiceDateField: ['.invoices-index-page .invoices-filter-field'],
+    invoicePanel: ['.invoices-index-page .invoices-filter-panel', '.invoices-index-page .invoices-filter-panel[data-ready]'],
+    invoicePanelOpen: ['.invoices-index-page .invoices-filter-panel', '.invoices-index-page .invoices-filter-panel[data-ready]', '.invoices-index-page .invoices-filter-panel[data-ready]:modal'],
 };
 
 function cascade(part, width) {
@@ -100,5 +108,39 @@ test('Directory menu hides the scrollbar without disabling its scroll container'
         assert.equal(menu['scrollbar-width'], 'none');
         assert.equal(menu.overflow, 'auto', 'hiding the scrollbar must not become overflow:hidden');
         assert.equal(cascade('directoryMenuScrollbar', width).display, 'none');
+    }
+});
+
+test('Invoice filters remain available in the single wrapping form at desktop and phone widths', () => {
+    for (const width of [320, 427, 1280]) {
+        assert.equal(cascade('invoiceToolbar', width).display, 'flex');
+        assert.equal(cascade('invoiceToolbar', width)['flex-wrap'], 'wrap');
+    }
+});
+
+test('Invoice dropdowns reuse Directory treatment including hidden scrollbar and retained scrolling', () => {
+    for (const width of [427, 1280]) {
+        assert.deepEqual(cascade('invoiceTrigger', width), cascade('directoryTrigger', width));
+        assert.deepEqual(cascade('invoiceMenu', width), cascade('directoryMenu', width));
+        assert.equal(cascade('invoiceMenuScrollbar', width).display, 'none');
+    }
+});
+
+test('Invoice dates use two shrinkable columns together on narrow screens', () => {
+    for (const width of [320, 427]) {
+        assert.equal(cascade('invoiceDates', width).display, 'grid');
+        assert.equal(cascade('invoiceDates', width)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+        assert.equal(cascade('invoiceDateField', width).width, '100%');
+    }
+});
+
+test('Invoice filters stay inline on desktop and become a bounded bottom sheet on phones', () => {
+    assert.equal(cascade('invoicePanel', 1280).position, 'static');
+    for (const width of [320, 427]) {
+        assert.equal(cascade('invoicePanel', width).display, 'none');
+        assert.equal(cascade('invoicePanelOpen', width).display, 'block');
+        assert.equal(cascade('invoicePanelOpen', width).position, 'fixed');
+        assert.equal(cascade('invoicePanelOpen', width).bottom, '0');
+        assert.equal(cascade('invoicePanelOpen', width)['overflow-y'], 'auto');
     }
 });

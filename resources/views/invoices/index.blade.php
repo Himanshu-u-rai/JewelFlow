@@ -18,12 +18,6 @@
             \App\Models\InvoicePayment::MODE_SCHEME => 'Scheme',
         ];
         $hasInvoiceFilters = request()->hasAny($invoiceFilterKeys);
-        $activeInvoiceFilterCount = collect($invoiceFilterKeys)
-            ->filter(fn ($key) => request()->filled($key))
-            ->count();
-        $invoiceResultTotal = $invoices->total();
-        $invoiceResultStart = $invoiceResultTotal ? $invoices->firstItem() : 0;
-        $invoiceResultEnd = $invoiceResultTotal ? $invoices->lastItem() : 0;
         // Repair bills share the INV- prefix, so flag them by the repairs->invoice_id
         // link. Preloaded once for this page to avoid a per-row query.
         $repairInvoiceIds = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
@@ -58,11 +52,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner invoices-index-page jf-skeleton-host is-loading" data-list-workspace
-         x-data="{ invoiceFiltersOpen: false }"
-         :class="{ 'invoices-filters-open': invoiceFiltersOpen }"
-         x-effect="document.body.style.overflow = invoiceFiltersOpen ? 'hidden' : ''"
-         @keydown.escape.window="invoiceFiltersOpen = false">
+    <div class="content-inner invoices-index-page jf-skeleton-host is-loading" data-list-workspace x-data="{}">
 
         @php
             $canModifyInvoices = auth()->user()->can('sales.void')
@@ -73,154 +63,92 @@
             @include('partials.view-only-banner', ['permission' => 'sales.void', 'message' => 'invoice management'])
         @endunless
 
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 invoices-kpi-grid">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--count">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="file-text" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Invoices</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value">{{ number_format($stats->total_count) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--count">
-                <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                        <x-icon name="calendar" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's Invoices</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value">{{ number_format($stats->today_count) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--money">
-                <div class="flex items-center gap-3">
-                    <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
-                        <x-icon name="circle-dollar-sign" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Today's Sales</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value">₹{{ number_format($stats->today_total, 2) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 invoices-kpi-card invoices-kpi-card--money">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="briefcase" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">This Month</p>
-                        <p class="text-2xl font-semibold text-slate-900 jf-skel jf-skel-value">₹{{ number_format($stats->month_total, 2) }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Invoices Table -->
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden invoices-table-card invoices-table-card--main" data-list-frame>
             <div class="invoices-register-head">
                 <div class="invoices-register-titleblock">
                     <h2>Invoice register</h2>
-                    <p>
-                        @if($invoiceResultTotal)
-                            Showing {{ number_format($invoiceResultStart) }}-{{ number_format($invoiceResultEnd) }} of {{ number_format($invoiceResultTotal) }}
-                        @else
-                            No invoices found
-                        @endif
-                    </p>
+                    <dl class="customers-directory-summary" aria-label="Invoice summary">
+                        <div><dt>Total Invoices</dt><dd>{{ number_format($stats->total_count) }}</dd></div>
+                        <div><dt>Today's Invoices</dt><dd>{{ number_format($stats->today_count) }}</dd></div>
+                    </dl>
                 </div>
 
-                <form method="GET" action="{{ route('invoices.index') }}" class="invoices-register-toolbar">
-                    <label class="invoices-filter-field invoices-filter-field--search">
-                        <span>Search</span>
-                        <span class="invoices-input-wrap">
-                            <x-icon name="search" size="16" class="invoices-input-icon" />
-                            <input type="text"
-                                   name="search"
-                                   value="{{ request('search') }}"
-                                   placeholder="Invoice number or customer"
-                                   class="invoices-control has-icon"
-                                   data-suggest="invoices"
-                                   autocomplete="off">
+                <button type="button" class="btn btn-secondary btn-sm invoices-mobile-filter-toggle" x-cloak
+                        data-invoice-filter-toggle aria-label="Filter invoices" aria-haspopup="dialog" aria-controls="invoices-filter-panel"
+                        @click="$refs.invoiceFilters.close(); $refs.invoiceFilters.showModal()">
+                    <x-icon name="list-filter" size="16" />
+                    Filters
+                </button>
+                <dialog open id="invoices-filter-panel" x-ref="invoiceFilters" class="invoices-filter-panel" aria-label="Invoice filters"
+                        x-init="$el.dataset.ready = 'true'; $el.open = window.innerWidth > 768"
+                        @resize.window="if (window.innerWidth > 768) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) $el.close()"
+                        @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()"
+                        @click="if ($event.target === $el && $event.clientY < $el.getBoundingClientRect().top) $el.close()">
+                    <div class="invoices-filter-panel-head">
+                        <h3>Filters</h3>
+                        <button type="button" class="btn btn-secondary btn-sm" aria-label="Close filters" @click="$refs.invoiceFilters.close()">
+                            <x-icon name="x" size="18" />
+                        </button>
+                    </div>
+                    <form method="GET" action="{{ route('invoices.index') }}" class="invoices-register-toolbar customers-directory-controls"
+                          x-data="{ searchOpen: {{ request()->filled('search') ? 'true' : 'false' }} || window.innerWidth <= 768 }"
+                          @resize.window="if (window.innerWidth <= 768) searchOpen = true">
+                        <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                             @keydown.escape.stop.prevent="const panel = $el.closest('dialog'); if (panel?.matches(':modal')) panel.close(); else { searchOpen = false; $refs.searchToggle.focus(); }">
+                            <button type="button" data-invoice-search-toggle x-cloak x-ref="searchToggle"
+                                    class="customers-directory-search-toggle" aria-label="Search invoices"
+                                    aria-controls="invoices-search-panel" aria-expanded="{{ request()->filled('search') ? 'true' : 'false' }}"
+                                    :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide invoice search' : 'Search invoices'"
+                                    :title="searchOpen ? 'Hide search' : 'Search invoices'"
+                                    @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                                <x-icon name="search" size="18" />
+                            </button>
+                            <div id="invoices-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                                <label for="invoices-search" class="jf-sr-only">Search invoices</label>
+                                <input id="invoices-search" type="search" x-ref="searchInput" name="search"
+                                       value="{{ request('search') }}" placeholder="Invoice number or customer"
+                                       data-suggest="invoices" autocomplete="off" enterkeyhint="search">
+                            </div>
+                        </div>
+                        <div class="invoices-date-range">
+                            <div class="invoices-filter-field">
+                                <label for="invoices-from-date">From</label>
+                                <input id="invoices-from-date" type="date" name="from_date" value="{{ request('from_date') }}" class="invoices-control">
+                            </div>
+                            <div class="invoices-filter-field">
+                                <label for="invoices-to-date">To</label>
+                                <input id="invoices-to-date" type="date" name="to_date" value="{{ request('to_date') }}" class="invoices-control">
+                            </div>
+                        </div>
+                        <div class="customers-directory-status" role="group" aria-label="Invoice status"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="invoices-status" class="jf-sr-only">Status</label>
+                            <select id="invoices-status" name="status">
+                                <option value="">All statuses</option>
+                                @foreach($invoiceStatusOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="customers-directory-status" role="group" aria-label="Payment mode"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="invoices-payment-mode" class="jf-sr-only">Payment mode</label>
+                            <select id="invoices-payment-mode" name="payment_mode">
+                                <option value="">All payments</option>
+                                @foreach($invoicePaymentModeOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(request('payment_mode') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <span class="invoices-toolbar-actions">
+                            <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                            @if($hasInvoiceFilters)
+                                <a href="{{ route('invoices.index') }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                            @endif
                         </span>
-                    </label>
-
-                    <label class="invoices-filter-field">
-                        <span>From</span>
-                        <input type="date" name="from_date" value="{{ request('from_date') }}" class="invoices-control">
-                    </label>
-
-                    <label class="invoices-filter-field">
-                        <span>To</span>
-                        <input type="date" name="to_date" value="{{ request('to_date') }}" class="invoices-control">
-                    </label>
-
-                    <label class="invoices-filter-field">
-                        <span>Status</span>
-                        <select name="status" class="invoices-control">
-                            <option value="">All statuses</option>
-                            @foreach($invoiceStatusOptions as $value => $label)
-                                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="invoices-filter-field">
-                        <span>Payment</span>
-                        <select name="payment_mode" class="invoices-control">
-                            <option value="">All payments</option>
-                            @foreach($invoicePaymentModeOptions as $value => $label)
-                                <option value="{{ $value }}" @selected(request('payment_mode') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <span class="invoices-toolbar-actions">
-                        <button type="submit" class="invoices-filter-apply">Apply</button>
-                        @if($hasInvoiceFilters)
-                            <a href="{{ route('invoices.index') }}" class="invoices-filter-clear">Clear</a>
-                        @endif
-                    </span>
-                </form>
-            </div>
-
-            <div class="invoices-mobile-tools">
-                <form method="GET" action="{{ route('invoices.index') }}" class="invoices-mobile-search">
-                    <input type="hidden" name="from_date" value="{{ request('from_date') }}">
-                    <input type="hidden" name="to_date" value="{{ request('to_date') }}">
-                    <input type="hidden" name="status" value="{{ request('status') }}">
-                    <input type="hidden" name="payment_mode" value="{{ request('payment_mode') }}">
-                    <label class="invoices-input-wrap">
-                        <x-icon name="search" size="16" class="invoices-input-icon" />
-                        <input type="text"
-                               name="search"
-                               value="{{ request('search') }}"
-                               placeholder="Search invoices"
-                               class="invoices-control has-icon"
-                               data-suggest="invoices"
-                               autocomplete="off"
-                               aria-label="Search invoices">
-                    </label>
-                    <button type="submit" class="invoices-filter-apply invoices-mobile-search-btn">Search</button>
-                </form>
-
-                <div class="invoices-mobile-actions">
-                    <button type="button" class="invoices-filter-trigger" @click="invoiceFiltersOpen = true">
-                        <x-icon name="list-filter" size="16" />
-                        <span>Filters</span>
-                        @if($activeInvoiceFilterCount)
-                            <span class="invoices-filter-count">{{ $activeInvoiceFilterCount }}</span>
-                        @endif
-                    </button>
-                    @if($hasInvoiceFilters)
-                        <a href="{{ route('invoices.index') }}" class="invoices-filter-clear">Clear</a>
-                    @endif
-                </div>
+                    </form>
+                </dialog>
             </div>
 
             @if($hasInvoiceFilters)
@@ -241,10 +169,11 @@
                 </div>
             @endif
 
-            <div class="overflow-x-auto invoices-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Invoice records">
-                <table class="w-full jf-table jf-table--sticky-end">
+            <div class="overflow-x-auto ui-table-shell invoices-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Invoice records">
+                <table class="w-full jf-table jf-table--sticky-end invoices-data-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th class="pl-8 pr-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Invoice #</th>
                             <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
                             <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
@@ -260,6 +189,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($invoices as $invoice)
                             <tr class="hover:bg-slate-50/70">
+                                <td class="jf-table-index">{{ $invoices->firstItem() + $loop->index }}</td>
                                 <td class="pl-8 pr-6 py-5 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
                                         <span class="font-mono font-medium text-slate-700">{{ $invoice->invoice_number }}</span>
@@ -356,7 +286,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="jf-table-empty">
+                                <td colspan="11" class="jf-table-empty">
                                     <x-icon name="file-text" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No invoices found</p>
                                     <p class="text-sm">Create your first sale from the POS</p>
@@ -376,7 +306,7 @@
                     <article class="invoices-mobile-card">
                         <div class="invoices-mobile-card__top">
                             <div class="invoices-mobile-card__identity">
-                                <span class="invoices-mobile-invoice">{{ $invoice->invoice_number }}</span>
+                                <span class="invoices-mobile-invoice"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $invoices->firstItem() + $loop->index }}</span>{{ $invoice->invoice_number }}</span>
                                 <span class="invoices-mobile-sub">{{ $invoice->created_at->format('d M Y') }}</span>
                             </div>
                             <div class="invoices-mobile-status-wrap">
@@ -456,69 +386,6 @@
                 </div>
             @endif
 
-            <div x-show="invoiceFiltersOpen" x-transition.opacity x-cloak class="invoices-filter-backdrop" @click="invoiceFiltersOpen = false"></div>
-            <aside x-show="invoiceFiltersOpen" x-transition x-cloak class="invoices-filter-sheet" role="dialog" aria-modal="true" aria-label="Invoice filters">
-                <div class="invoices-filter-sheet__head">
-                    <h3>Filters</h3>
-                    <button type="button" class="invoices-filter-close" @click="invoiceFiltersOpen = false" aria-label="Close filters">
-                        <x-icon name="x" size="18" />
-                    </button>
-                </div>
-
-                <form method="GET" action="{{ route('invoices.index') }}">
-                    <input type="hidden" name="search" value="{{ request('search') }}">
-                    <div class="invoices-filter-sheet__body">
-                        <label class="invoices-filter-field">
-                            <span>From date</span>
-                            <input type="date" name="from_date" value="{{ request('from_date') }}" class="invoices-control">
-                        </label>
-
-                        <label class="invoices-filter-field">
-                            <span>To date</span>
-                            <input type="date" name="to_date" value="{{ request('to_date') }}" class="invoices-control">
-                        </label>
-
-                        <label class="invoices-filter-field">
-                            <span>Status</span>
-                            <select name="status" class="invoices-control">
-                                <option value="">All statuses</option>
-                                @foreach($invoiceStatusOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-
-                        <label class="invoices-filter-field">
-                            <span>Payment mode</span>
-                            <select name="payment_mode" class="invoices-control">
-                                <option value="">All payments</option>
-                                @foreach($invoicePaymentModeOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected(request('payment_mode') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                    </div>
-
-                    <div class="invoices-filter-sheet__foot">
-                        <a href="{{ route('invoices.index') }}" class="invoices-filter-clear">Clear</a>
-                        <button type="submit" class="invoices-filter-apply">Apply filters</button>
-                    </div>
-                </form>
-            </aside>
         </div>
     </div>
-
-    <script>
-        (function () {
-            const resetInvoiceScrollLock = () => {
-                if (document.querySelector('.invoices-index-page')) {
-                    document.body.style.overflow = '';
-                }
-            };
-
-            document.addEventListener('turbo:before-cache', resetInvoiceScrollLock);
-            document.addEventListener('turbo:before-render', resetInvoiceScrollLock);
-            window.addEventListener('beforeunload', resetInvoiceScrollLock);
-        })();
-    </script>
 </x-app-layout>

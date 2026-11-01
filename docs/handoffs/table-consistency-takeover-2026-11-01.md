@@ -2,7 +2,66 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Invoice header and Returns sidebar placement
+## Latest checkpoint — Compact invoice register, matching Directory
+
+Starting clean HEAD `7c99efbdcbceb94163a8e6586b5b512f56e46576`, same isolated
+worktree/branch/sole writer. Owner requested removing the four invoice KPI cards,
+keeping Total Invoices/Today's Invoices in the table header and applying Directory's
+design. Follow-ups removed "Showing 1-20 of 32" from the header only and requested
+a phone Filter button/bottom panel like Returns. Actual Returns inbox inspected.
+
+Only the two existing shop-wide counts now appear in a compact header definition
+list. Today's Sales/This Month cards are gone; controller calculations unchanged.
+Header range and its unused Blade variables removed; paginator's footer range stays.
+Directory's existing summary/search/dropdown/Apply/Clear classes are reused with
+scoped invoice token aliases. Search opens from its icon and restores focus on
+Escape. Status and Payment use the existing standard/viewport select enhancer and
+hide their menu scrollbars while retaining scrolling. No new JS module/dependency.
+
+One GET form stays inline on desktop and opens in a bounded phone bottom sheet.
+A44pxFilter button invokes a native dialog; it supplies modal focus/keyboard
+handling without another custom trap/global body lock. Close, backdrop and Escape
+dismiss; resize releases modal state for desktop, Turbo cache/render closes it.
+Search is visible inside the phone sheet; desktop keeps the icon disclosure.
+All search/from_date/to_date/status/payment_mode fields, values/options, suggestion
+hook, active-filter chips and Clear remain. Phone dates stay together in two
+shrinkable columns. No duplicate form/query state; no-JS native form fallback stays
+inline. Removed obsolete duplicate drawer/lock markup/script and scoped styles. Existing
+table/mobile data, amounts, badges, actions and permission gates preserved. Added
+pagination-relative row numbers in table and mobile cards, adjusted empty colspan.
+Backend's20rows/page unchanged; shared workspace scrolling/sticky headings and
+pagination outside rows remain intact. Prior navigation commit is preserved.
+
+Impeccable refinement reuses Directory rather than adding a new visual system.
+Source/CSS and server-rendered HTML coverage added; no rendered-browser claims.
+
+Fresh verification:
+
+- Guard resolved testing/pgsql/127.0.0.1:5432/exactly jewelflow_testing before tests.
+  RED3new Feature cases failed before UI edits;2CSS contracts failed before their
+  fixes, then a narrow date-grid contract failed before its responsive rule.
+  New phone-panel Feature/CSS cases also failed before the bottom-sheet addition.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Navigation tests/Feature/View tests/Feature/Tables tests/Feature/Historical/HistoricalIndexRenderTest.php tests/Feature/InvoiceFlowTest.php`
+  →109passed/1099assertions/0failures/skips. Covers21isolated draft fixtures,
+  page2row21, restricted actions, count scope, filters and tenant isolation.
+- `node --test tests/Frontend/*.test.mjs` →84passed/22existing optional-browser
+  skips/0failures; real Alpine handlers executed with focus/nextTick boundaries.
+  CSS contracts are limited known-selector checks, not a browser layout engine.
+  Native-dialog initialization/resize/Turbo and search-Escape handlers exercised
+  with DOM/native-API boundaries, not claimed as real modal-focus/phone evidence.
+- Vite79modules, scoped Pint, PHP/Node syntax and diff checks passed. Guarded
+  preview Blade compile,384compiled PHP lints and view:clear passed.
+- Source Impeccable layout scan returned0mechanical findings during the tranche,
+  before final date-grid/header-range/bottom-sheet refinements. Not visual evidence.
+
+Evidence: `/home/himanshu/jf-table-evidence/invoice-register-20261102.EhhZgr/`.
+Browser URL-policy restriction still honored: no bypass/retry, screenshots, actual
+phone/desktop gesture/keyboard/dropdown/Turbo acceptance. Owner refresh Invoices
+for visual review. No full PHP suite/benchmark, push/deployment, staging/production,
+OTP/SMTP/mobile changes. Primary checkout, preview processes and data preserved;
+test-created draft records exist only in the guarded disposable test database.
+
+## Previous checkpoint — Invoice header and Returns sidebar placement
 
 Starting clean HEAD `c14634c543c8f7bafeadec0eb8b32c7993164dc8`, same isolated
 worktree/branch/sole writer. User requested removing Open POS from the Invoices
