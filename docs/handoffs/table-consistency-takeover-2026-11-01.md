@@ -2,7 +2,57 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Quick Bills opens entry; register in form header
+## Latest checkpoint — Compact, type-sized Quick Bill form
+
+Starting clean HEAD `9b596504a172d129a410737dd171b3f0755e159e`, same branch,
+worktree and sole writer. Owner requested reducing form length through appropriate
+field widths/grouping, not changes to calculations or billing behavior.
+
+New scoped layout lives in the existing Vite app.css pipeline. Removed obsolete
+inline structural/phone overrides instead of stacking competing layouts. Entry
+gets the full work area rather than a permanent 300px review sidebar. Customer
+fields use a wide name/customer slot and compact date/mobile slots (four fields
+across only on wide desktops); Address/Notes/Terms start at two resizable rows.
+Notes and customer panels no longer stretch each other vertically. Item headers
+use small readouts instead of four large metric cards. Description/product fields
+share a desktop row; pieces, weights, rates/amounts and percentage have distinct
+widths. Making basis/value sit together. Removed nested weight/price cards and
+the tall duplicate total card, retaining their data as compact readouts. Additional
+charges remain in their original disclosure. Review summary/button follow items;
+the existing review/payment drawer and all submit actions remain.
+
+Phone layouts retain full-width customer fields/readable grids and 16px controls,
+44px targets; tablet review/extras stack. Scoped important font declarations are
+needed to override the inherited important mobile text-sm/text-xs shrink rules.
+Labels are associated for the seven static customer/notes fields. No new numeric
+limits, field names, validation, default disclosures, Alpine handlers or permission
+changes. Old price-grid CSS ordering was removed so visual order follows DOM/tab
+order. A source comparison confirms all 126 behavior-bound elements and the exact
+calculation-script SHA-256 are unchanged from the starting candidate.
+
+Fresh guard verified testing / pgsql / 127.0.0.1:5432 / exactly jewelflow_testing.
+Final targeted PHP command (full command in evidence README) covers Navigation,
+View, Quick Bill toggle/list totals/pricing print, making modes and original reprint:
+49 passed / 687 assertions, no failures/skips. Focused new form cases: 2/72,
+including edit values, manual net weight, retained charges, validation retry and
+POST/PUT contracts. Node frontend suite: 93 passed / 22 existing optional-browser
+skips / 0 failures. It executes original calculation/row/payment/review handlers
+at VM boundaries; CSS contracts are not a browser layout engine. Layout and mobile
+font contracts observed RED before their fixes. Two early test-harness issues
+(tenant model binding context and DOM parser stripping @input) were corrected in
+tests only and are documented, not claimed as application defects.
+
+Vite 79 modules, scoped Pint, PHP/Node syntax, guarded Blade compile/385 PHP lints/
+view clear, diff check and source Impeccable scan ([]) passed. Local assets rebuilt;
+public/build remains ignored/uncommitted. Evidence:
+`/home/himanshu/jf-table-evidence/quick-bill-compact-form-20261102.PUWkvY/README.md`.
+Browser restriction honored: no screenshots, measured height reduction, computed
+styles, real focus/gesture/Turbo or physical-phone acceptance claims. Owner refresh
+the form for visual review, including long names/nonstandard purity helper and
+expanded charges. Other Quick Bills audit findings remain out of scope. No data
+changes, push, deployment or remote work; 24 synthetic bills/processes preserved.
+
+## Previous checkpoint — Quick Bills opens entry; register in form header
 
 Starting clean HEAD `790e042dd6e648e5701e69aa84136e7383223eb2`, same branch,
 worktree and sole writer. Owner requested swapping the Quick Bills entry points.

@@ -37,47 +37,8 @@
         </div>
     </x-page-header>
 
-    {{-- Keep this page layout independent from generated utility coverage. --}}
+    {{-- Legacy surface overrides; the compact layout is compiled through Vite. --}}
     <style>
-        .qb-entry-layout,
-        .qb-top-grid,
-        .qb-item-edit-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        @media (min-width: 1280px) {
-            .qb-entry-layout {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) 300px;
-                align-items: start;
-            }
-
-            .qb-review-rail {
-                position: sticky;
-                top: 1.5rem;
-            }
-
-            .qb-item-edit-grid {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) 300px;
-                align-items: start;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .qb-top-grid {
-                display: grid;
-                grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-                align-items: stretch;
-            }
-
-            .qb-top-grid > * {
-                height: 100%;
-            }
-        }
-
         .qb-review-backdrop {
             position: fixed;
             inset: 0;
@@ -456,23 +417,8 @@
             .qb-edit-page * { transition: none !important; }
         }
 
-        /* ---- Desktop-only price-grid layout (>=768px) ----
-           Put Wastage directly under Rate (left column) and Making over Stone
-           (right column), using the extra desktop width. Column fill order:
-           col1 = Rate -> Wastage, col2 = Making -> Stone. Mobile is untouched
-           (it keeps the natural row order from the markup). */
+        /* The making-basis selector keeps its existing custom chevron. */
         @media (min-width: 768px) {
-            .qb-price-grid {
-                grid-auto-flow: column;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                grid-template-rows: auto auto;
-                align-items: start;
-            }
-            .qb-price-grid .qb-rate-field    { order: 1; }
-            .qb-price-grid .qb-wastage-field { order: 2; }
-            .qb-price-grid .qb-making-field  { order: 3; }
-            .qb-price-grid .qb-stone-field   { order: 4; }
-
             /* Show the custom chevron on the making-type select on desktop too. */
             .qb-making-select-wrap { position: relative; }
             .qb-making-select-icon {
@@ -522,49 +468,6 @@
                 margin-right: -4px;
             }
 
-            .qb-mobile-metric-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: .5rem !important;
-            }
-
-            .qb-mobile-metric-grid > div {
-                min-height: 58px;
-                padding: .6rem .65rem !important;
-            }
-
-            .qb-mobile-metric-grid > div > div:first-child {
-                font-size: 10px !important;
-                letter-spacing: .1em !important;
-            }
-
-            .qb-mobile-product-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: .65rem !important;
-            }
-
-            .qb-mobile-product-grid label,
-            .qb-mobile-weight-grid label {
-                margin-bottom: .35rem !important;
-                font-size: 12px !important;
-                line-height: 1.15 !important;
-            }
-
-            .qb-mobile-weight-grid {
-                grid-template-columns: minmax(0, 1fr) minmax(76px, .78fr) minmax(0, 1fr) !important;
-                gap: .5rem !important;
-            }
-
-            .qb-mobile-net-field {
-                grid-column: auto !important;
-            }
-
-            .qb-mobile-weight-grid input,
-            .qb-mobile-product-grid :is(input, select) {
-                min-height: 40px !important;
-                padding: .55rem .6rem !important;
-                font-size: 13px !important;
-            }
-
             .qb-making-select-wrap {
                 position: relative;
             }
@@ -590,7 +493,7 @@
         }
     </style>
 
-    <div class="content-inner max-w-[1380px] mx-auto qb-edit-page" x-data="quickBillForm({
+    <div class="content-inner max-w-[1380px] mx-auto qb-edit-page qb-compact-form" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
         payments: @js($initialPayments),
@@ -619,50 +522,50 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ $editing ? route('quick-bills.update', $quickBill) : route('quick-bills.store') }}" class="space-y-6">
+        <form method="POST" action="{{ $editing ? route('quick-bills.update', $quickBill) : route('quick-bills.store') }}" class="qb-entry-form">
             @csrf
             @if($editing)
                 @method('PUT')
             @endif
 
             <div class="qb-entry-layout">
-                <div class="space-y-6 min-w-0">
+                <div class="qb-entry-main min-w-0">
                     <div class="qb-top-grid">
-                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                            <div class="mb-4">
+                        <div class="qb-customer-panel qb-form-panel rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div class="qb-panel-heading">
                                 <div class="text-sm font-semibold text-slate-900">Customer details</div>
                             </div>
-                            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
-                                <div class="sm:col-span-2 xl:col-span-7">
-                                    <label class="mb-2 block text-sm font-medium text-slate-600">Existing customer</label>
-                                    <select name="customer_id" x-model="selectedCustomerId" @change="applyCustomer($event.target.value)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                            <div class="qb-customer-fields">
+                                <div class="qb-customer-select-field">
+                                    <label for="qb-customer" class="mb-2 block text-sm font-medium text-slate-600">Existing customer</label>
+                                    <select id="qb-customer" name="customer_id" x-model="selectedCustomerId" @change="applyCustomer($event.target.value)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                         <option value="">Walk-in / Manual</option>
                                         @foreach($customers as $customer)
                                             <option value="{{ $customer->id }}">{{ $customer->name }} · {{ $customer->mobile }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="xl:col-span-5">
-                                    <label class="mb-2 block text-sm font-medium text-slate-600">Bill date</label>
-                                    <input type="date" name="bill_date" value="{{ old('bill_date', optional($quickBill->bill_date)->format('Y-m-d') ?: now()->toDateString()) }}" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                <div class="qb-date-field">
+                                    <label for="qb-bill-date" class="mb-2 block text-sm font-medium text-slate-600">Bill date</label>
+                                    <input id="qb-bill-date" type="date" name="bill_date" value="{{ old('bill_date', optional($quickBill->bill_date)->format('Y-m-d') ?: now()->toDateString()) }}" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                 </div>
-                                <div class="xl:col-span-6">
-                                    <label class="mb-2 block text-sm font-medium text-slate-600">Customer name</label>
-                                    <input type="text" name="customer_name" x-model="customerName" placeholder="Walk-in customer or party name" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                <div class="qb-name-field">
+                                    <label for="qb-customer-name" class="mb-2 block text-sm font-medium text-slate-600">Customer name</label>
+                                    <input id="qb-customer-name" type="text" name="customer_name" x-model="customerName" placeholder="Walk-in customer or party name" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
                                 </div>
-                                <div class="xl:col-span-6">
-                                    <label class="mb-2 block text-sm font-medium text-slate-600">Mobile</label>
-                                    <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="customer_mobile" x-model="customerMobile" placeholder="10-digit mobile number" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                <div class="qb-mobile-field">
+                                    <label for="qb-customer-mobile" class="mb-2 block text-sm font-medium text-slate-600">Mobile</label>
+                                    <input id="qb-customer-mobile" type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="customer_mobile" x-model="customerMobile" placeholder="10-digit mobile number" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
                                 </div>
-                                <div class="sm:col-span-2 xl:col-span-12">
-                                    <label class="mb-2 block text-sm font-medium text-slate-600">Address</label>
-                                    <textarea name="customer_address" x-model="customerAddress" rows="3" placeholder="Billing address (optional)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10"></textarea>
+                                <div class="qb-address-field">
+                                    <label for="qb-customer-address" class="mb-2 block text-sm font-medium text-slate-600">Address</label>
+                                    <textarea id="qb-customer-address" name="customer_address" x-model="customerAddress" rows="2" placeholder="Billing address (optional)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10"></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <div x-data="{ open: true }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <button type="button" @click="open = !open" class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6">
+                        <div x-data="{ open: true }" class="qb-notes-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <button type="button" @click="open = !open" class="qb-panel-toggle flex w-full items-center justify-between gap-3 text-left">
                                 <div>
                                     <div class="text-sm font-semibold text-slate-900">Notes & Terms</div>
                                     <div class="mt-1 text-xs text-slate-500">Keep collapsed when the bill does not need extra text.</div>
@@ -670,63 +573,63 @@
                                 <x-icon name="chevron-down" class="h-5 w-5 text-slate-500 transition-transform" x-bind:class="open ? 'rotate-180' : ''" />
                             </button>
 
-                            <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
-                                <div class="space-y-4">
+                            <div x-show="open" x-transition x-cloak class="qb-notes-body border-t border-slate-200">
+                                <div class="qb-notes-fields">
                                     <div>
-                                        <label class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
-                                        <textarea name="notes" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
+                                        <label for="qb-notes" class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
+                                        <textarea id="qb-notes" name="notes" rows="2" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
                                     </div>
                                     <div>
-                                        <label class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
-                                        <textarea name="terms" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
+                                        <label for="qb-terms" class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
+                                        <textarea id="qb-terms" name="terms" rows="2" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+                    <div class="qb-item-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="qb-panel-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
                             <div class="text-sm font-semibold text-slate-900" x-text="items.length === 1 ? '1 item line' : items.length + ' item lines'"></div>
                             <button type="button" @click="addItem()" class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                                 Add Row
                             </button>
                         </div>
 
-                        <div class="space-y-4 p-4 sm:p-6">
+                        <div class="qb-item-list">
                             <template x-for="(item, index) in items" :key="index">
                                 <div
-                                    class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
+                                    class="qb-item-card rounded-2xl border border-slate-200 bg-slate-50"
                                 >
-                                    <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-                                        <div class="min-w-0">
+                                    <div class="qb-item-summary">
+                                        <div class="qb-item-overview min-w-0">
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <div class="text-sm font-semibold text-slate-900" x-text="'Item ' + (index + 1)"></div>
                                                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200" x-text="item.metal_type || 'Metal'"></span>
                                                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200" x-text="item.purity || 'Purity'"></span>
                                             </div>
 
-                                            <div class="qb-mobile-metric-grid mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                                                <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                            <div class="qb-mobile-metric-grid qb-item-metrics">
+                                                <div class="qb-item-metric">
                                                     <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Gross</div>
                                                     <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.gross_weight || 0).toFixed(3)"></div>
                                                 </div>
-                                                <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                                <div class="qb-item-metric">
                                                     <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Net</div>
                                                     <div class="mt-1 text-sm font-semibold text-slate-900" x-text="(safeNumber(item.net_weight) > 0 ? safeNumber(item.net_weight) : Math.max(0, safeNumber(item.gross_weight) - safeNumber(item.stone_weight))).toFixed(3)"></div>
                                                 </div>
-                                                <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                                <div class="qb-item-metric">
                                                     <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Rate</div>
                                                     <div class="mt-1 text-sm font-semibold text-slate-900" x-text="currency(item.rate || 0)"></div>
                                                 </div>
-                                                <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                                                <div class="qb-item-metric qb-item-metric--total">
                                                     <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700">Total</div>
                                                     <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(lineTotal(item))"></div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="flex flex-wrap items-center gap-2 xl:justify-end">
+                                        <div class="qb-item-actions flex flex-wrap items-center gap-2">
                                             <button type="button" @click="toggleItem(index)" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                                                 <span x-text="openIndex === index ? 'Collapse' : 'Expand'"></span>
                                             </button>
@@ -737,13 +640,13 @@
                                     </div>
 
                                     <div x-show="openIndex === index" x-transition x-cloak class="qb-item-edit-grid mt-4">
-                                        <div class="space-y-4">
-                                            <div>
+                                        <div class="qb-item-main">
+                                            <div class="qb-description-field">
                                                 <label class="mb-2 block text-sm font-medium text-slate-600">Description</label>
                                                 <input :name="'items['+index+'][description]'" x-model="item.description" type="text" placeholder="Gold ring / pendant / chain" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
                                             </div>
 
-                                            <div class="qb-mobile-product-grid grid gap-3 grid-cols-2 xl:grid-cols-4">
+                                            <div class="qb-mobile-product-grid">
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
                                                     <template x-if="metalChoices().length">
@@ -782,43 +685,45 @@
                                                 </div>
                                             </div>
 
-                                            <div class="grid gap-4 lg:grid-cols-2">
-                                                <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                                    <div class="qb-mobile-weight-grid grid gap-3 grid-cols-2">
-                                                        <div>
+                                            <div class="qb-measures-grid">
+                                                <div class="qb-weight-panel">
+                                                    <div class="qb-mobile-weight-grid">
+                                                        <div class="qb-weight-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Gross</label>
                                                             <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div>
+                                                        <div class="qb-weight-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Stone wt</label>
                                                             <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div class="qb-mobile-net-field col-span-2">
+                                                        <div class="qb-mobile-net-field qb-weight-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Net wt <span class="text-slate-400 font-normal">(auto)</span></label>
                                                             <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" @input="onNetInput(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                                    <div class="qb-price-grid grid gap-3 grid-cols-2">
+                                                <div class="qb-price-panel">
+                                                    <div class="qb-price-grid">
                                                         <div class="qb-rate-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
                                                             <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div class="qb-making-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
-                                                            <div class="qb-making-select-wrap mb-2">
-                                                                <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="qb-making-type-select w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                                    <option value="fixed">Fixed ₹</option>
-                                                                    <option value="percentage">% of metal</option>
-                                                                    <option value="per_gram">₹ / gram</option>
-                                                                </select>
-                                                                <span class="qb-making-select-icon" aria-hidden="true">
-                                                                    <x-icon name="chevron-down" stroke-width="2.25" />
-                                                                </span>
+                                                            <div class="qb-making-controls">
+                                                                <div class="qb-making-select-wrap">
+                                                                    <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="qb-making-type-select w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                        <option value="fixed">Fixed ₹</option>
+                                                                        <option value="percentage">% of metal</option>
+                                                                        <option value="per_gram">₹ / gram</option>
+                                                                    </select>
+                                                                    <span class="qb-making-select-icon" aria-hidden="true">
+                                                                        <x-icon name="chevron-down" stroke-width="2.25" />
+                                                                    </span>
+                                                                </div>
+                                                                <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             </div>
-                                                            <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
                                                         </div>
@@ -836,28 +741,28 @@
                                             </div>
                                         </div>
 
-                                        <div class="space-y-4">
-                                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-inner">
+                                        <div class="qb-item-extras">
+                                            <div class="qb-line-summary">
                                                 <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700">Line total</div>
                                                 <div class="mt-1 text-2xl font-bold text-slate-900" x-text="currency(lineTotal(item))"></div>
-                                                <div class="mt-4 grid grid-cols-2 gap-2">
-                                                    <div class="rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                <div class="qb-line-summary-metrics">
+                                                    <div>
                                                         <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Pieces</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.pcs || 1)"></div>
                                                     </div>
-                                                    <div class="rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                    <div>
                                                         <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Wastage</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.wastage_percent || 0).toFixed(2) + '%'"></div>
                                                     </div>
-                                                    <div class="col-span-2 rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                    <div>
                                                         <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Extra charges</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="currency(safeNumber(item.hallmark_charge) + safeNumber(item.rhodium_charge) + safeNumber(item.other_charge))"></div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all">
-                                                <button type="button" @click="item._chargesOpen = !item._chargesOpen" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50">
+                                            <div class="qb-charge-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all">
+                                                <button type="button" @click="item._chargesOpen = !item._chargesOpen" class="qb-panel-toggle flex w-full items-center justify-between gap-3 text-left hover:bg-slate-50">
                                                     <div>
                                                         <div class="text-sm font-medium text-slate-900">Additional charges</div>
                                                         <div class="mt-0.5 text-[11px] text-slate-500">Hallmark, Rhodium, etc.</div>
@@ -865,8 +770,8 @@
                                                     <x-icon name="chevron-down" class="h-4 w-4 text-slate-400 transition-transform" x-bind:class="item._chargesOpen ? 'rotate-180' : ''" stroke-width="2.5" />
                                                 </button>
 
-                                                <div x-show="item._chargesOpen" x-transition x-cloak class="border-t border-slate-100 p-4">
-                                                    <div class="grid gap-3 grid-cols-2">
+                                                <div x-show="item._chargesOpen" x-transition x-cloak class="qb-charges-body border-t border-slate-100">
+                                                    <div class="qb-additional-grid">
                                                         <div>
                                                             <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Hallmark</label>
                                                             <input :name="'items['+index+'][hallmark_charge]'" x-model.number="item.hallmark_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
@@ -875,7 +780,7 @@
                                                             <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Rhodium</label>
                                                             <input :name="'items['+index+'][rhodium_charge]'" x-model.number="item.rhodium_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div class="col-span-2">
+                                                        <div class="qb-other-charge">
                                                             <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Other</label>
                                                             <input :name="'items['+index+'][other_charge]'" x-model.number="item.other_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
@@ -894,11 +799,13 @@
                 </div>
 
                 <div class="qb-review-rail">
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Review</div>
-                        <p class="mt-2 text-sm leading-5 text-slate-600">Finish GST, discount, payment, and issue details after item entry.</p>
+                    <div class="qb-review-summary qb-form-panel rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="qb-review-intro">
+                            <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Review</div>
+                            <p class="mt-2 text-sm leading-5 text-slate-600">Finish GST, discount, payment, and issue details after item entry.</p>
+                        </div>
 
-                        <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div class="qb-review-total rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                             <div class="flex items-center justify-between gap-3">
                                 <span class="text-sm text-slate-600">Line total</span>
                                 <span class="text-lg font-semibold text-slate-900" x-text="currency(subtotal)"></span>
@@ -909,7 +816,7 @@
                             </div>
                         </div>
 
-                        <button type="button" @click="openReview()" class="mt-4 inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                        <button type="button" @click="openReview()" class="qb-review-open inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
                             Review & Payment
                         </button>
                     </div>
