@@ -98,6 +98,24 @@ Evidence inline-charges-* under quick-bill-notes-dialog-20261102.e6KYil.
 No preview business-data changes/remote work/dependencies. Browser fit/focus/Turbo
 and physical-phone checks remain unverified, not passed; owner visual review next.
 
+Icon actions/customer-width follow-up from clean
+`803947bf9c0f32cefa72582ae9a588e7466dadff`: Collapse/Expand now use a rotating
+chevron and Remove uses trash-2. Reused jf-row-action/data-tip and the existing
+delegated hover/keyboard-focus label helper, not a new tooltip implementation.
+Both controls retain44px targets, item-specific accessible names, hidden text and
+unchanged handlers; toggle exposes expanded/controls association to its item panel.
+Existing customer and Customer name wrappers are50% of their current desktop tracks
+at1200px+, with no phone/tablet shrink. Date/mobile/address/layout tracks unchanged.
+No field tags, calculation script, validation or submission changes.
+Guard verified testing/pgsql/127.0.0.1:5432/exact jewelflow_testing before tests.
+Focused PHP3 passed/100 assertions; frontend99 passed/22 existing optional-browser
+skips/zero failures, including VM toggle/removal and shared label tests. New VM
+fixture corrected to supply the initial item normally provided by the controller;
+no application fix hidden. Vite79/Blade385lints/clear/Pint/syntax/diff/layout[] and
+field/script identity passed. Evidence icon-actions-* in existing evidence folder.
+Actual hover/focus-label placement, touch/phone/zoom/Turbo and post-fix browser
+geometry remain unverified. No remote or preview-data changes; visual review next.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

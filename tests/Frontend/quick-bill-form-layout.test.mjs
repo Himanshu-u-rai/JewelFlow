@@ -57,6 +57,35 @@ test('desktop stone, net-auto and wastage labels stay on a single line without s
     }
 });
 
+test('compact item icons keep shared focus labels and actions; customer/name widths halve only on desktop', () => {
+    for (const action of ['toggleItem', 'removeItem']) {
+        const button = blade.match(new RegExp(`<button[^>]*@click="${action}\\(index\\)"[^>]*>[^]*?<\\/button>`))?.[0];
+        assert.ok(button);
+        assert.match(button, /jf-row-action/);
+        assert.match(button, /:data-tip=/);
+        assert.match(button, /:aria-label=/);
+        assert.match(button, /jf-sr-only/);
+        assert.match(button, /<x-icon/);
+    }
+    assert.match(blade, /:aria-expanded="openIndex === index"/);
+    assert.equal(declarations('.qb-compact-form .qb-item-actions button', 390).width, '44px');
+    for (const field of ['.qb-compact-form .qb-customer-select-field', '.qb-compact-form .qb-name-field']) {
+        assert.equal(declarations(field, 1280).width, '50%');
+        assert.equal(declarations(field, 390).width, undefined);
+        assert.equal(declarations(field, 768).width, undefined);
+    }
+    const f = form({ items: [{ description: 'Synthetic retained item' }] });
+    f.toggleItem(0);
+    assert.equal(f.openIndex, -1);
+    f.toggleItem(0);
+    assert.equal(f.openIndex, 0);
+    f.addItem();
+    f.items[0].description = 'Synthetic retained item';
+    f.removeItem(1);
+    assert.equal(f.items.length, 1);
+    assert.equal(f.items[0].description, 'Synthetic retained item');
+});
+
 test('hallmark, rhodium and other charges are always beside making, not in a disclosure card', () => {
     const row = blade.slice(blade.indexOf('class="qb-measures-grid"'), blade.indexOf('class="qb-item-extras"'));
     for (const field of ['hallmark_charge', 'rhodium_charge', 'other_charge']) {

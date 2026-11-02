@@ -44,6 +44,8 @@ class QuickBillCompactFormUiTest extends TestCase
             $this->assertSame(1, $xp->query('//*[contains(@class,"qb-measures-grid")]//input[@x-model.number="item.'.$charge.'"]')->length);
         }
         $this->assertSame(0, $xp->query('//*[contains(@class,"qb-charge-panel")]')->length);
+        $this->assertSame(2, $xp->query('//*[contains(@class,"qb-item-actions")]//button[@type="button" and contains(@class,"jf-row-action")]')->length);
+        $this->assertSame(2, $xp->query('//*[contains(@class,"qb-item-actions")]//span[contains(@class,"jf-sr-only")]')->length);
     }
 
     public function test_notes_use_one_native_dialog_inside_the_bill_form_and_open_from_review(): void

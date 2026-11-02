@@ -31761,7 +31761,7 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-item-overview { flex: 1 1 24rem; }
 .qb-compact-form .qb-item-metric { min-width: 4.5rem; }
 .qb-compact-form .qb-item-actions { flex: 0 0 auto; }
-.qb-compact-form .qb-item-actions button { min-height: 44px; }
+.qb-compact-form .qb-item-actions button { width: 44px; height: 44px; min-height: 44px; }
 .qb-compact-form .qb-item-metric > div:first-child,
 .qb-compact-form .qb-line-summary-metrics > div > div:first-child { font-size: 12px !important; letter-spacing: 0; text-transform: none; }
 .qb-compact-form .qb-item-metric > div:last-child,
@@ -31836,6 +31836,8 @@ a.notice-bell-item:focus-visible {
 
 @media (min-width: 1200px) {
     .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem; }
+    .qb-compact-form .qb-customer-select-field,
+    .qb-compact-form .qb-name-field { width: 50%; }
     .qb-compact-form .qb-address-field { grid-column: span 2; }
 }
 

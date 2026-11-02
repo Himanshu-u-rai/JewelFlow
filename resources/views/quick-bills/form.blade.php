@@ -556,16 +556,18 @@
                                         </div>
 
                                         <div class="qb-item-actions flex flex-wrap items-center gap-2">
-                                            <button type="button" @click="toggleItem(index)" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                                                <span x-text="openIndex === index ? 'Collapse' : 'Expand'"></span>
+                                            <button type="button" @click="toggleItem(index)" :aria-expanded="openIndex === index" :aria-controls="'qb-item-details-' + index" :aria-label="(openIndex === index ? 'Collapse' : 'Expand') + ' item ' + (index + 1)" :data-tip="(openIndex === index ? 'Collapse' : 'Expand') + ' item ' + (index + 1)" class="jf-row-action">
+                                                <x-icon name="chevron-down" x-bind:class="openIndex === index ? 'rotate-180' : ''" />
+                                                <span class="jf-sr-only" x-text="openIndex === index ? 'Collapse' : 'Expand'"></span>
                                             </button>
-                                            <button type="button" @click="removeItem(index)" class="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50">
-                                                Remove
+                                            <button type="button" @click="removeItem(index)" :aria-label="'Remove item ' + (index + 1)" :data-tip="'Remove item ' + (index + 1)" class="jf-row-action jf-row-action--danger">
+                                                <x-icon name="trash-2" />
+                                                <span class="jf-sr-only">Remove</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div x-show="openIndex === index" x-transition x-cloak class="qb-item-edit-grid mt-4">
+                                    <div :id="'qb-item-details-' + index" x-show="openIndex === index" x-transition x-cloak class="qb-item-edit-grid mt-4">
                                         <div class="qb-item-main">
                                             <div class="qb-description-weight-row">
                                                 <div class="qb-description-field">
