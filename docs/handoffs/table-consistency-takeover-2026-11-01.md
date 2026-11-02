@@ -45,6 +45,10 @@ from clean `e15a6d21746c839588aaa085131f7c8c9e32ac9e`; mobile and business logic
 unchanged. Seven focused frontend checks, build and diff check passed. Browser
 appearance remains unverified.
 
+Latest owner adjustment: 130px desktop Rate basis, superseding110px; started clean
+`3e34c3709b5edb824b9ec18dda5a29aadfce0367`. Mobile/business logic unchanged.
+Seven focused frontend checks, build and diff passed; visual remains unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
