@@ -2,7 +2,40 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Simplify Occasions header
+## Latest checkpoint — Quick Bills opens entry; register in form header
+
+Starting clean HEAD `790e042dd6e648e5701e69aa84136e7383223eb2`, same branch,
+worktree and sole writer. Owner requested swapping the Quick Bills entry points.
+Sidebar now opens quick-bills.create for users with sales.create; view-only staff
+keep the existing register destination. The per-shop enable toggle is preserved.
+Added existing data-nav-match hook for /quick-bills so the permanent sidebar can
+remain active on list/show/edit/print after Turbo navigation, without JS changes.
+
+The form header's existing register link is now explicitly named Quick Bill
+register with a list icon, gated by sales.view. Desktop keeps its label; phone
+gets a named 44px icon rather than the old display:none link. This prevents
+removing the only visible route to the register after changing the sidebar.
+The register retains New Quick Bill as its way back to entry. No route, form
+action/fields, validation, calculation, service or permission definitions changed.
+Other Quick Bills audit findings are not implemented by this scoped swap.
+
+Guard verified testing / pgsql / 127.0.0.1:5432 / exactly jewelflow_testing before
+RefreshDatabase. New navigation tests were RED (2 failed/1 passed) before the swap;
+phone header contract also failed before restoring the button. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Navigation tests/Feature/View tests/Feature/QuickBillToggleTest.php tests/Feature/QuickBillListTotalsTest.php`
+→ 37 passed / 568 assertions, no failures/skips. Covers both shop editions,
+restricted view-only/create-only roles, toggle hiding and existing list totals.
+`node --test tests/Frontend/*.test.mjs` → 89 passed / 22 existing optional-browser
+skips / 0 failures. Source CSS contract, not rendered phone geometry. Guarded
+Blade compile, 385 compiled PHP lints, view clear, scoped navigation-test Pint,
+PHP/Node syntax and diff checks passed. Source layout scan returned []. Existing
+QuickBillToggleTest has only its expected sidebar URL updated, not reformatted.
+No new asset utilities/JS or asset build needed. Browser restriction honored;
+no rendered keyboard/touch/Turbo acceptance claimed. Synthetic 24-bill preview
+batch preserved. Evidence: quick-bills-audit directory, NAVIGATION.md/nav-* logs.
+No push/deployment. Next: owner refresh sidebar/form for visual review.
+
+## Previous checkpoint — Simplify Occasions header
 
 Starting clean HEAD `5cfaa054b693412c7ea88ed7c0e00b62587d0684`, same branch,
 worktree and sole writer. Removed the birthday/anniversary description and the

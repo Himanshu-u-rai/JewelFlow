@@ -155,7 +155,7 @@ class QuickBillToggleTest extends TestCase
     public function test_sidebar_link_hidden_when_disabled_and_shown_when_enabled(): void
     {
         [$owner, $shop] = $this->createManufacturerTenant();
-        $url = route('quick-bills.index');
+        $url = route('quick-bills.create');
 
         $this->setQuickBill($shop->id, true);
         $this->actingAs($owner->fresh())->get(route('dashboard'))->assertOk()->assertSee($url);

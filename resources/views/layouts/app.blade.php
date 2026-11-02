@@ -345,7 +345,7 @@
                             {{ __('Sales Counter') }}
                         </a>
                         @if($authShop?->preferences?->quick_bill_enabled ?? true)
-                        <a href="{{ route('quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}">
+                        <a href="{{ route(auth()->user()->can('sales.create') ? 'quick-bills.create' : 'quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}" data-nav-match="/quick-bills">
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Quick Bills') }}
                         </a>

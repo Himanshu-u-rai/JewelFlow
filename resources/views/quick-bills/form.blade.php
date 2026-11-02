@@ -28,9 +28,12 @@
                 <span class="qb-form-header-pill">{{ $quickBill->bill_number }}</span>
                 <span class="qb-form-header-pill is-status">{{ ucfirst($quickBill->status) }}</span>
             @endif
-            <a href="{{ route('quick-bills.index') }}" class="qb-form-back-action inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                Back to Register
-            </a>
+            @can('sales.view')
+                <a href="{{ route('quick-bills.index') }}" aria-label="Quick Bill register" title="Quick Bill register" class="qb-form-back-action inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    <x-icon name="list" size="16" />
+                    <span>Quick Bill register</span>
+                </a>
+            @endcan
         </div>
     </x-page-header>
 
@@ -504,6 +507,13 @@
             }
 
             .qb-form-header .page-actions > .qb-form-back-action {
+                display: inline-flex !important;
+                width: 44px;
+                min-height: 44px !important;
+                padding: 0 !important;
+            }
+
+            .qb-form-header .page-actions > .qb-form-back-action span {
                 display: none !important;
             }
 
