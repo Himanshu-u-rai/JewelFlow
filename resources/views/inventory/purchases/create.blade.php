@@ -138,7 +138,7 @@
                                 </div>
 
                                 <div x-show="supplierMode === 'vendor'">
-                                    <select id="purchase-vendor" name="vendor_id"
+                                    <select id="purchase-vendor" name="vendor_id" :disabled="supplierMode !== 'vendor'"
                                             @change="
                                                 const opt = $event.target.options[$event.target.selectedIndex];
                                                 const gstin = opt.dataset.gstin || '';
@@ -160,11 +160,9 @@
 
                                 <div x-show="supplierMode === 'other'" class="space-y-2">
                                     <label for="purchase-supplier-name" class="jf-sr-only">Supplier name</label>
-                                    <input id="purchase-supplier-name" type="text" name="supplier_name" @input="scheduleSave()" value="{{ old('supplier_name', $isEdit ? $purchase->supplier_name : '') }}" placeholder="Supplier name" class="purchase-input">
-                                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-600 font-medium">
-                                        <input type="checkbox" name="save_as_vendor" value="1" @change="scheduleSave()" {{ old('save_as_vendor') ? 'checked' : '' }} class="rounded border-slate-300 text-amber-500 focus:ring-amber-500">
-                                        Save this supplier to my Vendors list
-                                    </label>
+                                    <input id="purchase-supplier-name" type="text" name="supplier_name" :disabled="supplierMode !== 'other'" @input="scheduleSave()" value="{{ old('supplier_name', $isEdit ? $purchase->supplier_name : '') }}" placeholder="Supplier name" class="purchase-input">
+                                    <input type="hidden" name="save_as_vendor" value="1" :disabled="supplierMode !== 'other'">
+                                    <p class="text-xs text-slate-600">Saved to Vendors when you save this draft.</p>
                                 </div>
                             </div>
 
@@ -722,7 +720,7 @@
                         this.$nextTick(() => {
                             const form = this.purchaseFormEl();
                             if (!form) return;
-                            const fields = ['vendor_id','supplier_name','supplier_gstin','invoice_number','invoice_date','purchase_date','notes','irn_number','ack_number','save_as_vendor'];
+                            const fields = ['vendor_id','supplier_name','supplier_gstin','invoice_number','invoice_date','purchase_date','notes','irn_number','ack_number'];
                             fields.forEach(name => {
                                 if (saved.inputs[name] === undefined) return;
                                 const el = form.querySelector(`[name="${name}"]`);
@@ -805,7 +803,7 @@
                 const form = this.purchaseFormEl();
                 const inputs = {};
                 if (form) {
-                    ['vendor_id','supplier_name','supplier_gstin','invoice_number','invoice_date','purchase_date','notes','irn_number','ack_number','save_as_vendor'].forEach(name => {
+                    ['vendor_id','supplier_name','supplier_gstin','invoice_number','invoice_date','purchase_date','notes','irn_number','ack_number'].forEach(name => {
                         const el = form.querySelector(`[name="${name}"]`);
                         if (!el) return;
                         inputs[name] = el.type === 'checkbox' ? el.checked : el.value;

@@ -29,13 +29,13 @@ test('compact purchase form is scoped, uses content-sized fields and keeps phone
     assert.equal(value('.purchase-entry-page .purchase-select', 'appearance'), 'none');
 });
 
-function formState() {
+function formState(fields = {}) {
     let source = blade.match(/<script>([^]*?)<\/script>/)[1];
     source = source.replace(/const IS_EDIT = [^;]*;/, 'const IS_EDIT = false;')
         .replace(/@json\([^)]*\)/g, "'vendor'").replace(/{{[^]*?}}/g, '0');
     const saved = new Map();
     const state = runInNewContext(`${source}; purchaseForm({}, [])`, {
-        document: { getElementById: () => null },
+        document: { getElementById: () => ({ querySelector: selector => fields[selector.match(/name="([^"]*)"/)?.[1]] }) },
         localStorage: { setItem: (key, value) => saved.set(key, value), getItem: key => saved.get(key), removeItem: key => saved.delete(key) },
         setTimeout, clearTimeout,
     });
@@ -76,4 +76,29 @@ test('details, step navigation and local draft state remain intact', () => {
     assert.equal(state.currentStep, 3);
     state.removeLine(0);
     assert.equal(state.lines.length, 0);
+});
+
+test('only New Supplier submits automatic vendor creation; switching back ignores stale supplier input', () => {
+    const tag = name => blade.match(new RegExp(`<(?:input|select)[^]*?\\bname="${name}"[^]*?>`))?.[0].split(/(?=<(?:input|select)\b)/).at(-1);
+    const disabled = name => {
+        const binding = tag(name)?.match(/:disabled="([^"]*)"/)?.[1];
+        assert.ok(binding, `${name} must follow the chosen supplier mode`);
+        return mode => runInNewContext(binding, { supplierMode: mode });
+    };
+    for (const mode of ['vendor', 'other']) {
+        assert.equal(disabled('save_as_vendor')(mode), mode !== 'other');
+        assert.equal(disabled('supplier_name')(mode), mode !== 'other');
+        assert.equal(disabled('vendor_id')(mode), mode !== 'vendor');
+    }
+});
+
+test('an older saved draft cannot turn automatic supplier saving off', () => {
+    const flag = { type: 'hidden', value: '1' };
+    const { state, saved } = formState({ save_as_vendor: flag });
+    saved.set('jf_purchase_draft_0', JSON.stringify({ supplierMode: 'other', inputs: { save_as_vendor: false } }));
+    state.init();
+    assert.equal(state.supplierMode, 'other');
+    assert.equal(flag.value, '1');
+    state.saveDraft();
+    assert.equal(Object.hasOwn(JSON.parse([...saved.values()][0]).inputs, 'save_as_vendor'), false);
 });

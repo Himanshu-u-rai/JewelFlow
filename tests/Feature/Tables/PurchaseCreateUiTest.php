@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tables;
 
 use App\Models\StockPurchase;
+use App\Models\Vendor;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\MessageBag;
@@ -55,7 +56,8 @@ class PurchaseCreateUiTest extends TestCase
             $this->assertSame($value, $xp->evaluate('string(//input[@name="'.$name.'"]/@value)'));
         }
         $this->assertSame('Keep these notes', trim($xp->evaluate('string(//textarea[@name="notes"])')));
-        $this->assertSame(1, $xp->query('//input[@name="save_as_vendor"][@checked]')->length);
+        $this->assertSame(0, $xp->query('//input[@name="save_as_vendor"][@type="checkbox"]')->length);
+        $this->assertSame('1', $xp->evaluate('string(//input[@name="save_as_vendor"][@type="hidden"]/@value)'));
         $this->assertSame('image/jpeg,image/png,application/pdf', $xp->evaluate('string(//input[@name="invoice_image"]/@accept)'));
         $this->assertSame('100', $xp->evaluate('string(//input[@name="cgst_rate"]/@max)'));
     }
@@ -79,6 +81,44 @@ class PurchaseCreateUiTest extends TestCase
         $this->assertNotNull($root);
         $state = $root->getAttribute('x-data');
         $this->assertStringContainsString('Synthetic edited ring', $state);
+    }
+
+    public function test_new_supplier_is_saved_and_linked_on_create_and_edit_without_a_checkbox(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/purchases/create')->assertOk()->getContent());
+        $flag = $xp->query('//input[@type="hidden"][@name="save_as_vendor"]')->item(0);
+        $this->assertNotNull($flag, 'The form must submit automatic vendor creation, not an opt-in checkbox.');
+        $payload = ['purchase_date' => '2026-11-02', 'supplier_name' => 'Synthetic new supplier A', 'supplier_gstin' => '27AAAAA0000A1Z5', 'save_as_vendor' => $flag->getAttribute('value')];
+        TenantContext::set($shop->id);
+        $this->post(route('inventory.purchases.store'), $payload)->assertRedirect();
+        $purchase = StockPurchase::withoutGlobalScopes()->where('shop_id', $shop->id)->firstOrFail();
+        $vendorA = Vendor::withoutGlobalScopes()->findOrFail($purchase->vendor_id);
+        $this->assertSame('Synthetic new supplier A', $vendorA->name);
+        $this->assertSame($shop->id, $vendorA->shop_id);
+        $this->assertSame('27AAAAA0000A1Z5', $vendorA->gst_number);
+        $this->assertNull($purchase->supplier_name);
+        $this->assertSame('draft', $purchase->status);
+
+        $payload['supplier_name'] = 'Synthetic new supplier B';
+        TenantContext::set($shop->id);
+        $this->put(route('inventory.purchases.update', $purchase), $payload)->assertRedirect();
+        $purchase = StockPurchase::withoutGlobalScopes()->findOrFail($purchase->id);
+        $vendorB = Vendor::withoutGlobalScopes()->findOrFail($purchase->vendor_id);
+        $this->assertSame('Synthetic new supplier B', $vendorB->name);
+        $this->assertNotSame($vendorA->id, $vendorB->id);
+        TenantContext::set($shop->id);
+        $this->put(route('inventory.purchases.update', $purchase), ['purchase_date' => '2026-11-02', 'vendor_id' => $vendorB->id])->assertRedirect();
+        $this->assertSame(2, Vendor::withoutGlobalScopes()->where('shop_id', $shop->id)->count());
+    }
+
+    public function test_invalid_purchase_does_not_create_an_automatic_vendor(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        TenantContext::set($shop->id);
+        $this->actingAs($owner)->post(route('inventory.purchases.store'), ['purchase_date' => 'not-a-date', 'supplier_name' => 'Synthetic rejected supplier', 'save_as_vendor' => 1])->assertSessionHasErrors('purchase_date');
+        $this->assertSame(0, Vendor::withoutGlobalScopes()->where('shop_id', $shop->id)->count());
     }
 
     private function xpath(string $html): \DOMXPath

@@ -2,7 +2,31 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact purchase creation/editing
+## Latest checkpoint — Automatic new-supplier saving
+
+Started clean `f3631aa7bc37c7cb445334081d9fcc83a3403034`. Replaced the opt-in
+supplier checkbox with a hidden save_as_vendor=1 and a short save-time note.
+New Supplier automatically uses the existing transactional vendor creation/linking
+path when the draft is saved (Create and Edit). Only the chosen mode's supplier
+fields submit: vendor_id disabled in New Supplier; supplier_name/automatic flag
+disabled in From Vendors. This prevents hidden stale input from creating a vendor
+or overriding a selected one. Removed the obsolete checkbox value from local draft
+capture/restoration, so older cached false values cannot turn automatic saving off.
+No backend/routes/permissions/calculation/CSS changes or retroactive conversion of
+existing drafts. No preview purchase/vendor data was mutated during verification.
+
+Fresh testing/pgsql/127.0.0.1:5432/exact jewelflow_testing guard. Same four-suite PHP
+command documented below passed55 tests/422assertions; `node --test tests/Frontend/*.test.mjs`
+passed133/22existing browser skips/0fail. New cases verify actual Create/Edit vendor
+creation/linking/GST/shop, reuse of selected existing vendor without another insert,
+no vendor on invalid purchase, mode-based disabled bindings and obsolete cached
+checkbox handling. RED1 PHP and RED2 Node before implementation, GREEN afterward.
+Build79,Blade386PHP lints/clear,PHP lint/Pint/diff passed. Evidence
+purchase-auto-vendor-* under external quick-bill-notes-dialog-20261102.e6KYil.
+Native rendered browser behavior remains policy-blocked/unverified. Local only,
+no push/deploy. Next owner refresh New Purchase/Edit and review the new save note.
+
+## Earlier checkpoint — Compact purchase creation/editing
 
 Started clean `09407ee509f82652fccc2cfd0abb2817a17baac6`, same branch/sole
 writer. New Purchase/Edit share the same Blade view. Removed its inline stylesheet,
