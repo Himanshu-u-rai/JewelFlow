@@ -38,16 +38,23 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], 'minmax(0, 1fr)');
-    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'minmax(0, 7rem) repeat(2, minmax(0, 3.5rem))');
-    assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).flex, '0 1 15.5rem');
+    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'minmax(0, 7rem) minmax(0, 4.5rem) minmax(0, 6rem)');
+    assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).flex, '0 1 19rem');
     assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-making-field', 1280).flex, '0 1 14rem');
-    assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 calc(11rem / 3)');
+    assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 5rem');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 390).display, undefined);
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).display, undefined);
     assert.equal(declarations('.qb-compact-form .qb-review-summary', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-item-extras', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.match(declarations('.qb-compact-form .qb-review-summary', 1280)['grid-template-columns'], /auto$/);
+});
+
+test('desktop stone, net-auto and wastage labels stay on a single line without shrinking phone text', () => {
+    for (const selector of ['.qb-compact-form .qb-mobile-weight-grid > .qb-weight-field:not(:first-child) label', '.qb-compact-form .qb-wastage-field label']) {
+        assert.equal(declarations(selector, 1280)['white-space'], 'nowrap');
+        assert.equal(declarations(selector, 390)['white-space'], undefined);
+    }
 });
 
 test('description and original weight controls share the first group in DOM/tab order', () => {

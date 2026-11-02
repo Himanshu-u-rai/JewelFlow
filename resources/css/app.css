@@ -31812,7 +31812,7 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-rate-field { flex: 0 1 130px; }
     .qb-compact-form .qb-stone-field { flex: 0 1 6rem; }
     .qb-compact-form .qb-making-field { flex: 0 1 14rem; }
-    .qb-compact-form .qb-wastage-field { flex: 0 1 calc(11rem / 3); }
+    .qb-compact-form .qb-wastage-field { flex: 0 1 5rem; }
     .qb-compact-form .qb-additional-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .qb-compact-form .qb-other-charge { grid-column: auto; }
     .qb-compact-form.qb-edit-page input:not([type="hidden"]),
@@ -31825,13 +31825,15 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-item-main { grid-template-columns: minmax(12rem, 1fr) minmax(22rem, 30rem); }
     .qb-compact-form .qb-description-weight-row { display: flex; flex-wrap: wrap; align-items: start; grid-column: 1 / -1; }
     .qb-compact-form .qb-description-field { flex: 0 1 18rem; }
-    .qb-compact-form .qb-weight-panel { flex: 0 1 15.5rem; min-width: 0; }
+    .qb-compact-form .qb-weight-panel { flex: 0 1 19rem; min-width: 0; }
     .qb-compact-form .qb-metal-purity-fields { flex: 0 1 13.75rem; grid-template-columns: minmax(0, 7rem) minmax(0, 6rem); }
     .qb-compact-form .qb-mobile-product-grid { flex: 0 1 7rem; }
     .qb-compact-form .qb-pcs-field { flex: 0 1 2.25rem; }
     .qb-compact-form .qb-pcs-field input { padding-inline: 4px; }
     .qb-compact-form .qb-wastage-field input { padding-inline: 6px; }
-    .qb-compact-form .qb-mobile-weight-grid { grid-template-columns: minmax(0, 7rem) repeat(2, minmax(0, 3.5rem)); }
+    .qb-compact-form .qb-mobile-weight-grid { grid-template-columns: minmax(0, 7rem) minmax(0, 4.5rem) minmax(0, 6rem); }
+    .qb-compact-form .qb-mobile-weight-grid > .qb-weight-field:not(:first-child) label,
+    .qb-compact-form .qb-wastage-field label { white-space: nowrap; }
     .qb-compact-form .qb-mobile-weight-grid > .qb-weight-field:not(:first-child) input { padding-inline: 6px; }
     .qb-compact-form .qb-mobile-net-field { grid-column: auto; }
     .qb-compact-form .qb-item-extras { grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr); }

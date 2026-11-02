@@ -67,6 +67,14 @@ script. Seven focused Node tests/build/Blade385lints/clear/diff/layout [] passed
 No DB tests or browser checks for this presentation-only move. Very narrow desktop
 numeric editing/labels and actual phone/focus geometry remain unverified.
 
+Label-fit correction from clean `e278e6301a80236fa92858844718de8e35d5e2db`:
+owner screenshot confirmed Stone wt, Net wt(auto), Wastage% wrapping and shifting
+their inputs down. Widened only Stone56→72px, Net56→96px, Wastage58.67→80px;
+weight group19rem includes existing Gross112px and gaps. Scoped desktop nowrap
+keeps those labels on one line; mobile/fonts and all logic unchanged. Eight focused
+frontend checks and Vite/diff passed. Screenshot is pre-fix evidence; post-fix browser
+geometry/focus still unverified. Other fields not resized.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
