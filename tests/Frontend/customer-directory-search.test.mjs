@@ -5,10 +5,11 @@ import { runInNewContext } from 'node:vm';
 
 const blade = readFileSync(new URL('../../resources/views/customers/index.blade.php', import.meta.url), 'utf8');
 const invoices = readFileSync(new URL('../../resources/views/invoices/index.blade.php', import.meta.url), 'utf8');
+const schemes = readFileSync(new URL('../../resources/views/schemes/index.blade.php', import.meta.url), 'utf8');
 
 // Run the actual Alpine handlers; DOM focus/nextTick are the only boundaries.
 function fixture(source, index) {
-    const button = [...source.matchAll(/<button\s+type="button"\s+data-(?:customer|invoice)-search-toggle\b[^]*?<\/button>/g)][index]?.[0];
+    const button = [...source.matchAll(/<button\s+type="button"\s+data-(?:customer|invoice|scheme)-search-toggle\b[^]*?<\/button>/g)][index]?.[0];
     assert.ok(button, 'Register search needs a named, non-submitting disclosure button.');
     const click = button.match(/@click="([^"]*)"/)?.[1];
     const escape = [...source.matchAll(/@keydown\.escape\.stop\.prevent="([^"]*)"/g)][index]?.[1];
@@ -30,7 +31,7 @@ function fixture(source, index) {
     };
 }
 
-for (const [source, index, name] of [[blade, 0, 'Directory'], [blade, 1, 'Loyalty'], [invoices, 0, 'Invoices']]) {
+for (const [source, index, name] of [[blade, 0, 'Directory'], [blade, 1, 'Loyalty'], [invoices, 0, 'Invoices'], [schemes, 0, 'Schemes']]) {
     test(`${name}: search Escape closes the native mobile filter dialog without discarding the query`, () => {
         const f = fixture(source, index);
         let closed = 0;
@@ -67,7 +68,7 @@ test('Shared filter initialization, resizing and Turbo cleanup leave the appropr
     assert.equal(state.$el.open, false, 'a cached page must not restore an open modal');
 });
 
-for (const [source, index, name] of [[blade, 0, 'Directory'], [blade, 1, 'Loyalty'], [invoices, 0, 'Invoices']]) {
+for (const [source, index, name] of [[blade, 0, 'Directory'], [blade, 1, 'Loyalty'], [invoices, 0, 'Invoices'], [schemes, 0, 'Schemes']]) {
     test(`${name}: opening search focuses its field after it becomes visible without submitting the GET form`, () => {
         const f = fixture(source, index);
         f.click();

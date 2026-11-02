@@ -2,7 +2,39 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Always-visible return refund panels
+## Latest checkpoint — Schemes register matches Customers
+
+Started clean `d7dc44653f59260fcb7e9bd8234bea0a56d9a84d` on
+`feature/table-consistency`; Local Codex sole writer, no unexpected work/processes.
+Owner clarified `/schemes` (not Returns control center). Moved all three existing
+shop-wide counts into the register header; reused Customers header/search/type
+picker, shared native mobile filter dialog and measured list workspace. Pagination
+stays outside scrolling rows; shared sticky headings/scrollbars apply on tall
+desktop, ordinary flow on short/phone screens. Added continuous row numbers to the
+table and mobile cards. Kept scheme badges/palette/data and explicit Enroll text;
+existing catalog.manage/sales.create gates and backend query/pagination unchanged.
+Removed the redundant phone search/Alpine sheet/body-lock and obsolete scoped CSS;
+no new dependencies, backend/routes/shared JS/components or preview records changed.
+
+Fresh guard before RefreshDatabase: APP_ENV=testing, DB_CONNECTION=pgsql,
+DB_HOST=127.0.0.1, DB_PORT=5432, DB_DATABASE=exact `jewelflow_testing`.
+Command: `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/SchemeRegisterUiTest.php tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php tests/Feature/Scheme/SchemeAndInstallmentAccessTest.php`
+Result25 passed/198 assertions. New four-case UI test uses20 synthetic schemes,
+filtered page2/index16–20, tenant isolation, empty state, full-shop count scope,
+single GET form and role/edition gates. Initial RED confirmed missing workspace/
+index/panels; corrected a test expectation from2→3 pre-existing View links (mobile
+title plus mobile/desktop actions), not an application defect.
+
+`node --test tests/Frontend/*.test.mjs`:110 passed/22 existing optional-browser
+skips, zero failures. Includes real Alpine handler VM checks for search focus,
+Escape/query retention and shared dialog resize/Turbo cleanup; CSS/source checks
+for phone grouping. Vite79 build, Blade compile/385 lints/clear, new PHP lint/Pint,
+diff check and Impeccable layout detector[] passed. Evidence schemes-* under
+external quick-bill-notes-dialog-20261102.e6KYil. Browser URL policy remains blocked:
+no screenshots or measured desktop/phone scrolling, focus, menu or geometry claims.
+Those remain owner visual review, not passed acceptance. No push/deployment.
+
+## Earlier checkpoint — Always-visible return refund panels
 
 Compact numeric/reason follow-up from clean
 `b48ecf13a9eba4d9b19ff2211cd237338951b8a9`: Wear loss/Manual refund now use
