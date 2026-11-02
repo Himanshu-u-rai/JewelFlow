@@ -31589,13 +31589,17 @@ a.notice-bell-item:focus-visible {
 
 /* Stock purchases share the compact Customers register and native mobile filter sheet. */
 .inventory-purchases-page .sp-register-table { min-width: 920px; }
+.inventory-purchases-page .customers-directory-controls { align-items: flex-end; }
+.inventory-purchases-page .customers-directory-status .ui-filter-select-trigger { min-height: 44px; }
+/* Override the shared native select's 40px height to match Search and Apply. */
+.inventory-purchases-page .customers-directory-status select { height: 44px !important; min-height: 44px !important; }
 .inventory-purchases-page .sp-date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 9rem)); gap: 8px; }
 .inventory-purchases-page .sp-date-field { display: grid; gap: 6px; min-width: 0; }
 .inventory-purchases-page .sp-date-field label { color: var(--cust-text); font-size: 12px; font-weight: 600; }
 .inventory-purchases-page .sp-date-field input {
     width: 100%;
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px 10px;
     border: 1px solid var(--cust-line);
     border-radius: 10px;

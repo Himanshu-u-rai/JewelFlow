@@ -26,3 +26,15 @@ test('phone purchase summaries wrap two-up below the heading/filter row and date
     assert.equal(value('.inventory-purchases-page .sp-date-field input', 'font-size'), '16px');
     assert.equal(value('.inventory-purchases-page .sp-mobile-card .btn', 'min-height'), '44px');
 });
+
+test('purchase date inputs align with the other 44px toolbar controls, not their combined label/input height', () => {
+    const value = (selector, property) => css.nodes.find(rule => rule.type === 'rule' && rule.selectors.includes(selector))
+        ?.nodes.find(decl => decl.prop === property)?.value;
+    assert.equal(value('.inventory-purchases-page .customers-directory-controls', 'align-items'), 'flex-end');
+    assert.equal(value('.inventory-purchases-page .sp-date-field input', 'min-height'), '44px');
+    assert.equal(value('.inventory-purchases-page .customers-directory-status .ui-filter-select-trigger', 'min-height'), '44px');
+    assert.equal(value('.inventory-purchases-page .customers-directory-status select', 'height'), '44px');
+    for (const id of ['purchases-from-date', 'purchases-to-date']) {
+        assert.ok(blade.includes(`for="${id}"`), 'keep the visible, associated date labels');
+    }
+});

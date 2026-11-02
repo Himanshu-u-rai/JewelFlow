@@ -4,6 +4,14 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Stock purchases compact register
 
+Date-alignment correction from clean `f38536a48ed716cf79ec690a329c2a8568ba92b7`:
+owner screenshot showed date inputs below adjacent controls. Shared toolbar was
+centering the label+input group, not the input itself. Scoped purchase toolbar to
+bottom alignment and matched dates/select triggers/native selects to existing44px
+Search/Apply height; retained visible labels and mobile grid. CSS only, no field/
+behavior/data changes. RED1/pass2 then focused3 passed, Vite79/diff passed.
+Actual post-fix browser geometry remains unverified; screenshot is pre-fix evidence.
+
 Started clean `ea14eb6709c9a534fe8bce869d6e43bfb4d95467`, same branch/sole
 writer. Owner requested Customers treatment and removal of the separate Filter
 stock purchases panel. Replaced standalone KPI/filter cards and duplicated mobile
