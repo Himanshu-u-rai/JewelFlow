@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tables;
 
 use App\Models\Category;
+use App\Models\ReorderRule;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -85,6 +86,43 @@ class StockRegisterUiTest extends TestCase
         $this->assertSame(0, $xp->query('//*[@data-list-scroll]//nav')->length);
         $this->assertGreaterThan(0, $xp->query('//*[@data-list-frame]//nav//a[contains(@href,"page=1") and contains(@href,"search=Synthetic")]')->length);
         $this->assertSame(0, $xp->query('//a[contains(@href,"/inventory/items/create") or contains(@href,"/edit")]')->length);
+    }
+
+    public function test_desktop_header_and_mobile_body_navigation_share_view_state_and_reorder_count(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        TenantContext::runFor($shop->id, fn () => ReorderRule::create(['category' => 'Synthetic low-stock', 'min_stock_threshold' => 5]));
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/items?view=aging')->assertOk()->getContent());
+        $desktop = $xp->query('//*[contains(@class,"inventory-items-header")]//nav[contains(@class,"items-header-nav")]')->item(0);
+        $mobile = $xp->query('//*[@data-list-workspace]//nav[contains(@class,"items-body-nav")]')->item(0);
+        $this->assertNotNull($desktop);
+        $this->assertNotNull($mobile);
+        $desktopScope = $xp->query('ancestor::*[@x-data][1]', $desktop)->item(0);
+        $mobileScope = $xp->query('ancestor::*[@x-data][1]', $mobile)->item(0);
+        $this->assertTrue($desktopScope->isSameNode($mobileScope), 'Both responsive locations must control the actual panels, not separate Alpine state.');
+        $this->assertStringContainsString("view: 'aging'", $desktopScope->getAttribute('x-data'));
+        foreach ([$desktop, $mobile] as $nav) {
+            $this->assertSame(3, $xp->query('.//button[@role="tab"]', $nav)->length);
+            foreach (['categories.index', 'tags.index', 'reorder.index'] as $route) {
+                $this->assertSame(1, $xp->query('.//a[@href="'.route($route).'"]', $nav)->length);
+            }
+            $this->assertSame('1', trim($xp->evaluate('string(.//a[@href="'.route('reorder.index').'"]//span[contains(@class,"items-page-link-count")])', $nav)));
+        }
+        $this->assertSame(1, $xp->query('//*[@data-list-workspace]')->length);
+    }
+
+    public function test_manufacturer_navigation_keeps_categories_but_does_not_gain_retailer_routes_or_tabs(): void
+    {
+        [$owner] = $this->createManufacturerTenant();
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/items')->assertOk()->getContent());
+        foreach (['items-header-nav', 'items-body-nav'] as $class) {
+            $nav = $xp->query('//nav[contains(@class,"'.$class.'")]')->item(0);
+            $this->assertNotNull($nav);
+            $this->assertSame(0, $xp->query('.//button | .//a[@href="'.route('tags.index').'" or @href="'.route('reorder.index').'"]', $nav)->length);
+            $this->assertSame(1, $xp->query('.//a[@href="'.route('categories.index').'"]', $nav)->length);
+        }
     }
 
     private function xpath(string $html): \DOMXPath

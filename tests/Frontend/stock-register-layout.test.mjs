@@ -42,3 +42,13 @@ test('wide stock header aligns the heading and filter form in one wrapping row r
     assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), '1 1 620px');
     assert.equal(value('.inventory-items-page .items-register-filters', 'justify-content', wide), 'flex-end');
 });
+
+test('only desktop moves stock navigation to the header and keeps shrinking/wrapping controls reachable', () => {
+    const desktop = '(min-width: 1024px)';
+    assert.equal(value('.inventory-items-header .items-header-nav', 'display'), 'none');
+    assert.equal(value('.inventory-items-header .items-header-nav', 'display', desktop), 'flex');
+    assert.equal(value('.inventory-items-page .items-body-nav', 'display', desktop), 'none');
+    assert.equal(value('.inventory-items-header .items-header-nav', 'flex-wrap', desktop), 'wrap');
+    assert.equal(value('.inventory-items-header .page-actions', 'min-width', desktop), '0');
+    assert.equal(value('.inventory-items-header .items-header-nav', 'min-width', desktop), '0');
+});

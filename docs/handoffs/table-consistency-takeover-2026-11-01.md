@@ -2,7 +2,32 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock header row alignment
+## Latest checkpoint — Desktop stock navigation in the page header
+
+Started clean `d61b2ce42e53444d22be2fb0624c4ebf2f53766f`. At1024px+,
+Stock Items/Stock Aging/Sell Trend and Categories/Tag Printing/Reorder Alerts
+now render in the page header's action area. Below1024px, the original body
+navigation remains visible and header navigation is hidden. One Blade partial
+provides both responsive locations; no duplicated IDs/new navigation script.
+Moved the existing view state to a shared wrapper around header and content,
+following the Customers pattern, so both locations control the same actual
+panels. Preserved retailer/manufacturer conditions, URLs and live reorder count.
+Scoped desktop grid keeps title/actions/bell separate; nav groups wrap within
+shrinking available space rather than clipping. Mobile styles unchanged.
+
+Fresh guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed58 tests/382assertions. `node --test tests/Frontend/*.test.mjs` passed137,
+22existing optional-browser skips/0fail. New cases verify both placements share
+the actual view ancestor, real one-alert badge and correct edition links; CSS
+breakpoint/shrink/wrap contract RED1 then GREEN, PHP new cases RED2 then GREEN.
+Vite79,Blade387PHP lints/clear,PHP lint/Pint/diff and Impeccable layout[] passed.
+Evidence stock-nav-* under existing quick-bill-notes-dialog-20261102.e6KYil.
+No backend/sharedJS/calculation/permissions/data changes, push or deployment.
+Native rendered layout, keyboard and Turbo/resize behavior remain browser-policy
+blocked/unverified. Next owner refresh /inventory/items at desktop and phone.
+
+## Earlier checkpoint — Stock header row alignment
 
 Started clean `ce1f3ab4881051571a93a5c456fb2b491c8a9c55`. Owner requested
 filters beside the Stock Register title instead of a mandatory second row.
