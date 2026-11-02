@@ -2,7 +2,44 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Purchase draft confirmation from the register
+## Latest checkpoint — Compact purchase creation/editing
+
+Started clean `09407ee509f82652fccc2cfd0abb2817a17baac6`, same branch/sole
+writer. New Purchase/Edit share the same Blade view. Removed its inline stylesheet,
+oversized equal-column fields, duplicate sidebar step buttons and fixed phone
+footer/spacer. Kept the four-step workflow, all details disclosures, live summary,
+review warnings and save/update actions. Scoped compiled styles reuse existing
+Retail surface/border/type tokens and shared buttons. Supplier/description/files
+get flexible space; weights112px, amounts140px, percentages88px, dates160px;
+all fields wrap and become full-width/44px/16px on phones. Sidebar now240px
+above1280px; summary/review values remain. Inputs white on soft item surfaces,
+bordered, dropdown chevron visible, textareas vertically resizable. Single named
+step navigation with current-step semantics and associated static/dynamic labels.
+
+Complete calculation/navigation/local-draft script is byte-identical to the base.
+Source comparison also verifies every submitted input/select/textarea attribute
+unchanged except styling and label-target IDs. Backend, routes, financial logic,
+validation, attachment handling and permission rules untouched. No demo record
+created/updated/submitted for this UI change.
+
+Fresh resolved guard: testing/pgsql/127.0.0.1:5432/exact jewelflow_testing.
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/PurchaseCreateUiTest.php tests/Feature/Tables/PurchaseRegisterUiTest.php tests/Feature/Purchase/PurchaseAndVendorAccessTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`
+passed53 tests/405assertions. `node --test tests/Frontend/*.test.mjs` passed131,
+with22existing optional-browser skips/zero failures. New PHP cases cover Create/
+Edit POST/PUT/CSRF, four steps/one navigation, all field labels, old input/errors,
+attachment type contract and existing item data. New VM cases exercise actual
+unchanged item/net/charge/tax math plus details/steps/local draft state. New layout
+regression RED before edit/GREEN afterward. HTML-parser selector was corrected
+to inspect the step template rather than unsupported @click attribute lookup.
+Vite79/Blade compile386PHP lints/clear/PHP lint/Pint/diff and Impeccable layout
+detector[] passed. Evidence purchase-create-* under external
+quick-bill-notes-dialog-20261102.e6KYil. Full repository PHP suite not rerun for this
+scoped view/CSS change. Native browser access remains policy-blocked: actual
+desktop/phone layout, dropdowns, focus, zoom and height reduction are unverified,
+not visual acceptance. Next owner review at /inventory/purchases/create and a
+demo draft's Edit page. Preview left running; no push/deploy/remote changes.
+
+## Earlier checkpoint — Purchase draft confirmation from the register
 
 Started clean `cb9d6d1d41957db0c747d14e61952927797b0b64`, same branch/sole
 writer. Added a check-icon Confirm draft action immediately after View for draft

@@ -1,213 +1,4 @@
 <x-app-layout>
-    <style>
-        .purchase-shell {
-            max-width: 1500px;
-        }
-
-        .purchase-card,
-        .purchase-summary,
-        .purchase-nav {
-            border: 1px solid #dbe3ee;
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-        }
-
-        .purchase-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 18px;
-        }
-
-        .purchase-card-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #0f172a;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
-        .purchase-card-kicker {
-            margin-bottom: 4px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #c25a1a;
-            letter-spacing: .04em;
-            text-transform: uppercase;
-        }
-
-        .purchase-card-subtitle {
-            margin-top: 4px;
-            font-size: 12px;
-            line-height: 1.45;
-            color: #64748b;
-        }
-
-        .purchase-field-label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #475569;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
-        .purchase-input,
-        .purchase-select,
-        .purchase-textarea {
-            width: 100%;
-            border-radius: 12px;
-            border-color: #dbe3ee;
-            background: #f8fafc;
-            color: #0f172a;
-            font-size: 14px;
-        }
-
-        .purchase-input,
-        .purchase-select {
-            padding: 10px 12px;
-        }
-
-        .purchase-textarea {
-            padding: 10px 12px;
-        }
-
-        .purchase-input:focus,
-        .purchase-select:focus,
-        .purchase-textarea:focus {
-            border-color: #d97706;
-            box-shadow: 0 0 0 1px #d97706;
-        }
-
-        .purchase-stepper {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .purchase-step-btn {
-            min-width: 0;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            background: #ffffff;
-            padding: 10px;
-            text-align: left;
-            transition: border-color .15s ease, background .15s ease, color .15s ease;
-        }
-
-        .purchase-step-btn.is-active {
-            border-color: #d97706;
-            background: #fff7ed;
-        }
-
-        .purchase-step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 999px;
-            background: #f1f5f9;
-            color: #475569;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .purchase-step-btn.is-active .purchase-step-number {
-            background: #d97706;
-            color: #ffffff;
-        }
-
-        .purchase-line-card {
-            border: 1px solid #dbe3ee;
-            background: #ffffff;
-            border-radius: 14px;
-        }
-
-        .purchase-line-head {
-            border-bottom: 1px solid #eef2f7;
-            padding-bottom: 12px;
-        }
-
-        .purchase-total-row {
-            border-radius: 12px;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            padding: 12px;
-        }
-
-        .purchase-secondary-panel {
-            border-top: 1px solid #eef2f7;
-            margin-top: 14px;
-            padding-top: 14px;
-        }
-
-        .purchase-bottom-spacer {
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .purchase-shell {
-                padding-inline: 10px;
-                padding-bottom: 96px;
-            }
-
-            .purchase-card,
-            .purchase-summary,
-            .purchase-nav {
-                border-radius: 14px;
-                padding: 14px !important;
-            }
-
-            .purchase-card-header {
-                align-items: flex-start;
-                flex-direction: column;
-                gap: 10px;
-                margin-bottom: 14px;
-            }
-
-            .purchase-card-header .purchase-add-btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            /* Wrap the 4 steps into a 2x2 grid on mobile so every step stays
-               on-screen and tappable at 390px — no horizontal scroll strip
-               (the old flex:0 0 150px overflowed to ~624px, clipping steps 3-4). */
-            .purchase-stepper {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 8px;
-            }
-
-            .purchase-step-btn {
-                padding: 9px;
-            }
-
-            .purchase-line-card {
-                border-radius: 14px;
-                padding: 12px !important;
-            }
-
-            .purchase-nav {
-                position: fixed;
-                right: 10px;
-                bottom: 10px;
-                left: 10px;
-                z-index: 30;
-            }
-
-            .purchase-bottom-spacer {
-                display: block;
-                height: 78px;
-            }
-        }
-    </style>
-
     @php
         $isEdit = isset($purchase);
         $title  = $isEdit ? "Edit Purchase {$purchase->purchase_number}" : 'New Stock Purchase';
@@ -220,7 +11,7 @@
     <x-page-header :title="$title" subtitle="Record incoming stock from a supplier">
         <x-slot:actions>
             <a href="{{ $isEdit ? route('inventory.purchases.show', $purchase) : route('inventory.purchases.index') }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+               class="btn btn-secondary btn-sm">
                 Cancel
             </a>
         </x-slot:actions>
@@ -256,7 +47,7 @@
         $existingLinesJson = json_encode($existingLines);
     @endphp
 
-    <div class="content-inner purchase-shell"
+    <div class="content-inner purchase-shell purchase-entry-page"
          x-data="purchaseForm({{ $ratesJson }}, {{ $existingLinesJson }})"
          x-init="init()">
 
@@ -291,18 +82,20 @@
             @csrf
             @if($isEdit) @method('PUT') @endif
 
-            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 xl:gap-6" x-ref="purchaseTop">
+            <div class="purchase-form-layout" x-ref="purchaseTop">
 
                 {{-- Main Column --}}
-                <div class="space-y-5 xl:space-y-6">
+                <div class="purchase-form-main">
 
                     {{-- Stepper --}}
-                    <div class="purchase-card p-4">
-                        <div class="purchase-stepper" role="tablist" aria-label="Purchase steps">
+                    <div class="purchase-steps">
+                        <nav class="purchase-stepper" aria-label="Purchase steps">
                             <template x-for="step in steps" :key="step.id">
                                 <button type="button"
                                         @click="goToStep(step.id)"
                                         class="purchase-step-btn"
+                                        :aria-current="currentStep === step.id ? 'step' : null"
+                                        :aria-controls="'purchase-step-' + step.id"
                                         :class="{ 'is-active': currentStep === step.id }">
                                     <div class="flex items-start gap-3">
                                         <span class="purchase-step-number" x-text="step.id"></span>
@@ -313,23 +106,22 @@
                                     </div>
                                 </button>
                             </template>
-                        </div>
+                        </nav>
                     </div>
 
                     {{-- Step 1: Supplier & Invoice --}}
-                    <section x-show="currentStep === 1" x-cloak class="purchase-card p-5" role="tabpanel">
+                    <section id="purchase-step-1" x-show="currentStep === 1" x-cloak class="purchase-card purchase-section" aria-labelledby="purchase-step-title-1">
                         <div class="purchase-card-header">
                             <div>
-                                <p class="purchase-card-kicker">Step 1</p>
-                                <h3 class="purchase-card-title">Supplier & Invoice</h3>
+                                <h3 id="purchase-step-title-1" class="purchase-card-title">Supplier & Invoice</h3>
                                 <p class="purchase-card-subtitle">Capture the supplier, purchase date, invoice reference, and file.</p>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div class="purchase-field-grid purchase-supplier-grid">
                             {{-- Vendor --}}
-                            <div class="xl:col-span-2">
-                                <label class="purchase-field-label">Supplier</label>
+                            <div class="purchase-field purchase-field--supplier">
+                                <label class="purchase-field-label" for="purchase-vendor">Supplier</label>
                                 <div class="grid grid-cols-2 gap-2 mb-2 rounded-xl bg-slate-100 p-1">
                                     <button type="button"
                                             @click="supplierMode = 'vendor'; scheduleSave()"
@@ -346,7 +138,7 @@
                                 </div>
 
                                 <div x-show="supplierMode === 'vendor'">
-                                    <select name="vendor_id"
+                                    <select id="purchase-vendor" name="vendor_id"
                                             @change="
                                                 const opt = $event.target.options[$event.target.selectedIndex];
                                                 const gstin = opt.dataset.gstin || '';
@@ -367,7 +159,8 @@
                                 </div>
 
                                 <div x-show="supplierMode === 'other'" class="space-y-2">
-                                    <input type="text" name="supplier_name" @input="scheduleSave()" value="{{ old('supplier_name', $isEdit ? $purchase->supplier_name : '') }}" placeholder="Supplier name" class="purchase-input">
+                                    <label for="purchase-supplier-name" class="jf-sr-only">Supplier name</label>
+                                    <input id="purchase-supplier-name" type="text" name="supplier_name" @input="scheduleSave()" value="{{ old('supplier_name', $isEdit ? $purchase->supplier_name : '') }}" placeholder="Supplier name" class="purchase-input">
                                     <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-600 font-medium">
                                         <input type="checkbox" name="save_as_vendor" value="1" @change="scheduleSave()" {{ old('save_as_vendor') ? 'checked' : '' }} class="rounded border-slate-300 text-amber-500 focus:ring-amber-500">
                                         Save this supplier to my Vendors list
@@ -375,48 +168,48 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Supplier GST Number (GSTIN)</label>
+                            <div class="purchase-field purchase-field--code">
+                                <label class="purchase-field-label" for="supplier_gstin_input">Supplier GST Number (GSTIN)</label>
                                 <input type="text" name="supplier_gstin" id="supplier_gstin_input" @input="scheduleSave()" value="{{ old('supplier_gstin', $isEdit ? $purchase->supplier_gstin : '') }}" placeholder="22AAAAA0000A1Z5" maxlength="20" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Invoice Number</label>
-                                <input type="text" name="invoice_number" @input="scheduleSave()" value="{{ old('invoice_number', $isEdit ? $purchase->invoice_number : '') }}" placeholder="Vendor's invoice #" class="purchase-input">
+                            <div class="purchase-field purchase-field--code">
+                                <label class="purchase-field-label" for="purchase-invoice-number">Invoice Number</label>
+                                <input id="purchase-invoice-number" type="text" name="invoice_number" @input="scheduleSave()" value="{{ old('invoice_number', $isEdit ? $purchase->invoice_number : '') }}" placeholder="Vendor's invoice #" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Purchase Date <span class="text-red-500">*</span></label>
-                                <input type="date" name="purchase_date" @change="scheduleSave()" value="{{ old('purchase_date', $isEdit ? $purchase->purchase_date->format('Y-m-d') : date('Y-m-d')) }}" class="purchase-input">
+                            <div class="purchase-field purchase-field--date">
+                                <label class="purchase-field-label" for="purchase-purchase-date">Purchase Date <span class="text-red-500">*</span></label>
+                                <input id="purchase-purchase-date" type="date" name="purchase_date" @change="scheduleSave()" value="{{ old('purchase_date', $isEdit ? $purchase->purchase_date->format('Y-m-d') : date('Y-m-d')) }}" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Invoice Date</label>
-                                <input type="date" name="invoice_date" @change="scheduleSave()" value="{{ old('invoice_date', $isEdit ? $purchase->invoice_date?->format('Y-m-d') : '') }}" class="purchase-input">
+                            <div class="purchase-field purchase-field--date">
+                                <label class="purchase-field-label" for="purchase-invoice-date">Invoice Date</label>
+                                <input id="purchase-invoice-date" type="date" name="invoice_date" @change="scheduleSave()" value="{{ old('invoice_date', $isEdit ? $purchase->invoice_date?->format('Y-m-d') : '') }}" class="purchase-input">
                             </div>
 
-                            <div class="md:col-span-2 xl:col-span-1">
-                                <label class="purchase-field-label">Invoice PDF / Image</label>
-                                <input type="file" name="invoice_image" accept="image/jpeg,image/png,application/pdf" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-amber-100">
+                            <div class="purchase-field purchase-field--file">
+                                <label class="purchase-field-label" for="purchase-invoice-image">Invoice PDF / Image</label>
+                                <input id="purchase-invoice-image" type="file" name="invoice_image" accept="image/jpeg,image/png,application/pdf" class="purchase-input purchase-file">
                                 {{-- S3-03: authenticated route, not Storage::url(). --}}
                                 @if($isEdit && $purchase->hasInvoiceImage())
                                     <p class="mt-1 text-xs text-slate-500">Current: <a href="{{ $purchase->invoiceImageUrl() }}" target="_blank" class="text-amber-600 underline">View</a></p>
                                 @endif
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Invoice Reference Number (IRN)</label>
-                                <input type="text" name="irn_number" @input="scheduleSave()" value="{{ old('irn_number', $isEdit ? $purchase->irn_number : '') }}" placeholder="IRN from GST portal" class="purchase-input">
+                            <div class="purchase-field purchase-field--reference">
+                                <label class="purchase-field-label" for="purchase-irn-number">Invoice Reference Number (IRN)</label>
+                                <input id="purchase-irn-number" type="text" name="irn_number" @input="scheduleSave()" value="{{ old('irn_number', $isEdit ? $purchase->irn_number : '') }}" placeholder="IRN from GST portal" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Acknowledgement Number (ACK)</label>
-                                <input type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" placeholder="ACK number from GST portal" class="purchase-input">
+                            <div class="purchase-field purchase-field--reference">
+                                <label class="purchase-field-label" for="purchase-ack-number">Acknowledgement Number (ACK)</label>
+                                <input id="purchase-ack-number" type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" placeholder="ACK number from GST portal" class="purchase-input">
                             </div>
 
-                            <div class="md:col-span-2 xl:col-span-3">
-                                <label class="purchase-field-label">Notes</label>
-                                <textarea name="notes" @input="scheduleSave()" rows="2" maxlength="2000"
+                            <div class="purchase-field purchase-field--full">
+                                <label class="purchase-field-label" for="purchase-notes">Notes</label>
+                                <textarea id="purchase-notes" name="notes" @input="scheduleSave()" rows="2" maxlength="2000"
                                           class="purchase-textarea"
                                           placeholder="Optional purchase notes">{{ old('notes', $isEdit ? $purchase->notes : '') }}</textarea>
                             </div>
@@ -424,14 +217,13 @@
                     </section>
 
                     {{-- Step 2: Stock Items --}}
-                    <section x-show="currentStep === 2" x-cloak class="purchase-card p-5" role="tabpanel">
+                    <section id="purchase-step-2" x-show="currentStep === 2" x-cloak class="purchase-card purchase-section" aria-labelledby="purchase-step-title-2">
                         <div class="purchase-card-header">
                             <div>
-                                <p class="purchase-card-kicker">Step 2</p>
-                                <h3 class="purchase-card-title">Stock Items</h3>
+                                <h3 id="purchase-step-title-2" class="purchase-card-title">Stock Items</h3>
                                 <p class="purchase-card-subtitle">Enter the essential item values first. Charges and codes stay tucked under details.</p>
                             </div>
-                            <button type="button" @click="addLine()" class="purchase-add-btn inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                            <button type="button" @click="addLine()" class="purchase-add-btn btn btn-primary btn-sm">
                                 <x-icon name="plus" class="w-4 h-4" />
                                 Add Item
                             </button>
@@ -463,37 +255,37 @@
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-                                        <div>
-                                            <label class="purchase-field-label">Type</label>
-                                            <select :name="`lines[${idx}][line_type]`" x-model="line.line_type" @change="if (line.line_type !== 'ornament') { line.huid = ''; line.hallmark_date = ''; } scheduleSave()" class="purchase-select">
+                                    <div class="purchase-field-grid purchase-items-grid">
+                                        <div class="purchase-field purchase-field--type">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-line_type`">Type</label>
+                                            <select :id="`purchase-line-${idx}-line_type`" :name="`lines[${idx}][line_type]`" x-model="line.line_type" @change="if (line.line_type !== 'ornament') { line.huid = ''; line.hallmark_date = ''; } scheduleSave()" class="purchase-select">
                                                 <option value="ornament">Ornament</option>
                                                 <option value="bullion_for_sale">Bullion (Sale)</option>
                                                 <option value="bullion_reserve">Bullion (Reserve)</option>
                                             </select>
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Metal</label>
-                                            <select :name="`lines[${idx}][metal_type]`" x-model="line.metal_type" @change="prefillRate(line)" class="purchase-select">
+                                        <div class="purchase-field purchase-field--metal">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-metal_type`">Metal</label>
+                                            <select :id="`purchase-line-${idx}-metal_type`" :name="`lines[${idx}][metal_type]`" x-model="line.metal_type" @change="prefillRate(line)" class="purchase-select">
                                                 <option value="gold">Gold</option>
                                                 <option value="silver">Silver</option>
                                             </select>
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Purity (KT/‰)</label>
-                                            <input type="number" step="0.001" :name="`lines[${idx}][purity]`" x-model="line.purity" @input="prefillRate(line)" class="purchase-input" placeholder="18 / 22 / 925">
+                                        <div class="purchase-field purchase-field--purity">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-purity`">Purity (KT/‰)</label>
+                                            <input :id="`purchase-line-${idx}-purity`" type="number" step="0.001" :name="`lines[${idx}][purity]`" x-model="line.purity" @input="prefillRate(line)" class="purchase-input" placeholder="18 / 22 / 925">
                                         </div>
 
-                                        <div class="sm:col-span-2">
-                                            <label class="purchase-field-label">Design / Description</label>
-                                            <input type="text" :name="`lines[${idx}][design]`" x-model="line.design" @input="scheduleSave()" class="purchase-input" placeholder="e.g. Bangles">
+                                        <div class="purchase-field purchase-field--description">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-design`">Design / Description</label>
+                                            <input :id="`purchase-line-${idx}-design`" type="text" :name="`lines[${idx}][design]`" x-model="line.design" @input="scheduleSave()" class="purchase-input" placeholder="e.g. Bangles">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Category</label>
-                                            <select :name="`lines[${idx}][category]`" x-model="line.category" @change="scheduleSave()" class="purchase-select">
+                                        <div class="purchase-field purchase-field--category">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-category`">Category</label>
+                                            <select :id="`purchase-line-${idx}-category`" :name="`lines[${idx}][category]`" x-model="line.category" @change="scheduleSave()" class="purchase-select">
                                                 <option value="">Select category</option>
                                                 @foreach($categories as $cat)
                                                     <option value="{{ $cat->name }}">{{ $cat->name }}</option>
@@ -501,82 +293,82 @@
                                             </select>
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Gross Wt (g)</label>
-                                            <input type="number" step="0.001" :name="`lines[${idx}][gross_weight]`" x-model="line.gross_weight" @input="recalcLine(line)" class="purchase-input" placeholder="0.000">
+                                        <div class="purchase-field purchase-field--weight">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-gross_weight`">Gross Wt (g)</label>
+                                            <input :id="`purchase-line-${idx}-gross_weight`" type="number" step="0.001" :name="`lines[${idx}][gross_weight]`" x-model="line.gross_weight" @input="recalcLine(line)" class="purchase-input" placeholder="0.000">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Stone Wt (g)</label>
-                                            <input type="number" step="0.001" :name="`lines[${idx}][stone_weight]`" x-model="line.stone_weight" @input="recalcLine(line)" class="purchase-input" placeholder="0.000">
+                                        <div class="purchase-field purchase-field--weight">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-stone_weight`">Stone Wt (g)</label>
+                                            <input :id="`purchase-line-${idx}-stone_weight`" type="number" step="0.001" :name="`lines[${idx}][stone_weight]`" x-model="line.stone_weight" @input="recalcLine(line)" class="purchase-input" placeholder="0.000">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Net Wt (g)</label>
-                                            <input type="number" step="0.001" :name="`lines[${idx}][net_metal_weight]`" x-model="line.net_metal_weight" @input="recalcLineFromNet(line)" class="purchase-input" placeholder="0.000">
+                                        <div class="purchase-field purchase-field--weight">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-net_metal_weight`">Net Wt (g)</label>
+                                            <input :id="`purchase-line-${idx}-net_metal_weight`" type="number" step="0.001" :name="`lines[${idx}][net_metal_weight]`" x-model="line.net_metal_weight" @input="recalcLineFromNet(line)" class="purchase-input" placeholder="0.000">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Rate/g (₹)</label>
-                                            <input type="number" step="0.01" :name="`lines[${idx}][purchase_rate_per_gram]`" x-model="line.purchase_rate_per_gram" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
+                                        <div class="purchase-field purchase-field--amount">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-purchase_rate_per_gram`">Rate/g (₹)</label>
+                                            <input :id="`purchase-line-${idx}-purchase_rate_per_gram`" type="number" step="0.01" :name="`lines[${idx}][purchase_rate_per_gram]`" x-model="line.purchase_rate_per_gram" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Making (₹)</label>
-                                            <input type="number" step="0.01" :name="`lines[${idx}][making_charges]`" x-model="line.making_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
+                                        <div class="purchase-field purchase-field--amount">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-making_charges`">Making (₹)</label>
+                                            <input :id="`purchase-line-${idx}-making_charges`" type="number" step="0.01" :name="`lines[${idx}][making_charges]`" x-model="line.making_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                         </div>
 
-                                        <div>
-                                            <label class="purchase-field-label">Line Total (₹)</label>
-                                            <input type="number" step="0.01" :name="`lines[${idx}][purchase_line_amount]`" x-model="line.purchase_line_amount" @input="recalcSummary()" class="purchase-input border-amber-200 bg-amber-50 font-semibold text-amber-700">
+                                        <div class="purchase-field purchase-field--amount">
+                                            <label class="purchase-field-label" :for="`purchase-line-${idx}-purchase_line_amount`">Line Total (₹)</label>
+                                            <input :id="`purchase-line-${idx}-purchase_line_amount`" type="number" step="0.01" :name="`lines[${idx}][purchase_line_amount]`" x-model="line.purchase_line_amount" @input="recalcSummary()" class="purchase-input border-amber-200 bg-amber-50 font-semibold text-amber-700">
                                         </div>
                                     </div>
 
                                     <div x-show="line.detailsOpen" x-cloak class="purchase-secondary-panel">
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                            <div>
-                                                <label class="purchase-field-label">Stone Charges (₹)</label>
-                                                <input type="number" step="0.01" :name="`lines[${idx}][stone_charges]`" x-model="line.stone_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
+                                        <div class="purchase-field-grid purchase-details-grid">
+                                            <div class="purchase-field purchase-field--amount">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-stone_charges`">Stone charges (₹)</label>
+                                                <input :id="`purchase-line-${idx}-stone_charges`" type="number" step="0.01" :name="`lines[${idx}][stone_charges]`" x-model="line.stone_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                             </div>
 
-                                            <div>
-                                                <label class="purchase-field-label">Hallmark Charges (₹)</label>
-                                                <input type="number" step="0.01" :name="`lines[${idx}][hallmark_charges]`" x-model="line.hallmark_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
+                                            <div class="purchase-field purchase-field--amount">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-hallmark_charges`">Hallmark (₹)</label>
+                                                <input :id="`purchase-line-${idx}-hallmark_charges`" type="number" step="0.01" :name="`lines[${idx}][hallmark_charges]`" x-model="line.hallmark_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                             </div>
 
-                                            <div>
-                                                <label class="purchase-field-label">Rhodium Charges (₹)</label>
-                                                <input type="number" step="0.01" :name="`lines[${idx}][rhodium_charges]`" x-model="line.rhodium_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
+                                            <div class="purchase-field purchase-field--amount">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-rhodium_charges`">Rhodium (₹)</label>
+                                                <input :id="`purchase-line-${idx}-rhodium_charges`" type="number" step="0.01" :name="`lines[${idx}][rhodium_charges]`" x-model="line.rhodium_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                             </div>
 
-                                            <div>
-                                                <label class="purchase-field-label">Other Charges (₹)</label>
-                                                <input type="number" step="0.01" :name="`lines[${idx}][other_charges]`" x-model="line.other_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
-                                            </div>
-
-                                            <div x-show="line.line_type === 'ornament'" x-cloak>
-                                                <label class="purchase-field-label">Hallmark Unique ID (HUID)</label>
-                                                <input type="text" :name="`lines[${idx}][huid]`" x-model="line.huid" @input="scheduleSave()" maxlength="30" class="purchase-input" placeholder="6-char code">
+                                            <div class="purchase-field purchase-field--amount">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-other_charges`">Other (₹)</label>
+                                                <input :id="`purchase-line-${idx}-other_charges`" type="number" step="0.01" :name="`lines[${idx}][other_charges]`" x-model="line.other_charges" @input="recalcLine(line)" class="purchase-input" placeholder="0.00">
                                             </div>
 
                                             <div x-show="line.line_type === 'ornament'" x-cloak>
-                                                <label class="purchase-field-label">Hallmark Date</label>
-                                                <input type="date" :name="`lines[${idx}][hallmark_date]`" x-model="line.hallmark_date" @change="scheduleSave()" class="purchase-input">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-huid`">HUID</label>
+                                                <input :id="`purchase-line-${idx}-huid`" type="text" :name="`lines[${idx}][huid]`" x-model="line.huid" @input="scheduleSave()" maxlength="30" class="purchase-input" placeholder="6-char code">
                                             </div>
 
-                                            <div>
-                                                <label class="purchase-field-label">HSN Code</label>
-                                                <input type="text" :name="`lines[${idx}][hsn_code]`" x-model="line.hsn_code" @input="scheduleSave()" maxlength="20" class="purchase-input" placeholder="711319">
+                                            <div x-show="line.line_type === 'ornament'" x-cloak>
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-hallmark_date`">Hallmark Date</label>
+                                                <input :id="`purchase-line-${idx}-hallmark_date`" type="date" :name="`lines[${idx}][hallmark_date]`" x-model="line.hallmark_date" @change="scheduleSave()" class="purchase-input">
                                             </div>
 
-                                            <div>
-                                                <label class="purchase-field-label">Barcode</label>
-                                                <input type="text" :name="`lines[${idx}][barcode]`" x-model="line.barcode" @input="scheduleSave()" maxlength="100" class="purchase-input" placeholder="Auto on confirm">
+                                            <div class="purchase-field purchase-field--purity">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-hsn_code`">HSN Code</label>
+                                                <input :id="`purchase-line-${idx}-hsn_code`" type="text" :name="`lines[${idx}][hsn_code]`" x-model="line.hsn_code" @input="scheduleSave()" maxlength="20" class="purchase-input" placeholder="711319">
                                             </div>
 
-                                            <div class="sm:col-span-2 xl:col-span-4">
-                                                <label class="purchase-field-label">Line Notes</label>
-                                                <input type="text" :name="`lines[${idx}][notes]`" x-model="line.notes" @input="scheduleSave()" maxlength="500" class="purchase-input" placeholder="Optional note">
+                                            <div class="purchase-field purchase-field--code">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-barcode`">Barcode</label>
+                                                <input :id="`purchase-line-${idx}-barcode`" type="text" :name="`lines[${idx}][barcode]`" x-model="line.barcode" @input="scheduleSave()" maxlength="100" class="purchase-input" placeholder="Auto on confirm">
+                                            </div>
+
+                                            <div class="purchase-field purchase-field--full">
+                                                <label class="purchase-field-label" :for="`purchase-line-${idx}-notes`">Line Notes</label>
+                                                <input :id="`purchase-line-${idx}-notes`" type="text" :name="`lines[${idx}][notes]`" x-model="line.notes" @input="scheduleSave()" maxlength="500" class="purchase-input" placeholder="Optional note">
                                             </div>
                                         </div>
                                     </div>
@@ -586,42 +378,41 @@
                     </section>
 
                     {{-- Step 3: Tax & Charges --}}
-                    <section x-show="currentStep === 3" x-cloak class="purchase-card p-5" role="tabpanel">
+                    <section id="purchase-step-3" x-show="currentStep === 3" x-cloak class="purchase-card purchase-section" aria-labelledby="purchase-step-title-3">
                         <div class="purchase-card-header">
                             <div>
-                                <p class="purchase-card-kicker">Step 3</p>
-                                <h3 class="purchase-card-title">Tax & Charges</h3>
+                                <h3 id="purchase-step-title-3" class="purchase-card-title">Tax & Charges</h3>
                                 <p class="purchase-card-subtitle">Apply invoice-level discount, GST, and TCS values.</p>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                            <div>
-                                <label class="purchase-field-label">Labour Discount (₹)</label>
-                                <input type="number" step="0.01" name="labour_discount" x-model="labourDiscount" @input="recalcSummary()" value="{{ old('labour_discount', $isEdit ? $purchase->labour_discount : 0) }}" min="0" class="purchase-input">
+                        <div class="purchase-field-grid purchase-tax-grid">
+                            <div class="purchase-field purchase-field--amount">
+                                <label class="purchase-field-label" for="purchase-labour-discount">Labour Discount (₹)</label>
+                                <input id="purchase-labour-discount" type="number" step="0.01" name="labour_discount" x-model="labourDiscount" @input="recalcSummary()" value="{{ old('labour_discount', $isEdit ? $purchase->labour_discount : 0) }}" min="0" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Central GST (CGST) %</label>
-                                <input type="number" step="0.01" name="cgst_rate" x-model="cgstRate" @input="recalcSummary()" value="{{ old('cgst_rate', $isEdit ? $purchase->cgst_rate : 0) }}" min="0" max="100" class="purchase-input">
+                            <div class="purchase-field purchase-field--percent">
+                                <label class="purchase-field-label" for="purchase-cgst-rate">CGST %</label>
+                                <input id="purchase-cgst-rate" type="number" step="0.01" name="cgst_rate" x-model="cgstRate" @input="recalcSummary()" value="{{ old('cgst_rate', $isEdit ? $purchase->cgst_rate : 0) }}" min="0" max="100" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">State GST (SGST) %</label>
-                                <input type="number" step="0.01" name="sgst_rate" x-model="sgstRate" @input="recalcSummary()" value="{{ old('sgst_rate', $isEdit ? $purchase->sgst_rate : 0) }}" min="0" max="100" class="purchase-input">
+                            <div class="purchase-field purchase-field--percent">
+                                <label class="purchase-field-label" for="purchase-sgst-rate">SGST %</label>
+                                <input id="purchase-sgst-rate" type="number" step="0.01" name="sgst_rate" x-model="sgstRate" @input="recalcSummary()" value="{{ old('sgst_rate', $isEdit ? $purchase->sgst_rate : 0) }}" min="0" max="100" class="purchase-input">
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">Integrated GST (IGST) %</label>
-                                <input type="number" step="0.01" name="igst_rate" x-model="igstRate" @input="recalcSummary()" value="{{ old('igst_rate', $isEdit ? $purchase->igst_rate : 0) }}" min="0" max="100" class="purchase-input">
+                            <div class="purchase-field purchase-field--percent">
+                                <label class="purchase-field-label" for="purchase-igst-rate">IGST %</label>
+                                <input id="purchase-igst-rate" type="number" step="0.01" name="igst_rate" x-model="igstRate" @input="recalcSummary()" value="{{ old('igst_rate', $isEdit ? $purchase->igst_rate : 0) }}" min="0" max="100" class="purchase-input">
                                 <p x-show="hasTaxConflict" x-cloak class="mt-1 text-xs font-semibold text-rose-600">
                                     IGST cannot be used with CGST/SGST.
                                 </p>
                             </div>
 
-                            <div>
-                                <label class="purchase-field-label">TCS (₹)</label>
-                                <input type="number" step="0.01" name="tcs_amount" x-model="tcsAmount" @input="recalcSummary()" value="{{ old('tcs_amount', $isEdit ? $purchase->tcs_amount : 0) }}" min="0" class="purchase-input">
+                            <div class="purchase-field purchase-field--amount">
+                                <label class="purchase-field-label" for="purchase-tcs-amount">TCS (₹)</label>
+                                <input id="purchase-tcs-amount" type="number" step="0.01" name="tcs_amount" x-model="tcsAmount" @input="recalcSummary()" value="{{ old('tcs_amount', $isEdit ? $purchase->tcs_amount : 0) }}" min="0" class="purchase-input">
                             </div>
                         </div>
 
@@ -642,16 +433,15 @@
                     </section>
 
                     {{-- Step 4: Review & Save --}}
-                    <section x-show="currentStep === 4" x-cloak class="purchase-card p-5" role="tabpanel">
+                    <section id="purchase-step-4" x-show="currentStep === 4" x-cloak class="purchase-card purchase-section" aria-labelledby="purchase-step-title-4">
                         <div class="purchase-card-header">
                             <div>
-                                <p class="purchase-card-kicker">Step 4</p>
-                                <h3 class="purchase-card-title">Review & Save</h3>
+                                <h3 id="purchase-step-title-4" class="purchase-card-title">Review & Save</h3>
                                 <p class="purchase-card-subtitle">Check the purchase totals and save the draft when the entry looks right.</p>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-5">
+                        <div class="purchase-review-layout">
                             <div class="space-y-4">
                                 <div x-show="reviewWarnings.length > 0" x-cloak class="rounded-xl border border-amber-200 bg-amber-50 p-4">
                                     <p class="text-sm font-bold text-amber-900">Review these before saving</p>
@@ -691,7 +481,7 @@
                                 </div>
                             </div>
 
-                            <div class="purchase-summary p-4">
+                            <div class="purchase-review-summary">
                                 <h4 class="mb-3 text-sm font-bold text-slate-900">Purchase Summary</h4>
                                 <div class="space-y-2 text-sm">
                                     <div class="flex justify-between text-slate-600">
@@ -738,7 +528,7 @@
                                     x-show="currentStep > 1"
                                     x-cloak
                                     @click="prevStep()"
-                                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                    class="btn btn-secondary">
                                 Back
                             </button>
                             <div x-show="currentStep === 1" class="hidden sm:block"></div>
@@ -754,46 +544,33 @@
                                         x-show="currentStep < 3"
                                         x-cloak
                                         @click="nextStep()"
-                                        class="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700">
+                                        class="btn btn-primary">
                                     Save Step & Continue
                                 </button>
                                 <button type="button"
                                         x-show="currentStep === 3"
                                         x-cloak
                                         @click="goToStep(4)"
-                                        class="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700">
+                                        class="btn btn-primary">
                                     Review
                                 </button>
                                 <button type="submit"
                                         x-show="currentStep === 4"
                                         x-cloak
                                         @click="saveDraft()"
-                                        class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                                        class="btn btn-primary">
                                     {{ $isEdit ? 'Update Draft' : 'Save as Draft' }}
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="purchase-bottom-spacer"></div>
                 </div>
 
                 {{-- Sidebar --}}
-                <aside class="hidden xl:block">
-                    <div class="purchase-summary xl:sticky xl:top-6 p-5">
-                        <h3 class="mb-4 text-sm font-bold text-slate-900">Progress & Summary</h3>
-
-                        <div class="mb-5 space-y-2">
-                            <template x-for="step in steps" :key="`side-${step.id}`">
-                                <button type="button"
-                                        @click="goToStep(step.id)"
-                                        class="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm"
-                                        :class="currentStep === step.id ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'">
-                                    <span class="font-semibold" x-text="step.label"></span>
-                                    <span class="text-xs" x-text="currentStep === step.id ? 'Current' : `Step ${step.id}`"></span>
-                                </button>
-                            </template>
-                        </div>
+                <aside class="purchase-live-summary" aria-label="Live purchase summary">
+                    <div class="purchase-summary">
+                        <h3 class="mb-4 text-sm font-bold text-slate-900">Purchase Summary</h3>
 
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between text-slate-600">

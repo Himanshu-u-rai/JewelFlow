@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import postcss from 'postcss';
+
+const blade = readFileSync(new URL('../../resources/views/inventory/purchases/create.blade.php', import.meta.url), 'utf8');
+const css = postcss.parse(readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8'));
+function value(selector, prop, media) {
+    let result;
+    css.walkRules(rule => {
+        if (rule.selectors.includes(selector) && (rule.parent.type === 'atrule' ? rule.parent.params : undefined) === media) {
+            for (const node of rule.nodes) if (node.prop === prop) result = node.value;
+        }
+    });
+    return result;
+}
+
+test('compact purchase form is scoped, uses content-sized fields and keeps phone controls full-width and navigation in flow', () => {
+    assert.equal(value('.purchase-entry-page', 'max-width'), 'none');
+    assert.equal(value('.purchase-entry-page .purchase-field-grid', 'display'), 'flex');
+    assert.equal(value('.purchase-entry-page .purchase-field-grid', 'flex-wrap'), 'wrap');
+    assert.equal(value('.purchase-entry-page .purchase-field', 'flex'), '0 1 160px');
+    assert.equal(value('.purchase-entry-page .purchase-field--weight', 'flex-basis'), '112px');
+    assert.equal(value('.purchase-entry-page .purchase-field--amount', 'flex-basis'), '140px');
+    assert.equal(value('.purchase-entry-page .purchase-nav', 'position'), 'static');
+    assert.equal(value('.purchase-entry-page .purchase-field-grid > div', 'flex', '(max-width: 768px)'), '1 1 100%');
+    assert.equal(value('.purchase-entry-page :is(.purchase-input, .purchase-select, .purchase-textarea)', 'font-size', '(max-width: 768px)'), '16px');
+    assert.equal(value('.purchase-entry-page .purchase-select', 'appearance'), 'none');
+});
+
+function formState() {
+    let source = blade.match(/<script>([^]*?)<\/script>/)[1];
+    source = source.replace(/const IS_EDIT = [^;]*;/, 'const IS_EDIT = false;')
+        .replace(/@json\([^)]*\)/g, "'vendor'").replace(/{{[^]*?}}/g, '0');
+    const saved = new Map();
+    const state = runInNewContext(`${source}; purchaseForm({}, [])`, {
+        document: { getElementById: () => null },
+        localStorage: { setItem: (key, value) => saved.set(key, value), getItem: key => saved.get(key), removeItem: key => saved.delete(key) },
+        setTimeout, clearTimeout,
+    });
+    state.$nextTick = fn => fn();
+    state.$refs = {};
+    state.scheduleSave = () => {};
+    return { state, saved };
+}
+
+test('item and tax calculations remain usable through compact controls, including manual net weight', () => {
+    const { state } = formState();
+    state.addLine();
+    const line = state.lines[0];
+    Object.assign(line, { gross_weight: '10', stone_weight: '2', purchase_rate_per_gram: '100', making_charges: '50', stone_charges: '20', hallmark_charges: '10', rhodium_charges: '5', other_charges: '15' });
+    state.recalcLine(line);
+    assert.equal(line.net_metal_weight, '8.000');
+    assert.equal(line.purchase_line_amount, '900.00');
+    line.net_metal_weight = '7';
+    state.recalcLineFromNet(line);
+    assert.equal(line.purchase_line_amount, '800.00');
+    Object.assign(state, { labourDiscount: '100', cgstRate: '1.5', sgstRate: '1.5', tcsAmount: '10' });
+    assert.equal(state.grandTotal, 731);
+    state.igstRate = '3';
+    assert.equal(state.hasTaxConflict, true);
+});
+
+test('details, step navigation and local draft state remain intact', () => {
+    const { state, saved } = formState();
+    state.addLine();
+    state.toggleLineDetails(state.lines[0]);
+    assert.equal(state.lines[0].detailsOpen, true);
+    state.goToStep(3);
+    assert.equal(state.currentStep, 3);
+    assert.equal(JSON.parse([...saved.values()][0]).currentStep, 3);
+    state.prevStep();
+    assert.equal(state.currentStep, 2);
+    state.nextStep();
+    assert.equal(state.currentStep, 3);
+    state.removeLine(0);
+    assert.equal(state.lines.length, 0);
+});
