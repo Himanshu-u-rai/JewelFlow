@@ -31674,6 +31674,7 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-item-edit-grid { margin-top: 12px; }
 .qb-compact-form .qb-item-main { gap: 12px; }
 .qb-compact-form .qb-description-weight-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.qb-compact-form .qb-description-weight-row > div { min-width: 0; }
 
 .qb-compact-form .qb-customer-fields,
 .qb-compact-form .qb-notes-fields,
@@ -31826,9 +31827,9 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-description-field { flex: 0 1 18rem; }
     .qb-compact-form .qb-weight-panel { flex: 0 1 22.5rem; min-width: 0; }
     .qb-compact-form .qb-metal-purity-fields { flex: 0 1 13.75rem; grid-template-columns: minmax(0, 7rem) minmax(0, 6rem); }
+    .qb-compact-form .qb-mobile-product-grid { flex: 0 1 12.25rem; }
     .qb-compact-form .qb-mobile-weight-grid { grid-template-columns: repeat(3, minmax(0, 7rem)); }
     .qb-compact-form .qb-mobile-net-field { grid-column: auto; }
-    .qb-compact-form .qb-measures-grid { grid-column: auto; }
     .qb-compact-form .qb-item-extras { grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr); }
     .qb-compact-form .qb-review-summary { grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; }
     .qb-compact-form .qb-review-open { width: auto; }

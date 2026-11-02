@@ -62,6 +62,19 @@ test('description and original weight controls share the first group in DOM/tab 
     assert.ok(group.indexOf('item.metal_type') < group.indexOf('item.purity'));
 });
 
+test('HSN, pieces and rate follow metal and purity in the same wrapping entry row', () => {
+    const row = blade.slice(blade.indexOf('class="qb-description-weight-row"'), blade.indexOf('class="qb-measures-grid"'));
+    for (const model of ['item.hsn_code', 'item.pcs', 'item.rate']) {
+        assert.ok(row.includes(`="${model}"`), `${model} stays in the entry row`);
+    }
+    assert.ok(row.indexOf('item.purity') < row.indexOf('item.hsn_code'));
+    assert.ok(row.indexOf('item.hsn_code') < row.indexOf('item.pcs'));
+    assert.ok(row.indexOf('item.pcs') < row.indexOf('item.rate'));
+    assert.equal(blade.split('x-model.number="item.rate"').length - 1, 1);
+    assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280).flex, '0 1 12.25rem');
+    assert.equal(declarations('.qb-compact-form .qb-rate-field', 1280).flex, '0 1 9rem');
+});
+
 test('notes use native modal focus/Escape handling and selects have a consistent visible chevron', () => {
     assert.match(blade, /<dialog[^>]*x-ref="notesDialog"[^>]*@turbo:before-cache\.window="\$refs.notesDialog.close\(\)"/);
     assert.match(blade, /id="qb-notes"[^>]*autofocus/);

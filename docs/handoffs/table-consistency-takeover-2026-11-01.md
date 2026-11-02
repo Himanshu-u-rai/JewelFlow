@@ -27,6 +27,14 @@ HSN/Pcs remain below. Same controls/options/handlers/script, no new limits. Six
 focused frontend tests and Vite79/Blade385 lints/clear passed; no browser geometry
 or exact rendered percentage-reduction claim. Browser review remains next.
 
+HSN/Pcs/Rate follow-up from clean `56c8bba4d1ec093610d263c49b8b326bd6bb742d`:
+original HSN, Pcs and Rate controls now follow Metal/Purity in the same wrapping
+entry row and DOM/tab order. HSN112px/Pcs72px/Rate144px desktop bases, readable
+stacked phone layout; remaining charges use the full following row. No duplicate
+fields, input tag changes or calculation changes. Seven focused frontend cases,
+Vite build, guarded Blade compile/lints/clear and source checks passed. Browser
+rendering/phone geometry remain unverified; local only, no business-data changes.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

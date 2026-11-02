@@ -619,26 +619,27 @@
                                                         </template>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <div class="qb-mobile-product-grid">
-                                                <div>
-                                                    <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
-                                                    <input :name="'items['+index+'][hsn_code]'" x-model="item.hsn_code" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                <div class="qb-mobile-product-grid">
+                                                    <div>
+                                                        <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
+                                                        <input :name="'items['+index+'][hsn_code]'" x-model="item.hsn_code" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                    </div>
+                                                    <div>
+                                                        <label class="mb-2 block text-sm font-medium text-slate-600">Pcs</label>
+                                                        <input :name="'items['+index+'][pcs]'" x-model.number="item.pcs" type="number" min="1" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Pcs</label>
-                                                    <input :name="'items['+index+'][pcs]'" x-model.number="item.pcs" type="number" min="1" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+
+                                                <div class="qb-rate-field">
+                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
+                                                    <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                 </div>
                                             </div>
 
                                             <div class="qb-measures-grid">
                                                 <div class="qb-price-panel">
                                                     <div class="qb-price-grid">
-                                                        <div class="qb-rate-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
-                                                            <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
                                                         <div class="qb-making-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
                                                             <div class="qb-making-controls">
