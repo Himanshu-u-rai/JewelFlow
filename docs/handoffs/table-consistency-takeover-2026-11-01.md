@@ -40,6 +40,11 @@ desktop Rate basis 9rem→6rem (144px→96px, one-third narrower). Mobile unchan
 stone amount stays9rem, all form logic unchanged. Seven focused frontend checks,
 Vite build and diff check passed. Browser appearance remains unverified.
 
+Owner superseded the proportional size with an explicit 110px desktop Rate basis
+from clean `e15a6d21746c839588aaa085131f7c8c9e32ac9e`; mobile and business logic
+unchanged. Seven focused frontend checks, build and diff check passed. Browser
+appearance remains unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
