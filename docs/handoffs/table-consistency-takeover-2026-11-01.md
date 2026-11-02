@@ -4,6 +4,18 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Always-visible return refund panels
 
+Compact numeric/reason follow-up from clean
+`b48ecf13a9eba4d9b19ff2211cd237338951b8a9`: Wear loss/Manual refund now use
+small tracks (90px/140px minimums,1:1.4:4 proportions) beside the wider reason.
+Reason starts at40px like inputs, rows1, remains vertically resizable. Moved
+unchanged refund maximum helper below its input to avoid pushing the input down;
+reason presets retained. Existing <=768px single-column layout retained. No changed
+validation, limits, disabled/permission conditions, calculation or submit behavior.
+Four focused Node cases passed (new one RED before fix), Vite79/Blade385lints/clear,
+diff/layout[] and exact controls/scripts/directives comparison (except rows) passed.
+No DB rerun for presentation-only change. Browser access remains blocked: actual
+geometry, focus/resize and long-value fit unverified. Local only; owner review next.
+
 Compact-option follow-up from clean `38bf35b4ec5574aa5bf7c4ada4f2ddea6baf0251`:
 refund adjustment options now auto-fit four across when the inner row has704px+
 (four170px tracks/three8px gaps), wrapping below that; existing phone single-column

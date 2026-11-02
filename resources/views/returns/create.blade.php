@@ -322,7 +322,7 @@
                                                                    @disabled(!$isSelected)>
                                                         </label>
                                                         <label>
-                                                            <span>Manual refund <small>max ₹{{ number_format($maxRefundable, 2) }}</small></span>
+                                                            <span>Manual refund</span>
                                                             <input type="number"
                                                                    name="lines[{{ $idx }}][override_manual_total]"
                                                                    min="0"
@@ -332,11 +332,12 @@
                                                                    placeholder="0.00"
                                                                    data-return-line-control="{{ $idx }}"
                                                                    @disabled(!$isSelected)>
+                                                            <small>max ₹{{ number_format($maxRefundable, 2) }}</small>
                                                         </label>
-                                                        <label class="returns-create-adjustment-fields__wide">
+                                                        <label>
                                                             <span>Override reason <small>required if adjusted</small></span>
                                                             <textarea name="lines[{{ $idx }}][override_reason]"
-                                                                      rows="2"
+                                                                      rows="1"
                                                                       minlength="5"
                                                                       maxlength="500"
                                                                       placeholder="Reason for manual adjustment"
