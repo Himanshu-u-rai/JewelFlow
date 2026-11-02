@@ -27,3 +27,15 @@ test('fixed panel headings keep the existing divider without dropdown decoration
     assert.ok(heading.nodes.some(node => node.prop === 'border-bottom'));
     assert.ok(!heading.nodes.some(node => node.prop === 'cursor' && node.value === 'pointer'));
 });
+
+test('refund options share a compact wrapping row and retain full clickable labels', () => {
+    const rule = selector => css.nodes.find(node => node.type === 'rule' && node.selector === selector);
+    const value = (selector, property) => rule(selector)?.nodes.find(node => node.prop === property)?.value;
+    assert.equal(value('.returns-create-adjustment-grid', 'grid-template-columns'), 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))');
+    assert.equal(value('.returns-create-adjustment-grid label', 'min-height'), '40px');
+    assert.equal(value('.returns-create-adjustment-grid label', 'padding'), '6px 8px');
+    assert.equal(value('.returns-create-adjustment-grid input', 'flex-shrink'), '0');
+    const phone = css.nodes.find(node => node.type === 'atrule' && node.params === '(max-width: 768px)');
+    assert.ok(phone.nodes.some(node => node.selector?.split(',').map(s => s.trim()).includes('.returns-create-adjustment-grid')
+        && node.nodes.some(decl => decl.prop === 'grid-template-columns' && decl.value === 'minmax(0, 1fr)')));
+});

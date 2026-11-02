@@ -4,6 +4,15 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Always-visible return refund panels
 
+Compact-option follow-up from clean `38bf35b4ec5574aa5bf7c4ada4f2ddea6baf0251`:
+refund adjustment options now auto-fit four across when the inner row has704px+
+(four170px tracks/three8px gaps), wrapping below that; existing phone single-column
+layout retained. Padding6x8/gap6, readable12px labels and40px clickable height;
+checkboxes do not shrink. CSS only: no Blade/fields/permissions/logic changes.
+Three focused Node tests passed (new layout assertion RED before fix), Vite79,
+diff check and Impeccable layout detector[] passed. No DB suite needed for CSS-only
+change. Actual desktop/mobile geometry remains browser-unverified; owner review next.
+
 Started clean `b25b1480d8f3e2ee28a068bcf3a02af0b731933d` on
 `feature/table-consistency`. Owner requested Refund breakdown and Adjust refund
 remain visible on `/invoices/1/returns/create`. Replaced only their details/summary
