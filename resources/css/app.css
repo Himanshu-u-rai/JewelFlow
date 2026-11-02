@@ -31835,10 +31835,8 @@ a.notice-bell-item:focus-visible {
 }
 
 @media (min-width: 1200px) {
-    .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem; }
-    .qb-compact-form .qb-customer-select-field,
-    .qb-compact-form .qb-name-field { width: 50%; }
-    .qb-compact-form .qb-address-field { grid-column: span 2; }
+    .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(0, 1fr) 10.5rem minmax(0, 1fr) 10.5rem minmax(0, 1.5fr); }
+    .qb-compact-form .qb-address-field { grid-column: auto; }
 }
 
 @media (pointer: coarse) {

@@ -36,7 +36,10 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-metal-purity-fields', 1280)['grid-template-columns'], 'minmax(0, 7rem) minmax(0, 6rem)');
     assert.equal(declarations('.qb-compact-form .qb-metal-purity-fields', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
-    assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
+    assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(0, 1fr) 10.5rem minmax(0, 1fr) 10.5rem minmax(0, 1.5fr)');
+    assert.equal(declarations('.qb-compact-form .qb-customer-fields', 768)['grid-template-columns'], 'minmax(0, 1fr) 11rem');
+    assert.equal(declarations('.qb-compact-form .qb-address-field', 1280)['grid-column'], 'auto');
+    assert.equal(declarations('.qb-compact-form .qb-address-field', 390)['grid-column'], '1 / -1');
     assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'minmax(0, 7rem) minmax(0, 4.5rem) minmax(0, 6rem)');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).flex, '0 1 19rem');
@@ -57,7 +60,7 @@ test('desktop stone, net-auto and wastage labels stay on a single line without s
     }
 });
 
-test('compact item icons keep shared focus labels and actions; customer/name widths halve only on desktop', () => {
+test('compact item icons keep shared focus labels and actions; customer fields fill their compact tracks', () => {
     for (const action of ['toggleItem', 'removeItem']) {
         const button = blade.match(new RegExp(`<button[^>]*@click="${action}\\(index\\)"[^>]*>[^]*?<\\/button>`))?.[0];
         assert.ok(button);
@@ -70,7 +73,7 @@ test('compact item icons keep shared focus labels and actions; customer/name wid
     assert.match(blade, /:aria-expanded="openIndex === index"/);
     assert.equal(declarations('.qb-compact-form .qb-item-actions button', 390).width, '44px');
     for (const field of ['.qb-compact-form .qb-customer-select-field', '.qb-compact-form .qb-name-field']) {
-        assert.equal(declarations(field, 1280).width, '50%');
+        assert.equal(declarations(field, 1280).width, undefined);
         assert.equal(declarations(field, 390).width, undefined);
         assert.equal(declarations(field, 768).width, undefined);
     }

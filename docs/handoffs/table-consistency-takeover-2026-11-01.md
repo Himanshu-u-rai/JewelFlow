@@ -116,6 +116,16 @@ field/script identity passed. Evidence icon-actions-* in existing evidence folde
 Actual hover/focus-label placement, touch/phone/zoom/Turbo and post-fix browser
 geometry remain unverified. No remote or preview-data changes; visual review next.
 
+Customer single-row follow-up from clean `8886384dd4d73840d20a39292d22cdfd50765a61`:
+owner screenshot showed unused grid-cell gaps and Address on its own row. Replaced
+desktop1200+ four tracks/half-width child wrappers with five actual tracks: customer,
+date, name, mobile, address. Date/mobile retain10.5rem; customer/name get compact1fr
+each, Address1.5fr of remaining space. Address no longer spans two columns. Thus
+fields sit adjacent instead of reserving blank half-cells, in unchanged DOM order.
+Phone/tablet retain original stacked/two-column/full-row Address behavior. No Blade,
+field/value/calculation changes. Ten focused frontend cases/build/diff passed;
+pre-fix screenshot is evidence, post-fix browser geometry remains unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
