@@ -2,7 +2,20 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock register header filters (2026-11-03)
+## Latest checkpoint — Stock header row alignment
+
+Started clean `ce1f3ab4881051571a93a5c456fb2b491c8a9c55`. Owner requested
+filters beside the Stock Register title instead of a mandatory second row.
+CSS-only: at1280px+, header uses centered wrapping flex, heading/toggle keep
+natural width, filter form takes remaining space/right alignment with620px basis.
+Keeps320px expanded search, labels, and existing phone layout; narrow/zoomed
+content wraps rather than squeezing controls. RED1/pass2 then frontend136pass/
+22existing optional-browser skips/0fail, Vite79/build and diff passed. No Blade,
+JS, backend or data changes; PHP/Blade checks not repeated for CSS-only update.
+Logs stock-header-alignment-* in existing evidence directory. Actual rendered
+alignment remains browser-policy blocked/unverified. Local commit only; no push.
+
+## Earlier checkpoint — Stock register header filters (2026-11-03)
 
 Started clean `54e49e7b8149c671e945a4ddcc99f8da6eec9822`, same branch/sole
 writer. Removed the separate Inventory Lens panel and Showing-status subtitle.

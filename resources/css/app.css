@@ -31615,6 +31615,11 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .inventory-items-page .items-register-actions .btn { min-height: 44px; }
 .inventory-items-page .items-register-frame .items-stock-table-shell { border-radius: 0; }
+@media (min-width: 1280px) {
+    .inventory-items-page .items-register-header { display: flex; flex-wrap: wrap; align-items: center; }
+    .inventory-items-page .items-register-heading { flex: 0 1 auto; gap: 16px; }
+    .inventory-items-page .items-register-filters { flex: 1 1 620px; justify-content: flex-end; }
+}
 @media (max-width: 768px) {
     .inventory-items-page .items-register-header { padding: 13px 12px; }
     .inventory-items-page .items-register-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

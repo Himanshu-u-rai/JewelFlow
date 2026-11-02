@@ -32,3 +32,13 @@ test('phone filters use two compact columns, full-row search and 44px controls w
     assert.equal(value('.inventory-items-page .items-register-control', 'min-height'), '44px');
     assert.equal(value('.inventory-items-page .items-register-control', 'font-size', phone), '16px');
 });
+
+test('wide stock header aligns the heading and filter form in one wrapping row rather than stacking them', () => {
+    const wide = '(min-width: 1280px)';
+    assert.equal(value('.inventory-items-page .items-register-header', 'display', wide), 'flex');
+    assert.equal(value('.inventory-items-page .items-register-header', 'flex-wrap', wide), 'wrap');
+    assert.equal(value('.inventory-items-page .items-register-header', 'align-items', wide), 'center');
+    assert.equal(value('.inventory-items-page .items-register-heading', 'flex', wide), '0 1 auto');
+    assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), '1 1 620px');
+    assert.equal(value('.inventory-items-page .items-register-filters', 'justify-content', wide), 'flex-end');
+});
