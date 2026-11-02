@@ -29,6 +29,8 @@ test('entry has full-width work area, proportionate desktop fields and readable 
         assert.equal(declarations('.qb-compact-form .qb-top-grid', width)['align-items'], 'start');
     }
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 390)['grid-template-columns'], 'minmax(0, 1fr)');
+    assert.equal(declarations('.qb-compact-form .qb-description-field', 390).width, undefined);
+    assert.equal(declarations('.qb-compact-form .qb-description-field', 1280).width, '50%');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
     assert.equal(declarations('.qb-compact-form .qb-weight-field', 1280).flex, '0 1 7rem');

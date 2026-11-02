@@ -31821,6 +31821,7 @@ a.notice-bell-item:focus-visible {
 
 @media (min-width: 1100px) {
     .qb-compact-form .qb-item-main { grid-template-columns: minmax(12rem, 1fr) minmax(22rem, 30rem); }
+    .qb-compact-form .qb-description-field { width: 50%; }
     .qb-compact-form .qb-item-extras { grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr); }
     .qb-compact-form .qb-review-summary { grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; }
     .qb-compact-form .qb-review-open { width: auto; }

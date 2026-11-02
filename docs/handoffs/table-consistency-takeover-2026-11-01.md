@@ -4,6 +4,11 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Quick Bill Notes dialog and visible dropdown arrows
 
+Follow-up from clean `f24f197c508a1c8bcb3698006fb25ede6e653dec`: owner requested
+Description half-width. Scoped its desktop (1100px+) wrapper to 50% of its existing
+track; phone/tablet keep full width. No fields/handlers/calculations changed.
+Source contract and Vite build checked; browser appearance remains unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
