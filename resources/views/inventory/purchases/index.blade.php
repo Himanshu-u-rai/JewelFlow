@@ -1,833 +1,10 @@
 <x-app-layout>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-
-        body.sp-mobile-filter-open {
-            overflow: hidden;
-        }
-
-        .sp-mobile-filter-trigger-shell,
-        .sp-mobile-filter-overlay,
-        .sp-mobile-filter-drawer,
-        .sp-mobile-list {
-            display: none;
-        }
-
-        .sp-mobile-filter-trigger-shell {
-            margin-bottom: 14px;
-        }
-
-        .sp-mobile-filter-trigger {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            width: 100%;
-            border: 1px solid #dbe3ee;
-            border-radius: 16px;
-            background: #ffffff;
-            padding: 12px 14px;
-            text-align: left;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
-        }
-
-        .sp-mobile-filter-trigger-copy {
-            min-width: 0;
-        }
-
-        .sp-mobile-filter-kicker {
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-        }
-
-        .sp-mobile-filter-summary {
-            margin-top: 4px;
-            color: #0f172a;
-            font-size: 14px;
-            font-weight: 700;
-            line-height: 1.4;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .sp-mobile-filter-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .sp-mobile-filter-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 28px;
-            height: 28px;
-            padding: 0 8px;
-            border-radius: 999px;
-            border: 1px solid #fde68a;
-            background: #fffbeb;
-            color: #92400e;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .sp-mobile-filter-open-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 34px;
-            border-radius: 999px;
-            border: 1px solid #dbe3ee;
-            background: #f8fafc;
-            padding: 0 12px;
-            color: #0f172a;
-            font-size: 12px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .sp-mobile-filter-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 85;
-            background: rgba(15, 23, 42, .5);
-            backdrop-filter: blur(2px);
-        }
-
-        .sp-mobile-filter-drawer {
-            position: fixed;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            z-index: 90;
-            padding: 0 0 env(safe-area-inset-bottom, 0px);
-        }
-
-        .sp-mobile-filter-drawer-enter,
-        .sp-mobile-filter-drawer-leave {
-            transition: transform .22s ease, opacity .22s ease;
-        }
-
-        .sp-mobile-filter-drawer-enter-start,
-        .sp-mobile-filter-drawer-leave-end {
-            opacity: 0;
-            transform: translateY(24px);
-        }
-
-        .sp-mobile-filter-drawer-enter-end,
-        .sp-mobile-filter-drawer-leave-start {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .sp-mobile-filter-sheet {
-            display: flex;
-            flex-direction: column;
-            max-height: min(84vh, 740px);
-            border-radius: 22px 22px 0 0;
-            border: 1px solid #dbe3ee;
-            background: #ffffff;
-            box-shadow: 0 -20px 38px rgba(15, 23, 42, .22);
-            overflow: hidden;
-        }
-
-        .sp-mobile-filter-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 14px;
-            padding: 16px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .sp-mobile-filter-title {
-            color: #0f172a;
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.25;
-        }
-
-        .sp-mobile-filter-copy {
-            margin-top: 4px;
-            color: #64748b;
-            font-size: 12px;
-            line-height: 1.45;
-        }
-
-        .sp-mobile-filter-close {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border: 1px solid #dbe3ee;
-            border-radius: 999px;
-            background: #ffffff;
-            color: #475569;
-            flex-shrink: 0;
-        }
-
-        .sp-mobile-filter-body {
-            overflow-y: auto;
-            padding: 14px 16px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .sp-mobile-filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .sp-mobile-filter-label {
-            color: #475569;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-        }
-
-        .sp-mobile-search,
-        .sp-mobile-native-select,
-        .sp-mobile-date-input {
-            width: 100%;
-            min-height: 44px;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            background: #ffffff;
-            padding: 10px 12px;
-            color: #0f172a;
-            font-size: 15px;
-        }
-
-        .sp-mobile-date-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .sp-mobile-filter-footer {
-            position: sticky;
-            bottom: 0;
-            display: flex;
-            gap: 10px;
-            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-            border-top: 1px solid #e2e8f0;
-            background: rgba(255, 255, 255, .98);
-        }
-
-        .sp-mobile-filter-footer button,
-        .sp-mobile-filter-footer a {
-            flex: 1 1 0;
-            min-height: 46px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sp-mobile-filter-clear {
-            border: 1px solid #dbe3ee;
-            background: #f8fafc;
-            color: #0f172a;
-        }
-
-        .sp-mobile-filter-apply {
-            border: 1px solid #0f766e;
-            background: #0f766e;
-            color: #ffffff;
-            box-shadow: 0 12px 24px rgba(15, 118, 110, .2);
-        }
-
-        .sp-filter-inline {
-            position: relative;
-            z-index: 1;
-        }
-
-        .sp-filter-field {
-            display: flex;
-            flex-direction: column;
-            min-width: 130px;
-        }
-
-        .sp-filter-search {
-            min-width: min(100%, 280px);
-        }
-
-        .sp-register-card {
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-        }
-
-        .sp-register-table-wrap {
-            overflow-x: auto;
-            overscroll-behavior-x: contain;
-        }
-
-        .sp-register-table {
-            width: 100%;
-            min-width: 920px;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        .sp-mobile-card {
-            border: 1px solid #dbe3ee;
-            border-radius: 14px;
-            background: #ffffff;
-            padding: 12px;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
-        }
-
-        .sp-mobile-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .sp-mobile-label {
-            margin-bottom: 3px;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .02em;
-        }
-
-        @media (max-width: 1024px) {
-            .sp-register-table {
-                min-width: 860px;
-            }
-        }
-
-        @media (max-width: 680px) {
-            .sp-filter-inline--desktop,
-            .sp-register-table-wrap {
-                display: none;
-            }
-
-            .sp-mobile-filter-trigger-shell,
-            .sp-mobile-filter-overlay,
-            .sp-mobile-filter-drawer,
-            .sp-mobile-list {
-                display: block;
-            }
-
-            .sp-mobile-list {
-                padding: 12px;
-            }
-
-            .sp-mobile-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .sp-page-action {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 40px;
-            border-radius: 12px;
-            border: 1px solid #b45309 !important;
-            background: #b45309 !important;
-            padding: 0 16px;
-            color: #ffffff !important;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            box-shadow: none !important;
-            transition: background .16s ease, border-color .16s ease, transform .12s ease;
-        }
-
-        .page-actions > a.sp-page-action {
-            border-color: #b45309 !important;
-            border-radius: 12px !important;
-            background-color: #b45309 !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            box-shadow: none !important;
-        }
-
-        .sp-page-action:hover,
-        .page-actions > a.sp-page-action:hover {
-            border-color: #92400e !important;
-            background: #92400e !important;
-            background-color: #92400e !important;
-            color: #ffffff !important;
-        }
-
-        .inventory-purchases-page {
-            --sp-ink: #0f172a;
-            --sp-muted: #64748b;
-            --sp-soft: #f8fafc;
-            --sp-line: #dbe3ee;
-            --sp-line-soft: #e7edf5;
-            --sp-gold: #b45309;
-            --sp-gold-deep: #92400e;
-            --sp-gold-soft: #fff7ed;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .inventory-purchases-page .sp-kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 0;
-        }
-
-        .inventory-purchases-page .sp-kpi-card {
-            min-height: 82px;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            background: #ffffff;
-            padding: 13px 15px;
-            box-shadow: none;
-        }
-
-        .inventory-purchases-page .sp-kpi-inner {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 0;
-        }
-
-        .inventory-purchases-page .sp-kpi-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            flex: 0 0 36px;
-            border-radius: 10px;
-            border: 1px solid #fed7aa;
-            background: #fff7ed;
-            color: var(--sp-gold);
-        }
-
-        .inventory-purchases-page .sp-kpi-card--month .sp-kpi-icon {
-            border-color: #bbf7d0;
-            background: #ecfdf5;
-            color: #047857;
-        }
-
-        .inventory-purchases-page .sp-kpi-card--items .sp-kpi-icon {
-            border-color: #bfdbfe;
-            background: #eff6ff;
-            color: #2563eb;
-        }
-
-        .inventory-purchases-page .sp-kpi-card--drafts .sp-kpi-icon {
-            border-color: #fed7aa;
-            background: #fff7ed;
-            color: #ea580c;
-        }
-
-        .inventory-purchases-page .sp-kpi-label {
-            margin: 0;
-            color: #64748b;
-            font-size: 11.5px;
-            font-weight: 500;
-            letter-spacing: 0;
-            line-height: 1.2;
-            text-transform: none;
-        }
-
-        .inventory-purchases-page .sp-kpi-value {
-            margin-top: 4px;
-            color: var(--sp-ink);
-            font-size: 24px;
-            font-weight: 700;
-            line-height: 1.1;
-            letter-spacing: 0;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .inventory-purchases-page .sp-filter-inline {
-            margin-bottom: 0;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px !important;
-            background: #ffffff;
-            padding: 15px 18px;
-            box-shadow: none !important;
-        }
-
-        .inventory-purchases-page .sp-filter-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 14px;
-        }
-
-        .inventory-purchases-page .sp-filter-kicker {
-            margin: 0 0 3px;
-            color: var(--sp-gold);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .12em;
-            line-height: 1.2;
-            text-transform: uppercase;
-        }
-
-        .inventory-purchases-page .sp-filter-title,
-        .inventory-purchases-page .sp-register-title {
-            margin: 0;
-            color: var(--sp-ink);
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: 0;
-            line-height: 1.2;
-        }
-
-        .inventory-purchases-page .sp-filter-copy,
-        .inventory-purchases-page .sp-register-copy {
-            margin-top: 4px;
-            color: var(--sp-muted);
-            font-size: 13px;
-            line-height: 1.35;
-        }
-
-        .inventory-purchases-page .sp-filter-inline form {
-            display: grid;
-            grid-template-columns: minmax(260px, 1.5fr) minmax(130px, .7fr) minmax(160px, .85fr) minmax(132px, .7fr) minmax(132px, .7fr) auto;
-            align-items: end;
-            gap: 12px;
-        }
-
-        .inventory-purchases-page .sp-filter-field {
-            min-width: 0;
-        }
-
-        .inventory-purchases-page .sp-filter-field label {
-            color: #4a4334;
-            font-size: 12px;
-            font-weight: 500;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
-        .inventory-purchases-page .sp-filter-inline input,
-        .inventory-purchases-page .sp-filter-inline select {
-            min-height: 40px;
-            border-color: #cbd5e1;
-            border-radius: 10px;
-            background-color: #ffffff;
-            font-weight: 400;
-            box-shadow: none;
-        }
-
-        .inventory-purchases-page .sp-filter-inline input:focus,
-        .inventory-purchases-page .sp-filter-inline select:focus,
-        .sp-mobile-search:focus,
-        .sp-mobile-native-select:focus,
-        .sp-mobile-date-input:focus {
-            border-color: #f59e0b;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
-        }
-
-        .inventory-purchases-page .sp-filter-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: max-content;
-        }
-
-        .inventory-purchases-page .sp-filter-apply,
-        .inventory-purchases-page .sp-filter-clear,
-        .inventory-purchases-page .sp-row-action,
-        .inventory-purchases-page .sp-empty-action {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 40px;
-            border-radius: 10px;
-            padding: 0 14px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s ease;
-        }
-
-        .inventory-purchases-page .sp-filter-apply,
-        .inventory-purchases-page .sp-empty-action {
-            border: 1px solid var(--sp-ink);
-            background: var(--sp-ink);
-            color: #ffffff;
-        }
-
-        .inventory-purchases-page .sp-empty-action {
-            border-color: var(--sp-gold);
-            background: var(--sp-gold);
-        }
-
-        .inventory-purchases-page .sp-filter-clear,
-        .inventory-purchases-page .sp-row-action {
-            border: 1px solid var(--sp-line);
-            background: #ffffff;
-            color: #334155;
-        }
-
-        .inventory-purchases-page .sp-row-action--edit {
-            border-color: #f3dcb6;
-            background: #fff7ed;
-            color: var(--sp-gold-deep);
-        }
-
-        .inventory-purchases-page .sp-row-action--delete {
-            border-color: #fecaca;
-            background: #fff1f2;
-            color: #be123c;
-        }
-
-        .inventory-purchases-page .sp-filter-apply:hover,
-        .inventory-purchases-page .sp-empty-action:hover,
-        .inventory-purchases-page .sp-filter-clear:hover,
-        .inventory-purchases-page .sp-row-action:hover {
-            transform: translateY(-1px);
-        }
-
-        .inventory-purchases-page .sp-register-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 14px !important;
-            background: #ffffff;
-            box-shadow: none !important;
-            overflow: hidden;
-        }
-
-        .inventory-purchases-page .sp-register-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 15px 18px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .inventory-purchases-page .sp-register-table thead {
-            background: #f8fafc;
-        }
-
-        .inventory-purchases-page .sp-register-table th {
-            border-bottom: 1px solid var(--sp-line-soft);
-            color: #52637a;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .12em;
-        }
-
-        .inventory-purchases-page .sp-register-table td {
-            vertical-align: middle;
-        }
-
-        .inventory-purchases-page .sp-register-table tbody tr:hover {
-            background: #fffaf0;
-        }
-
-        .inventory-purchases-page .sp-purchase-link {
-            color: var(--sp-gold-deep);
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .inventory-purchases-page .sp-purchase-link:hover {
-            text-decoration: underline;
-        }
-
-        .inventory-purchases-page .sp-status-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 24px;
-            border-radius: 999px;
-            padding: 0 10px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .inventory-purchases-page .sp-status-pill--draft {
-            border: 1px solid #fed7aa;
-            background: #fff7ed;
-            color: #c2410c;
-        }
-
-        .inventory-purchases-page .sp-status-pill--stocked {
-            border: 1px solid #bbf7d0;
-            background: #ecfdf5;
-            color: #047857;
-        }
-
-        .inventory-purchases-page .sp-status-pill--confirmed {
-            border: 1px solid #bfdbfe;
-            background: #eff6ff;
-            color: #1d4ed8;
-        }
-
-        .inventory-purchases-page .sp-empty-state {
-            padding: clamp(36px, 7vw, 64px) 20px;
-            text-align: center;
-        }
-
-        .inventory-purchases-page .sp-empty-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            margin-bottom: 13px;
-            border: 1px solid #fed7aa;
-            border-radius: 14px;
-            background: #fff7ed;
-            color: var(--sp-gold);
-        }
-
-        .inventory-purchases-page .sp-empty-title {
-            color: var(--sp-ink);
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .inventory-purchases-page .sp-empty-copy {
-            margin-top: 5px;
-            color: #7a8aa0;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .inventory-purchases-page .sp-mobile-card {
-            border-color: #e2e8f0;
-            border-radius: 14px;
-            box-shadow: none;
-        }
-
-        .sp-mobile-filter-trigger {
-            border-color: #e2e8f0;
-            border-radius: 14px;
-            box-shadow: none;
-        }
-
-        .sp-mobile-filter-apply {
-            border-color: #b45309;
-            background: #b45309;
-            box-shadow: none;
-        }
-
-        @media (max-width: 1180px) {
-            .inventory-purchases-page .sp-filter-inline form {
-                grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(140px, .65fr)) repeat(2, minmax(132px, .6fr));
-            }
-
-            .inventory-purchases-page .sp-filter-actions {
-                grid-column: 1 / -1;
-            }
-        }
-
-        @media (max-width: 860px) {
-            .inventory-purchases-page .sp-kpi-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 680px) {
-            .sp-page-action {
-                min-height: 36px;
-                padding: 0 12px;
-                border-radius: 11px;
-                font-size: 12px;
-            }
-
-            .inventory-purchases-page {
-                gap: 14px;
-            }
-
-            .inventory-purchases-page .sp-kpi-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-
-            .inventory-purchases-page .sp-kpi-card {
-                min-height: 86px;
-                border-radius: 14px;
-                padding: 12px;
-            }
-
-            .inventory-purchases-page .sp-kpi-inner {
-                flex-direction: row;
-                align-items: center;
-                gap: 9px;
-            }
-
-            .inventory-purchases-page .sp-kpi-icon {
-                width: 32px;
-                height: 32px;
-                flex: 0 0 32px;
-                border-radius: 10px;
-            }
-
-            .inventory-purchases-page .sp-kpi-label {
-                font-size: 10.5px;
-                line-height: 1.15;
-            }
-
-            .inventory-purchases-page .sp-kpi-value {
-                margin-top: 7px;
-                max-width: 100%;
-                font-size: clamp(18px, 4.9vw, 22px);
-                line-height: 1.05;
-                overflow-wrap: anywhere;
-                word-break: break-word;
-            }
-
-            .inventory-purchases-page .sp-register-card {
-                border-radius: 14px;
-            }
-
-            .inventory-purchases-page .sp-filter-head,
-            .inventory-purchases-page .sp-register-head {
-                padding: 0;
-                display: block;
-            }
-
-            .inventory-purchases-page .sp-filter-head {
-                margin-bottom: 12px;
-            }
-
-            .inventory-purchases-page .sp-register-head {
-                padding: 14px;
-            }
-
-            .inventory-purchases-page .sp-empty-state {
-                padding: 44px 16px;
-            }
-
-            .inventory-purchases-page .sp-empty-icon {
-                width: 44px;
-                height: 44px;
-            }
-        }
-    </style>
-
     @php
         $statusLabels = [
             'draft' => 'Draft',
             'confirmed' => 'Confirmed',
             'stocked' => 'Stocked',
         ];
-
         $activeFilters = [
             'search' => request('search'),
             'status' => request('status'),
@@ -835,360 +12,123 @@
             'date_from' => request('date_from'),
             'date_to' => request('date_to'),
         ];
-
         $hasActiveFilters = collect($activeFilters)->contains(fn ($value) => filled($value));
-        $selectedVendor = $vendors->firstWhere('id', (int) request('vendor_id'));
+        $searchActive = request()->filled('search');
     @endphp
 
-    <x-page-header title="Stock Purchases" subtitle="Record and manage incoming stock from suppliers">
+    <x-page-header class="customers-page-header customers-directory-header" title="Stock Purchases" subtitle="Record and manage incoming stock from suppliers">
         <x-slot:actions>
             @can('inventory.create')
-            <a href="{{ route('inventory.purchases.create') }}" class="sp-page-action">
-                <x-icon name="plus" class="w-4 h-4" />
-                New Purchase
+            <a href="{{ route('inventory.purchases.create') }}" class="btn btn-success btn-sm customers-add-btn" aria-label="New Purchase" title="New Purchase">
+                <x-icon name="plus" class="w-4 h-4 mr-2" />
+                <span class="customers-add-label">New Purchase</span>
             </a>
             @endcan
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner inventory-purchases-page" data-list-workspace
-         x-data="{
-             search: @js((string) request('search', '')),
-             status: @js((string) request('status', '')),
-             statusName: @js(request('status') ? ($statusLabels[request('status')] ?? ucfirst((string) request('status'))) : ''),
-             vendorId: @js((string) request('vendor_id', '')),
-             vendorName: @js($selectedVendor?->name ?? ''),
-             fromDate: @js((string) request('date_from', '')),
-             toDate: @js((string) request('date_to', '')),
-             mobileFilterOpen: false,
-             draftSearch: @js((string) request('search', '')),
-             draftStatus: @js((string) request('status', '')),
-             draftVendorId: @js((string) request('vendor_id', '')),
-             draftFromDate: @js((string) request('date_from', '')),
-             draftToDate: @js((string) request('date_to', '')),
-             statusLabels: @js($statusLabels),
-             vendorOptions: @js($vendors->map(fn ($vendor) => ['id' => (string) $vendor->id, 'name' => $vendor->name])->values()),
-             initMobileDrawerWatcher() {
-                 const drawer = document.querySelector('[data-mobile-drawer=\'tenant\']');
-                 if (!drawer || this._spDrawerObserver) {
-                     return;
-                 }
-
-                 this._spDrawerObserver = new MutationObserver(() => {
-                     if (drawer.classList.contains('mobile-open')) {
-                         this.closeMobileFilters();
-                     }
-                 });
-
-                 this._spDrawerObserver.observe(drawer, { attributes: true, attributeFilter: ['class'] });
-             },
-             findVendorName(id) {
-                 const match = this.vendorOptions.find((option) => option.id === String(id));
-                 return match ? match.name : '';
-             },
-             statusLabel(value) {
-                 return value ? (this.statusLabels[value] || value) : '';
-             },
-             copyCommittedToDraft() {
-                 this.draftSearch = this.search;
-                 this.draftStatus = this.status;
-                 this.draftVendorId = this.vendorId;
-                 this.draftFromDate = this.fromDate;
-                 this.draftToDate = this.toDate;
-             },
-             activeFilterCount() {
-                 let count = 0;
-                 if (this.search && this.search.trim()) count++;
-                 if (this.status) count++;
-                 if (this.vendorId) count++;
-                 if (this.fromDate) count++;
-                 if (this.toDate) count++;
-                 return count;
-             },
-             mobileFilterSummary() {
-                 const parts = [];
-                 if (this.search && this.search.trim()) parts.push('Search');
-                 if (this.statusName) parts.push(this.statusName);
-                 if (this.vendorName) parts.push(this.vendorName);
-                 if (this.fromDate || this.toDate) {
-                     parts.push(this.fromDate && this.toDate ? 'Date range' : (this.fromDate ? 'From date' : 'To date'));
-                 }
-                 return parts.length ? parts.join(' • ') : 'All purchases';
-             },
-             closeTenantDrawerIfNeeded() {
-                 if (window.innerWidth > 680) {
-                     return;
-                 }
-
-                 const drawer = document.querySelector('[data-mobile-drawer=\'tenant\']');
-                 if (drawer?.classList.contains('mobile-open')) {
-                     document.querySelector('[data-mobile-menu-toggle=\'tenant\']')?.click();
-                 }
-             },
-             openMobileFilters() {
-                 this.copyCommittedToDraft();
-                 this.closeTenantDrawerIfNeeded();
-                 this.mobileFilterOpen = true;
-                 document.body.classList.add('sp-mobile-filter-open');
-             },
-             closeMobileFilters() {
-                 this.mobileFilterOpen = false;
-                 document.body.classList.remove('sp-mobile-filter-open');
-             },
-             applyMobileFilters() {
-                 this.search = this.draftSearch;
-                 this.status = this.draftStatus;
-                 this.statusName = this.statusLabel(this.draftStatus);
-                 this.vendorId = this.draftVendorId;
-                 this.vendorName = this.findVendorName(this.draftVendorId);
-                 this.fromDate = this.draftFromDate;
-                 this.toDate = this.draftToDate;
-                 this.closeMobileFilters();
-                 this.$nextTick(() => this.$refs.mobileFilterForm.submit());
-             },
-             clearMobileFilters() {
-                 this.draftSearch = '';
-                 this.draftStatus = '';
-                 this.draftVendorId = '';
-                 this.draftFromDate = '';
-                 this.draftToDate = '';
-                 this.search = '';
-                 this.status = '';
-                 this.statusName = '';
-                 this.vendorId = '';
-                 this.vendorName = '';
-                 this.fromDate = '';
-                 this.toDate = '';
-                 this.closeMobileFilters();
-                 this.$nextTick(() => this.$refs.mobileFilterForm.submit());
-             }
-         }"
-         x-init="initMobileDrawerWatcher()"
-         @keydown.escape.window="closeMobileFilters()"
-         @resize.window="if (window.innerWidth > 680) closeMobileFilters()">
-
-        <div class="sp-kpi-grid">
-            <div class="sp-kpi-card sp-kpi-card--total">
-                <div class="sp-kpi-inner">
-                    <div class="sp-kpi-icon">
-                        <x-icon name="file-text" class="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div class="min-w-0">
-                        <p class="sp-kpi-label">Total Purchases</p>
-                        <p class="sp-kpi-value">{{ number_format($stats->total_confirmed ?? 0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="sp-kpi-card sp-kpi-card--month">
-                <div class="sp-kpi-inner">
-                    <div class="sp-kpi-icon">
-                        <x-icon name="circle-dollar-sign" class="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div class="min-w-0">
-                        <p class="sp-kpi-label">This Month</p>
-                        <p class="sp-kpi-value">₹{{ number_format($stats->month_amount ?? 0, 0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="sp-kpi-card sp-kpi-card--items">
-                <div class="sp-kpi-inner">
-                    <div class="sp-kpi-icon">
-                        <x-icon name="package" class="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div class="min-w-0">
-                        <p class="sp-kpi-label">Items This Month</p>
-                        <p class="sp-kpi-value">{{ number_format($monthItems ?? 0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="sp-kpi-card sp-kpi-card--drafts">
-                <div class="sp-kpi-inner">
-                    <div class="sp-kpi-icon">
-                        <x-icon name="clock" class="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div class="min-w-0">
-                        <p class="sp-kpi-label">Drafts Pending</p>
-                        <p class="sp-kpi-value">{{ number_format($stats->drafts_pending ?? 0) }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="sp-mobile-filter-trigger-shell" x-cloak>
-            <button type="button" class="sp-mobile-filter-trigger" @click="openMobileFilters()" :aria-expanded="mobileFilterOpen.toString()">
-                <div class="sp-mobile-filter-trigger-copy">
-                    <div class="sp-mobile-filter-kicker">Filters</div>
-                    <div class="sp-mobile-filter-summary" x-text="mobileFilterSummary()">All purchases</div>
-                </div>
-                <div class="sp-mobile-filter-meta">
-                    <span class="sp-mobile-filter-count" x-text="activeFilterCount()">0</span>
-                    <span class="sp-mobile-filter-open-btn">Open</span>
-                </div>
-            </button>
-        </div>
-
-        <div class="sp-mobile-filter-overlay"
-             x-show="mobileFilterOpen"
-             x-transition.opacity
-             x-cloak
-             @click="closeMobileFilters()"></div>
-
-        <div class="sp-mobile-filter-drawer"
-             x-show="mobileFilterOpen"
-             x-transition:enter="sp-mobile-filter-drawer-enter"
-             x-transition:enter-start="sp-mobile-filter-drawer-enter-start"
-             x-transition:enter-end="sp-mobile-filter-drawer-enter-end"
-             x-transition:leave="sp-mobile-filter-drawer-leave"
-             x-transition:leave-start="sp-mobile-filter-drawer-leave-start"
-             x-transition:leave-end="sp-mobile-filter-drawer-leave-end"
-             x-cloak>
-            <form method="GET" action="{{ route('inventory.purchases.index') }}" class="sp-mobile-filter-sheet" x-ref="mobileFilterForm" @submit.prevent="applyMobileFilters()">
-                <div class="sp-mobile-filter-head">
-                    <div>
-                        <div class="sp-mobile-filter-title">Filter Purchases</div>
-                        <div class="sp-mobile-filter-copy">Set filters and apply them together.</div>
-                    </div>
-                    <button type="button" class="sp-mobile-filter-close" @click="closeMobileFilters()" aria-label="Close filters">
-                        <x-icon name="x" size="16" stroke-width="2.3" />
-                    </button>
+    <div class="content-inner customers-index-page inventory-purchases-page" data-list-workspace>
+        <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden customers-table-card" data-list-frame>
+            <div class="customers-table-card-header customers-register-head customers-directory-head sp-register-head">
+                <div class="customers-register-titleblock">
+                    <h2>Purchase Register</h2>
+                    <dl class="customers-directory-summary" aria-label="Stock purchase summary">
+                        <div><dt>Total Purchases</dt><dd>{{ number_format($stats->total_confirmed ?? 0) }}</dd></div>
+                        <div><dt>This Month</dt><dd>₹{{ number_format($stats->month_amount ?? 0, 0) }}</dd></div>
+                        <div><dt>Items This Month</dt><dd>{{ number_format($monthItems ?? 0) }}</dd></div>
+                        <div><dt>Drafts Pending</dt><dd>{{ number_format($stats->drafts_pending ?? 0) }}</dd></div>
+                    </dl>
                 </div>
 
-                <div class="sp-mobile-filter-body">
-                    <div class="sp-mobile-filter-group">
-                        <label class="sp-mobile-filter-label" for="sp-mobile-search">Search</label>
-                        <input id="sp-mobile-search" type="text" name="search" x-model="draftSearch" class="sp-mobile-search" placeholder="Purchase #, invoice #, supplier...">
-                    </div>
-
-                    <div class="sp-mobile-filter-group">
-                        <label class="sp-mobile-filter-label" for="sp-mobile-status">Status</label>
-                        <select id="sp-mobile-status" name="status" class="sp-mobile-native-select" x-model="draftStatus">
-                            <option value="">All</option>
-                            @foreach($statusLabels as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="sp-mobile-filter-group">
-                        <label class="sp-mobile-filter-label" for="sp-mobile-vendor">Vendor</label>
-                        <select id="sp-mobile-vendor" name="vendor_id" class="sp-mobile-native-select" x-model="draftVendorId">
-                            <option value="">All Vendors</option>
-                            @foreach($vendors as $vendor)
-                                <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="sp-mobile-filter-group">
-                        <label class="sp-mobile-filter-label">Date Range</label>
-                        <div class="sp-mobile-date-grid">
-                            <input type="date" name="date_from" class="sp-mobile-date-input" x-model="draftFromDate">
-                            <input type="date" name="date_to" class="sp-mobile-date-input" x-model="draftToDate">
+                <x-responsive-filter-panel id="purchases-filter-panel" label="Stock purchase filters">
+                    <form method="GET" action="{{ route('inventory.purchases.index') }}" class="customers-directory-controls"
+                          x-data="{ searchOpen: {{ $searchActive ? 'true' : 'false' }} || window.innerWidth <= 768 }"
+                          @resize.window="if (window.innerWidth <= 768) searchOpen = true">
+                        <div class="customers-directory-search" :class="{ 'is-search-open': searchOpen }"
+                             @keydown.escape.stop.prevent="const panel = $el.closest('dialog'); if (panel?.matches(':modal')) panel.close(); else { searchOpen = false; $refs.searchToggle.focus(); }">
+                            <button type="button" data-purchase-search-toggle x-cloak x-ref="searchToggle"
+                                    class="customers-directory-search-toggle" aria-label="Search purchases"
+                                    aria-controls="purchases-search-panel" aria-expanded="{{ $searchActive ? 'true' : 'false' }}"
+                                    :aria-expanded="searchOpen" :aria-label="searchOpen ? 'Hide purchase search' : 'Search purchases'"
+                                    :title="searchOpen ? 'Hide search' : 'Search purchases'"
+                                    @click="searchOpen = !searchOpen; if (searchOpen) $nextTick(() => $refs.searchInput.focus())">
+                                <x-icon name="search" size="18" />
+                            </button>
+                            <div id="purchases-search-panel" class="customers-directory-search-panel" x-show="searchOpen">
+                                <label for="purchases-search" class="jf-sr-only">Search purchases</label>
+                                <input id="purchases-search" type="search" x-ref="searchInput" name="search"
+                                       value="{{ request('search') }}" placeholder="Purchase #, invoice #, supplier..."
+                                       autocomplete="off" enterkeyhint="search">
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="sp-mobile-filter-footer">
-                    <button type="button" class="sp-mobile-filter-clear" @click="clearMobileFilters()">Clear</button>
-                    <button type="submit" class="sp-mobile-filter-apply">Apply Filters</button>
-                </div>
-            </form>
-        </div>
-
-        <div class="sp-filter-inline sp-filter-inline--desktop">
-            <div class="sp-filter-head">
-                <div>
-                    <p class="sp-filter-kicker">Purchase Lens</p>
-                    <h2 class="sp-filter-title">Filter stock purchases</h2>
-                    <p class="sp-filter-copy">{{ $hasActiveFilters ? 'Filters are applied to the purchase register below.' : 'Search supplier entries by invoice, date, status, or purchase number.' }}</p>
-                </div>
-            </div>
-            <form method="GET" action="{{ route('inventory.purchases.index') }}" class="flex flex-wrap items-end gap-3">
-                <div class="sp-filter-field sp-filter-search flex-1 min-w-[210px] lg:min-w-[260px]">
-                    <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Search</label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                            <x-icon name="search" size="16" />
-                        </span>
-                        <input type="text" name="search" x-model="search" placeholder="Purchase #, invoice #, supplier..." class="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="sp-filter-field">
-                    <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Status</label>
-                    <select name="status" x-model="status" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:ring-amber-500">
-                        <option value="">All</option>
-                        @foreach($statusLabels as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="sp-filter-field min-w-[170px]">
-                    <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Vendor</label>
-                    <select name="vendor_id" x-model="vendorId" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:ring-amber-500">
-                        <option value="">All Vendors</option>
-                        @foreach($vendors as $vendor)
-                            <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="sp-filter-field">
-                    <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">From</label>
-                    <input type="date" name="date_from" x-model="fromDate" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:ring-amber-500">
-                </div>
-
-                <div class="sp-filter-field">
-                    <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">To</label>
-                    <input type="date" name="date_to" x-model="toDate" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:ring-amber-500">
-                </div>
-
-                <div class="sp-filter-actions">
-                    <button type="submit" class="sp-filter-apply">Apply</button>
-                    @if($hasActiveFilters)
-                        <a href="{{ route('inventory.purchases.index') }}" class="sp-filter-clear">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </div>
-
-        <div class="sp-register-card" data-list-frame>
-            <div class="sp-register-head">
-                <div>
-                    <h2 class="sp-register-title">Purchase Register</h2>
-                    <p class="sp-register-copy">{{ number_format($purchases->total()) }} {{ Str::plural('entry', $purchases->total()) }}</p>
-                </div>
+                        <div class="customers-directory-status" role="group" aria-label="Purchase status"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="purchases-status" class="jf-sr-only">Status</label>
+                            <select id="purchases-status" name="status">
+                                <option value="">All statuses</option>
+                                @foreach($statusLabels as $value => $label)
+                                    <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="customers-directory-status" role="group" aria-label="Purchase vendor"
+                             data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                            <label for="purchases-vendor" class="jf-sr-only">Vendor</label>
+                            <select id="purchases-vendor" name="vendor_id">
+                                <option value="">All Vendors</option>
+                                @foreach($vendors as $vendor)
+                                    <option value="{{ $vendor->id }}" @selected((string) request('vendor_id') === (string) $vendor->id)>{{ $vendor->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="sp-date-range">
+                            <div class="sp-date-field">
+                                <label for="purchases-from-date">From</label>
+                                <input id="purchases-from-date" type="date" name="date_from" value="{{ request('date_from') }}">
+                            </div>
+                            <div class="sp-date-field">
+                                <label for="purchases-to-date">To</label>
+                                <input id="purchases-to-date" type="date" name="date_to" value="{{ request('date_to') }}">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm customers-directory-apply">Apply</button>
+                        @if($hasActiveFilters)
+                            <a href="{{ route('inventory.purchases.index') }}" class="btn btn-secondary btn-sm customers-directory-clear">Clear</a>
+                        @endif
+                    </form>
+                </x-responsive-filter-panel>
             </div>
             @if($purchases->isEmpty())
-                <div class="sp-empty-state">
+                <div class="customers-mobile-empty sp-empty-state">
                     <span class="sp-empty-icon">
                         <x-icon name="file-text" class="h-7 w-7" />
                     </span>
                     <p class="sp-empty-title">{{ $hasActiveFilters ? 'No purchases match these filters' : 'No stock purchases recorded yet' }}</p>
                     <p class="sp-empty-copy">{{ $hasActiveFilters ? 'Clear or adjust filters to see purchase entries.' : 'Create a purchase entry when supplier stock arrives.' }}</p>
                     @can('inventory.create')
-                    <a href="{{ route('inventory.purchases.create') }}" class="sp-empty-action mt-4">New Purchase</a>
+                    <a href="{{ route('inventory.purchases.create') }}" class="btn btn-primary btn-sm mt-4">New Purchase</a>
                     @endcan
                 </div>
             @else
-                <div class="sp-register-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Stock purchase records">
+                <div class="overflow-x-auto ui-table-shell customers-table-shell sp-register-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Stock purchase records">
                     <table class="sp-register-table jf-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Purchase #</th>
-                                <th class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Supplier</th>
-                                <th class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Invoice #</th>
-                                <th class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Date</th>
-                                <th class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Items</th>
-                                <th class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Total</th>
-                                <th class="px-3.5 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Status</th>
-                                <th class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Actions</th>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
+                                <th scope="col" class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Purchase #</th>
+                                <th scope="col" class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Supplier</th>
+                                <th scope="col" class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Invoice #</th>
+                                <th scope="col" class="px-3.5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Date</th>
+                                <th scope="col" class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Items</th>
+                                <th scope="col" class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Total</th>
+                                <th scope="col" class="px-3.5 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Status</th>
+                                <th scope="col" class="px-3.5 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($purchases as $purchase)
                                 <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="jf-table-index">{{ $purchases->firstItem() + $loop->index }}</td>
                                     <td class="px-3.5 py-3">
                                         <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-purchase-link font-mono text-sm">{{ $purchase->purchase_number }}</a>
                                     </td>
@@ -1207,7 +147,7 @@
                                         @endif
                                     </td>
                                     <td class="px-3.5 py-3 text-right">
-                                        <div class="flex items-center justify-end gap-2">
+                                        <div class="jf-table-actions">
                                             <a href="{{ route('inventory.purchases.show', $purchase) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @if($purchase->isDraft())
                                                 @can('inventory.edit')
@@ -1229,12 +169,12 @@
                     </table>
                 </div>
 
-                <div class="sp-mobile-list space-y-3">
+                <div class="customers-mobile-cards sp-mobile-list">
                     @foreach($purchases as $purchase)
-                        <article class="sp-mobile-card">
+                        <article class="customers-mobile-card sp-mobile-card">
                             <div class="mb-3 flex items-start justify-between gap-3">
                                 <div>
-                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-purchase-link font-mono text-sm">{{ $purchase->purchase_number }}</a>
+                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-purchase-link font-mono text-sm"><span class="jf-record-index">#{{ $purchases->firstItem() + $loop->index }}</span> {{ $purchase->purchase_number }}</a>
                                     <p class="mt-1 text-xs text-slate-500">{{ $purchase->supplier_label }}</p>
                                 </div>
                                 @if($purchase->isDraft())
@@ -1267,16 +207,16 @@
 
                             <div class="mt-3 border-t border-slate-100 pt-3">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-row-action">View</a>
+                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="btn btn-primary btn-sm">View</a>
                                     @if($purchase->isDraft())
                                         @can('inventory.edit')
-                                        <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="sp-row-action sp-row-action--edit">Edit</a>
+                                        <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="btn btn-secondary btn-sm">Edit</a>
                                         @endcan
                                         @can('inventory.delete')
                                         <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="sp-row-action sp-row-action--delete">Delete</button>
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
                                         @endcan
                                     @endif

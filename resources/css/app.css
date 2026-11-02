@@ -31586,3 +31586,43 @@ a.notice-bell-item:focus-visible {
     .schemes-create-page .schemes-create-actions { flex-wrap: wrap; }
     .schemes-create-page .schemes-btn { flex: 1 1 auto; min-height: 44px; }
 }
+
+/* Stock purchases share the compact Customers register and native mobile filter sheet. */
+.inventory-purchases-page .sp-register-table { min-width: 920px; }
+.inventory-purchases-page .sp-date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 9rem)); gap: 8px; }
+.inventory-purchases-page .sp-date-field { display: grid; gap: 6px; min-width: 0; }
+.inventory-purchases-page .sp-date-field label { color: var(--cust-text); font-size: 12px; font-weight: 600; }
+.inventory-purchases-page .sp-date-field input {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--cust-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--cust-ink);
+    font-size: 14px;
+}
+.inventory-purchases-page .sp-date-field input:focus-visible { outline: 2px solid var(--cust-gold); outline-offset: 2px; }
+.inventory-purchases-page .sp-purchase-link { color: var(--cust-gold-hover); font-weight: 600; overflow-wrap: anywhere; }
+.inventory-purchases-page .sp-purchase-link:hover { text-decoration: underline; }
+.inventory-purchases-page .sp-status-pill { display: inline-flex; align-items: center; min-height: 24px; border: 1px solid transparent; border-radius: 999px; padding: 0 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.inventory-purchases-page .sp-status-pill--draft { border-color: #fed7aa; background: #fff7ed; color: #c2410c; }
+.inventory-purchases-page .sp-status-pill--stocked { border-color: #bbf7d0; background: #ecfdf5; color: #047857; }
+.inventory-purchases-page .sp-status-pill--confirmed { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.inventory-purchases-page .sp-empty-state { margin: 16px; justify-items: center; }
+.inventory-purchases-page .sp-empty-icon { display: inline-flex; color: var(--cust-gold); }
+.inventory-purchases-page .sp-empty-title { margin: 0; color: var(--cust-ink); font-size: 16px; font-weight: 600; }
+.inventory-purchases-page .sp-empty-copy { margin: 0; color: var(--cust-muted); font-size: 13px; }
+.inventory-purchases-page .sp-mobile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.inventory-purchases-page .sp-mobile-grid > div { min-width: 0; overflow-wrap: anywhere; }
+.inventory-purchases-page .sp-mobile-label { margin-bottom: 3px; color: var(--cust-muted); font-size: 12px; }
+
+@media (max-width: 768px) {
+    .inventory-purchases-page .sp-register-head > .customers-register-titleblock h2 { grid-column: 1; grid-row: 1; }
+    .inventory-purchases-page .sp-register-head .jf-filter-toggle { grid-column: 2; grid-row: 1; }
+    .inventory-purchases-page .sp-register-head .customers-directory-summary { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .inventory-purchases-page .sp-date-range { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .inventory-purchases-page .sp-date-field input { min-height: 44px; font-size: 16px; }
+    .inventory-purchases-page .sp-mobile-card .btn { min-height: 44px; flex: 1 1 auto; }
+}

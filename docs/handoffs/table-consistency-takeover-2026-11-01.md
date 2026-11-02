@@ -2,7 +2,41 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Consistent list sizing and flat invoice actions
+## Latest checkpoint — Stock purchases compact register
+
+Started clean `ea14eb6709c9a534fe8bce869d6e43bfb4d95467`, same branch/sole
+writer. Owner requested Customers treatment and removal of the separate Filter
+stock purchases panel. Replaced standalone KPI/filter cards and duplicated mobile
+drawer/form with compact header summaries and one shared responsive filter form.
+Kept all5 keys(search/status/vendor_id/date_from/date_to), values, options and GET
+route; added explicit native values/selected state and labels. Header New Purchase
+uses the same named phone icon/desktop label pattern as Customers. Four incumbent
+shop/month metrics retain their original scopes/format. Added continuous table/
+phone numbers,9-column heading and shared action layout. Existing measured list
+workspace/sticky headings/pagination and palette retained. Phone cards use2-up
+detail fields; summaries2-up with Filters beside the heading. Removed obsolete
+inline stylesheet/body-lock/drawer observer, using compiled scoped CSS instead.
+
+Controller, services, financial data, permissions and draft-only actions unchanged.
+Source comparison confirms identical permission/status conditions, POST mutation
+forms and method directives; no create/update/delete request was submitted to the
+preview. No dependencies/shared JS changes. No synthetic purchase data added.
+
+Fresh guard: APP_ENV=testing/DB_CONNECTION=pgsql/DB_HOST=127.0.0.1/DB_PORT=5432/
+DB_DATABASE=exact `jewelflow_testing`. Command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/PurchaseRegisterUiTest.php tests/Feature/Purchase/PurchaseAndVendorAccessTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`
+Result47 passed/279 assertions. New3-case UI regression covers single selected
+filter form/summary,22 synthetic test-only drafts/page2 indexing21–22, external
+query-preserving pagination and restricted viewer. RED2/pass1 before implementation.
+`node --test tests/Frontend/*.test.mjs`:124 passed/22 existing optional-browser
+skips, zero failures. Real search-handler VM checks plus mobile CSS/source contracts.
+Vite79, Blade compile/385 lints/clear, PHP lint/Pint, source equivalence/diff and
+Impeccable layout detector[] passed; purchase-register-* evidence under external
+quick-bill-notes-dialog-20261102.e6KYil. Browser policy still blocks actual rendered
+desktop/phone/scroll/focus/menu checks: unverified, not visual acceptance. Next owner
+visual review. Local only; no push/deploy or preview records changed.
+
+## Earlier checkpoint — Consistent list sizing and flat invoice actions
 
 Started clean `d427dc5a9646521f93e5284f755c14b4fb9b8e29` on the same branch;
 Local Codex sole writer, no unexpected work/tests. Owner reported Invoice sizing
