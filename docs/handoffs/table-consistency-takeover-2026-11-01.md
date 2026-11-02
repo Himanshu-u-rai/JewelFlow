@@ -2,7 +2,36 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact scheme creation
+## Latest checkpoint — Consistent list sizing and flat invoice actions
+
+Started clean `d427dc5a9646521f93e5284f755c14b4fb9b8e29` on the same branch;
+Local Codex sole writer, no unexpected work/tests. Owner reported Invoice sizing
+and Actions shadow inconsistent with Customers. Source differences: Invoices had
+18px header padding/gap versus Customers15x18/gap16, and inherited1600px page cap
+versus Customers max-width:none. Shared sticky-end rule explicitly cast a shadow;
+Invoices is currently its only view caller. Invoice rows contain11 columns versus
+Customer Directory5: do not hide or shrink financial data to fake identical content.
+
+Aligned Invoice desktop/phone register-heading spacing to Customers. Opted-in
+`.content-inner[data-list-workspace]` roots now share100%/max-width:none/min-width:0
+so the card fits available space and wide columns stay internally scrollable.
+No fixed heights/body overflow lock. Replaced sticky Actions shadow with1px palette
+divider; kept pinning/z-index/backgrounds. Existing shared cell padding/type and
+all columns/actions/queries/permissions unchanged. No Blade/backend/JS changes.
+
+Three focused CSS-contract cases RED3 before fix/GREEN3 afterward.
+`node --test tests/Frontend/*.test.mjs`:118 passed/22 existing optional-browser
+skips, zero failures. Fresh test guard: testing/pgsql/127.0.0.1:5432/exact
+`jewelflow_testing`. Command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InvoiceRegisterUiTest.php tests/Feature/Tables/CustomerDirectoryToolbarUiTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`
+passed44 tests/416 assertions (shared Retail/Dhiran/admin workspace routes).
+Vite79/diff/Impeccable layout detector[] passed. No Blade compile needed for
+CSS-only edit. Logs invoice-sizing-* under external quick-bill-notes-dialog-20261102.e6KYil.
+Browser policy blocks render checks: exact widths, scroll/focus/zoom and divider
+appearance remain unverified, not visual acceptance. No preview data/remote work.
+Next owner visual review; future comparable registers should reuse this pattern.
+
+## Earlier checkpoint — Compact scheme creation
 
 Started clean `eb468375722744ccf780517edb93cefda24f8860`, same branch/sole
 writer. Create page had a separate teal/gradient/24px-radius inline style system,

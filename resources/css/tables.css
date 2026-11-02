@@ -23,6 +23,13 @@
     overscroll-behavior-x: contain;
 }
 
+/* All opted-in registers share Customers' available page width; wide columns scroll inside. */
+.content-inner[data-list-workspace] {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
 /* Native scrollbars, with the same restrained surfaces as each list palette.
    Keep the normal-width drag target; touch platforms retain their own overlay bars. */
 [data-list-scroll] {
@@ -329,7 +336,8 @@
     position: sticky;
     right: 0;
     z-index: 1;
-    box-shadow: -10px 0 10px -10px rgba(15, 23, 42, 0.22);
+    border-inline-start: 1px solid var(--jf-t-head-line);
+    box-shadow: none;
 }
 .jf-table--sticky-end > thead > tr > th:last-child { background: var(--jf-t-head-bg); z-index: 2; }
 .jf-table--sticky-end > tbody > tr > td:last-child { background: var(--jf-t-surface); }
