@@ -37,12 +37,12 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-metal-purity-fields', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
-    assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
+    assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'minmax(0, 7rem) repeat(2, minmax(0, 3.5rem))');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).flex, '0 1 15.5rem');
     assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-making-field', 1280).flex, '0 1 14rem');
-    assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 5.5rem');
+    assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 calc(11rem / 3)');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 390).display, undefined);
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).display, undefined);
     assert.equal(declarations('.qb-compact-form .qb-review-summary', 768)['grid-template-columns'], 'minmax(0, 1fr)');
@@ -70,10 +70,15 @@ test('HSN, pieces and rate follow metal and purity in the same wrapping entry ro
         assert.ok(row.includes(`="${model}"`), `${model} stays in the entry row`);
     }
     assert.ok(row.indexOf('item.purity') < row.indexOf('item.hsn_code'));
-    assert.ok(row.indexOf('item.hsn_code') < row.indexOf('item.pcs'));
-    assert.ok(row.indexOf('item.pcs') < row.indexOf('item.rate'));
+    assert.ok(row.indexOf('item.hsn_code') < row.indexOf('item.rate'));
+    assert.ok(row.indexOf('item.rate') < row.indexOf('item.pcs'));
+    assert.ok(row.includes('x-model.number="item.stone_charge"'));
+    assert.ok(row.includes('x-model.number="item.wastage_percent"'));
     assert.equal(blade.split('x-model.number="item.rate"').length - 1, 1);
-    assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280).flex, '0 1 12.25rem');
+    assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280).flex, '0 1 7rem');
+    assert.equal(declarations('.qb-compact-form .qb-pcs-field', 1280).flex, '0 1 2.25rem');
+    assert.equal(declarations('.qb-compact-form .qb-pcs-field', 390).flex, undefined);
+    assert.equal(declarations('.qb-compact-form .qb-stone-field', 1280).flex, '0 1 6rem');
     assert.equal(declarations('.qb-compact-form .qb-rate-field', 1280).flex, '0 1 130px');
     assert.equal(declarations('.qb-compact-form .qb-rate-field', 390).flex, undefined);
 });

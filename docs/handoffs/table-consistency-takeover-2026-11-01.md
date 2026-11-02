@@ -56,6 +56,17 @@ padding to6px. Mobile widths/font sizes, numeric precision and calculations unch
 Seven frontend checks/build/diff passed. Browser readability/label wrapping and long
 numeric editing at this narrow width remain unverified, not a visual acceptance pass.
 
+Compact charge-row follow-up from clean `9f95f47900daa602ea3d132ed2297d5f9244ce30`:
+Pcs72→36px and moved after Rate; Stone amount144→96px and Wastage88→58.67px
+(each one-third narrower), both moved into the same wrapping entry row. HSN keeps
+its112px slot. Reduced small-field padding, not font size/precision; phone inputs
+remain full width. Wastage helper remains visible when positive, on a full row
+below the controls so it cannot become a narrow column of text. DOM/tab order
+follows the new layout; no duplicated fields or changed input tags/calculation
+script. Seven focused Node tests/build/Blade385lints/clear/diff/layout [] passed.
+No DB tests or browser checks for this presentation-only move. Very narrow desktop
+numeric editing/labels and actual phone/focus geometry remain unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

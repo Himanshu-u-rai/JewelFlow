@@ -625,16 +625,25 @@
                                                         <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
                                                         <input :name="'items['+index+'][hsn_code]'" x-model="item.hsn_code" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                     </div>
-                                                    <div>
-                                                        <label class="mb-2 block text-sm font-medium text-slate-600">Pcs</label>
-                                                        <input :name="'items['+index+'][pcs]'" x-model.number="item.pcs" type="number" min="1" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                    </div>
                                                 </div>
 
                                                 <div class="qb-rate-field">
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
                                                     <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                 </div>
+                                                <div class="qb-pcs-field">
+                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Pcs</label>
+                                                    <input :name="'items['+index+'][pcs]'" x-model.number="item.pcs" type="number" min="1" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                </div>
+                                                <div class="qb-stone-field">
+                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Stone amount</label>
+                                                    <input :name="'items['+index+'][stone_charge]'" x-model.number="item.stone_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                </div>
+                                                <div class="qb-wastage-field">
+                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Wastage %</label>
+                                                    <input :name="'items['+index+'][wastage_percent]'" x-model.number="item.wastage_percent" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                </div>
+                                                <p class="qb-wastage-help mt-1 text-xs text-slate-400" x-show="safeNumber(item.wastage_percent) > 0" x-text="'= ' + currency(lineWastage(item)) + ' (' + (item.wastage_percent || 0) + '% of metal)'"></p>
                                             </div>
 
                                             <div class="qb-measures-grid">
@@ -654,15 +663,6 @@
                                                             </div>
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
-                                                        </div>
-                                                        <div class="qb-stone-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Stone amount</label>
-                                                            <input :name="'items['+index+'][stone_charge]'" x-model.number="item.stone_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                        <div class="qb-wastage-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Wastage %</label>
-                                                            <input :name="'items['+index+'][wastage_percent]'" x-model.number="item.wastage_percent" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            <p class="mt-1 text-xs text-slate-400" x-show="safeNumber(item.wastage_percent) > 0" x-text="'= ' + currency(lineWastage(item)) + ' (' + (item.wastage_percent || 0) + '% of metal)'"></p>
                                                         </div>
                                                     </div>
                                                 </div>
