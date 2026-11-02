@@ -31665,10 +31665,7 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-top-grid { align-items: start; }
 .qb-compact-form .qb-form-panel { padding: 16px; }
 .qb-compact-form .qb-panel-heading { margin-bottom: 12px; }
-.qb-compact-form .qb-panel-toolbar,
-.qb-compact-form .qb-panel-toggle,
-.qb-compact-form .qb-charges-body { padding: 12px 16px; }
-.qb-compact-form .qb-panel-toggle { min-height: 44px; }
+.qb-compact-form .qb-panel-toolbar { padding: 12px 16px; }
 .qb-compact-form .qb-item-list { display: grid; gap: 12px; padding: 16px; }
 .qb-compact-form .qb-item-card { min-width: 0; padding: 12px; }
 .qb-compact-form .qb-item-edit-grid { margin-top: 12px; }
@@ -31682,7 +31679,6 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-mobile-product-grid,
 .qb-compact-form .qb-mobile-weight-grid,
 .qb-compact-form .qb-price-grid,
-.qb-compact-form .qb-additional-grid,
 .qb-compact-form .qb-measures-grid {
     display: grid;
     gap: 12px;
@@ -31694,8 +31690,7 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-mobile-product-grid { grid-template-columns: minmax(0, 1fr); }
 .qb-compact-form .qb-metal-purity-fields,
 .qb-compact-form .qb-mobile-weight-grid,
-.qb-compact-form .qb-price-grid,
-.qb-compact-form .qb-additional-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qb-compact-form .qb-price-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .qb-compact-form .qb-address-field,
 .qb-compact-form .qb-mobile-net-field,
 .qb-compact-form .qb-making-field,
@@ -31708,7 +31703,6 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-metal-purity-fields > div,
 .qb-compact-form .qb-mobile-weight-grid > div,
 .qb-compact-form .qb-price-grid > div,
-.qb-compact-form .qb-additional-grid > div,
 .qb-compact-form .qb-item-main > div { min-width: 0; }
 
 .qb-compact-form.qb-edit-page label {
@@ -31812,8 +31806,8 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-rate-field { flex: 0 1 130px; }
     .qb-compact-form .qb-stone-field { flex: 0 1 6rem; }
     .qb-compact-form .qb-making-field { flex: 0 1 14rem; }
+    .qb-compact-form .qb-charge-field { flex: 0 1 5rem; }
     .qb-compact-form .qb-wastage-field { flex: 0 1 5rem; }
-    .qb-compact-form .qb-additional-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .qb-compact-form .qb-other-charge { grid-column: auto; }
     .qb-compact-form.qb-edit-page input:not([type="hidden"]),
     .qb-compact-form.qb-edit-page select { min-height: 40px; font-size: 14px !important; }
@@ -31836,7 +31830,6 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-wastage-field label { white-space: nowrap; }
     .qb-compact-form .qb-mobile-weight-grid > .qb-weight-field:not(:first-child) input { padding-inline: 6px; }
     .qb-compact-form .qb-mobile-net-field { grid-column: auto; }
-    .qb-compact-form .qb-item-extras { grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr); }
     .qb-compact-form .qb-review-summary { grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; }
     .qb-compact-form .qb-review-open { width: auto; }
 }

@@ -40,6 +40,10 @@ class QuickBillCompactFormUiTest extends TestCase
         $this->assertSame(1, $xp->query('//button[@name="save_action" and @value="issue"]')->length);
         $this->assertSame(1, $xp->query('//button[@name="save_action" and @value="draft"]')->length);
         $this->assertSame(1, $xp->query('//*[@role="dialog" and @aria-label="Review and payment"]')->length);
+        foreach (['hallmark_charge', 'rhodium_charge', 'other_charge'] as $charge) {
+            $this->assertSame(1, $xp->query('//*[contains(@class,"qb-measures-grid")]//input[@x-model.number="item.'.$charge.'"]')->length);
+        }
+        $this->assertSame(0, $xp->query('//*[contains(@class,"qb-charge-panel")]')->length);
     }
 
     public function test_notes_use_one_native_dialog_inside_the_bill_form_and_open_from_review(): void
@@ -89,13 +93,17 @@ class QuickBillCompactFormUiTest extends TestCase
             'bill_date' => today()->toDateString(), 'pricing_mode' => 'no_gst', 'gst_rate' => 0,
             'customer_name' => 'Synthetic dialog save', 'customer_address' => "Short address\nSecond line retained",
             'notes' => 'Notes from closed popup', 'terms' => 'Terms from closed popup', 'save_action' => 'draft',
-            'items' => [['description' => 'Synthetic ring', 'gross_weight' => 10, 'stone_weight' => 1, 'net_weight' => 8, 'rate' => 100]],
+            'items' => [['description' => 'Synthetic ring', 'gross_weight' => 10, 'stone_weight' => 1, 'net_weight' => 8, 'rate' => 100, 'hallmark_charge' => 10000, 'rhodium_charge' => 10000, 'other_charge' => 10000]],
         ])->assertSessionHasNoErrors()->assertRedirect();
         $saved = QuickBill::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
         $this->assertSame('Notes from closed popup', $saved->notes);
         $this->assertSame('Terms from closed popup', $saved->terms);
         $this->assertSame('Short address Second line retained', $saved->customer_address);
         $this->assertSame('Synthetic dialog save', $saved->customer_name);
+        $item = TenantContext::runFor($shop->id, fn () => $saved->items()->firstOrFail());
+        foreach (['hallmark_charge', 'rhodium_charge', 'other_charge'] as $charge) {
+            $this->assertSame(10000.0, (float) $item->$charge);
+        }
         $this->assertSame(2, QuickBill::withoutTenant()->where('shop_id', $shop->id)->count());
     }
 

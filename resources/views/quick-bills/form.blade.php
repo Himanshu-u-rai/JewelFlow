@@ -664,6 +664,18 @@
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
                                                         </div>
+                                                        <div class="qb-charge-field">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Hallmark</label>
+                                                            <input :name="'items['+index+'][hallmark_charge]'" x-model.number="item.hallmark_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
+                                                        <div class="qb-charge-field">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Rhodium</label>
+                                                            <input :name="'items['+index+'][rhodium_charge]'" x-model.number="item.rhodium_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
+                                                        <div class="qb-charge-field qb-other-charge">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Other</label>
+                                                            <input :name="'items['+index+'][other_charge]'" x-model.number="item.other_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -689,32 +701,6 @@
                                                 </div>
                                             </div>
 
-                                            <div class="qb-charge-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all">
-                                                <button type="button" @click="item._chargesOpen = !item._chargesOpen" class="qb-panel-toggle flex w-full items-center justify-between gap-3 text-left hover:bg-slate-50">
-                                                    <div>
-                                                        <div class="text-sm font-medium text-slate-900">Additional charges</div>
-                                                        <div class="mt-0.5 text-[11px] text-slate-500">Hallmark, Rhodium, etc.</div>
-                                                    </div>
-                                                    <x-icon name="chevron-down" class="h-4 w-4 text-slate-400 transition-transform" x-bind:class="item._chargesOpen ? 'rotate-180' : ''" stroke-width="2.5" />
-                                                </button>
-
-                                                <div x-show="item._chargesOpen" x-transition x-cloak class="qb-charges-body border-t border-slate-100">
-                                                    <div class="qb-additional-grid">
-                                                        <div>
-                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Hallmark</label>
-                                                            <input :name="'items['+index+'][hallmark_charge]'" x-model.number="item.hallmark_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                        <div>
-                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Rhodium</label>
-                                                            <input :name="'items['+index+'][rhodium_charge]'" x-model.number="item.rhodium_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                        <div class="qb-other-charge">
-                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Other</label>
-                                                            <input :name="'items['+index+'][other_charge]'" x-model.number="item.other_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
 
                                         <input type="hidden" :name="'items['+index+'][line_discount]'" x-model.number="item.line_discount">

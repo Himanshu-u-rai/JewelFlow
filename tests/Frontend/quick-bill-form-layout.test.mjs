@@ -57,6 +57,22 @@ test('desktop stone, net-auto and wastage labels stay on a single line without s
     }
 });
 
+test('hallmark, rhodium and other charges are always beside making, not in a disclosure card', () => {
+    const row = blade.slice(blade.indexOf('class="qb-measures-grid"'), blade.indexOf('class="qb-item-extras"'));
+    for (const field of ['hallmark_charge', 'rhodium_charge', 'other_charge']) {
+        assert.ok(row.includes(`x-model.number="item.${field}"`));
+        assert.equal(blade.split(`x-model.number="item.${field}"`).length - 1, 1);
+    }
+    assert.doesNotMatch(blade, /qb-charge-panel|qb-charges-body|x-show="item\._chargesOpen"/);
+    assert.equal(declarations('.qb-compact-form .qb-charge-field', 1280).flex, '0 1 5rem');
+    assert.equal(declarations('.qb-compact-form .qb-charge-field', 390).flex, undefined);
+    const f = form({ items: [{ metal_type: 'Gold', purity: '24K', net_weight: 1, rate: 100, making_charge: 20,
+        hallmark_charge: 10000, rhodium_charge: 10000, other_charge: 10000 }] });
+    assert.equal(f.lineTotal(f.items[0]), 30120);
+    f.items[0].hallmark_charge = 12345;
+    assert.equal(f.lineTotal(f.items[0]), 32465);
+});
+
 test('description and original weight controls share the first group in DOM/tab order', () => {
     const group = blade.slice(blade.indexOf('class="qb-description-weight-row"'), blade.indexOf('class="qb-mobile-product-grid"'));
     assert.match(group, /qb-description-field/);

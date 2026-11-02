@@ -80,6 +80,24 @@ desktop Pcs basis36→64px to accommodate four digits such as1000 with existing1
 tabular text and padding. Mobile and numeric validation unchanged; no maximum added.
 Eight focused frontend checks/build/diff passed. Actual browser value fit unverified.
 
+Inline-charge follow-up from clean `626e5f1ae8a02c31e248b62438623cb22bc39a68`:
+moved original Hallmark/Rhodium/Other inputs beside Making; removed their separate
+card/disclosure. Desktop80px bases for five-digit values, full-size phone grids;
+labels retained, no caps/font shrink. Removed obsolete charge-card layout rules
+and unused second summary column. Exact input/select/textarea tags and calculation
+script unchanged; existing charge values/defaults remain. Legacy internal disclosure
+state left in the unchanged script but no longer controls visibility.
+Guard freshly verified testing/pgsql/127.0.0.1:5432/exact jewelflow_testing before
+RefreshDatabase. PHP26 passed/187 assertions, including normal POST persistence of
+10000 for all three charges. Node98 passed/22 existing optional-browser skips, no
+failures (nine focused form cases); VM checks total/recalculation with five digits.
+Initial source test RED before move; a test-harness tenant context was corrected
+for the new item assertion, not an application defect/fix. Vite79/Blade385lints/
+clear/Pint/syntax/diff/layout[] and exact script/field source comparison passed.
+Evidence inline-charges-* under quick-bill-notes-dialog-20261102.e6KYil.
+No preview business-data changes/remote work/dependencies. Browser fit/focus/Turbo
+and physical-phone checks remain unverified, not passed; owner visual review next.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
