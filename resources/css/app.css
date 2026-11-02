@@ -31809,7 +31809,7 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-measures-grid { display: flex; flex-wrap: wrap; align-items: start; }
     .qb-compact-form .qb-price-panel,
     .qb-compact-form .qb-price-grid { display: contents; }
-    .qb-compact-form .qb-rate-field,
+    .qb-compact-form .qb-rate-field { flex: 0 1 6rem; }
     .qb-compact-form .qb-stone-field { flex: 0 1 9rem; }
     .qb-compact-form .qb-making-field { flex: 0 1 14rem; }
     .qb-compact-form .qb-wastage-field { flex: 0 1 5.5rem; }

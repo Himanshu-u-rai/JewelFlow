@@ -72,7 +72,8 @@ test('HSN, pieces and rate follow metal and purity in the same wrapping entry ro
     assert.ok(row.indexOf('item.pcs') < row.indexOf('item.rate'));
     assert.equal(blade.split('x-model.number="item.rate"').length - 1, 1);
     assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280).flex, '0 1 12.25rem');
-    assert.equal(declarations('.qb-compact-form .qb-rate-field', 1280).flex, '0 1 9rem');
+    assert.equal(declarations('.qb-compact-form .qb-rate-field', 1280).flex, '0 1 6rem');
+    assert.equal(declarations('.qb-compact-form .qb-rate-field', 390).flex, undefined);
 });
 
 test('notes use native modal focus/Escape handling and selects have a consistent visible chevron', () => {

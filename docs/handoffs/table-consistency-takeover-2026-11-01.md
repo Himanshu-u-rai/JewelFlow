@@ -35,6 +35,11 @@ fields, input tag changes or calculation changes. Seven focused frontend cases,
 Vite build, guarded Blade compile/lints/clear and source checks passed. Browser
 rendering/phone geometry remain unverified; local only, no business-data changes.
 
+Rate-width follow-up from clean `d2ed235c3cd331b9de4fb9d1453b42493fbb0fdf`:
+desktop Rate basis 9rem→6rem (144px→96px, one-third narrower). Mobile unchanged;
+stone amount stays9rem, all form logic unchanged. Seven focused frontend checks,
+Vite build and diff check passed. Browser appearance remains unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
