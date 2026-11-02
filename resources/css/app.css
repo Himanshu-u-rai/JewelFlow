@@ -31528,3 +31528,61 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form.qb-edit-page input:not([type="hidden"]),
     .qb-compact-form.qb-edit-page select { min-height: 44px; font-size: 16px !important; }
 }
+
+/* Scheme creation uses the existing scheme palette and controls, without nested cards. */
+.schemes-create-page .schemes-create-shell { width: 100%; min-width: 0; }
+.schemes-create-page .schemes-create-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+}
+.schemes-create-page .schemes-create-section { min-width: 0; overflow: visible; }
+.schemes-create-page .schemes-create-basics,
+.schemes-create-page .schemes-create-actions { grid-column: 1 / -1; }
+.schemes-create-page .schemes-card-head { display: block; padding: 14px 16px; }
+.schemes-create-page .schemes-card-head h2 { font-size: 16px; }
+.schemes-create-page .schemes-create-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+.schemes-create-page .schemes-create-label-meta { color: var(--schemes-muted); font-weight: 400; }
+.schemes-create-page #description { min-height: 64px; }
+.schemes-create-page .schemes-create-hint { margin: 6px 0 0; color: var(--schemes-muted); font-size: 12px; line-height: 1.4; }
+.schemes-create-page .schemes-create-errors-title { margin: 0; font-size: 14px; font-weight: 600; }
+.schemes-create-page .schemes-create-actions { margin-top: 0; }
+
+.schemes-create-page .ui-filter-select-host,
+.schemes-create-page .ui-filter-select { width: 100%; min-width: 0; }
+.schemes-create-page .ui-filter-select-trigger {
+    min-height: 42px;
+    border: 1px solid var(--schemes-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--schemes-ink);
+    font-size: 14px;
+    font-weight: 400;
+    box-shadow: none;
+}
+.schemes-create-page .ui-filter-select-trigger:is(:focus-visible, .is-open) {
+    border-color: var(--schemes-gold);
+    outline: 2px solid var(--schemes-gold);
+    outline-offset: 2px;
+}
+.schemes-create-page .ui-filter-select-host:has(.schemes-select.is-error) .ui-filter-select-trigger { border-color: #f87171; }
+.schemes-create-page .ui-filter-select-menu { border-color: var(--schemes-line); border-radius: 10px; box-shadow: none; }
+.schemes-create-page .schemes-btn:focus-visible,
+.schemes-create-page input[type="checkbox"]:focus-visible { outline: 2px solid var(--schemes-gold); outline-offset: 2px; }
+
+@media (min-width: 769px) {
+    .schemes-create-page .schemes-create-grid--basics,
+    .schemes-create-page .schemes-create-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .schemes-create-page .schemes-create-grid--two { max-width: 560px; }
+    .schemes-create-page .schemes-create-grid--offers { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+}
+@media (min-width: 1100px) {
+    .schemes-create-page .schemes-create-form { grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); }
+    .schemes-create-page .schemes-create-grid--basics { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+    .schemes-create-page :is(.schemes-input, .schemes-select, .schemes-textarea, .ui-filter-select-trigger) { min-height: 44px; font-size: 16px; }
+    .schemes-create-page .schemes-create-actions { flex-wrap: wrap; }
+    .schemes-create-page .schemes-btn { flex: 1 1 auto; min-height: 44px; }
+}

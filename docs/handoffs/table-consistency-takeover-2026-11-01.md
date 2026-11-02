@@ -2,7 +2,37 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Schemes register matches Customers
+## Latest checkpoint — Compact scheme creation
+
+Started clean `eb468375722744ccf780517edb93cefda24f8860`, same branch/sole
+writer. Create page had a separate teal/gradient/24px-radius inline style system,
+an intro card, nested outer card and a Schedule card for two dates. Removed those
+wrappers/styles; reused existing scheme header, palette, cards, controls, error and
+action classes. Start/End Date now sit with Name/Type in Scheme Basics; description
+starts at two rows and remains resizable. Full available content width; settings
+and Terms share a2:1 desktop row, compact offer fields wrap; phone fields stack
+with44px controls/16px text. Shared scheme styles for edit/detail left unchanged.
+No new dependencies, backend/shared-JS changes, duplicated fields or preview-data
+changes. All control attributes preserved except styling classes/description rows;
+old-value/error directives and Alpine x-data/x-show/x-model unchanged.
+
+Fresh guard: APP_ENV=testing, DB_CONNECTION=pgsql, DB_HOST=127.0.0.1,
+DB_PORT=5432, DB_DATABASE=exact `jewelflow_testing` before RefreshDatabase.
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/SchemeCreateUiTest.php tests/Feature/Tables/SchemeRegisterUiTest.php tests/Feature/Scheme/SchemeAndInstallmentAccessTest.php`
+passed18 tests/115 assertions. New UI test covers date grouping, fields/defaults/
+limits/CSRF/action, old input/errors, hidden checkbox fallbacks and conditional
+settings. Initial RED1/pass1 before edit; a test selector was corrected to the
+specific scheme form rather than the layout's first POST daily-rate form.
+`node --test tests/Frontend/*.test.mjs`:115 passed/22 existing optional-browser
+skips, no failures; new5 source/CSS/VM tests cover responsive structure and all
+three scheme types. Vite79, Blade compile/385 PHP lints/clear, new PHP lint/Pint,
+diff check, source-control identity and Impeccable layout detector[] passed.
+Evidence: scheme-create-* under external quick-bill-notes-dialog-20261102.e6KYil.
+Browser policy still blocks rendering: exact height reduction, desktop/mobile
+geometry, keyboard/menu/resize checks remain unverified, not visual acceptance.
+Local only/no push/deployment. Keep12 separately authorized demo schemes intact.
+
+## Earlier checkpoint — Schemes register matches Customers
 
 Started clean `d7dc44653f59260fcb7e9bd8234bea0a56d9a84d` on
 `feature/table-consistency`; Local Codex sole writer, no unexpected work/processes.
