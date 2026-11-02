@@ -19,6 +19,14 @@ diff check/layout detector [] passed. Exact input/select/textarea tags and inlin
 calculation script unchanged. No DB suite needed for this markup/CSS-only move.
 Actual browser layout/focus remains unverified; no remote work.
 
+Metal/Purity follow-up from clean `d839f98a34a5265a24fa6f7dfbfd306c11156c57`:
+moved original controls/templates beside the weights in DOM order; compact desktop
+Metal 7rem/Purity 6rem tracks with chevrons retained. First group flex-wraps before
+crowding narrow desktop windows; phone fields keep two readable proportional tracks.
+HSN/Pcs remain below. Same controls/options/handlers/script, no new limits. Six
+focused frontend tests and Vite79/Blade385 lints/clear passed; no browser geometry
+or exact rendered percentage-reduction claim. Browser review remains next.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

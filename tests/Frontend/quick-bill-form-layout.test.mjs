@@ -31,7 +31,10 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-description-field', 390).width, undefined);
     assert.equal(declarations('.qb-compact-form .qb-description-field', 1280).width, undefined);
-    assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 1280)['grid-template-columns'], 'minmax(0, 18rem) minmax(0, 22.5rem)');
+    assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 1280).display, 'flex');
+    assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 1280)['flex-wrap'], 'wrap');
+    assert.equal(declarations('.qb-compact-form .qb-metal-purity-fields', 1280)['grid-template-columns'], 'minmax(0, 7rem) minmax(0, 6rem)');
+    assert.equal(declarations('.qb-compact-form .qb-metal-purity-fields', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
@@ -54,6 +57,9 @@ test('description and original weight controls share the first group in DOM/tab 
     }
     assert.ok(group.indexOf('item.gross_weight') < group.indexOf('item.stone_weight'));
     assert.ok(group.indexOf('item.stone_weight') < group.indexOf('item.net_weight'));
+    assert.ok(group.includes('class="qb-metal-purity-fields"'));
+    assert.ok(group.indexOf('item.net_weight') < group.indexOf('item.metal_type'));
+    assert.ok(group.indexOf('item.metal_type') < group.indexOf('item.purity'));
 });
 
 test('notes use native modal focus/Escape handling and selects have a consistent visible chevron', () => {

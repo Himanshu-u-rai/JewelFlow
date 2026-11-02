@@ -589,37 +589,39 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="qb-metal-purity-fields">
+                                                    <div>
+                                                        <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
+                                                        <template x-if="metalChoices().length">
+                                                            <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" @change="onMetalChange(item)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                <template x-for="m in metalChoices()" :key="m"><option :value="cap(m)" x-text="cap(m)"></option></template>
+                                                            </select>
+                                                        </template>
+                                                        <template x-if="!metalChoices().length">
+                                                            <input :name="'items['+index+'][metal_type]'" x-model="item.metal_type" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </template>
+                                                    </div>
+                                                    <div>
+                                                        <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
+                                                        {{-- Gold/silver: standards dropdown (drives the purity factor).
+                                                             Platinum/copper (no profiles): optional grade text - price is
+                                                             net x rate, purity never multiplies. --}}
+                                                        <template x-if="purityChoicesFor(item.metal_type).length">
+                                                            <select :name="'items['+index+'][purity]'" x-model="item.purity" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                <template x-for="p in purityChoicesFor(item.metal_type)" :key="p.label"><option :value="p.label" x-text="p.label"></option></template>
+                                                            </select>
+                                                        </template>
+                                                        <template x-if="!purityChoicesFor(item.metal_type).length">
+                                                            <div>
+                                                                <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" placeholder="Optional" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                <p class="mt-1 text-xs text-slate-400">Optional for platinum/copper (price is net × rate). Gold: karats · Silver: fineness.</p>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div class="qb-mobile-product-grid">
-                                                <div>
-                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
-                                                    <template x-if="metalChoices().length">
-                                                        <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" @change="onMetalChange(item)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            <template x-for="m in metalChoices()" :key="m"><option :value="cap(m)" x-text="cap(m)"></option></template>
-                                                        </select>
-                                                    </template>
-                                                    <template x-if="!metalChoices().length">
-                                                        <input :name="'items['+index+'][metal_type]'" x-model="item.metal_type" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                    </template>
-                                                </div>
-                                                <div>
-                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
-                                                    {{-- Gold/silver: standards dropdown (drives the purity factor).
-                                                         Platinum/copper (no profiles): optional grade text - price is
-                                                         net x rate, purity never multiplies. --}}
-                                                    <template x-if="purityChoicesFor(item.metal_type).length">
-                                                        <select :name="'items['+index+'][purity]'" x-model="item.purity" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            <template x-for="p in purityChoicesFor(item.metal_type)" :key="p.label"><option :value="p.label" x-text="p.label"></option></template>
-                                                        </select>
-                                                    </template>
-                                                    <template x-if="!purityChoicesFor(item.metal_type).length">
-                                                        <div>
-                                                            <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" placeholder="Optional" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            <p class="mt-1 text-xs text-slate-400">Optional for platinum/copper (price is net × rate). Gold: karats · Silver: fineness.</p>
-                                                        </div>
-                                                    </template>
-                                                </div>
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
                                                     <input :name="'items['+index+'][hsn_code]'" x-model="item.hsn_code" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
