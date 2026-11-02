@@ -75,6 +75,11 @@ keeps those labels on one line; mobile/fonts and all logic unchanged. Eight focu
 frontend checks and Vite/diff passed. Screenshot is pre-fix evidence; post-fix browser
 geometry/focus still unverified. Other fields not resized.
 
+Pcs readability follow-up from clean `52ef4e6148b5ac3ba8c8bdf47cc147cf9fe01e10`:
+desktop Pcs basis36→64px to accommodate four digits such as1000 with existing14px
+tabular text and padding. Mobile and numeric validation unchanged; no maximum added.
+Eight focused frontend checks/build/diff passed. Actual browser value fit unverified.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

@@ -83,7 +83,7 @@ test('HSN, pieces and rate follow metal and purity in the same wrapping entry ro
     assert.ok(row.includes('x-model.number="item.wastage_percent"'));
     assert.equal(blade.split('x-model.number="item.rate"').length - 1, 1);
     assert.equal(declarations('.qb-compact-form .qb-mobile-product-grid', 1280).flex, '0 1 7rem');
-    assert.equal(declarations('.qb-compact-form .qb-pcs-field', 1280).flex, '0 1 2.25rem');
+    assert.equal(declarations('.qb-compact-form .qb-pcs-field', 1280).flex, '0 1 4rem');
     assert.equal(declarations('.qb-compact-form .qb-pcs-field', 390).flex, undefined);
     assert.equal(declarations('.qb-compact-form .qb-stone-field', 1280).flex, '0 1 6rem');
     assert.equal(declarations('.qb-compact-form .qb-rate-field', 1280).flex, '0 1 130px');
