@@ -9,6 +9,16 @@ Description half-width. Scoped its desktop (1100px+) wrapper to 50% of its exist
 track; phone/tablet keep full width. No fields/handlers/calculations changed.
 Source contract and Vite build checked; browser appearance remains unverified.
 
+Next follow-up from clean `825b4c100797c3740283e3ad31707fbf74f37435`: moved the
+original Gross/Stone/Net controls into the Description group, in DOM/tab order.
+Desktop group uses compact 18rem description plus three 7rem weights; product and
+pricing controls share the following row. Phone/tablet stack the description and
+weight group; no duplicate fields, hidden values or CSS-only focus reordering.
+Six focused Node cases passed, Vite79, guarded Blade compile/385 lints/clear and
+diff check/layout detector [] passed. Exact input/select/textarea tags and inline
+calculation script unchanged. No DB suite needed for this markup/CSS-only move.
+Actual browser layout/focus remains unverified; no remote work.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,

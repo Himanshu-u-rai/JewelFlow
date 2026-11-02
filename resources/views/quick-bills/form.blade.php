@@ -567,9 +567,28 @@
 
                                     <div x-show="openIndex === index" x-transition x-cloak class="qb-item-edit-grid mt-4">
                                         <div class="qb-item-main">
-                                            <div class="qb-description-field">
-                                                <label class="mb-2 block text-sm font-medium text-slate-600">Description</label>
-                                                <input :name="'items['+index+'][description]'" x-model="item.description" type="text" placeholder="Gold ring / pendant / chain" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                            <div class="qb-description-weight-row">
+                                                <div class="qb-description-field">
+                                                    <label class="mb-2 block text-sm font-medium text-slate-600">Description</label>
+                                                    <input :name="'items['+index+'][description]'" x-model="item.description" type="text" placeholder="Gold ring / pendant / chain" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                                </div>
+
+                                                <div class="qb-weight-panel">
+                                                    <div class="qb-mobile-weight-grid">
+                                                        <div class="qb-weight-field">
+                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Gross</label>
+                                                            <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
+                                                        <div class="qb-weight-field">
+                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Stone wt</label>
+                                                            <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
+                                                        <div class="qb-mobile-net-field qb-weight-field">
+                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Net wt <span class="text-slate-400 font-normal">(auto)</span></label>
+                                                            <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" @input="onNetInput(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div class="qb-mobile-product-grid">
@@ -612,23 +631,6 @@
                                             </div>
 
                                             <div class="qb-measures-grid">
-                                                <div class="qb-weight-panel">
-                                                    <div class="qb-mobile-weight-grid">
-                                                        <div class="qb-weight-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Gross</label>
-                                                            <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                        <div class="qb-weight-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Stone wt</label>
-                                                            <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                        <div class="qb-mobile-net-field qb-weight-field">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Net wt <span class="text-slate-400 font-normal">(auto)</span></label>
-                                                            <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" @input="onNetInput(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                        </div>
-                                                    </div>
-                                                </div>
-
                                                 <div class="qb-price-panel">
                                                     <div class="qb-price-grid">
                                                         <div class="qb-rate-field">

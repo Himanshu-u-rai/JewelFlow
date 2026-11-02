@@ -30,17 +30,30 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     }
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-description-field', 390).width, undefined);
-    assert.equal(declarations('.qb-compact-form .qb-description-field', 1280).width, '50%');
+    assert.equal(declarations('.qb-compact-form .qb-description-field', 1280).width, undefined);
+    assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 1280)['grid-template-columns'], 'minmax(0, 18rem) minmax(0, 22.5rem)');
+    assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
-    assert.equal(declarations('.qb-compact-form .qb-weight-field', 1280).flex, '0 1 7rem');
+    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'repeat(3, minmax(0, 7rem))');
     assert.equal(declarations('.qb-compact-form .qb-making-field', 1280).flex, '0 1 14rem');
     assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 5.5rem');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 390).display, undefined);
-    assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).display, 'contents');
+    assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).display, undefined);
     assert.equal(declarations('.qb-compact-form .qb-review-summary', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-item-extras', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.match(declarations('.qb-compact-form .qb-review-summary', 1280)['grid-template-columns'], /auto$/);
+});
+
+test('description and original weight controls share the first group in DOM/tab order', () => {
+    const group = blade.slice(blade.indexOf('class="qb-description-weight-row"'), blade.indexOf('class="qb-mobile-product-grid"'));
+    assert.match(group, /qb-description-field/);
+    for (const field of ['gross_weight', 'stone_weight', 'net_weight']) {
+        assert.ok(group.includes(`x-model.number="item.${field}"`), `${field} belongs beside description`);
+        assert.equal(blade.split(`x-model.number="item.${field}"`).length - 1, 1, 'no duplicated weight inputs');
+    }
+    assert.ok(group.indexOf('item.gross_weight') < group.indexOf('item.stone_weight'));
+    assert.ok(group.indexOf('item.stone_weight') < group.indexOf('item.net_weight'));
 });
 
 test('notes use native modal focus/Escape handling and selects have a consistent visible chevron', () => {

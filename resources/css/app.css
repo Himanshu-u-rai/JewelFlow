@@ -31673,6 +31673,7 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-item-card { min-width: 0; padding: 12px; }
 .qb-compact-form .qb-item-edit-grid { margin-top: 12px; }
 .qb-compact-form .qb-item-main { gap: 12px; }
+.qb-compact-form .qb-description-weight-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 
 .qb-compact-form .qb-customer-fields,
 .qb-compact-form .qb-notes-fields,
@@ -31802,11 +31803,8 @@ a.notice-bell-item:focus-visible {
     .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(0, 1fr) 11rem; }
     .qb-compact-form .qb-mobile-product-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) 4.5rem; }
     .qb-compact-form .qb-measures-grid { display: flex; flex-wrap: wrap; align-items: start; }
-    .qb-compact-form .qb-weight-panel,
     .qb-compact-form .qb-price-panel,
-    .qb-compact-form .qb-mobile-weight-grid,
     .qb-compact-form .qb-price-grid { display: contents; }
-    .qb-compact-form .qb-weight-field { flex: 0 1 7rem; }
     .qb-compact-form .qb-rate-field,
     .qb-compact-form .qb-stone-field { flex: 0 1 9rem; }
     .qb-compact-form .qb-making-field { flex: 0 1 14rem; }
@@ -31821,7 +31819,10 @@ a.notice-bell-item:focus-visible {
 
 @media (min-width: 1100px) {
     .qb-compact-form .qb-item-main { grid-template-columns: minmax(12rem, 1fr) minmax(22rem, 30rem); }
-    .qb-compact-form .qb-description-field { width: 50%; }
+    .qb-compact-form .qb-description-weight-row { grid-column: 1 / -1; grid-template-columns: minmax(0, 18rem) minmax(0, 22.5rem); }
+    .qb-compact-form .qb-mobile-weight-grid { grid-template-columns: repeat(3, minmax(0, 7rem)); }
+    .qb-compact-form .qb-mobile-net-field { grid-column: auto; }
+    .qb-compact-form .qb-measures-grid { grid-column: auto; }
     .qb-compact-form .qb-item-extras { grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr); }
     .qb-compact-form .qb-review-summary { grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; }
     .qb-compact-form .qb-review-open { width: auto; }
