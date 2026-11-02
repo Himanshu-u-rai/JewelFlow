@@ -2,7 +2,31 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Desktop stock navigation in the page header
+## Latest checkpoint — Stock subtitle and Category menu layering
+
+Started clean `e368c7826e9309680cf4091c2496074a3f920f1e`. Removed the
+requested Stock / Items subtitle. Owner screenshot shows sticky table headings
+painting across the open Category menu. Source traces this to equal z3 stacking
+levels: menu z1200 remains trapped inside the filter header's z3 context, while
+later sticky headings escape the scrolling wrapper. Gave only the stock scroll
+wrapper position:relative/z0, confining its sticky headings below the existing
+filter header. No global z-index escalation, clipping/scroll changes, select JS,
+filter options, calculations, backend or preview data changes. Impeccable layout
+guidance informed the scoped stacking-context correction.
+
+Fresh database guard: APP_ENV=testing, DB_CONNECTION=pgsql, DB_HOST=127.0.0.1,
+DB_DATABASE=exact jewelflow_testing (5432). Regression RED: PHP subtitle cases
+failed2, frontend stacking contract failed1. After fix, command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed58/384assertions. `node --test tests/Frontend/*.test.mjs` passed138,
+22existing optional-browser skips/0fail. `npm run build` passed79modules;
+Blade compile/388compiled PHP lints/clear, changed PHP lint/Pint and diff checks
+passed. Logs stock-category-layer-* in existing evidence directory. Browser
+policy still blocks rendered desktop/phone, keyboard and open-menu acceptance;
+source/contract verification is not browser evidence. Refresh and visually check
+Category options over the sticky headings. Local commit only; no push/deploy.
+
+## Earlier checkpoint — Desktop stock navigation in the page header
 
 Started clean `d61b2ce42e53444d22be2fb0624c4ebf2f53766f`. At1024px+,
 Stock Items/Stock Aging/Sell Trend and Categories/Tag Printing/Reorder Alerts

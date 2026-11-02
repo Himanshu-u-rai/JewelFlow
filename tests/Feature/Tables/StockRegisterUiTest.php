@@ -27,7 +27,8 @@ class StockRegisterUiTest extends TestCase
         $this->withoutVite();
         $params = ['status' => 'sold', 'category' => $category->id, 'sub_category' => 'Synthetic bands', 'purity' => '22', 'search' => 'Synthetic', 'page' => 2];
         $response = $this->actingAs($owner)->get('/inventory/items?'.http_build_query($params))->assertOk();
-        $response->assertDontSee('Inventory Lens')->assertDontSee('Showing sold inventory');
+        $response->assertDontSee('Inventory Lens')->assertDontSee('Showing sold inventory')
+            ->assertDontSee('Manage jewellery items ready for sale');
         $xp = $this->xpath($response->getContent());
         $header = $xp->query('//*[contains(concat(" ",@class," ")," items-register-header ")]')->item(0);
         $this->assertNotNull($header);

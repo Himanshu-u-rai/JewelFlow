@@ -52,3 +52,10 @@ test('only desktop moves stock navigation to the header and keeps shrinking/wrap
     assert.equal(value('.inventory-items-header .page-actions', 'min-width', desktop), '0');
     assert.equal(value('.inventory-items-header .items-header-nav', 'min-width', desktop), '0');
 });
+
+test('sticky stock headings are confined below filter menus instead of painting over Category options', () => {
+    const scroll = '.inventory-items-page .items-register-frame .items-stock-table-shell';
+    assert.equal(value(scroll, 'position'), 'relative');
+    assert.equal(value(scroll, 'z-index'), '0');
+    assert.ok(Number(value('.inventory-items-page .items-register-header', 'z-index')) > Number(value(scroll, 'z-index')));
+});

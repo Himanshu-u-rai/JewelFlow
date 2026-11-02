@@ -4,7 +4,7 @@
     @endphp
 
     <div class="inventory-items-workspace" x-data="{ view: '{{ $viewDefault }}' }">
-    <x-page-header class="inventory-items-header" title="Stock / Items" subtitle="Manage jewellery items ready for sale">
+    <x-page-header class="inventory-items-header" title="Stock / Items">
         <x-slot:actions>
             @include('inventory.items.partials.navigation', ['placement' => 'header'])
             @if($isRetailer && $pricingAlertCount > 0)
