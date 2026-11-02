@@ -2,7 +2,47 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact, type-sized Quick Bill form
+## Latest checkpoint — Quick Bill Notes dialog and visible dropdown arrows
+
+Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
+branch and sole writer. Owner requested Notes/Terms removed from the main layout,
+a centered popup opened beside the bottom Review action, a smaller address field,
+and clear select affordances. Implemented native dialog within the existing POST
+form (no nested form/duplicate fields). Native modal focus/Escape/return-focus
+behavior is delegated to the browser, not a custom trap. Explicit Close/Done are
+non-submit buttons; close preserves text until the bill is saved. Before Turbo
+cache, close the dialog. Existing defaults/old input and field names remain.
+Phone dialog is viewport-bounded and internally scrollable; controls retain their
+44px touch targets. Address starts at one resizable row and two desktop grid tracks.
+Customer panel uses the formerly empty Notes area; no stretched two-panel layout.
+
+Root cause for missing dropdown arrows: background shorthand erased select images.
+Changed input/select background overrides to background-color (normal/focus/disabled),
+added one scoped 18px chevron to every Quick Bill select, and removed competing
+making-only positioned chevrons. Native appearance returns in forced-colors mode.
+Same selects/options, keyboard semantics, submission routes, calculations and
+validation; exact calculation script SHA-256 still
+`1ce07b4fa78b070fae296df97f4ee8f1141cffc96a90c850891aa78c60cc61b7`.
+
+Fresh guard: testing/pgsql/127.0.0.1:5432/exact jewelflow_testing before PHPUnit.
+Final focused PHP: 26 passed / 180 assertions (new dialog markup, single same-form
+fields, edit/retry/default preservation, actual normal POST notes/terms persistence,
+toggle/list/pricing/making/reprint). Node: 94 passed / 22 existing optional-browser
+skips, no failures. These are source/VM/HTTP checks, not browser interactions.
+Initial RED tests failed before implementation. Later test-fixture corrections
+supplied required gst_rate and matched existing address whitespace normalization;
+no application validation or normalization changed. Source test also caught the
+remaining disabled background shorthand before the final fix.
+Vite build (79 modules), guarded Blade compile/385 lints/clear, test Pint, PHP/Node
+syntax, diff check, unchanged script check and layout detector [] passed.
+
+Evidence: `/home/himanshu/jf-table-evidence/quick-bill-notes-dialog-20261102.e6KYil/`.
+Prior browser restriction remains: no rendered screenshots, native focus/Escape,
+actual phone/zoom/dropdown/Turbo or measured layout claims. Owner visual review is
+next. No data changes, dependencies, backend edits, push/deployment or remote work;
+existing preview processes and 24 synthetic bills preserved.
+
+## Previous checkpoint — Compact, type-sized Quick Bill form
 
 Starting clean HEAD `9b596504a172d129a410737dd171b3f0755e159e`, same branch,
 worktree and sole writer. Owner requested reducing form length through appropriate

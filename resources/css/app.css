@@ -31667,7 +31667,6 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-panel-heading { margin-bottom: 12px; }
 .qb-compact-form .qb-panel-toolbar,
 .qb-compact-form .qb-panel-toggle,
-.qb-compact-form .qb-notes-body,
 .qb-compact-form .qb-charges-body { padding: 12px 16px; }
 .qb-compact-form .qb-panel-toggle { min-height: 44px; }
 .qb-compact-form .qb-item-list { display: grid; gap: 12px; padding: 16px; }
@@ -31727,8 +31726,23 @@ a.notice-bell-item:focus-visible {
     line-height: 1.35;
 }
 
-.qb-compact-form.qb-edit-page select { padding-right: 32px; }
+.content-inner.qb-compact-form.qb-edit-page select {
+    appearance: none;
+    /* Background-color overrides in the legacy form must not erase this arrow. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-position: right 10px center !important;
+    background-size: 18px 18px !important;
+    background-repeat: no-repeat !important;
+    padding-right: 36px !important;
+    cursor: pointer;
+}
+
+@media (forced-colors: active) {
+    .content-inner.qb-compact-form.qb-edit-page select { appearance: auto; background-image: none !important; }
+}
+
 .qb-compact-form.qb-edit-page textarea { min-height: 64px; resize: vertical; }
+.qb-compact-form.qb-edit-page .qb-address-field textarea { min-height: 44px; }
 .qb-compact-form input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
 .qb-compact-form .qb-making-controls { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; gap: 8px; }
 .qb-compact-form .qb-making-select-wrap { min-width: 0; }
@@ -31763,10 +31777,29 @@ a.notice-bell-item:focus-visible {
 .qb-compact-form .qb-review-summary { align-items: center; gap: 12px; }
 .qb-compact-form .qb-review-intro p { margin-top: 4px; }
 .qb-compact-form .qb-review-total { min-width: 0; }
+.qb-compact-form .qb-review-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.qb-compact-form .qb-review-actions > button { flex: 1 1 auto; min-height: 48px; }
+.qb-compact-form .qb-notes-dialog {
+    width: min(36rem, calc(100% - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 20px;
+    overflow-y: auto;
+    border: 1px solid var(--qb-line);
+    border-radius: 16px;
+    color: var(--qb-ink);
+    background: white;
+}
+.qb-compact-form .qb-notes-dialog::backdrop { background: rgb(15 23 42 / 45%); }
+.qb-compact-form .qb-notes-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.qb-compact-form .qb-notes-close { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+.qb-compact-form .qb-notes-fields { margin-top: 16px; }
+.qb-compact-form .qb-notes-footer { display: flex; justify-content: end; margin-top: 16px; }
+.qb-compact-form .qb-notes-footer button { min-height: 44px; }
 
 @media (min-width: 768px) {
     .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(0, 1fr) 11rem; }
-    .qb-compact-form .qb-notes-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .qb-compact-form .qb-mobile-product-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) 4.5rem; }
     .qb-compact-form .qb-measures-grid { display: flex; flex-wrap: wrap; align-items: start; }
     .qb-compact-form .qb-weight-panel,
@@ -31794,12 +31827,8 @@ a.notice-bell-item:focus-visible {
 }
 
 @media (min-width: 1200px) {
-    .qb-compact-form .qb-top-grid { grid-template-columns: minmax(0, 1.8fr) minmax(18rem, 1fr); }
-    .qb-compact-form .qb-notes-fields { grid-template-columns: minmax(0, 1fr); }
-}
-
-@media (min-width: 1600px) {
     .qb-compact-form .qb-customer-fields { grid-template-columns: minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem; }
+    .qb-compact-form .qb-address-field { grid-column: span 2; }
 }
 
 @media (pointer: coarse) {

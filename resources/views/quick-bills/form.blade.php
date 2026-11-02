@@ -248,7 +248,7 @@
         .qb-edit-page textarea {
             border: 1px solid var(--qb-line) !important;
             border-radius: 10px !important;
-            background: #fff !important;
+            background-color: #fff !important;
             color: var(--qb-ink) !important;
             box-shadow: none !important;
         }
@@ -265,7 +265,7 @@
         ) {
             border: 1px solid var(--qb-line) !important;
             border-radius: 10px !important;
-            background: #fff !important;
+            background-color: #fff !important;
             color: var(--qb-ink) !important;
             box-shadow: none !important;
         }
@@ -287,7 +287,7 @@
         )[class*="shadow"] {
             border: 1px solid var(--qb-line) !important;
             border-radius: 10px !important;
-            background: #fff !important;
+            background-color: #fff !important;
             color: var(--qb-ink) !important;
             box-shadow: none !important;
         }
@@ -301,7 +301,7 @@
         .qb-edit-page input:focus,
         .qb-edit-page select:focus,
         .qb-edit-page textarea:focus {
-            background: #fff !important;
+            background-color: #fff !important;
             border-color: var(--qb-dark) !important;
             outline: none;
             box-shadow: 0 0 0 3px var(--qb-focus) !important;
@@ -317,7 +317,7 @@
             select,
             textarea
         ):focus {
-            background: #fff !important;
+            background-color: #fff !important;
             border-color: var(--qb-dark) !important;
             outline: none !important;
             box-shadow: 0 0 0 3px var(--qb-focus) !important;
@@ -327,7 +327,7 @@
         .qb-edit-page input:disabled,
         .qb-edit-page select:disabled,
         .qb-edit-page textarea:disabled {
-            background: var(--qb-soft-strong) !important;
+            background-color: var(--qb-soft-strong) !important;
             color: var(--qb-muted) !important;
         }
 
@@ -409,36 +409,8 @@
             box-shadow: none !important;
         }
 
-        .qb-making-select-icon {
-            display: none;
-        }
-
         @media (prefers-reduced-motion: reduce) {
             .qb-edit-page * { transition: none !important; }
-        }
-
-        /* The making-basis selector keeps its existing custom chevron. */
-        @media (min-width: 768px) {
-            /* Show the custom chevron on the making-type select on desktop too. */
-            .qb-making-select-wrap { position: relative; }
-            .qb-making-select-icon {
-                position: absolute;
-                top: 1.30rem;
-                right: .7rem;
-                display: flex;
-                height: 16px;
-                width: 16px;
-                align-items: center;
-                justify-content: center;
-                color: #475569;
-                pointer-events: none;
-            }
-            .content-inner.qb-edit-page select.qb-making-type-select {
-                appearance: none;
-                -webkit-appearance: none;
-                background-image: none !important;
-                padding-right: 2rem !important;
-            }
         }
 
         @media (max-width: 767px) {
@@ -466,29 +438,6 @@
             .qb-edit-page {
                 margin-left: -4px;
                 margin-right: -4px;
-            }
-
-            .qb-making-select-wrap {
-                position: relative;
-            }
-
-            .qb-making-select-icon {
-                position: absolute;
-                top: 50%;
-                right: .65rem;
-                display: flex;
-                height: 16px;
-                width: 16px;
-                transform: translateY(-50%);
-                align-items: center;
-                justify-content: center;
-                color: #475569;
-                pointer-events: none;
-            }
-
-            .content-inner.qb-edit-page select.qb-making-type-select {
-                appearance: none;
-                padding-right: 2rem !important;
             }
         }
     </style>
@@ -559,30 +508,7 @@
                                 </div>
                                 <div class="qb-address-field">
                                     <label for="qb-customer-address" class="mb-2 block text-sm font-medium text-slate-600">Address</label>
-                                    <textarea id="qb-customer-address" name="customer_address" x-model="customerAddress" rows="2" placeholder="Billing address (optional)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div x-data="{ open: true }" class="qb-notes-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <button type="button" @click="open = !open" class="qb-panel-toggle flex w-full items-center justify-between gap-3 text-left">
-                                <div>
-                                    <div class="text-sm font-semibold text-slate-900">Notes & Terms</div>
-                                    <div class="mt-1 text-xs text-slate-500">Keep collapsed when the bill does not need extra text.</div>
-                                </div>
-                                <x-icon name="chevron-down" class="h-5 w-5 text-slate-500 transition-transform" x-bind:class="open ? 'rotate-180' : ''" />
-                            </button>
-
-                            <div x-show="open" x-transition x-cloak class="qb-notes-body border-t border-slate-200">
-                                <div class="qb-notes-fields">
-                                    <div>
-                                        <label for="qb-notes" class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
-                                        <textarea id="qb-notes" name="notes" rows="2" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
-                                    </div>
-                                    <div>
-                                        <label for="qb-terms" class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
-                                        <textarea id="qb-terms" name="terms" rows="2" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
-                                    </div>
+                                    <textarea id="qb-customer-address" name="customer_address" x-model="customerAddress" rows="1" placeholder="Billing address (optional)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -718,9 +644,6 @@
                                                                         <option value="percentage">% of metal</option>
                                                                         <option value="per_gram">₹ / gram</option>
                                                                     </select>
-                                                                    <span class="qb-making-select-icon" aria-hidden="true">
-                                                                        <x-icon name="chevron-down" stroke-width="2.25" />
-                                                                    </span>
                                                                 </div>
                                                                 <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             </div>
@@ -816,10 +739,39 @@
                             </div>
                         </div>
 
-                        <button type="button" @click="openReview()" class="qb-review-open inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                            Review & Payment
-                        </button>
+                        <div class="qb-review-actions">
+                            <button type="button" @click="$refs.notesDialog.showModal()" aria-haspopup="dialog" aria-controls="qb-notes-dialog" class="qb-notes-open inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                <x-icon name="file-text" class="h-4 w-4" />
+                                Notes & Terms
+                            </button>
+                            <button type="button" @click="openReview()" class="qb-review-open inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                                Review & Payment
+                            </button>
+                        </div>
                     </div>
+
+                    <dialog id="qb-notes-dialog" x-ref="notesDialog" @turbo:before-cache.window="$refs.notesDialog.close()" class="qb-notes-dialog" aria-labelledby="qb-notes-title" aria-describedby="qb-notes-help">
+                        <div class="qb-notes-heading">
+                            <h2 id="qb-notes-title" class="text-lg font-semibold text-slate-900">Notes & Terms</h2>
+                            <button type="button" @click="$refs.notesDialog.close()" class="qb-notes-close rounded-xl border border-slate-300 bg-white text-slate-600 hover:bg-slate-50" aria-label="Close Notes and Terms">
+                                <x-icon name="x" class="h-5 w-5" />
+                            </button>
+                        </div>
+                        <p id="qb-notes-help" class="text-sm text-slate-600">Saved with the bill. Closing this window keeps your changes.</p>
+                        <div class="qb-notes-fields">
+                            <div>
+                                <label for="qb-notes" class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
+                                <textarea id="qb-notes" autofocus name="notes" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
+                            </div>
+                            <div>
+                                <label for="qb-terms" class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
+                                <textarea id="qb-terms" name="terms" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
+                            </div>
+                        </div>
+                        <div class="qb-notes-footer">
+                            <button type="button" @click="$refs.notesDialog.close()" class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Done</button>
+                        </div>
+                    </dialog>
 
                     <div x-show="reviewOpen" x-transition.opacity x-cloak class="qb-review-backdrop" @click="closeReview()"></div>
                     <section x-show="reviewOpen" x-transition x-cloak class="qb-review-drawer" role="dialog" aria-modal="true" aria-label="Review and payment">

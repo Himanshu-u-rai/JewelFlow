@@ -26,8 +26,8 @@ class QuickBillCompactFormUiTest extends TestCase
             $this->assertNotEmpty($field->getAttribute('id'));
             $this->assertSame(1, $xp->query('//label[@for="'.$field->getAttribute('id').'"]')->length);
         }
-        foreach (['customer_address', 'notes', 'terms'] as $name) {
-            $this->assertSame('2', $xp->evaluate('string(//textarea[@name="'.$name.'"]/@rows)'));
+        foreach (['customer_address' => '1', 'notes' => '4', 'terms' => '4'] as $name => $rows) {
+            $this->assertSame($rows, $xp->evaluate('string(//textarea[@name="'.$name.'"]/@rows)'));
         }
         foreach (['gross_weight' => '0.001', 'stone_weight' => '0.001', 'net_weight' => '0.001', 'rate' => '0.01', 'making_charge' => '0.01', 'stone_charge' => '0.01', 'wastage_percent' => '0.01'] as $field => $step) {
             $input = $xp->query('//*[@x-model.number="item.'.$field.'"]')->item(0);
@@ -40,6 +40,25 @@ class QuickBillCompactFormUiTest extends TestCase
         $this->assertSame(1, $xp->query('//button[@name="save_action" and @value="issue"]')->length);
         $this->assertSame(1, $xp->query('//button[@name="save_action" and @value="draft"]')->length);
         $this->assertSame(1, $xp->query('//*[@role="dialog" and @aria-label="Review and payment"]')->length);
+    }
+
+    public function test_notes_use_one_native_dialog_inside_the_bill_form_and_open_from_review(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $html = $this->actingAs($owner)->get(route('quick-bills.create'))->assertOk()->getContent();
+        $xp = $this->xpath($html);
+        $this->assertSame(1, $xp->query('//form[@method="POST"]//dialog[@id="qb-notes-dialog" and not(@open) and @aria-labelledby="qb-notes-title"]')->length);
+        foreach (['notes', 'terms'] as $name) {
+            $this->assertSame(1, $xp->query('//dialog[@id="qb-notes-dialog"]//textarea[@name="'.$name.'"]')->length);
+            $this->assertSame(1, $xp->query('//textarea[@name="'.$name.'"]')->length, 'No duplicate fields or nested forms.');
+        }
+        $this->assertSame(1, $xp->query('//*[contains(@class,"qb-review-summary")]//button[@type="button" and @aria-controls="qb-notes-dialog"]')->length);
+        $this->assertSame(0, $xp->query('//*[contains(@class,"qb-top-grid")]//*[@name="notes" or @name="terms"]')->length);
+        $this->assertSame(0, $xp->query('//dialog//form')->length);
+        $this->assertStringContainsString('$refs.notesDialog.showModal()', $html);
+        $this->assertStringContainsString('$refs.notesDialog.close()', $html);
+        $this->assertStringContainsString('Saved with the bill', $html);
     }
 
     public function test_edit_and_validation_retry_preserve_existing_and_unsaved_values(): void
@@ -65,6 +84,19 @@ class QuickBillCompactFormUiTest extends TestCase
         ])->assertRedirect(route('quick-bills.create'))->assertSessionHasErrors('items');
         $this->get(route('quick-bills.create'))->assertOk()->assertSee('Unsaved notes remain')->assertSee('Unsaved terms remain');
         $this->assertSame(1, QuickBill::withoutTenant()->where('shop_id', $shop->id)->count());
+
+        $this->post(route('quick-bills.store'), [
+            'bill_date' => today()->toDateString(), 'pricing_mode' => 'no_gst', 'gst_rate' => 0,
+            'customer_name' => 'Synthetic dialog save', 'customer_address' => "Short address\nSecond line retained",
+            'notes' => 'Notes from closed popup', 'terms' => 'Terms from closed popup', 'save_action' => 'draft',
+            'items' => [['description' => 'Synthetic ring', 'gross_weight' => 10, 'stone_weight' => 1, 'net_weight' => 8, 'rate' => 100]],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $saved = QuickBill::withoutTenant()->where('shop_id', $shop->id)->latest('id')->firstOrFail();
+        $this->assertSame('Notes from closed popup', $saved->notes);
+        $this->assertSame('Terms from closed popup', $saved->terms);
+        $this->assertSame('Short address Second line retained', $saved->customer_address);
+        $this->assertSame('Synthetic dialog save', $saved->customer_name);
+        $this->assertSame(2, QuickBill::withoutTenant()->where('shop_id', $shop->id)->count());
     }
 
     private function xpath(string $html): \DOMXPath

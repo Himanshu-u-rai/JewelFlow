@@ -29,7 +29,7 @@ test('entry has full-width work area, proportionate desktop fields and readable 
         assert.equal(declarations('.qb-compact-form .qb-top-grid', width)['align-items'], 'start');
     }
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 390)['grid-template-columns'], 'minmax(0, 1fr)');
-    assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(0, 1fr) 11rem');
+    assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
     assert.equal(declarations('.qb-compact-form .qb-weight-field', 1280).flex, '0 1 7rem');
     assert.equal(declarations('.qb-compact-form .qb-making-field', 1280).flex, '0 1 14rem');
@@ -39,6 +39,24 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-review-summary', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-item-extras', 768)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.match(declarations('.qb-compact-form .qb-review-summary', 1280)['grid-template-columns'], /auto$/);
+});
+
+test('notes use native modal focus/Escape handling and selects have a consistent visible chevron', () => {
+    assert.match(blade, /<dialog[^>]*x-ref="notesDialog"[^>]*@turbo:before-cache\.window="\$refs.notesDialog.close\(\)"/);
+    assert.match(blade, /id="qb-notes"[^>]*autofocus/);
+    assert.match(declarations('.qb-compact-form .qb-notes-dialog', 390).width, /min\(/);
+    assert.equal(declarations('.qb-compact-form .qb-notes-dialog', 390)['max-height'], 'calc(100dvh - 32px)');
+    const select = declarations('.content-inner.qb-compact-form.qb-edit-page select', 1280);
+    assert.match(select['background-image'], /data:image\/svg\+xml/);
+    assert.equal(select['background-position'], 'right 10px center');
+    assert.equal(select['background-size'], '18px 18px');
+    assert.doesNotMatch(blade, /class="qb-making-select-icon"/);
+    const inline = postcss.parse(blade.match(/<style>([^]*?)<\/style>/)[1]);
+    inline.walkRules(rule => {
+        if (rule.selector.includes('.qb-edit-page') && rule.selector.includes('select')) {
+            assert.ok(!rule.nodes.some(node => node.prop === 'background'), 'select arrows must survive normal, focused and disabled styles');
+        }
+    });
 });
 
 test('phone input text wins over the legacy important text-sm/text-xs shrink rules', () => {
