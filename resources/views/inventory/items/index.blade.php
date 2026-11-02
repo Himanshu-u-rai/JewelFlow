@@ -656,22 +656,12 @@
                 // silently empty analytics tab instead of a visible failure.
                 $buckets = $stockAgingData['buckets'];
                 $agingSummary = $stockAgingData['summary'];
-                $agingTones = [
-                    '0-30 days' => ['class' => 'is-fresh', 'label' => 'Fresh arrivals'],
-                    '31-60 days' => ['class' => 'is-watch', 'label' => 'Watch list'],
-                    '61-90 days' => ['class' => 'is-warm', 'label' => 'Needs review'],
-                    '91-180 days' => ['class' => 'is-risk', 'label' => 'Slow moving'],
-                    '180+ days' => ['class' => 'is-critical', 'label' => 'Critical aging'],
-                ];
                 $bucketCollection = collect($buckets);
                 $totalItems = $bucketCollection->sum('count');
                 $totalValue = (float) $bucketCollection->sum('value');
                 $agedValue = (float) (($buckets['91-180 days']['value'] ?? 0) + ($buckets['180+ days']['value'] ?? 0));
                 $agedValueShare = $totalValue > 0 ? min(100, ($agedValue / $totalValue) * 100) : 0;
-                $freshCount = (int) ($buckets['0-30 days']['count'] ?? 0);
-                $freshShare = $totalItems > 0 ? min(100, ($freshCount / $totalItems) * 100) : 0;
                 $riskPct = min(100, max(0, (float) ($agingSummary['aged_pct'] ?? 0)));
-                $dominantBucket = $bucketCollection->sortByDesc(fn ($data) => (int) ($data['count'] ?? 0))->keys()->first() ?? 'No stock';
                 $slowItems = collect($buckets['91-180 days']['items'] ?? [])->merge($buckets['180+ days']['items'] ?? []);
                 $topSlowCategories = $slowItems
                     ->groupBy(fn ($item) => $item->category ?: 'Uncategorized')
@@ -687,105 +677,7 @@
                     ->take(4);
             @endphp
 
-            <section class="items-aging-shell">
-                <div class="items-aging-visual-grid" aria-label="Stock aging visual summary">
-                    <article class="items-aging-chart-card items-aging-chart-card--wide">
-                        <div class="items-aging-chart-head">
-                            <div>
-                                <p class="items-aging-chart-kicker">Aging Distribution</p>
-                                <h3>Where stock is sitting right now</h3>
-                            </div>
-                            <span>{{ number_format($totalItems) }} items</span>
-                        </div>
-                        <div class="items-aging-stack" aria-hidden="true">
-                            @foreach($buckets as $label => $data)
-                                @php
-                                    $count = (int) ($data['count'] ?? 0);
-                                    $share = $totalItems > 0 ? min(100, ($count / $totalItems) * 100) : 0;
-                                    $tone = $agingTones[$label] ?? ['class' => 'is-neutral', 'label' => 'Stock bucket'];
-                                @endphp
-                                <span class="{{ $tone['class'] }}" style="width: {{ $share }}%" title="{{ $label }}: {{ number_format($count) }} items"></span>
-                            @endforeach
-                        </div>
-                        <div class="items-aging-chart-legend">
-                            @foreach($buckets as $label => $data)
-                                @php
-                                    $count = (int) ($data['count'] ?? 0);
-                                    $value = (float) ($data['value'] ?? 0);
-                                    $share = $totalItems > 0 ? min(100, ($count / $totalItems) * 100) : 0;
-                                    $tone = $agingTones[$label] ?? ['class' => 'is-neutral', 'label' => 'Stock bucket'];
-                                @endphp
-                                <div class="items-aging-legend-row">
-                                    <span class="items-aging-chart-dot {{ $tone['class'] }}"></span>
-                                    <span class="items-aging-legend-label">{{ $label }}</span>
-                                    <strong>{{ number_format($count) }}</strong>
-                                    <span>{{ number_format($share, 1) }}%</span>
-                                    <span>₹{{ number_format($value, 0) }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </article>
-
-                    <article class="items-aging-chart-card items-aging-risk-panel">
-                        <div class="items-aging-chart-head">
-                            <div>
-                                <p class="items-aging-chart-kicker">Risk Meter</p>
-                                <h3>90+ day exposure</h3>
-                            </div>
-                        </div>
-                        <div class="items-aging-donut" style="--risk: {{ $riskPct }};" aria-label="{{ number_format($riskPct, 1) }} percent of stock above 90 days">
-                            <div>
-                                <strong>{{ number_format($riskPct, 1) }}%</strong>
-                                <span>aged</span>
-                            </div>
-                        </div>
-                        <div class="items-aging-risk-stats">
-                            <div>
-                                <span>Capital at risk</span>
-                                <strong>₹{{ number_format($agedValue, 0) }}</strong>
-                                <small>{{ number_format($agedValueShare, 1) }}% of value</small>
-                            </div>
-                            <div>
-                                <span>Fresh share</span>
-                                <strong>{{ number_format($freshShare, 1) }}%</strong>
-                                <small>{{ $dominantBucket }} leads</small>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="items-aging-chart-card items-aging-category-panel">
-                        <div class="items-aging-chart-head">
-                            <div>
-                                <p class="items-aging-chart-kicker">Slow Categories</p>
-                                <h3>Old stock by value</h3>
-                            </div>
-                            <span>{{ number_format($slowItems->count()) }} flagged</span>
-                        </div>
-                        <div class="items-aging-category-list">
-                            @forelse($topSlowCategories as $categoryData)
-                                @php
-                                    $categoryShare = $agedValue > 0 ? min(100, ((float) $categoryData['value'] / $agedValue) * 100) : 0;
-                                @endphp
-                                <div class="items-aging-category-row">
-                                    <div>
-                                        <strong>{{ $categoryData['category'] }}</strong>
-                                        <span>{{ number_format($categoryData['count']) }} items · oldest {{ $categoryData['oldest_days'] }}d</span>
-                                    </div>
-                                    <em>₹{{ number_format($categoryData['value'], 0) }}</em>
-                                    <span class="items-aging-category-bar" aria-hidden="true">
-                                        <span style="width: {{ $categoryShare }}%"></span>
-                                    </span>
-                                </div>
-                            @empty
-                                <div class="items-aging-category-empty">
-                                    No 90+ day stock categories yet.
-                                </div>
-                            @endforelse
-                        </div>
-                    </article>
-                </div>
-
-            </section>
+            @include('inventory.items.partials.aging-overview')
 
             @if($slowItems->count())
             <div class="items-table-card items-table-card--slow items-aging-slow-card">
@@ -800,17 +692,19 @@
                     <table class="w-full items-data-table items-data-table--slow jf-table">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                                     {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Price' }}
                                 </th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Days in Stock</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Days in Stock</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             @foreach($slowItems->take(50) as $sItem)
                             <tr class="hover:bg-gray-50">
+                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                 <td class="px-6 py-3 text-sm font-mono">{{ $sItem->barcode }}</td>
                                 <td class="px-6 py-3 text-sm">{{ $sItem->category }}{{ $sItem->sub_category ? ' · ' . $sItem->sub_category : '' }}</td>
                                 <td class="px-6 py-3 text-sm text-right">
@@ -820,7 +714,7 @@
                                         ₹{{ number_format($sItem->selling_price, 2) }}
                                     @endif
                                 </td>
-                                <td class="px-6 py-3 text-sm text-right font-medium text-rose-600">{{ $sItem->created_at->diffInDays(now()) }}</td>
+                                <td class="px-6 py-3 text-sm text-right font-medium text-rose-600">{{ (int) $sItem->created_at->diffInDays(now()) }}</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -829,7 +723,7 @@
                 <div class="items-aging-mobile-list" aria-label="Slow moving stock mobile list">
                     @foreach($slowItems->take(50) as $sItem)
                         @php
-                            $daysInStock = $sItem->created_at->diffInDays(now());
+                            $daysInStock = (int) $sItem->created_at->diffInDays(now());
                             $agingPrice = (($stockValueDisplay ?? 'total') === 'per_gram' && $sItem->net_metal_weight > 0)
                                 ? '₹' . number_format($sItem->selling_price / $sItem->net_metal_weight, 0) . '/g'
                                 : '₹' . number_format($sItem->selling_price, 2);
@@ -837,7 +731,7 @@
                         <article class="items-aging-mobile-card {{ $daysInStock > 180 ? 'is-critical' : 'is-risk' }}">
                             <div class="items-aging-mobile-head">
                                 <div>
-                                    <h3>{{ $sItem->barcode }}</h3>
+                                    <h3><span class="jf-record-index">#{{ $loop->iteration }}</span> {{ $sItem->barcode }}</h3>
                                     <p>{{ $sItem->category }}{{ $sItem->sub_category ? ' · ' . $sItem->sub_category : '' }}</p>
                                 </div>
                                 <span>{{ $daysInStock }}d</span>
@@ -868,12 +762,10 @@
                 $worst = $sellersData['worst'];
                 $sellerPeriod = $sellersData['period'];
                 $sellerByCategory = collect($best['by_category'] ?? []);
-                $sellerBySubCategory = collect($best['by_sub_category'] ?? []);
                 $sellerWorstCategories = collect($worst ?? []);
                 $sellerTotalSold = (int) $sellerByCategory->sum('sold_count');
                 $sellerTotalRevenue = (float) $sellerByCategory->sum('total_revenue');
                 $sellerTopCategory = $sellerByCategory->sortByDesc('sold_count')->first();
-                $sellerTopSubCategory = $sellerBySubCategory->sortByDesc('sold_count')->first();
                 $sellerWeakCategory = $sellerWorstCategories->sortBy('sold_count')->first();
                 $sellerPeriodLabel = match ($sellerPeriod) {
                     '7' => 'Last 7 days',
@@ -881,105 +773,9 @@
                     '365' => 'Last year',
                     default => 'Last 30 days',
                 };
-                $sellerPeriodShort = match ($sellerPeriod) {
-                    '7' => '7D',
-                    '90' => '90D',
-                    '365' => '1Y',
-                    default => '30D',
-                };
-                $sellerMaxSold = max(1, (int) $sellerByCategory->max('sold_count'));
             @endphp
 
-            <section class="items-seller-command">
-                <div class="items-seller-command-main">
-                    <div>
-                        <p class="items-seller-kicker">Sell Trend</p>
-                        <h3>{{ $sellerPeriodLabel }} performance</h3>
-                    </div>
-                    <div class="items-seller-command-metrics" aria-label="Sell trend summary">
-                        <div>
-                            <span>Units sold</span>
-                            <strong>{{ number_format($sellerTotalSold) }}</strong>
-                        </div>
-                        <div>
-                            <span>Revenue</span>
-                            <strong>₹{{ number_format($sellerTotalRevenue, 0) }}</strong>
-                        </div>
-                        <div>
-                            <span>Top category</span>
-                            <strong>{{ $sellerTopCategory['category'] ?? '—' }}</strong>
-                        </div>
-                        <div>
-                            <span>Weak category</span>
-                            <strong>{{ $sellerWeakCategory['category'] ?? '—' }}</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="items-seller-command-side">
-                    <div class="ui-filter-enhanced-wrap items-seller-period-wrap items-seller-period-panel">
-                        <form method="GET" action="{{ route('inventory.items.index') }}" class="flex flex-wrap gap-3 items-end items-seller-period-filter" data-enhance-selects="true" data-enhance-selects-variant="compact">
-                            <input type="hidden" name="view" value="sellers">
-                            <div class="items-seller-period-field">
-                                <label class="items-filter-label">Period</label>
-                                <select name="seller_period" class="items-filter-input items-seller-period-select">
-                                    <option value="7" {{ $sellerPeriod === '7' ? 'selected' : '' }}>Last 7 days</option>
-                                    <option value="30" {{ $sellerPeriod === '30' ? 'selected' : '' }}>Last 30 days</option>
-                                    <option value="90" {{ $sellerPeriod === '90' ? 'selected' : '' }}>Last 90 days</option>
-                                    <option value="365" {{ $sellerPeriod === '365' ? 'selected' : '' }}>Last year</option>
-                                </select>
-                            </div>
-                            @if(request()->has('seller_period'))
-                                <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="items-filter-clear items-seller-period-apply"><x-icon name="x" size="14" class="mr-1" />Clear</a>
-                            @else
-                                <button type="submit" class="items-filter-submit items-seller-period-apply"><x-icon name="funnel" size="14" class="mr-1" />Apply</button>
-                            @endif
-                        </form>
-                    </div>
-                    <div class="items-seller-window-pill">
-                        <span>Window</span>
-                        <strong>{{ $sellerPeriodShort }}</strong>
-                    </div>
-                </div>
-            </section>
-
-            <section class="items-seller-movement-panel">
-                <div class="items-seller-movement-head">
-                    <div>
-                        <p class="items-seller-kicker">Category Movement</p>
-                        <h3>Best selling categories</h3>
-                    </div>
-                    <span>{{ number_format($sellerByCategory->count()) }} categories</span>
-                </div>
-                <div class="items-seller-movement-list">
-                    @forelse($sellerByCategory->take(5) as $i => $row)
-                        @php
-                            $soldCount = (int) ($row['sold_count'] ?? 0);
-                            $soldShare = $sellerMaxSold > 0 ? min(100, ($soldCount / $sellerMaxSold) * 100) : 0;
-                        @endphp
-                        <div class="items-seller-movement-row">
-                            <span>#{{ $i + 1 }}</span>
-                            <div>
-                                <strong>{{ $row['category'] ?? '—' }}</strong>
-                                <small>{{ number_format($soldCount) }} sold · ₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</small>
-                                <em aria-hidden="true"><i style="width: {{ $soldShare }}%"></i></em>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="items-seller-movement-empty">No sales data in this period.</div>
-                    @endforelse
-                </div>
-                <div class="items-seller-movement-foot">
-                    <div>
-                        <span>Top sub-category</span>
-                        <strong>{{ $sellerTopSubCategory['sub_category'] ?? '—' }}</strong>
-                    </div>
-                    <div>
-                        <span>Lowest movement</span>
-                        <strong>{{ $sellerWeakCategory['category'] ?? '—' }}</strong>
-                    </div>
-                </div>
-            </section>
+            @include('inventory.items.partials.sell-trend-overview')
 
             <div class="items-sellers-tables-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Best Sellers by Category --}}
@@ -994,16 +790,16 @@
                         <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 @forelse($best['by_category'] as $i => $row)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $i + 1 }}</td>
+                                    <td class="jf-table-index">{{ $i + 1 }}</td>
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $row['category'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-right">{{ $row['sold_count'] }}</td>
                                     <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
@@ -1053,17 +849,17 @@
                         <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Cat</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Cat</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 @forelse($best['by_sub_category'] as $i => $row)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $i + 1 }}</td>
+                                    <td class="jf-table-index">{{ $i + 1 }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $row['category'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-600">{{ $row['sub_category'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-right">{{ $row['sold_count'] }}</td>
@@ -1114,16 +910,16 @@
                         <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items Sold</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items Sold</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 @forelse($worst as $i => $row)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-3 text-sm text-gray-500">{{ $i + 1 }}</td>
+                                    <td class="jf-table-index">{{ $i + 1 }}</td>
                                     <td class="px-6 py-3 text-sm font-medium text-gray-900">{{ $row['category'] ?? '—' }}</td>
                                     <td class="px-6 py-3 text-sm text-right text-rose-600 font-medium">{{ $row['sold_count'] }}</td>
                                     <td class="px-6 py-3 text-sm text-right">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>

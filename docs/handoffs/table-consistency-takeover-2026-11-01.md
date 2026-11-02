@@ -2,7 +2,48 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock subtitle and Category menu layering
+## Latest checkpoint — Stock Aging, then Sell Trend (2026-11-03)
+
+Started clean `e6dabdbe4abd1b277bfa48e5bd41431661b6b4ed`, same branch/sole
+writer. Owner clarified that analytics, NOT the main Stock Items overview,
+is the target. The abandoned main-overview experiment was fully undone before
+this tranche. Main Stock Items/header/pricing drawer source remains byte-for-byte
+identical to starting HEAD (prefix through the Stock Aging marker compared).
+
+Stock Aging: replaced stacked bars/duplicate risk gauge with a five-bucket native
+SVG composition chart plus labelled counts, percentages and selling values.
+Average age/stock value remain real service data; separate90+day review summary
+and ranked slow categories replace nested mini-cards/bars. Empty/100%-single-age
+states supported. Slow-stock table/phone cards now indexed; days displayed as
+whole days. Same buckets, underlying calculations and50-record limit preserved.
+Sell Trend: native SVG units-versus-revenue category comparison, grouped identical
+coordinates, matching rank labels and existing detail tables/phone equivalents.
+No fabricated time series or growth claims. Totals explicitly refer to the shown
+top-category subset, not all shop sales. Period choices/GET route preserved;
+Apply remains present with an active period instead of being replaced by Clear.
+Responsive token-based white/bordered surfaces and existing orange palette;
+no dependency/backend/sharedJS/query/data/permission changes. Impeccable's Operate
+guidance kept charts readable alongside exact textual values, with no new motion.
+
+Fresh guard confirmed testing/pgsql/127.0.0.1:5432/exact jewelflow_testing.
+RED aging3/sellers4 before implementation. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed65tests/542assertions. Positive chart data is synthetic Blade rendering,
+not a browser or financial transaction; actual route checks cover empty analytics
+and populated aged stock. Chart cases include zero stock/sales, all-old stock,
+mixed proportions, equal coordinates, zero revenue and hand-checked coordinates.
+`node --test tests/Frontend/*.test.mjs`:138pass/22existing optional-browser skips;
+`npm run build`:79modules. Blade compile/389compiled PHP lints/clear, changedPHP
+lint/Pint/diff and Impeccable layout[] passed. Logs analytics-* under existing
+quick-bill-notes-dialog-20261102.e6KYil evidence. No full-repository PHP rerun.
+
+Browser policy still blocks actual desktop/tablet/phone geometry, point-label
+collisions for nearby (not identical) values, keyboard/period dropdown/Back and
+scroll acceptance. No new screenshots or visual pass claimed; no workaround.
+Owner review URLs: /inventory/items?view=aging and /inventory/items?view=sellers.
+No preview data changed. Local only, no push/deployment. Preview/private PG kept.
+
+## Earlier checkpoint — Stock subtitle and Category menu layering
 
 Started clean `e368c7826e9309680cf4091c2496074a3f920f1e`. Removed the
 requested Stock / Items subtitle. Owner screenshot shows sticky table headings
