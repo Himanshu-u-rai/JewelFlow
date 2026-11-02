@@ -241,8 +241,8 @@
                                         <div class="returns-create-line__details">
                                             @if(isset($policyBreakdowns[$line->id]))
                                                 @php $bd = $policyBreakdowns[$line->id]; @endphp
-                                                <details class="returns-create-details">
-                                                    <summary>Refund breakdown</summary>
+                                                <section class="returns-create-details" aria-label="Refund breakdown">
+                                                    <h3 class="returns-create-details__heading">Refund breakdown</h3>
                                                     <dl>
                                                         <div><dt>Original</dt><dd>₹{{ number_format($bd->breakdown['original_line_total'] ?? 0, 2) }}</dd></div>
                                                         @if(($bd->breakdown['making_retained'] ?? 0) > 0)
@@ -262,13 +262,13 @@
                                                         @endif
                                                         <div class="is-total"><dt>Refund</dt><dd>₹{{ number_format($bd->refundTotal, 2) }}</dd></div>
                                                     </dl>
-                                                </details>
+                                                </section>
                                             @endif
 
                                             @can('returns.approve')
                                                 @php $maxRefundable = $originalRefundBase; @endphp
-                                                <details class="returns-create-details returns-create-adjustments">
-                                                    <summary>Adjust refund</summary>
+                                                <section class="returns-create-details returns-create-adjustments" aria-label="Adjust refund">
+                                                    <h3 class="returns-create-details__heading">Adjust refund</h3>
                                                     <div class="returns-create-adjustment-grid">
                                                         <label>
                                                             <input type="checkbox"
@@ -350,7 +350,7 @@
                                                             </div>
                                                         </label>
                                                     </div>
-                                                </details>
+                                                </section>
                                             @endcan
                                         </div>
                                     @endif

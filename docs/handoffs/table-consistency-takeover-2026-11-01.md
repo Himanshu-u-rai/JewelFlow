@@ -2,7 +2,27 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Quick Bill Notes dialog and visible dropdown arrows
+## Latest checkpoint — Always-visible return refund panels
+
+Started clean `b25b1480d8f3e2ee28a068bcf3a02af0b731933d` on
+`feature/table-consistency`. Owner requested Refund breakdown and Adjust refund
+remain visible on `/invoices/1/returns/create`. Replaced only their details/summary
+wrappers with labelled sections/headings; retained existing bordered surfaces and
+removed obsolete chevrons/pointer styling. Exact controls/form tags, inline scripts
+and Blade conditions/permission directives are unchanged. No backend/data changes.
+
+Verification: new source/CSS regression tests RED2 before change, GREEN2 after.
+Frontend total102 passed/22 existing optional-browser skips; Vite79 build passed.
+Fresh resolved guard: testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing`.
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Returns/ReturnCreateDispositionOptionsTest.php tests/Feature/Returns/ReturnsAccessAndLifecycleTest.php`
+passed12 tests/48 assertions. Guarded local preview Blade compile/385 PHP lints/
+clear, diff check, source identity comparison and Impeccable layout detector[]
+passed. Logs: return-panels-* under external quick-bill-notes-dialog-20261102.e6KYil.
+Browser policy still blocks visual checks; desktop/mobile/focus appearance remains
+unverified, not a visual acceptance pass. No push/deployment/business-data changes.
+Next: owner visual review; both panels retain existing availability/permission gates.
+
+## Earlier checkpoint — Quick Bill Notes dialog and visible dropdown arrows
 
 Follow-up from clean `f24f197c508a1c8bcb3698006fb25ede6e653dec`: owner requested
 Description half-width. Scoped its desktop (1100px+) wrapper to 50% of its existing
