@@ -2,7 +2,45 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Automatic new-supplier saving
+## Latest checkpoint — Stock register header filters (2026-11-03)
+
+Started clean `54e49e7b8149c671e945a4ddcc99f8da6eec9822`, same branch/sole
+writer. Removed the separate Inventory Lens panel and Showing-status subtitle.
+Stock Register now owns the In Stock/Sold links and one GET header filter form.
+Category180px/Purity112px; search permanently expanded with non-growing320px basis
+and240px floor, never an icon disclosure. Owner found fill-remaining-space search
+too large; removed flex-grow before commit (focused regression RED1/GREEN2).
+Controls wrap; phone Category/Purity
+two-up, Search full-row, readable16px/44px controls and Apply/Clear below. Shared
+select enhancement uses viewport placement. Frame overflow visible/header z3
+lets existing locally-positioned search suggestions escape above scrolling rows;
+no shared suggestion/keyboard JavaScript was changed. Apply stays available even
+when filtered, alongside Clear. Labels now target controls; status links expose
+current state. Sub-category chip/removal and all original GET keys/options kept.
+
+Added continuous table/phone indexes, matching8/9-column empty spans, semantic
+column scopes and shared action layout. Existing shared viewport-sized list
+workspace/sticky headings/pagination stays. No fixed table height/global overflow
+lock. KPIs/privacy behavior, pricing alerts, page navigation and entire aging/
+sellers source are byte-identical by source comparison. Stock computations,
+edition distinctions, permissions, queries and lifecycle actions untouched.
+No preview data, backend/sharedJS/dependencies or remote changes.
+
+Fresh resolved guard: testing/pgsql/127.0.0.1:5432/exact jewelflow_testing.
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`
+passed53 tests/350assertions. `node --test tests/Frontend/*.test.mjs` passed135,
+22existing optional-browser skips/0fail. New cases cover both editions' filters/
+purity/empty columns, query-preserving status navigation, populated22-item page2
+indexes21–22, external pagination and view-only actions. RED3PHP/RED2Node before
+edit/GREEN afterward. Vite79,Blade386PHP lints/clear,PHP lint/Pint/diff and
+Impeccable layout detector[] passed. Logs stock-register-* under external
+quick-bill-notes-dialog-20261102.e6KYil. Full PHP repository suite not rerun for
+scoped view/CSS. Browser policy still blocks rendered phone/desktop, actual
+suggestion/select placement, wheel/keyboard/Back/Forward acceptance: unverified,
+not implied by source tests. Preview left running; no push/deploy. Next owner
+visual review at /inventory/items, including typing into expanded search.
+
+## Earlier checkpoint — Automatic new-supplier saving
 
 Started clean `f3631aa7bc37c7cb445334081d9fcc83a3403034`. Replaced the opt-in
 supplier checkbox with a hidden save_as_vendor=1 and a short save-time note.

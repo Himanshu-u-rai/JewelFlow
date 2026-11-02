@@ -382,124 +382,100 @@
             @endif
         </div>
 
-        <!-- Filters -->
-        <div class="items-filter-wrap items-filter-panel mb-6">
-            @php
-                $statusToggles = [
-                    'in_stock' => 'In Stock',
-                    'sold'     => 'Sold',
-                ];
-                $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
-            @endphp
-            <div class="items-filter-panel-head">
-                <div>
-                    <p class="items-filter-kicker">Inventory Lens</p>
-                    <h2 class="items-filter-title">Browse by category, purity, and barcode</h2>
-                </div>
-                <div class="items-status-toggle">
-                    @foreach($statusToggles as $value => $label)
-                        @php $url = route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $value])); @endphp
-                        <a href="{{ $url }}" class="items-status-toggle-btn {{ $statusFilter === $value ? 'is-active' : '' }}">
-                            <span class="items-status-dot" aria-hidden="true"></span>
-                            {{ $label }}
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-            <form method="GET" action="{{ route('inventory.items.index') }}" class="ui-filter-bar ui-filter-bar--items" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <input type="hidden" name="status" value="{{ $statusFilter }}">
-                <div class="ui-filter-field-sm ui-filter-field--category">
-                    <label class="items-filter-label">Category</label>
-                    <select name="category" class="items-filter-input">
-                        <option value="">All</option>
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                @if(request()->filled('sub_category'))
-                    {{-- Set by a reorder alert link; kept while other filters change, removed with its ✕. --}}
-                    <div class="ui-filter-field-sm">
-                        <label class="items-filter-label">Sub-category</label>
-                        <input type="hidden" name="sub_category" value="{{ request('sub_category') }}">
-                        <a href="{{ request()->fullUrlWithoutQuery(['sub_category', 'page']) }}" class="items-filter-input items-filter-sub" title="Show every sub-category">
-                            <span>{{ request('sub_category') }}</span>
-                            <x-icon name="x" size="14" />
-                        </a>
-                    </div>
-                @endif
-                <div class="ui-filter-field-sm ui-filter-field--purity">
-                    <label class="items-filter-label">Purity</label>
-                    @if($isRetailer)
-                        <input type="text" name="purity" value="{{ request('purity') }}"
-                               placeholder="22, 925, 19.5"
-                               class="items-filter-input">
-                    @else
-                        <select name="purity" class="items-filter-input">
-                            <option value="">All</option>
-                            <option value="24" {{ request('purity') == '24' ? 'selected' : '' }}>24K</option>
-                            <option value="22" {{ request('purity') == '22' ? 'selected' : '' }}>22K</option>
-                            <option value="18" {{ request('purity') == '18' ? 'selected' : '' }}>18K</option>
-                            <option value="14" {{ request('purity') == '14' ? 'selected' : '' }}>14K</option>
-                        </select>
-                    @endif
-                </div>
-                <div class="ui-filter-field ui-filter-field--search">
-                    <label class="items-filter-label">Search</label>
-                          <input type="text" name="search" value="{{ request('search') }}"
-                              placeholder="Barcode, design..." class="items-filter-input"
-                              data-suggest="items" autocomplete="off">
-                </div>
-                <div class="ui-filter-actions">
-                    @if(request()->hasAny(['status', 'category', 'sub_category', 'purity', 'search']))
-                        <a href="{{ route('inventory.items.index') }}" class="items-filter-clear">
-                            <x-icon name="x" size="14" />
-                            Clear
-                        </a>
-                    @else
-                        <button type="submit" class="items-filter-submit">
-                            <x-icon name="funnel" size="14" />
-                            Filter
-                        </button>
-                    @endif
-                </div>
-            </form>
-        </div>
+        @php
+            $statusToggles = ['in_stock' => 'In Stock', 'sold' => 'Sold'];
+            $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
+        @endphp
 
-        <!-- Items Table -->
-        <div class="items-table-card items-table-card--stock" data-list-frame>
-            <div class="items-table-header">
-                <div>
-                    <p class="items-filter-kicker">Stock Register</p>
-                    <h2 class="items-table-title">{{ $items->total() }} {{ Str::plural('item', $items->total()) }} found</h2>
+        <!-- Stock register: controls stay outside the scrolling rows. -->
+        <div class="items-table-card items-table-card--stock items-register-frame" data-list-frame>
+            <div class="items-register-header">
+                <div class="items-register-heading">
+                    <div>
+                        <h2 class="items-register-title">Stock Register</h2>
+                        <p class="items-register-count">{{ number_format($items->total()) }} {{ Str::plural('item', $items->total()) }}</p>
+                    </div>
+                    <nav class="items-register-status" aria-label="Stock status">
+                        @foreach($statusToggles as $value => $label)
+                            @php $url = route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $value])); @endphp
+                            <a href="{{ $url }}" class="items-register-status-btn {{ $statusFilter === $value ? 'is-active' : '' }}"
+                               aria-current="{{ $statusFilter === $value ? 'page' : 'false' }}">{{ $label }}</a>
+                        @endforeach
+                    </nav>
                 </div>
-                <p class="items-table-subtitle">
-                    Showing {{ str_replace('_', ' ', $statusFilter) }} inventory
-                    @if(request('search'))
-                        for "{{ request('search') }}"
+                <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-filters" data-stock-filters
+                      data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                    <input type="hidden" name="status" value="{{ $statusFilter }}">
+                    <div class="items-register-field items-register-category">
+                        <label for="stock-filter-category">Category</label>
+                        <select id="stock-filter-category" name="category" class="items-register-control">
+                            <option value="">All categories</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}" @selected(request('category') == $cat->id)>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @if(request()->filled('sub_category'))
+                        <div class="items-register-field">
+                            <span class="items-register-label">Sub-category</span>
+                            <input type="hidden" name="sub_category" value="{{ request('sub_category') }}">
+                            <a href="{{ request()->fullUrlWithoutQuery(['sub_category', 'page']) }}" class="items-register-subcategory"
+                               title="Show every sub-category" aria-label="Remove sub-category filter: {{ request('sub_category') }}">
+                                <span>{{ request('sub_category') }}</span>
+                                <x-icon name="x" size="14" />
+                            </a>
+                        </div>
                     @endif
-                </p>
+                    <div class="items-register-field items-register-purity">
+                        <label for="stock-filter-purity">Purity</label>
+                        @if($isRetailer)
+                            <input id="stock-filter-purity" type="text" name="purity" value="{{ request('purity') }}"
+                                   placeholder="22, 925…" class="items-register-control">
+                        @else
+                            <select id="stock-filter-purity" name="purity" class="items-register-control">
+                                <option value="">All purities</option>
+                                <option value="24" @selected(request('purity') == '24')>24K</option>
+                                <option value="22" @selected(request('purity') == '22')>22K</option>
+                                <option value="18" @selected(request('purity') == '18')>18K</option>
+                                <option value="14" @selected(request('purity') == '14')>14K</option>
+                            </select>
+                        @endif
+                    </div>
+                    <div class="items-register-field items-register-search">
+                        <label for="stock-filter-search">Search</label>
+                        <input id="stock-filter-search" type="text" name="search" value="{{ request('search') }}"
+                               placeholder="Barcode, design..." class="items-register-control"
+                               data-suggest="items" autocomplete="off">
+                    </div>
+                    <div class="items-register-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                        @if(request()->hasAny(['status', 'category', 'sub_category', 'purity', 'search']))
+                            <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary btn-sm">Clear</a>
+                        @endif
+                    </div>
+                </form>
             </div>
             <div class="overflow-x-auto ui-table-shell items-stock-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Stock item records">
                 <table class="w-full items-data-table items-data-table--stock jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item</th>
-                            <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Purity</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Gross Wt</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Net Metal Wt</th>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Purity</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Gross Wt</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Net Metal Wt</th>
                             @if($isRetailer)
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
                                     {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Price' }}
                                 </th>
                             @else
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Fine Gold</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Fine Gold</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
                                     {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Cost Price' }}
                                 </th>
                             @endif
-                            <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
-                            <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -508,6 +484,7 @@
                                 $fineGold = $item->net_metal_weight * ($item->purity / 24);
                             @endphp
                             <tr class="hover:bg-gray-50">
+                                <td class="jf-table-index">{{ $items->firstItem() + $loop->index }}</td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         @if($item->image)
@@ -564,7 +541,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <div class="flex flex-wrap items-center justify-center gap-2">
+                                    <div class="jf-table-actions jf-table-actions--center">
                                         <a href="{{ route('inventory.items.show', $item) }}" 
                                            class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @if($item->status === 'in_stock')
@@ -578,7 +555,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isRetailer ? 7 : 8 }}" class="items-stock-empty-cell px-6 py-12 text-center">
+                                <td colspan="{{ $isRetailer ? 8 : 9 }}" class="items-stock-empty-cell px-6 py-12 text-center">
                                     <div class="items-stock-empty-state">
                                         <span class="items-stock-empty-icon" aria-hidden="true">
                                             <x-icon name="box" size="22" />
@@ -639,7 +616,7 @@
                                 @endif
                                 <div class="items-stock-mobile-identity">
                                     <div class="items-stock-mobile-title-row">
-                                        <h3>{{ $item->design ?: 'N/A' }}</h3>
+                                        <h3><span class="jf-record-index">#{{ $items->firstItem() + $loop->index }}</span> {{ $item->design ?: 'N/A' }}</h3>
                                         <span class="items-stock-mobile-status {{ $statusClass }}">{{ $statusLabel }}</span>
                                     </div>
                                     <p class="items-stock-mobile-barcode">{{ $item->barcode }}</p>
