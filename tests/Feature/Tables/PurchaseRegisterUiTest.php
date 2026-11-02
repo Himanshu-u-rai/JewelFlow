@@ -78,6 +78,94 @@ class PurchaseRegisterUiTest extends TestCase
         $this->assertGreaterThan(0, $xp->query('//a[@href="'.route('inventory.purchases.show', $purchase).'"]')->length);
         $this->assertSame(0, $xp->query('//a[@href="'.route('inventory.purchases.create').'"] | //a[@href="'.route('inventory.purchases.edit', $purchase).'"] | //form[@action="'.route('inventory.purchases.destroy', $purchase).'"]')->length);
         $this->assertSame(1, $xp->query('//*[@data-list-scroll][@tabindex="0"][@role="region"]')->length);
+        $this->assertSame(0, $xp->query('//button[@data-confirm-url] | //dialog[@id="purchase-confirm-dialog"]')->length);
+    }
+
+    public function test_only_drafts_have_named_confirmation_icons_and_one_unclipped_patch_dialog(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $draft = TenantContext::runFor($shop->id, function () {
+            $draft = StockPurchase::create([
+                'purchase_number' => 'UI-DRAFT-1', 'supplier_name' => 'Synthetic <supplier>',
+                'purchase_date' => today(), 'status' => 'draft', 'total_amount' => 1234.50,
+            ]);
+            foreach (['confirmed', 'stocked'] as $status) {
+                StockPurchase::create(['purchase_number' => 'UI-'.$status, 'purchase_date' => today(), 'status' => $status]);
+            }
+
+            return $draft;
+        });
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/purchases')->assertOk()->getContent());
+        $buttons = $xp->query('//button[@data-confirm-url]');
+        $this->assertSame(2, $buttons->length, 'One desktop and one phone action for the draft only.');
+        foreach ($buttons as $button) {
+            $this->assertSame('button', $button->getAttribute('type'));
+            $this->assertSame('Confirm draft', $button->getAttribute('data-tip'));
+            $this->assertSame('dialog', $button->getAttribute('aria-haspopup'));
+            $this->assertSame('purchase-confirm-dialog', $button->getAttribute('aria-controls'));
+            $this->assertSame('Confirm draft UI-DRAFT-1', $button->getAttribute('aria-label'));
+            $this->assertSame(route('inventory.purchases.confirm', $draft), $button->getAttribute('data-confirm-url'));
+            $this->assertSame('UI-DRAFT-1', $button->getAttribute('data-number'));
+            $this->assertSame('Synthetic <supplier>', $button->getAttribute('data-supplier'));
+            $this->assertSame('₹1,234.50', $button->getAttribute('data-total'));
+            $this->assertSame(1, $xp->query('preceding-sibling::a[1][@href="'.route('inventory.purchases.show', $draft).'"]', $button)->length);
+        }
+        $this->assertSame(1, $xp->query('//dialog[@id="purchase-confirm-dialog"]')->length);
+        $dialog = $xp->query('//dialog[@id="purchase-confirm-dialog"]')->item(0);
+        $this->assertNotNull($dialog);
+        $this->assertFalse($dialog->hasAttribute('open'));
+        $this->assertSame(0, $xp->query('ancestor::*[@data-list-scroll or @data-list-frame]', $dialog)->length);
+        $this->assertSame('purchase-confirm-title', $dialog->getAttribute('aria-labelledby'));
+        $this->assertSame('POST', $xp->evaluate('string(.//form/@method)', $dialog));
+        $this->assertSame('PATCH', $xp->evaluate('string(.//input[@name="_method"]/@value)', $dialog));
+        $this->assertSame(1, $xp->query('.//input[@name="_token"]', $dialog)->length);
+        $this->assertSame('Cancel', trim($xp->evaluate('string(.//button[@autofocus])', $dialog)));
+        $this->assertSame(1, $xp->query('.//button[@type="submit"]', $dialog)->length);
+        $this->assertSame('draft', $draft->fresh()->status, 'Opening the register must not confirm anything.');
+    }
+
+    public function test_confirmation_uses_existing_endpoint_without_stocking_and_rejects_repeat_confirmation(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $draft = TenantContext::runFor($shop->id, function () use ($shop) {
+            $draft = StockPurchase::create(['purchase_number' => 'UI-CONFIRM', 'purchase_date' => today(), 'status' => 'draft']);
+            $draft->lines()->create([
+                'shop_id' => $shop->id, 'line_type' => 'ornament', 'metal_type' => 'gold',
+                'purity' => 22, 'gross_weight' => 5, 'net_metal_weight' => 5, 'purchase_line_amount' => 1000,
+            ]);
+
+            return $draft;
+        });
+        $itemCount = \App\Models\Item::withoutGlobalScopes()->count();
+        $url = route('inventory.purchases.confirm', $draft);
+        TenantContext::set($shop->id);
+        $this->actingAs($owner)->patch($url)->assertRedirect(route('inventory.purchases.show', $draft));
+        $this->assertSame('confirmed', $draft->fresh()->status);
+        $this->assertSame('1000.00', $draft->fresh()->total_amount);
+        $this->assertSame($itemCount, \App\Models\Item::withoutGlobalScopes()->count());
+        $this->assertNull($draft->lines()->first()->item_id);
+        TenantContext::set($shop->id);
+        $this->patch($url)->assertRedirect()->assertSessionHas('error');
+        $this->assertSame(1, \App\Models\AuditLog::withoutGlobalScopes()->where('action', 'purchase_confirmed')->where('model_id', $draft->id)->count());
+    }
+
+    public function test_confirmation_endpoint_rejects_cross_shop_and_view_only_requests(): void
+    {
+        [, $otherShop] = $this->createRetailerTenant();
+        $foreign = TenantContext::runFor($otherShop->id, fn () => StockPurchase::create([
+            'purchase_number' => 'UI-FOREIGN', 'purchase_date' => today(), 'status' => 'draft',
+        ]));
+        [$viewer, $shop] = $this->createRetailerTenant();
+        $local = TenantContext::runFor($shop->id, fn () => StockPurchase::create([
+            'purchase_number' => 'UI-LOCAL', 'purchase_date' => today(), 'status' => 'draft',
+        ]));
+        TenantContext::set($shop->id);
+        $this->assertContains($this->actingAs($viewer)->patch(route('inventory.purchases.confirm', $foreign))->status(), [403, 404]);
+        $this->grantOnlyPermissions($viewer, ['inventory.view']);
+        $this->patch(route('inventory.purchases.confirm', $local))->assertForbidden();
+        $this->assertSame('draft', $local->fresh()->status);
+        $this->assertSame('draft', StockPurchase::withoutGlobalScopes()->findOrFail($foreign->id)->status);
     }
 
     private function xpath(string $html): \DOMXPath

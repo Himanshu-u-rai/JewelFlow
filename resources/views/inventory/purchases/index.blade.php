@@ -27,7 +27,9 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner customers-index-page inventory-purchases-page" data-list-workspace>
+    <div class="content-inner customers-index-page inventory-purchases-page" data-list-workspace
+         x-data="{ draft: null, confirming: false }"
+         @turbo:before-cache.document="$refs.confirmDraft?.close(); draft = null; confirming = false">
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden customers-table-card" data-list-frame>
             <div class="customers-table-card-header customers-register-head customers-directory-head sp-register-head">
                 <div class="customers-register-titleblock">
@@ -151,6 +153,7 @@
                                             <a href="{{ route('inventory.purchases.show', $purchase) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @if($purchase->isDraft())
                                                 @can('inventory.edit')
+                                                @include('inventory.purchases.partials.confirm-draft-action')
                                                 <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                                 @endcan
                                                 @can('inventory.delete')
@@ -210,6 +213,7 @@
                                     <a href="{{ route('inventory.purchases.show', $purchase) }}" class="btn btn-primary btn-sm">View</a>
                                     @if($purchase->isDraft())
                                         @can('inventory.edit')
+                                        @include('inventory.purchases.partials.confirm-draft-action')
                                         <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="btn btn-secondary btn-sm">Edit</a>
                                         @endcan
                                         @can('inventory.delete')
@@ -233,5 +237,30 @@
                 @endif
             @endif
         </div>
+        @can('inventory.edit')
+        <dialog id="purchase-confirm-dialog" x-ref="confirmDraft" class="sp-confirm-dialog"
+                aria-labelledby="purchase-confirm-title" aria-describedby="purchase-confirm-description"
+                @close="draft = null; confirming = false"
+                @cancel.prevent="if (!confirming) $el.close()">
+            <form method="POST" :action="draft?.confirmUrl"
+                  @submit="if (confirming || !draft) $event.preventDefault(); else confirming = true">
+                @csrf
+                @method('PATCH')
+                <div class="p-5">
+                    <h3 id="purchase-confirm-title" class="text-base font-semibold text-slate-900">Confirm draft purchase?</h3>
+                    <dl class="sp-confirm-summary">
+                        <div><dt>Purchase</dt><dd x-text="draft?.number"></dd></div>
+                        <div><dt>Supplier</dt><dd x-text="draft?.supplier"></dd></div>
+                        <div><dt>Total</dt><dd x-text="draft?.total"></dd></div>
+                    </dl>
+                    <p id="purchase-confirm-description" class="text-sm text-slate-600">This locks the invoice details. Adding items to stock is a separate step.</p>
+                </div>
+                <div class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 p-4">
+                    <button type="button" class="btn btn-secondary" autofocus :disabled="confirming" @click="$refs.confirmDraft.close()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" :disabled="confirming || !draft" x-text="confirming ? 'Confirming…' : 'Confirm'">Confirm</button>
+                </div>
+            </form>
+        </dialog>
+        @endcan
     </div>
 </x-app-layout>

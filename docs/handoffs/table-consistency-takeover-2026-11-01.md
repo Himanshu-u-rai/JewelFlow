@@ -2,7 +2,43 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock purchases compact register
+## Latest checkpoint — Purchase draft confirmation from the register
+
+Started clean `cb9d6d1d41957db0c747d14e61952927797b0b64`, same branch/sole
+writer. Added a check-icon Confirm draft action immediately after View for draft
+rows/cards with inventory.edit. Reuses existing row-action bubble (hover/focus),
+accessible contextual name and success palette. One native dialog outside table
+overflow shows purchase number, supplier and total; Cancel has initial focus,
+Escape cancels, native modal focus containment/return applies. No markup injection:
+metadata is Blade-escaped and rendered with x-text. Confirmation locks details;
+stocking remains separate. Form uses existing PATCH confirm endpoint and CSRF;
+repeat submissions disabled, cached modal state cleared before Turbo caching.
+No controller/service/route/permission/calculation changes. No preview draft was
+confirmed by these checks. Local only; no push/deployment.
+
+Validation: fresh resolved testing/pgsql/127.0.0.1:5432/exact jewelflow_testing guard.
+Commands: `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/PurchaseRegisterUiTest.php tests/Feature/Purchase/PurchaseAndVendorAccessTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`
+and `node --test tests/Frontend/*.test.mjs`. UI regression was RED with zero
+confirmation controls before implementation. Endpoint cases cover confirmation
+without stocking, duplicate refusal, cross-shop and view-only rejection. Tests
+explicitly set tenant context before console route binding (initial fixture
+attempts produced404; corrected test setup, not application behavior).
+Handler VM cases exercise draft selection, Cancel/cache clearing, action target,
+duplicate submission guard and Escape while idle/pending. Native focus/geometry
+not exercised by VM tests. Fresh final counts and SHA in external PROGRESS.md.
+Vite build, Blade compile/compiled PHP lint/clear, PHP lint/Pint and diff check
+passed; logs purchase-confirm-* under external quick-bill-notes-dialog-20261102.e6KYil.
+Existing URL-policy restriction still blocks rendered acceptance; desktop/phone,
+real keyboard focus-return and tooltip placement remain owner visual checks.
+
+Preview-data context: separately seeded24 labeled demo draft purchases/48lines
+through existing store flow under the private demo database guard, marker
+SYNTHETIC-PURCHASES-UI-20261102, PUR-2–PUR-25,20+4 pagination. Protected stock,
+customer/invoice/payment/vendor/metal/job counts unchanged. No confirmations,
+stocking or payments; confirmed-only KPI values intentionally remain zero.
+External guarded seed script is outside Git; repeated apply does not duplicate.
+
+## Earlier checkpoint — Stock purchases compact register
 
 Date-alignment correction from clean `f38536a48ed716cf79ec690a329c2a8568ba92b7`:
 owner screenshot showed date inputs below adjacent controls. Shared toolbar was

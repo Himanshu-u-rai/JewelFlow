@@ -31589,6 +31589,13 @@ a.notice-bell-item:focus-visible {
 
 /* Stock purchases share the compact Customers register and native mobile filter sheet. */
 .inventory-purchases-page .sp-register-table { min-width: 920px; }
+.inventory-purchases-page .sp-confirm-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: auto; border: 1px solid var(--cust-line); border-radius: 14px; background: #fff; color: var(--cust-ink); }
+.inventory-purchases-page .sp-confirm-dialog::backdrop { background: rgb(15 23 42 / 45%); }
+.inventory-purchases-page .sp-confirm-summary { display: grid; gap: 10px; margin: 16px 0; padding: 12px 0; border-block: 1px solid var(--cust-line); font-size: 14px; }
+.inventory-purchases-page .sp-confirm-summary > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 12px; }
+.inventory-purchases-page .sp-confirm-summary dt { color: var(--cust-muted); }
+.inventory-purchases-page .sp-confirm-summary dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+.inventory-purchases-page .sp-confirm-dialog .btn { min-height: 44px; }
 .inventory-purchases-page .customers-directory-controls { align-items: flex-end; }
 .inventory-purchases-page .customers-directory-status .ui-filter-select-trigger { min-height: 44px; }
 /* Override the shared native select's 40px height to match Search and Apply. */
