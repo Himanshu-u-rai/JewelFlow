@@ -38,7 +38,9 @@ test('entry has full-width work area, proportionate desktop fields and readable 
     assert.equal(declarations('.qb-compact-form .qb-description-weight-row', 390)['grid-template-columns'], 'minmax(0, 1fr)');
     assert.equal(declarations('.qb-compact-form .qb-customer-fields', 1280)['grid-template-columns'], 'minmax(12rem, 1fr) 10.5rem minmax(10rem, 1fr) 10.5rem');
     assert.match(declarations('.qb-compact-form .qb-mobile-product-grid', 1280)['grid-template-columns'], /4\.5rem$/);
-    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'repeat(3, minmax(0, 7rem))');
+    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 1280)['grid-template-columns'], 'minmax(0, 7rem) repeat(2, minmax(0, 3.5rem))');
+    assert.equal(declarations('.qb-compact-form .qb-weight-panel', 1280).flex, '0 1 15.5rem');
+    assert.equal(declarations('.qb-compact-form .qb-mobile-weight-grid', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
     assert.equal(declarations('.qb-compact-form .qb-making-field', 1280).flex, '0 1 14rem');
     assert.equal(declarations('.qb-compact-form .qb-wastage-field', 1280).flex, '0 1 5.5rem');
     assert.equal(declarations('.qb-compact-form .qb-weight-panel', 390).display, undefined);

@@ -49,6 +49,13 @@ Latest owner adjustment: 130px desktop Rate basis, superseding110px; started cle
 `3e34c3709b5edb824b9ec18dda5a29aadfce0367`. Mobile/business logic unchanged.
 Seven focused frontend checks, build and diff passed; visual remains unverified.
 
+Weight-width follow-up from clean `35c34201220ee2a8b01892a1513fcab1fe916e78`:
+Stone/Net desktop tracks112→56px each, Gross112px unchanged. Shrunk group basis
+to15.5rem so adjacent fields use released space; reduced only small-field horizontal
+padding to6px. Mobile widths/font sizes, numeric precision and calculations unchanged.
+Seven frontend checks/build/diff passed. Browser readability/label wrapping and long
+numeric editing at this narrow width remain unverified, not a visual acceptance pass.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
