@@ -529,30 +529,30 @@
                                 >
                                     <div class="qb-item-summary">
                                         <div class="qb-item-overview min-w-0">
-                                            <div class="flex flex-wrap items-center gap-2">
+                                            <div class="qb-item-identity">
                                                 <div class="text-sm font-semibold text-slate-900" x-text="'Item ' + (index + 1)"></div>
                                                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200" x-text="item.metal_type || 'Metal'"></span>
                                                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200" x-text="item.purity || 'Purity'"></span>
                                             </div>
 
-                                            <div class="qb-mobile-metric-grid qb-item-metrics">
+                                            <dl class="qb-mobile-metric-grid qb-item-metrics" aria-label="Item figures">
                                                 <div class="qb-item-metric">
-                                                    <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Gross</div>
-                                                    <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.gross_weight || 0).toFixed(3)"></div>
+                                                    <dt>Gross</dt>
+                                                    <dd x-text="Number(item.gross_weight || 0).toFixed(3)"></dd>
                                                 </div>
                                                 <div class="qb-item-metric">
-                                                    <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Net</div>
-                                                    <div class="mt-1 text-sm font-semibold text-slate-900" x-text="(safeNumber(item.net_weight) > 0 ? safeNumber(item.net_weight) : Math.max(0, safeNumber(item.gross_weight) - safeNumber(item.stone_weight))).toFixed(3)"></div>
+                                                    <dt>Net</dt>
+                                                    <dd x-text="(safeNumber(item.net_weight) > 0 ? safeNumber(item.net_weight) : Math.max(0, safeNumber(item.gross_weight) - safeNumber(item.stone_weight))).toFixed(3)"></dd>
                                                 </div>
                                                 <div class="qb-item-metric">
-                                                    <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Rate</div>
-                                                    <div class="mt-1 text-sm font-semibold text-slate-900" x-text="currency(item.rate || 0)"></div>
+                                                    <dt>Rate</dt>
+                                                    <dd x-text="currency(item.rate || 0)"></dd>
                                                 </div>
                                                 <div class="qb-item-metric qb-item-metric--total">
-                                                    <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700">Total</div>
-                                                    <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(lineTotal(item))"></div>
+                                                    <dt>Total</dt>
+                                                    <dd x-text="currency(lineTotal(item))"></dd>
                                                 </div>
-                                            </div>
+                                            </dl>
                                         </div>
 
                                         <div class="qb-item-actions flex flex-wrap items-center gap-2">
@@ -684,25 +684,24 @@
                                         </div>
 
                                         <div class="qb-item-extras">
-                                            <div class="qb-line-summary">
-                                                <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700">Line total</div>
-                                                <div class="mt-1 text-2xl font-bold text-slate-900" x-text="currency(lineTotal(item))"></div>
-                                                <div class="qb-line-summary-metrics">
-                                                    <div>
-                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Pieces</div>
-                                                        <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.pcs || 1)"></div>
-                                                    </div>
-                                                    <div>
-                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Wastage</div>
-                                                        <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.wastage_percent || 0).toFixed(2) + '%'"></div>
-                                                    </div>
-                                                    <div>
-                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Extra charges</div>
-                                                        <div class="mt-1 text-sm font-semibold text-slate-900" x-text="currency(safeNumber(item.hallmark_charge) + safeNumber(item.rhodium_charge) + safeNumber(item.other_charge))"></div>
-                                                    </div>
+                                            <dl class="qb-line-summary" aria-label="Line summary">
+                                                <div class="qb-line-summary-total">
+                                                    <dt>Line total</dt>
+                                                    <dd x-text="currency(lineTotal(item))"></dd>
                                                 </div>
-                                            </div>
-
+                                                <div>
+                                                    <dt>Pieces</dt>
+                                                    <dd x-text="Number(item.pcs || 1)"></dd>
+                                                </div>
+                                                <div>
+                                                    <dt>Wastage</dt>
+                                                    <dd x-text="Number(item.wastage_percent || 0).toFixed(2) + '%'"></dd>
+                                                </div>
+                                                <div>
+                                                    <dt>Extra charges</dt>
+                                                    <dd x-text="currency(safeNumber(item.hallmark_charge) + safeNumber(item.rhodium_charge) + safeNumber(item.other_charge))"></dd>
+                                                </div>
+                                            </dl>
                                         </div>
 
                                         <input type="hidden" :name="'items['+index+'][line_discount]'" x-model.number="item.line_discount">

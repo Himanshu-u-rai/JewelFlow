@@ -46,6 +46,10 @@ class QuickBillCompactFormUiTest extends TestCase
         $this->assertSame(0, $xp->query('//*[contains(@class,"qb-charge-panel")]')->length);
         $this->assertSame(2, $xp->query('//*[contains(@class,"qb-item-actions")]//button[@type="button" and contains(@class,"jf-row-action")]')->length);
         $this->assertSame(2, $xp->query('//*[contains(@class,"qb-item-actions")]//span[contains(@class,"jf-sr-only")]')->length);
+        foreach (['qb-item-metrics', 'qb-line-summary'] as $strip) {
+            $this->assertSame(4, $xp->query('//dl[contains(concat(" ",normalize-space(@class)," ")," '.$strip.' ")]/div/dt')->length);
+            $this->assertSame(4, $xp->query('//dl[contains(concat(" ",normalize-space(@class)," ")," '.$strip.' ")]/div/dd')->length);
+        }
     }
 
     public function test_notes_use_one_native_dialog_inside_the_bill_form_and_open_from_review(): void

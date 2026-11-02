@@ -60,6 +60,18 @@ test('desktop stone, net-auto and wastage labels stay on a single line without s
     }
 });
 
+test('item readouts use labelled summary strips, consistent dividers and a two-column phone layout', () => {
+    assert.match(blade, /<dl[^>]*class="qb-mobile-metric-grid qb-item-metrics"/);
+    assert.match(blade, /<dl[^>]*class="qb-line-summary"/);
+    assert.equal(declarations('.qb-compact-form .qb-item-metrics', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+    assert.equal(declarations('.qb-compact-form .qb-line-summary', 390)['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+    assert.equal(declarations('.qb-compact-form .qb-item-metrics', 1280)['grid-template-columns'], 'repeat(4, minmax(0, 1fr))');
+    assert.equal(declarations('.qb-compact-form .qb-line-summary', 1280)['grid-template-columns'], 'repeat(4, minmax(0, 1fr))');
+    assert.equal(declarations('.qb-compact-form .qb-item-metrics > div', 390).padding, '8px 12px');
+    assert.equal(declarations('.qb-compact-form .qb-line-summary > div', 390).padding, '8px 12px');
+    assert.equal(declarations('.qb-compact-form .qb-item-metrics dd', 390)['overflow-wrap'], 'anywhere');
+});
+
 test('compact item icons keep shared focus labels and actions; customer fields fill their compact tracks', () => {
     for (const action of ['toggleItem', 'removeItem']) {
         const button = blade.match(new RegExp(`<button[^>]*@click="${action}\\(index\\)"[^>]*>[^]*?<\\/button>`))?.[0];

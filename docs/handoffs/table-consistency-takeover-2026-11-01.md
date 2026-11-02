@@ -126,6 +126,27 @@ Phone/tablet retain original stacked/two-column/full-row Address behavior. No Bl
 field/value/calculation changes. Ten focused frontend cases/build/diff passed;
 pre-fix screenshot is evidence, post-fix browser geometry remains unverified.
 
+Item summary presentation from clean `0f291fcd6e96881d287ca59f564910814ea256ad`:
+owner requested intentional data grouping for item identity/Gross/Net/Rate/Total
+and Line total/Pieces/Wastage/Extra charges. Kept all values/copy, replacing loose
+divs with labelled dl/dt/dd strips. Header identity/badges and44px actions occupy
+explicit grid areas; figure strip gets consistent8x12 padding and subtle dividers.
+Footer is a four-field line summary with an emphasized total, no extra cards or
+controls. Both strips use four columns at1100+ and two columns on phones/tablets;
+long figures/badges wrap rather than truncate. Removed obsolete summary flex rules.
+Total label uses existing darker text token: source palette contrast8.71:1 on
+eef2f7 (muted64748b would be4.23:1); ordinary labels4.76:1 on white. These are source
+palette calculations, not computed-style/browser measurements.
+Guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing freshly verified. PHP3
+passed/104 assertions; frontend100 passed/22existing optional-browser skips/no
+failures, including eleven focused form cases. New source contract observed RED.
+Vite79/Blade385lints/clear/Pint/syntax/diff/layout[] passed. Exact input/select/
+textarea tags, all x-text expressions and calculation script unchanged. Existing
+actions/create/edit/retry/save behavior retained. Evidence summary-strips-* in
+existing evidence folder. No preview records/remote/dependency changes. Actual
+desktop/phone geometry, focus/Turbo/zoom and physical-device checks unverified;
+owner visual review remains next.
+
 Starting clean HEAD `54609780106dfe6838bad20bab1eb50bd9774259`, same worktree,
 branch and sole writer. Owner requested Notes/Terms removed from the main layout,
 a centered popup opened beside the bottom Review action, a smaller address field,
