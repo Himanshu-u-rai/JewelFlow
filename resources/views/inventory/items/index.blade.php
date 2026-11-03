@@ -778,73 +778,10 @@
             @include('inventory.items.partials.sell-trend-overview')
 
             <div class="items-sellers-tables-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {{-- Best Sellers by Category --}}
-                <div class="items-table-card items-table-card--best-cat items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
-                        <div>
-                            <h3 class="items-seller-table-title">Best Sellers — by Category</h3>
-                            <p class="items-seller-table-subtitle">Top category movement for the selected period.</p>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
-                        <table class="w-full items-data-table items-data-table--sellers jf-table">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
-                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                @forelse($best['by_category'] as $i => $row)
-                                <tr class="hover:bg-gray-50">
-                                    <td class="jf-table-index">{{ $i + 1 }}</td>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $row['category'] ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-sm text-right">{{ $row['sold_count'] }}</td>
-                                    <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="items-seller-mobile-list" aria-label="Best sellers by category mobile list">
-                        @forelse($best['by_category'] as $i => $row)
-                            <article class="items-seller-mobile-card is-best">
-                                <div class="items-seller-mobile-head">
-                                    <span>#{{ $i + 1 }}</span>
-                                    <div>
-                                        <h4>{{ $row['category'] ?? '—' }}</h4>
-                                        <p>Best seller category</p>
-                                    </div>
-                                </div>
-                                <div class="items-seller-mobile-metrics">
-                                    <div>
-                                        <span>Sold</span>
-                                        <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Revenue</span>
-                                        <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
-                                    </div>
-                                </div>
-                            </article>
-                        @empty
-                            <div class="items-seller-mobile-empty">No sales data in this period.</div>
-                        @endforelse
-                    </div>
-                </div>
 
                 {{-- Best Sellers by Sub-Category --}}
-                <div class="items-table-card items-table-card--best-sub items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
-                        <div>
-                            <h3 class="items-seller-table-title">Best Sellers — by Sub-Category</h3>
-                            <p class="items-seller-table-subtitle">More specific movement inside categories.</p>
-                        </div>
-                    </div>
+                <details class="items-analytics-details">
+                    <summary><span>Sub-category breakdown</span><span class="items-analytics-detail-count">{{ count($best['by_sub_category']) }} records</span><x-icon name="chevron-down" size="16" /></summary>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
@@ -896,16 +833,11 @@
                             <div class="items-seller-mobile-empty">No data.</div>
                         @endforelse
                     </div>
-                </div>
+                </details>
 
                 {{-- Worst Sellers --}}
-                <div class="lg:col-span-2 items-table-card items-table-card--worst items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
-                        <div>
-                            <h3 class="items-seller-table-title">Worst Sellers — Lowest Movement Categories</h3>
-                            <p class="items-seller-table-subtitle">Categories that may need promotion or pricing review.</p>
-                        </div>
-                    </div>
+                <details class="items-analytics-details">
+                    <summary><span>Lowest movement categories</span><span class="items-analytics-detail-count">{{ count($worst) }} records</span><x-icon name="chevron-down" size="16" /></summary>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers jf-table">
                             <thead class="bg-gray-50 border-b border-gray-200">
@@ -955,7 +887,7 @@
                             <div class="items-seller-mobile-empty">No sales data in this period.</div>
                         @endforelse
                     </div>
-                </div>
+                </details>
             </div>
         </div>
         @endif

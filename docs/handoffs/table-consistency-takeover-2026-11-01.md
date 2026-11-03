@@ -2,7 +2,47 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock Aging, then Sell Trend (2026-11-03)
+## Latest checkpoint — Screenshot-driven analytics composition correction
+
+Started clean `071dcb30138902a162bc1b1c58587c3e40eeffbd`. Owner rejected the
+previous design and supplied three current desktop screenshots. Concrete evidence:
+aging had an oversized zero-result risk panel; scatter point labels overlapped
+when all four categories sold8 units, and the same data appeared in multiple
+tables. This supersedes the visual design of the earlier checkpoint below.
+
+Rebuilt aging as ONE bordered workspace: integrated header/totals, balanced
+chart/compact four-column bucket key/status layout and one footer. A nonempty
+stock with zero90+day items shows a meaningful green “No overdue stock” state;
+empty inventory is distinguished from clear aging, and genuine aged stock keeps
+its review amounts/categories. No separate empty-risk card. Same exact metrics.
+Sell Trend now has ONE named-row comparison with exact units, revenue, unit
+share and inline metric dots, not a large scatter canvas. Equal values stay in
+separate rows; the screenshot's four8-unit categories show25.0% each. Removed
+duplicate best-category table because its complete contents moved into this
+comparison. Lowest movement and sub-category datasets remain available in native
+keyboard-operable details, with counts in the summary; no data or workflow lost.
+Tied counts are stated instead of naming one category simultaneously best/worst.
+Phone comparison uses the SAME semantic table DOM in a labelled card layout;
+chart marks are decorative, all values/names remain directly readable. Replaced
+the previous analytics CSS block rather than appending another override layer.
+Main Stock Items/header/drawer prefix again byte-identical to starting HEAD.
+No dependency, sharedJS, backend, query, permissions or preview-data changes.
+
+Fresh guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Regression tests
+first failed for missing clear/review states and separate named comparison rows.
+Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed67tests/584assertions. Includes the actual screenshot data as an isolated
+Blade fixture; not a new preview transaction. Frontend138pass/22existing optional
+browser skips/0fail. Build79modules, Blade compile/PHP lint/clear, changedPHP
+lint/Pint, diff and Impeccable layout[] passed. Logs analytics-rework-* under
+quick-bill-notes-dialog-20261102.e6KYil. No full-repository PHP rerun.
+The supplied screenshots are BEFORE evidence. Browser policy still prevents
+fresh after-screenshots, real keyboard/details/dropdown checks and responsive
+geometry acceptance; no visual pass is claimed. Owner refresh both analytics
+tabs. Local only/no push/deploy. Existing preview/private PG/data preserved.
+
+## Earlier checkpoint — Stock Aging, then Sell Trend (2026-11-03)
 
 Started clean `e6dabdbe4abd1b277bfa48e5bd41431661b6b4ed`, same branch/sole
 writer. Owner clarified that analytics, NOT the main Stock Items overview,

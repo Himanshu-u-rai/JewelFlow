@@ -11,6 +11,7 @@ class InventoryAnalyticsUiTest extends TestCase
     {
         return [
             'empty' => [[0, 0, 0, 0, 0], 0, [0, 0, 0, 0, 0]],
+            'all fresh stock' => [[4, 0, 0, 0, 0], 4, [100, 0, 0, 0, 0]],
             'mixed' => [[3, 0, 1, 1, 0], 5, [60, 0, 20, 20, 0]],
             'all older stock' => [[0, 0, 0, 0, 4], 4, [0, 0, 0, 0, 100]],
         ];
@@ -50,6 +51,8 @@ class InventoryAnalyticsUiTest extends TestCase
             $offset += $shares[$i];
         }
         $this->assertSame($total === 0 ? 1 : 0, $xp->query('//*[@data-aging-empty]')->length);
+        $this->assertSame($total > 0 && $counts[3] + $counts[4] === 0 ? 1 : 0, $xp->query('//*[@data-aging-clear]')->length);
+        $this->assertSame($counts[3] + $counts[4] > 0 ? 1 : 0, $xp->query('//*[@data-aging-review]')->length);
         $this->assertStringContainsString('42', $html);
         $this->assertStringNotContainsString('NAN', $html);
         $this->assertStringNotContainsString('INF', $html);
@@ -58,30 +61,34 @@ class InventoryAnalyticsUiTest extends TestCase
     public static function salesComparisons(): array
     {
         return [
-            'no sales' => [[], 0],
-            'equal values' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 2000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], 1],
-            'zero value sales' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 0]], 1],
-            'different units and revenue' => [[['category' => 'Rings', 'sold_count' => 4, 'total_revenue' => 1000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], 2],
+            'no sales' => [[], []],
+            'equal values remain separate' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 2000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['50.0%', '50.0%']],
+            'zero value sales' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 0]], ['100.0%']],
+            'different units and revenue' => [[['category' => 'Rings', 'sold_count' => 4, 'total_revenue' => 1000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['66.7%', '33.3%']],
+            'screenshot equal units close revenues' => [[['category' => 'Ring', 'sold_count' => 8, 'total_revenue' => 240760], ['category' => 'Bangle', 'sold_count' => 8, 'total_revenue' => 346120], ['category' => 'Earring', 'sold_count' => 8, 'total_revenue' => 347320], ['category' => 'Necklace', 'sold_count' => 8, 'total_revenue' => 344920]], ['25.0%', '25.0%', '25.0%', '25.0%']],
         ];
     }
 
     #[DataProvider('salesComparisons')]
-    public function test_sell_comparison_keeps_period_controls_and_plots_real_units_against_revenue_without_duplicate_points(array $rows, int $points): void
+    public function test_sell_comparison_keeps_equal_categories_in_separate_named_rows_with_exact_values_and_period_controls(array $rows, array $shares): void
     {
         $this->assertTrue(view()->exists('inventory.items.partials.sell-trend-overview'));
         $categories = collect($rows);
+        $this->app['request']->query->set('seller_period', '90');
         $html = view('inventory.items.partials.sell-trend-overview', [
             'sellerByCategory' => $categories, 'sellerTotalSold' => $categories->sum('sold_count'),
             'sellerTotalRevenue' => $categories->sum('total_revenue'), 'sellerTopCategory' => $categories->first(),
             'sellerWeakCategory' => $categories->last(), 'sellerPeriodLabel' => 'Last 90 days', 'sellerPeriod' => '90',
         ])->render();
         $xp = $this->xpath($html);
-        $this->assertSame($points, $xp->query('//*[local-name()="g" and @data-sales-point]')->length);
-        foreach ($xp->query('//*[local-name()="circle" and @data-sales-units]') as $point) {
-            $this->assertGreaterThanOrEqual(54, (float) $point->getAttribute('cx'));
-            $this->assertLessThanOrEqual(474, (float) $point->getAttribute('cx'));
-            $this->assertGreaterThanOrEqual(24, (float) $point->getAttribute('cy'));
-            $this->assertLessThanOrEqual(204, (float) $point->getAttribute('cy'));
+        $rendered = $xp->query('//tr[@data-sales-category]');
+        $this->assertSame(count($rows), $rendered->length);
+        foreach ($rows as $i => $row) {
+            $element = $rendered->item($i);
+            $this->assertSame($row['category'], $element->getAttribute('data-sales-category'));
+            $this->assertStringContainsString('₹'.number_format($row['total_revenue'], 0), $element->textContent);
+            $this->assertSame((string) $row['sold_count'], trim($xp->evaluate('string(.//*[@data-sales-count])', $element)));
+            $this->assertSame($shares[$i], trim($xp->evaluate('string(.//*[@data-sales-share])', $element)));
         }
         $this->assertStringNotContainsString('NAN', $html);
         $this->assertStringNotContainsString('INF', $html);
@@ -90,13 +97,7 @@ class InventoryAnalyticsUiTest extends TestCase
         $this->assertSame('90', $xp->evaluate('string(//select[@name="seller_period"]/option[@selected]/@value)'));
         $this->assertSame(4, $xp->query('//select[@name="seller_period"]/option')->length);
         $this->assertSame(1, $xp->query('//form/button[@type="submit"]')->length);
-        $this->assertSame($points === 0 ? 1 : 0, $xp->query('//*[@data-sales-empty]')->length);
-        if ($points === 2) {
-            $this->assertSame('474', $xp->evaluate('string(//*[local-name()="circle" and @data-sales-units="4"]/@cx)'));
-            $this->assertSame('114', $xp->evaluate('string(//*[local-name()="circle" and @data-sales-units="4"]/@cy)'));
-            $this->assertSame('264', $xp->evaluate('string(//*[local-name()="circle" and @data-sales-units="2"]/@cx)'));
-            $this->assertSame('24', $xp->evaluate('string(//*[local-name()="circle" and @data-sales-units="2"]/@cy)'));
-        }
+        $this->assertSame($rows === [] ? 1 : 0, $xp->query('//*[@data-sales-empty]')->length);
     }
 
     private function xpath(string $html): \DOMXPath
