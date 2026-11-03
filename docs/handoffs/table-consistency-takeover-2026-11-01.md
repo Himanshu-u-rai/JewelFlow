@@ -2,7 +2,22 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — One visible Stock Apply/Clear action
+## Latest checkpoint — Compact Stock status toggle
+
+Started clean `20da0b81771ae36c8feef1184cbe11dc270bcb54`. Owner requested smaller
+In Stock/Sold controls, more like a real toggle. CSS-only segmented pill: nowrap,
+2px track padding/gap, equal segments with56px minimum width,28px desktop height,
+filled brand-selected side. Existing44px phone minimum retained, coarse-pointer
+desktop/tablet now explicitly44px as well. Same native links, labels, aria-current,
+filters/query preservation, keyboard focus, routes and permissions. No script,
+DOM, KPI, search or Purity change. Regression RED before edit; final
+`node --test tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs`
+passed14/14; `npm run build`:79modules, diffcheck passed. No PHP rerun or DB
+access for CSS-only change. Logs `stock-status-toggle-*`. Browser visual/actual
+touch and keyboard checks still blocked; no after screenshot. Next owner refresh
+and review the compact toggle, then specify the next KPI-header change.
+
+## Earlier checkpoint — One visible Stock Apply/Clear action
 
 Started clean `fc80862295be2df190bdfe10070e6dd283fd062a`. Owner requested Apply
 also serve as Clear after filters apply. Stock form now has a small local Alpine

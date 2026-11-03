@@ -31475,10 +31475,10 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
 .inventory-items-page .items-register-title { margin: 0; color: var(--jf-ink); font-size: 16px; font-weight: 700; }
 .inventory-items-page .items-register-count { margin: 4px 0 0; color: var(--jf-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.inventory-items-page .items-register-status { display: inline-flex; flex-wrap: wrap; gap: 3px; padding: 3px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface-soft); }
-.inventory-items-page .items-register-status-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 6px 12px; border: 1px solid transparent; border-radius: 7px; color: var(--jf-text); font-size: 12px; font-weight: 600; text-decoration: none; }
+.inventory-items-page .items-register-status { display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 2px; border: 1px solid var(--jf-border); border-radius: 999px; background: var(--jf-surface-soft); }
+.inventory-items-page .items-register-status-btn { display: inline-flex; flex: 1 0 0; align-items: center; justify-content: center; min-width: 56px; min-height: 28px; padding: 4px 6px; border: 1px solid transparent; border-radius: 999px; color: var(--jf-text-muted); font-size: 12px; font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none; }
 .inventory-items-page .items-register-status-btn:hover { background: var(--jf-surface); }
-.inventory-items-page .items-register-status-btn.is-active { border-color: #fed7aa; background: var(--jf-gold-soft); color: #92400e; }
+.inventory-items-page .items-register-status-btn.is-active { border-color: #b45309; background: #b45309; color: #ffffff; }
 .inventory-items-page .items-register-status-btn:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
 .inventory-items-page .items-register-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; min-width: 0; }
 .inventory-items-page .items-register-field { flex: 0 1 160px; min-width: 0; max-width: 100%; }
@@ -31498,6 +31498,9 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-actions .btn { min-height: 44px; }
 /* Keep sticky headings below the filter header and its open menus. */
 .inventory-items-page .items-register-frame .items-stock-table-shell { position: relative; z-index: 0; border-radius: 0; }
+@media (pointer: coarse) {
+    .inventory-items-page .items-register-status-btn { min-height: 44px; }
+}
 @media (min-width: 769px) {
     .inventory-items-page .items-register-purity:has(> input) { flex: 0 0 44px; }
     .inventory-items-page .items-register-purity > input { height: 44px; padding: 4px; text-align: center; }

@@ -69,6 +69,16 @@ test('desktop Retail purity is square while phone and manufacturer filters retai
     assert.equal(value('.inventory-items-page .items-register-purity', 'flex-basis'), '112px');
 });
 
+test('stock status is a compact pill toggle with a clear selected side and usable touch targets', () => {
+    assert.equal(value('.inventory-items-page .items-register-status', 'flex-wrap'), 'nowrap');
+    assert.equal(value('.inventory-items-page .items-register-status', 'border-radius'), '999px');
+    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height'), '28px');
+    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-width'), '56px');
+    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'background'), '#b45309');
+    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'color'), '#ffffff');
+    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height', '(pointer: coarse)'), '44px');
+});
+
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
     assert.equal(value('.inventory-items-page .items-sellers-tables-grid', 'align-items'), 'start');
 });
