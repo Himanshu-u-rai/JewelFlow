@@ -1,0 +1,75 @@
+/* Phone-only Stock workspace refinements; leave desktop and print unchanged. */
+@media screen and (max-width: 768px) {
+    body.app-shell .inventory-items-page .items-register-filter-dialog[data-ready] {
+        inset: auto 0 0;
+        width: 100%;
+        margin: 0;
+        max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-radius: 16px 16px 0 0;
+        overflow-y: auto;
+    }
+    body.app-shell .inventory-items-page .items-register-filter-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--jf-surface);
+    }
+    body.app-shell .inventory-items-page .items-stock-mobile-action { min-height: 44px; }
+    body.app-shell .inventory-items-page .items-stock-mobile-actions { flex-wrap: wrap; }
+    body.app-shell .inventory-items-page .items-stock-mobile-barcode,
+    body.app-shell .inventory-items-page .items-stock-mobile-meta { overflow-wrap: anywhere; font-size: 12px; }
+
+    /* Give each ageing bucket its own title and three readable labelled values. */
+    body.app-shell .inventory-items-page .items-age-key-head { display: none; }
+    body.app-shell .inventory-items-page .items-age-key-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: left; font-size: 14px; }
+    body.app-shell .inventory-items-page .items-age-key-row dt { grid-column: 1 / -1; }
+    body.app-shell .inventory-items-page .items-age-key-row .jf-sr-only {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        margin: 0 0 4px;
+        clip: auto;
+        overflow: visible;
+        white-space: normal;
+        color: var(--jf-text-muted);
+        font-size: 12px;
+        font-weight: 400;
+    }
+    body.app-shell .inventory-items-page .items-aging-mobile-metrics span,
+    body.app-shell .inventory-items-page .items-seller-mobile-metrics span { font-size: 12px; letter-spacing: 0; }
+    body.app-shell .inventory-items-page .items-aging-mobile-metrics strong,
+    body.app-shell .inventory-items-page .items-seller-mobile-metrics strong { font-size: 14px; }
+    body.app-shell .inventory-items-page .items-analytics-details summary { flex-wrap: wrap; gap: 8px; }
+    body.app-shell .inventory-items-page .items-analytics-details summary > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+
+    /* Match category sheets to the usable viewport, including short landscape windows. */
+    body.app-shell .categories-modal .categories-modal-card { max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px))); }
+    body.app-shell .categories-modal .categories-modal-body { min-height: 0; overscroll-behavior: contain; }
+    body.app-shell .categories-modal .categories-input { font-size: 16px; min-height: 44px; }
+
+    body.app-shell .tags-index-page .tags-print-type { width: 100%; }
+    body.app-shell .tags-index-page .tags-print-size,
+    body.app-shell .tags-index-page .tags-print-codes { display: grid; grid-template-columns: 56px minmax(0, 1fr); width: 100%; }
+    body.app-shell .tags-index-page .tags-print-size .ui-filter-select-host,
+    body.app-shell .tags-index-page .tags-print-size > select,
+    body.app-shell .tags-index-page .tags-print-codes .ui-filter-select-host,
+    body.app-shell .tags-index-page .tags-print-codes > select { width: 100%; min-width: 0; }
+    body.app-shell .tags-index-page .tags-print-custom { width: 100%; }
+    body.app-shell .tags-index-page .tags-print-custom label { display: grid; grid-template-columns: minmax(0, 1fr) 80px auto; align-items: center; gap: 6px; width: 100%; min-width: 0; }
+
+    /* Keep the same rule rows/forms, but expose every field and action without a wide table. */
+    body.app-shell .reorder-index-page .reorder-rules-table { min-width: 0; }
+    body.app-shell .reorder-index-page .reorder-rules-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    body.app-shell .reorder-index-page .reorder-rules-table tbody { display: block; }
+    body.app-shell .reorder-index-page .reorder-rules-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 12px; border-bottom: 1px solid var(--jf-border); }
+    body.app-shell .reorder-index-page .reorder-rules-table tbody tr:last-child { border-bottom: 0; }
+    body.app-shell .reorder-index-page .reorder-rules-table tbody th { grid-column: 1 / -1; padding: 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
+    body.app-shell .reorder-index-page .reorder-rules-table tbody td { min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+    body.app-shell .reorder-index-page .reorder-rules-table td.jf-table-index { display: none; }
+    body.app-shell .reorder-index-page .reorder-rules-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--jf-text-muted); font-size: 12px; }
+    body.app-shell .reorder-index-page .reorder-rules-table td[data-label="Actions"] { grid-column: 1 / -1; }
+    body.app-shell .reorder-index-page .reorder-rules-table .jf-table-actions { justify-content: flex-start; }
+    body.app-shell .reorder-index-page .reorder-rules-table .jf-row-action { min-width: 44px; min-height: 44px; }
+}

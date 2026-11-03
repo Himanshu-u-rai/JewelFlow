@@ -32,7 +32,7 @@
                 <dl class="items-age-key-row" data-aging-bucket="{{ $label }}">
                     <dt><span class="items-insight-dot items-age-tone-{{ $loop->index }}" aria-hidden="true"></span>{{ $label }}</dt>
                     <dd><span class="jf-sr-only">Items </span><strong>{{ number_format($data['count']) }}</strong></dd>
-                    <dd>{{ number_format($ageShare, 1) }}%</dd>
+                    <dd><span class="jf-sr-only">Share </span>{{ number_format($ageShare, 1) }}%</dd>
                     <dd><span class="jf-sr-only">Selling value </span>₹{{ number_format($data['value'], 0) }}</dd>
                 </dl>
             @endforeach

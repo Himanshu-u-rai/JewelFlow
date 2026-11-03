@@ -128,7 +128,7 @@
                 </div>
 
                 {{-- Custom: measure the shop's own tag with a ruler. --}}
-                <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700"
+                <div class="tags-print-custom flex flex-wrap items-center gap-2 text-sm text-slate-700"
                      x-show="(printFormat === 'folded' ? foldedSize : flatSize) === 'custom'">
                     <label class="inline-flex items-center gap-1">
                         <span x-text="printFormat === 'folded' ? 'Total length' : 'Width'"></span>

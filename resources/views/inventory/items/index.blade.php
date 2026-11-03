@@ -338,7 +338,7 @@
                     </form>
                     <button type="button" class="btn btn-secondary btn-sm items-register-filter-open" x-cloak
                             data-stock-filter-open aria-haspopup="dialog" aria-controls="stock-filter-dialog" aria-label="Open stock filters"
-                            @click="$refs.stockFilters.close(); $refs.stockFilters.showModal(); $refs.stockFilters.querySelector('[name=search]').focus()">
+                            @click="$refs.stockFilters.close(); $refs.stockFilters.showModal(); if (window.matchMedia('(min-width: 769px)').matches) $refs.stockFilters.querySelector('[name=search]').focus()">
                         <x-icon name="list-filter" size="16" /> Filters
                     </button>
                 </div>

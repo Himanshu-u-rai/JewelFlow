@@ -70,7 +70,7 @@ test('stock filters open a native modal, focus search and close before Turbo cac
     const run = (markup, attr) => {
         const expression = markup.match(new RegExp(`${attr}="([^"]+)"`))?.[1];
         assert.ok(expression, attr);
-        new Function('$refs', '$el', expression)({ stockFilters: element }, element);
+        new Function('$refs', '$el', 'window', expression)({ stockFilters: element }, element, { matchMedia: () => ({ matches: true }) });
     };
     run(dialog, 'x-init');
     assert.equal(element.dataset.ready, 'true');

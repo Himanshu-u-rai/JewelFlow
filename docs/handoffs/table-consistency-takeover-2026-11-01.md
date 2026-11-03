@@ -2,7 +2,53 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Remove Retail Metal Holdings completely
+## Latest checkpoint — Six-page Stock mobile pass / bottom-sheet filters
+
+Started clean `5fd2503ed085553efab338cef5145357789090fe`, same branch/worktree;
+sole Local Codex writer, preview process retained. Used Impeccable Adapt/craft
+guidance for a scoped phone pass, not a new desktop design. New bundled
+`resources/css/stock-mobile.css` is screen-only/max-width 768px and scoped under
+app-shell with sufficient specificity over existing styles. Desktop/print,
+calculations, permissions, routes, records and tag-print scripts unchanged.
+
+Stock filters now anchor to the bottom on phones, have safe-area padding,
+viewport-bounded internal scrolling and sticky Close heading. Desktop keeps
+search autofocus; phones do not force the search keyboard when opening. Native
+dialog lifecycle/Escape/Turbo cleanup retained. Stock record actions have 44px
+touch height and long identifiers wrap. Ageing bucket titles sit above three
+labelled metrics; ageing/trend card figures and disclosure headings are more
+readable. Category form sheets fit the dynamic viewport and use 16px/44px inputs.
+Tag Printing size/code/custom-dimension controls fit full-width phone rows.
+Reorder Alert rules use labelled two-column phone records, inline indexing and
+44px full-row actions, retaining exactly one mutation form per rule. Rules remain
+open. No duplicated mobile forms or new JavaScript dependency.
+
+Regression RED recorded before changes (8 frontend, 2 PHP), plus phone focus
+regression RED before changing the handler. Final checks actually run:
+
+```sh
+node --test tests/Frontend/stock-mobile-layout.test.mjs tests/Frontend/stock-header-metrics.test.mjs tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/stock-tools-interaction.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/InventoryStockPagesTest.php
+npm run build
+vendor/bin/pint --test tests/Feature/Tables/StockToolsThemeTest.php
+git diff --check
+```
+
+Before PHPUnit, bootstrapped and enforced TestDatabaseGuard: testing / pgsql /
+127.0.0.1:5432 / exactly jewelflow_testing. Final frontend 46 passed / 0 skipped;
+PHP 27 passed / 403 assertions. Build passed (79 modules), lint of four changed
+Blade files and PHP test passed, Pint passed, guarded preview Blade compile/clear
+passed, diff check passed, Impeccable layout scan []. Tag script blocks compared
+byte-identical to starting HEAD. Logs `stock-mobile-*` in external evidence folder
+`/home/himanshu/jf-table-evidence/quick-bill-notes-dialog-20261102.e6KYil/`.
+
+These are source/rendered-HTML/handler-stub checks, NOT browser acceptance.
+Browser access remains policy-blocked: no alternate browser/network workaround,
+screenshots, touch/keyboard/Back-Forward or physical-phone claim. Owner visual
+review remains pending for all six pages, particularly native dialog/dropdowns
+and responsive table semantics. No push, remote or preview-data changes.
+
+## Earlier checkpoint — Remove Retail Metal Holdings completely
 
 Started clean `d560422b445bb2c3bbc3c2835665d020cabf6899` after the owner
 interrupted the previous turn following its successful commit. Reverified clean

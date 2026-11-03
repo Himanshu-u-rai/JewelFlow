@@ -49,6 +49,7 @@ class StockToolsThemeTest extends TestCase
         $this->assertSame(0, $xp->query('//*[@data-list-scroll]//nav')->length);
         $this->assertSame(route('tags.print'), $xp->evaluate('string(//form[@id="print-form"]/@action)'));
         $this->assertSame('viewport', $xp->evaluate('string(//form[@id="print-form"]/@data-enhance-selects-placement)'));
+        $this->assertSame(3, $xp->query('//form[@id="print-form"]//*[contains(@class,"tags-print-custom")]//input[@type="number"]')->length);
     }
 
     public function test_reorder_keeps_one_indexed_rules_table_with_permission_scoped_mutation_controls(): void
@@ -63,6 +64,9 @@ class StockToolsThemeTest extends TestCase
         $xp = $this->xpath($this->actingAs($owner)->get(route('reorder.index'))->assertOk()->getContent());
         $this->assertSame(['1', '2', '3'], array_map(fn ($node) => trim($node->textContent), iterator_to_array($xp->query('//*[@data-list-scroll]//td[@class="jf-table-index"]'))));
         $this->assertSame(3, $xp->query('//form[@data-ajax-delete]')->length, 'Each rule has one mutation form, not duplicate desktop/mobile forms.');
+        foreach (['Sub-category', 'Minimum', 'Preferred vendor', 'Status', 'Actions'] as $label) {
+            $this->assertSame(3, $xp->query('//table[contains(@class,"reorder-rules-table")]//tbody/tr/td[@data-label="'.$label.'"]')->length);
+        }
         $this->grantOnlyPermissions($owner, ['inventory.view']);
         $response = $this->actingAs($owner)->get(route('reorder.index'))->assertOk();
         $response->assertDontSee('data-ajax-delete', false)->assertDontSee('href="'.route('reorder.create').'"', false);

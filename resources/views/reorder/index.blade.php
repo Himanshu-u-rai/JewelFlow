@@ -75,7 +75,7 @@
             <p class="stock-tool-notice">Set the minimum number of matching in-stock items. Edit a rule to change its group, vendor or active status.</p>
             @if($ruleCount > 0)
                 <div class="stock-tool-scroll" data-list-scroll tabindex="0" role="region" aria-label="Reorder rule records">
-                    <table class="jf-table stock-tool-table">
+                    <table class="jf-table stock-tool-table reorder-rules-table">
                         <thead><tr>
                             <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <th scope="col">Category</th><th scope="col">Sub-Category</th>
@@ -86,12 +86,12 @@
                             @foreach($rules as $rule)
                                 <tr data-deletable-row>
                                     <td class="jf-table-index">{{ $loop->iteration }}</td>
-                                    <th scope="row">{{ $rule->category ?: 'All categories' }}</th>
-                                    <td>{{ $rule->sub_category ?: 'All sub-categories' }}</td>
-                                    <td class="text-right">{{ $rule->min_stock_threshold }}</td>
-                                    <td>{{ optional($rule->vendor)->name ?: 'Not linked' }}</td>
-                                    <td><span class="stock-tool-status {{ $rule->is_active ? 'is-active' : '' }}">{{ $rule->is_active ? 'Active' : 'Paused' }}</span></td>
-                                    <td><div class="jf-table-actions">
+                                    <th scope="row"><span class="reorder-alert-number" aria-hidden="true">{{ $loop->iteration }}.</span> {{ $rule->category ?: 'All categories' }}</th>
+                                    <td data-label="Sub-category">{{ $rule->sub_category ?: 'All sub-categories' }}</td>
+                                    <td class="text-right" data-label="Minimum">{{ $rule->min_stock_threshold }}</td>
+                                    <td data-label="Preferred vendor">{{ optional($rule->vendor)->name ?: 'Not linked' }}</td>
+                                    <td data-label="Status"><span class="stock-tool-status {{ $rule->is_active ? 'is-active' : '' }}">{{ $rule->is_active ? 'Active' : 'Paused' }}</span></td>
+                                    <td data-label="Actions"><div class="jf-table-actions">
                                         @can('inventory.edit')
                                             <a href="{{ route('reorder.edit', $rule) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit rule"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit rule for {{ $rule->category ?: 'all categories' }}</span></a>
                                             <form method="POST" action="{{ route('reorder.destroy', $rule) }}" data-confirm-message="Delete this reorder rule?" data-ajax-delete>
