@@ -39,7 +39,7 @@ test('wide stock header aligns the heading and filter form in one wrapping row r
     assert.equal(value('.inventory-items-page .items-register-header', 'flex-wrap', wide), 'wrap');
     assert.equal(value('.inventory-items-page .items-register-header', 'align-items', wide), 'center');
     assert.equal(value('.inventory-items-page .items-register-heading', 'flex', wide), '0 1 auto');
-    assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), '1 1 620px');
+    assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), '1 1 500px');
     assert.equal(value('.inventory-items-page .items-register-filters', 'justify-content', wide), 'flex-end');
 });
 

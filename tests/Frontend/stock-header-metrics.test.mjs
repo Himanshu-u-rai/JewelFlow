@@ -15,9 +15,11 @@ const value = (selector, prop, media) => {
     return result;
 };
 
-test('header metrics use a full-width compact row with flexible holdings, not fixed-height cards', () => {
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '1 0 100%');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'grid-template-columns'), 'repeat(3, minmax(0, 1fr)) minmax(0, 2fr)');
+test('header metrics share the desktop strip instead of forcing a second full-width row', () => {
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '1 1 440px');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'grid-template-columns'), 'repeat(3, minmax(0, 1fr)) minmax(0, 3fr)');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), undefined);
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), undefined);
     assert.equal(value('.inventory-items-page .items-register-metrics', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'height'), undefined);
     assert.equal(value('.inventory-items-page .items-register-metal-list', 'flex-wrap'), 'wrap');

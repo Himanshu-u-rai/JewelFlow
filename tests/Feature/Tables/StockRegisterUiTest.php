@@ -32,6 +32,7 @@ class StockRegisterUiTest extends TestCase
         $xp = $this->xpath($response->getContent());
         $header = $xp->query('//*[contains(concat(" ",@class," ")," items-register-header ")]')->item(0);
         $this->assertNotNull($header);
+        $this->assertSame(0, $xp->query('.//*[contains(@class,"items-register-title") or contains(@class,"items-register-count")]', $header)->length);
         $form = $xp->query('.//form[@data-stock-filters]', $header)->item(0);
         $this->assertNotNull($form);
         $this->assertSame('GET', $form->getAttribute('method'));

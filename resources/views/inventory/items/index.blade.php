@@ -229,10 +229,6 @@
         <div class="items-table-card items-table-card--stock items-register-frame" data-list-frame>
             <div class="items-register-header">
                 <div class="items-register-heading">
-                    <div>
-                        <h2 class="items-register-title">Stock Register</h2>
-                        <p class="items-register-count">{{ number_format($items->total()) }} {{ Str::plural('item', $items->total()) }}</p>
-                    </div>
                     <nav aria-label="Stock status">
                         <a href="{{ route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $nextStockStatus])) }}"
                            class="items-register-status"

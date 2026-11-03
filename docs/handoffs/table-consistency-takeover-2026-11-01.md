@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Stock metrics inside register header
+## Latest checkpoint — Single-strip desktop Stock header
+
+Started clean `90422979eb8460e3d4b280b4ea0ba5c148a9fb10`. Owner requested
+removing “Stock Register / n items” and putting controls/metrics on one strip,
+not two stacked bands. Removed that title/count markup and unused CSS. Replaced
+metrics' forced 100% flex basis with a flexible 440px basis, removed its top
+divider/padding, widened its relative holdings share and reduced the desktop
+filter-form basis to 500px. Wide headers can now share the same wrapping flex row
+with the toggle; short/narrow/zoomed layouts may wrap instead of clipping controls.
+No forced single-row overflow, CSS order changes or field/behavior changes.
+Metal Holdings' markup/state/timer, values, masking and eye button unchanged.
+
+New checks RED before implementation (2 PHP and 2 frontend failures). Guard
+confirmed testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing`; same focused PHP
+command as prior checkpoint: 10 passed / 170 assertions. Same five-file focused
+frontend command: 31 passed / 0 skipped. Build, guarded Blade compile/clear, PHP
+lint, Pint, diff check and Impeccable layout [] passed. Logs `stock-header-strip-*`.
+Browser restriction persists: no rendered desktop/mobile or actual keyboard
+acceptance claimed. Owner refresh/review required. No preview-data writes,
+push or remote work. Next: review the single-strip header at the owner's width.
+
+## Earlier checkpoint — Compact Stock metrics inside register header
 
 Started clean `5a88a1adb935328d9ee8d261908b3b0db96e99f2`. Owner approved
 moving all four tall KPIs into the table header, preserving Metal Holdings.
