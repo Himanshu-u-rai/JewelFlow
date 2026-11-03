@@ -82,6 +82,23 @@ test('stock status is a compact pill toggle with a clear selected side and usabl
     assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height', '(pointer: coarse)'), '44px');
 });
 
+test('stock inner pill radius overrides the legacy important button-link radius', () => {
+    const legacy = '.content-inner a[class*="btn"]';
+    const scoped = '.content-inner.inventory-items-page .items-register-status-btn';
+    const radius = selector => {
+        let result;
+        css.walkRules(rule => {
+            if (rule.selectors.includes(selector)) {
+                rule.walkDecls('border-radius', decl => { result = decl; });
+            }
+        });
+        return result;
+    };
+    assert.ok(radius(legacy)?.important, 'legacy normalization is important and matches the btn class name');
+    assert.equal(radius(scoped)?.value, '999px');
+    assert.ok(radius(scoped)?.important, 'three-class scoped override must beat the two-class/attribute legacy selector');
+});
+
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
     assert.equal(value('.inventory-items-page .items-sellers-tables-grid', 'align-items'), 'start');
 });

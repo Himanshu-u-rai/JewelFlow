@@ -2,7 +2,22 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Quieter Stock status selection
+## Latest checkpoint — Stock inner pill cascade correction
+
+Started clean `52229885bfc015d9c4ca7e9f5ade621787bf8816`. Owner reported
+inner/outer curves do not match. Source confirms legacy
+`.content-inner a[class*="btn"]` forces an important standard button radius,
+also matching `items-register-status-btn`. Earlier radius tests inspected only
+the local declaration and missed this conflict. Added a three-class important
+Stock-only radius override; both outer and inner are now capsules with the same
+existing uniform inset. No global rule, dimensions, colors, links or behavior
+changed. New regression checks the competing important declarations and failed
+before implementation. Focused frontend 15/15 passed; Vite build and diff check
+passed. Logs `stock-pill-radius-*`; no PHP tests/database access for CSS-only fix.
+Browser rendered/actual keyboard-touch checks remain blocked, not claimed.
+Next: owner refreshes to review the corrected curve. No KPI move or remote work.
+
+## Earlier checkpoint — Quieter Stock status selection
 
 Started clean `6dc4b6556c5f1abf0a9c526c698428df438a630e`. Owner approved
 replacing the heavy orange active segment with a white pill, dark ink and subtle

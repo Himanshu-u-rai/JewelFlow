@@ -31477,6 +31477,8 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-count { margin: 4px 0 0; color: var(--jf-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .inventory-items-page .items-register-status { display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 2px; border: 1px solid var(--jf-border); border-radius: 999px; background: var(--jf-surface-muted); }
 .inventory-items-page .items-register-status-btn { display: inline-flex; flex: 1 0 0; align-items: center; justify-content: center; min-width: 56px; min-height: 28px; padding: 4px 6px; border: 1px solid transparent; border-radius: 999px; color: var(--jf-text-muted); font-size: 12px; font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none; }
+/* Beat the legacy important radius on all links whose class contains "btn". */
+.content-inner.inventory-items-page .items-register-status-btn { border-radius: 999px !important; }
 .inventory-items-page .items-register-status-btn:hover { background: var(--jf-surface); }
 .inventory-items-page .items-register-status-btn.is-active { border-color: var(--jf-border-strong); background: var(--jf-surface); color: var(--jf-ink); }
 .inventory-items-page .items-register-status-btn:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
