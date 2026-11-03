@@ -2,7 +2,40 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Whole-control Stock status switching
+## Latest checkpoint — Compact Stock metrics inside register header
+
+Started clean `5a88a1adb935328d9ee8d261908b3b0db96e99f2`. Owner approved
+moving all four tall KPIs into the table header, preserving Metal Holdings.
+Replaced separate cards with three small definition-list counts and a wider
+holdings group under the existing heading/filters, outside scrolling rows.
+Desktop uses flexible 1:1:1:2 columns; phones retain three counts then full-width
+holdings. No fixed metrics height, overflow clipping or body scroll lock. Existing
+table, pagination, filter/toggle links and query behavior unchanged. Uses existing
+Retail colors, a light divider, smaller values and a 44px eye button.
+
+Retail holdings aggregation/display logic and both original Alpine show/timer/
+toggle expressions retained, including three-second auto-hide, masks, units and
+empty-state messaging. Manufacturer retains Total Fine Gold, not Retail holdings.
+Summary counts remain shop-wide regardless of the selected table filter, as before.
+No controller, calculation, route, JavaScript module or permission change.
+
+New layout/HTTP tests failed before implementation. Guard confirmed
+testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing` before running
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php`:
+10 passed / 168 assertions. Tests cover all four metrics in header, filtered vs
+shop-wide counts, Retail gold/silver excluding sold weights, manufacturer fine
+gold and zero-stock display. A test assertion was adjusted because PHP's HTML
+parser drops @click attributes: raw rendered HTML now checks the actual binding.
+`node --test tests/Frontend/stock-header-metrics.test.mjs tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs`:
+31 passed. Includes executing the existing Alpine expressions with controlled
+timers, desktop/mobile source sizing and workspace/corner checks. This is not
+browser click or pixel verification. Build, guarded Blade compile/clear, PHP lint,
+Pint, diff check and Impeccable layout [] passed. Logs `stock-header-metrics-*`.
+Browser-policy restriction still blocks rendered desktop/phone acceptance and
+screenshots. Owner refresh/review remains necessary. No preview-data changes,
+push or remote work. Next: owner visual review the compact metrics/header.
+
+## Earlier checkpoint — Whole-control Stock status switching
 
 Started clean `e5f818c098141fae49d3fd835ee458ad9f33697b`. Owner screenshot
 clarified that Sold label works but clicking the selected white In Stock pill

@@ -211,131 +211,13 @@
         <div data-list-panel class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">
         <x-app-alerts class="mb-6" />
 
-        <!-- Stats Cards -->
         @php
-            $totalItems = (int) ($stats['total'] ?? 0);
-            $inStockItems = (int) ($stats['in_stock'] ?? 0);
-            $soldItems = (int) ($stats['sold'] ?? 0);
             $inventoryFiltersActive = request()->filled('category')
                 || request()->filled('sub_category')
                 || request()->filled('purity')
                 || request()->filled('search')
                 || request('status') === 'sold';
         @endphp
-        <div class="ui-stats-grid items-kpi-grid items-kpi-grid--charcoal mb-6">
-            <section class="items-kpi-card items-kpi-charcoal items-kpi-card-total" aria-label="Total items KPI">
-                <div class="items-kpi-head">
-                    <span class="items-kpi-icon" aria-hidden="true">
-                        <x-icon name="layers" stroke-width="2.2" />
-                    </span>
-                    <p class="items-kpi-meta">{{ $totalItems > 0 ? 'Catalog live' : 'Add first SKU' }}</p>
-                </div>
-                <p class="items-kpi-value jf-skel jf-skel-value">{{ number_format($totalItems) }}</p>
-                <div class="items-kpi-foot">
-                    <p class="items-kpi-title">Total Items</p>
-                    <p class="items-kpi-note">All SKUs</p>
-                </div>
-            </section>
-
-            <section class="items-kpi-card items-kpi-charcoal items-kpi-card-stock" aria-label="In stock KPI">
-                <div class="items-kpi-head">
-                    <span class="items-kpi-icon" aria-hidden="true">
-                        <x-icon name="circle-check" stroke-width="2.2" />
-                    </span>
-                    <p class="items-kpi-meta">{{ $inStockItems > 0 ? 'Ready stock' : 'Out of stock' }}</p>
-                </div>
-                <p class="items-kpi-value jf-skel jf-skel-value">{{ number_format($inStockItems) }}</p>
-                <div class="items-kpi-foot">
-                    <p class="items-kpi-title">In Stock</p>
-                    <p class="items-kpi-note">Available now</p>
-                </div>
-            </section>
-
-            <section class="items-kpi-card items-kpi-charcoal items-kpi-card-sold" aria-label="Sold items KPI">
-                <div class="items-kpi-head">
-                    <span class="items-kpi-icon" aria-hidden="true">
-                        <x-icon name="shopping-bag" stroke-width="2.2" />
-                    </span>
-                    <p class="items-kpi-meta">{{ $soldItems > 0 ? 'Moved units' : 'No sales yet' }}</p>
-                </div>
-                <p class="items-kpi-value jf-skel jf-skel-value">{{ number_format($soldItems) }}</p>
-                <div class="items-kpi-foot">
-                    <p class="items-kpi-title">Sold</p>
-                    <p class="items-kpi-note">Completed sales</p>
-                </div>
-            </section>
-
-            @if($isRetailer)
-            @php
-                $mh = $stats['metal_holdings'] ?? ['gold'=>0,'silver'=>0,'platinum'=>0];
-                $metals = collect([
-                    ['key'=>'gold','label'=>'Gold','dot'=>'#f59e0b','weight'=>(float) ($mh['gold'] ?? 0)],
-                    ['key'=>'silver','label'=>'Silver','dot'=>'#94a3b8','weight'=>(float) ($mh['silver'] ?? 0)],
-                    ['key'=>'platinum','label'=>'Platinum','dot'=>'#64748b','weight'=>(float) ($mh['platinum'] ?? 0)],
-                ])->filter(fn($m) => $m['weight'] > 0)->values();
-            @endphp
-            <section class="items-kpi-card items-kpi-charcoal items-kpi-card-value items-kpi-card-metals" aria-label="Metal holdings KPI"
-                     x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
-                <div class="items-kpi-head">
-                    <span class="items-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
-                    </span>
-                    <button type="button" class="items-kpi-eye" @click="toggle()" :aria-label="show ? 'Hide metal weights' : 'Show metal weights'" :title="show ? 'Hide' : 'Show'">
-                        <x-icon name="eye" size="16" x-show="show" />
-                        <x-icon name="eye-off" size="16" x-show="!show" x-cloak />
-                    </button>
-                </div>
-                @if($metals->isEmpty())
-                    <p class="items-kpi-value jf-skel jf-skel-value">0.000 g</p>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">Metal Holdings</p>
-                        <p class="items-kpi-note">No in-stock items</p>
-                    </div>
-                @else
-                    <ul class="items-kpi-metals-list">
-                        @foreach($metals as $m)
-                            <li class="items-kpi-metals-row">
-                                <span class="items-kpi-metals-label">
-                                    <span class="items-kpi-metals-dot" style="background: {{ $m['dot'] }}"></span>
-                                    {{ $m['label'] }}
-                                </span>
-                                <span class="items-kpi-metals-weight">
-                                    <span x-show="show">{{ number_format($m['weight'], 3) }} g</span>
-                                    <span x-show="!show" x-cloak class="items-kpi-metals-mask">••••••</span>
-                                </span>
-                            </li>
-                        @endforeach
-                    </ul>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">Metal Holdings</p>
-                        <p class="items-kpi-note">Net metal weight in stock</p>
-                    </div>
-                @endif
-            </section>
-            @else
-            <section class="items-kpi-card items-kpi-charcoal items-kpi-card-value" aria-label="Total fine gold KPI"
-                     x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
-                <div class="items-kpi-head">
-                    <span class="items-kpi-icon" aria-hidden="true">
-                        <x-icon name="database" stroke-width="2.2" />
-                    </span>
-                    <button type="button" class="items-kpi-eye" @click="toggle()" :aria-label="show ? 'Hide fine gold' : 'Show fine gold'" :title="show ? 'Hide' : 'Show'">
-                        <x-icon name="eye" size="16" x-show="show" />
-                        <x-icon name="eye-off" size="16" x-show="!show" x-cloak />
-                    </button>
-                </div>
-                <p class="items-kpi-value jf-skel jf-skel-value">
-                    <span x-show="show">{{ number_format($stats['total_fine_gold'] ?? 0, 3) }} g</span>
-                    <span x-show="!show" x-cloak class="items-kpi-metals-mask">••••••</span>
-                </p>
-                <div class="items-kpi-foot">
-                    <p class="items-kpi-title">Total Fine Gold</p>
-                    <p class="items-kpi-note">Across active stock</p>
-                </div>
-            </section>
-            @endif
-        </div>
-
         @php
             $statusToggles = ['in_stock' => 'In Stock', 'sold' => 'Sold'];
             $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
@@ -415,6 +297,64 @@
                         @endif
                     </div>
                 </form>
+                <div class="items-register-metrics" data-stock-metrics role="group" aria-label="Inventory summary, all stock">
+                    @foreach(['total' => 'Total Items', 'in_stock' => 'In Stock', 'sold' => 'Sold'] as $key => $label)
+                        <dl class="items-register-metric">
+                            <dt>{{ $label }}</dt>
+                            <dd class="jf-skel jf-skel-value">{{ number_format((int) ($stats[$key] ?? 0)) }}</dd>
+                        </dl>
+                    @endforeach
+                    @if($isRetailer)
+                        @php
+                            $mh = $stats['metal_holdings'] ?? ['gold'=>0,'silver'=>0,'platinum'=>0];
+                            $metals = collect([
+                                ['key'=>'gold','label'=>'Gold','dot'=>'#f59e0b','weight'=>(float) ($mh['gold'] ?? 0)],
+                                ['key'=>'silver','label'=>'Silver','dot'=>'#94a3b8','weight'=>(float) ($mh['silver'] ?? 0)],
+                                ['key'=>'platinum','label'=>'Platinum','dot'=>'#64748b','weight'=>(float) ($mh['platinum'] ?? 0)],
+                            ])->filter(fn($m) => $m['weight'] > 0)->values();
+                        @endphp
+                        <section class="items-register-holdings" data-stock-holdings aria-label="Metal holdings KPI"
+                                 x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
+                            <div class="items-register-holdings-head">
+                                <span>Metal Holdings <small>Net weight in stock</small></span>
+                                <button type="button" class="items-register-eye" @click="toggle()" :aria-label="show ? 'Hide metal weights' : 'Show metal weights'" :title="show ? 'Hide' : 'Show'">
+                                    <x-icon name="eye" size="16" x-show="show" />
+                                    <x-icon name="eye-off" size="16" x-show="!show" x-cloak />
+                                </button>
+                            </div>
+                            @if($metals->isEmpty())
+                                <p class="items-register-holdings-empty">0.000 g <small>No in-stock items</small></p>
+                            @else
+                                <ul class="items-register-metal-list">
+                                    @foreach($metals as $m)
+                                        <li>
+                                            <span class="items-register-metal-label"><i aria-hidden="true" style="background: {{ $m['dot'] }}"></i>{{ $m['label'] }}</span>
+                                            <span class="items-register-metal-weight">
+                                                <span x-show="show">{{ number_format($m['weight'], 3) }} g</span>
+                                                <span x-show="!show" x-cloak>••••••</span>
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </section>
+                    @else
+                        <section class="items-register-holdings" data-stock-holdings aria-label="Total fine gold KPI"
+                                 x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
+                            <div class="items-register-holdings-head">
+                                <span>Total Fine Gold <small>Across active stock</small></span>
+                                <button type="button" class="items-register-eye" @click="toggle()" :aria-label="show ? 'Hide fine gold' : 'Show fine gold'" :title="show ? 'Hide' : 'Show'">
+                                    <x-icon name="eye" size="16" x-show="show" />
+                                    <x-icon name="eye-off" size="16" x-show="!show" x-cloak />
+                                </button>
+                            </div>
+                            <p class="items-register-metal-weight">
+                                <span x-show="show">{{ number_format($stats['total_fine_gold'] ?? 0, 3) }} g</span>
+                                <span x-show="!show" x-cloak>••••••</span>
+                            </p>
+                        </section>
+                    @endif
+                </div>
             </div>
             <div class="overflow-x-auto ui-table-shell items-stock-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Stock item records">
                 <table class="w-full items-data-table items-data-table--stock jf-table">
