@@ -325,6 +325,14 @@
     white-space: normal;
     overflow-wrap: anywhere;
 }
+.jf-chart-value-label {
+    max-width: min(280px, calc(100vw - 16px));
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+.jf-chart-value-label::first-line { font-weight: 700; }
 @media (pointer: coarse) {
     .jf-row-action { width: 44px; height: 44px; min-height: 44px; }
 }

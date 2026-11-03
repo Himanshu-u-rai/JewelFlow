@@ -8,7 +8,7 @@ const module = available ? await import(source) : {};
 const css = readFileSync(new URL('../../resources/css/tables.css', import.meta.url), 'utf8');
 
 // Only the DOM/event boundaries are stubbed; these exercise the real label controller.
-function fixture({ left = 150, top = 100, fine = true, popover = true, header = false } = {}) {
+function fixture({ left = 150, top = 100, fine = true, popover = true, header = false, chart = false } = {}) {
     assert.ok(available, 'Shared row labels must escape table overflow and support dismissal.');
     const listeners = new Map();
     const frames = new Map();
@@ -42,9 +42,10 @@ function fixture({ left = 150, top = 100, fine = true, popover = true, header = 
         addEventListener: (...args) => doc.addEventListener(...args),
     };
     const action = {
-        dataset: { tip: 'View Profile' }, disabled: false, isConnected: true,
+        dataset: { tip: chart ? 'Ring\nRevenue: ₹240,760.00\nUnits sold: 8\nShare of units: 25.0%' : 'View Profile', ...(chart ? { chartTip: 'true' } : {}) }, disabled: false, isConnected: true,
+        attrs: {}, setAttribute(name, value) { this.attrs[name] = value; },
         box: { left, top, width: 36, height: 36, right: left + 36, bottom: top + 36 },
-        closest: selector => selector.split(',').map(s => s.trim()).includes(header ? '.repairs-show-header-actions [data-tip]' : '.jf-row-action[data-tip]') ? action : null,
+        closest: selector => selector.split(',').map(s => s.trim()).includes(chart ? '.items-revenue-trigger[data-tip]' : header ? '.repairs-show-header-actions [data-tip]' : '.jf-row-action[data-tip]') ? action : null,
         matches: () => doc.activeElement === action,
         contains: other => other === action,
         getBoundingClientRect() { return this.box; },
@@ -154,4 +155,51 @@ test('moving from a control to the rest of the page does not leave a stuck label
     assert.equal(f.timers.size, 1);
     [...f.timers.values()].forEach(fn => fn());
     assert.equal(f.nodes[0].removed, true);
+});
+
+test('revenue bars show multiline detail bubbles on hover and keyboard focus without changing normal row labels', () => {
+    const f = fixture({ chart: true });
+    f.send('pointerover', { pointerType: 'mouse' }); f.flush();
+    assert.equal(f.nodes.length, 1);
+    assert.equal(f.nodes[0].textContent, f.action.dataset.tip);
+    assert.ok(f.nodes[0].className.includes('jf-chart-value-label'));
+    assert.equal(f.action.attrs['aria-expanded'], 'true');
+    f.send('keydown', { key: 'Escape' });
+    assert.equal(f.action.attrs['aria-expanded'], 'false');
+    f.send('focusout'); f.focus();
+    assert.equal(f.nodes.length, 2);
+    assert.equal(f.doc.activeElement, f.action);
+});
+
+test('touch pins a bar bubble through pointer exit and dismisses by second tap, outside click or Escape', () => {
+    const f = fixture({ chart: true, fine: false });
+    f.send('pointerover', { pointerType: 'touch' }); f.flush();
+    assert.equal(f.nodes.length, 0);
+    f.send('click'); f.flush();
+    assert.equal(f.nodes.length, 1);
+    f.send('pointerout', { relatedTarget: null });
+    assert.equal(f.timers.size, 0, 'lifting the finger must not hide the details');
+    f.send('click');
+    assert.equal(f.nodes[0].removed, true);
+    f.send('click'); f.flush();
+    f.send('click', { target: { closest: () => null } });
+    assert.equal(f.nodes[1].removed, true);
+    f.send('click'); f.flush();
+    f.send('keydown', { key: 'Escape' });
+    assert.equal(f.nodes[2].removed, true);
+    assert.equal(f.action.attrs['aria-expanded'], 'false');
+});
+
+test('chart bubbles clean up on Turbo navigation and scrolling without changing normal action clicks', () => {
+    const f = fixture({ chart: true, fine: false });
+    f.send('click'); f.flush();
+    f.send('turbo:before-cache');
+    assert.equal(f.nodes[0].removed, true);
+    assert.equal(f.action.attrs['aria-expanded'], 'false');
+    f.send('click'); f.flush();
+    f.send('scroll');
+    assert.equal(f.nodes[1].removed, true);
+    const regular = fixture();
+    regular.focus(); regular.send('click');
+    assert.equal(regular.nodes[0].removed, true);
 });

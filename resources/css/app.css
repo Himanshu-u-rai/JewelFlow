@@ -31729,6 +31729,9 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-sales-matrix :is(th, td).items-sales-index { padding-inline: 8px; }
 .inventory-items-page .items-sales-measure { display: flex; align-items: center; gap: 16px; }
 .inventory-items-page .items-sales-measure strong { flex: 0 0 var(--revenue-value-width); font-size: 14px; font-weight: 600; text-align: right; }
+.inventory-items-page .items-revenue-trigger { display: flex; align-items: center; flex: 1; min-width: 0; min-height: 44px; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.inventory-items-page .items-revenue-trigger:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+.inventory-items-page .items-sales-matrix tbody td[data-field="Revenue"] { padding-block: 6px; }
 .inventory-items-page .items-revenue-bar { position: relative; display: block; flex: 1; height: 10px; min-width: 0; border-radius: 3px; background: #fff7ed; }
 .inventory-items-page .items-revenue-bar::before { content: ''; position: absolute; left: clamp(0px, var(--bar-zero), calc(100% - 1px)); top: -2px; width: 1px; height: 14px; background: var(--jf-border-strong); }
 .inventory-items-page .items-revenue-bar i { position: absolute; left: var(--bar-start); width: var(--bar-width); height: 100%; border-radius: 3px; background: #b45309; }
@@ -31770,6 +31773,7 @@ a.notice-bell-item:focus-visible {
     .inventory-items-page .items-sales-matrix tbody :is(th, td) { width: auto; padding: 0; border: 0; font-size: 14px; }
     .inventory-items-page .items-sales-matrix tbody th { grid-column: 2 / -1; }
     .inventory-items-page .items-sales-matrix td[data-field="Revenue"] { grid-column: 2 / -1; }
+    .inventory-items-page .items-sales-matrix tbody td[data-field="Revenue"] { padding-block: 0; }
     .inventory-items-page .items-sales-matrix td[data-field="Units sold"] { grid-column: 2; }
     .inventory-items-page .items-sales-matrix td[data-field="Share of units"] { grid-column: 3; }
     .inventory-items-page .items-sales-matrix td[data-field]::before { display: block; margin-bottom: 4px; color: var(--jf-text-muted); content: attr(data-field); font-size: 12px; }

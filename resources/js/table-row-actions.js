@@ -9,14 +9,18 @@ export function initializeRowActionLabels(doc = document, win = window) {
     let dismissed = null;
     let frame = 0;
     let leaveTimer = 0;
+    let pinned = false;
+    const isChart = (target) => target?.dataset.chartTip === 'true';
 
     const clearLeave = () => { win.clearTimeout(leaveTimer); leaveTimer = 0; };
     const hide = () => {
         clearLeave();
         win.cancelAnimationFrame(frame);
         frame = 0;
+        if (isChart(action)) action.setAttribute('aria-expanded', 'false');
         label?.remove();
         label = action = null;
+        pinned = false;
     };
     const place = () => {
         frame = 0;
@@ -40,7 +44,8 @@ export function initializeRowActionLabels(doc = document, win = window) {
         hide();
         action = next;
         label = doc.createElement('div');
-        label.className = 'jf-row-action-label';
+        label.className = isChart(action) ? 'jf-row-action-label jf-chart-value-label' : 'jf-row-action-label';
+        if (isChart(action)) action.setAttribute('aria-expanded', 'true');
         label.setAttribute('aria-hidden', 'true');
         label.setAttribute('popover', 'manual');
         label.textContent = action.dataset.tip;
@@ -49,7 +54,7 @@ export function initializeRowActionLabels(doc = document, win = window) {
         try { label.showPopover?.(); } catch { label.removeAttribute('popover'); }
         queuePlace();
     };
-    const control = (target) => target?.closest?.('.jf-row-action[data-tip], .repairs-show-header-actions [data-tip]');
+    const control = (target) => target?.closest?.('.jf-row-action[data-tip], .repairs-show-header-actions [data-tip], .items-revenue-trigger[data-tip]');
     const focused = () => action === doc.activeElement && action?.matches(':focus-visible');
 
     doc.addEventListener('focusin', (event) => {
@@ -60,18 +65,26 @@ export function initializeRowActionLabels(doc = document, win = window) {
     doc.addEventListener('focusout', () => { dismissed = null; hide(); });
     doc.addEventListener('pointerover', (event) => {
         if (label?.contains(event.target)) return clearLeave();
+        if (pinned) return;
         if (event.pointerType === 'mouse' && win.matchMedia('(hover: hover) and (pointer: fine)').matches) show(control(event.target));
     });
     doc.addEventListener('pointerout', (event) => {
         if (dismissed?.contains(event.target) && !dismissed.contains(event.relatedTarget)) dismissed = null;
-        if (!action || action.contains(event.relatedTarget) || label?.contains(event.relatedTarget) || focused()) return;
+        if (!action || pinned || action.contains(event.relatedTarget) || label?.contains(event.relatedTarget) || focused()) return;
         clearLeave();
         leaveTimer = win.setTimeout(hide, 120);
     });
     doc.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') { dismissed = action; hide(); }
     });
-    doc.addEventListener('click', hide);
+    doc.addEventListener('click', (event) => {
+        const next = control(event.target);
+        if (!isChart(next)) return hide();
+        if (action === next && pinned) return hide();
+        dismissed = null;
+        show(next);
+        pinned = true;
+    });
     doc.addEventListener('scroll', () => { if (action) focused() ? queuePlace() : hide(); }, { capture: true, passive: true });
     win.addEventListener('resize', () => { if (action) queuePlace(); });
     for (const event of ['turbo:before-cache', 'turbo:before-render']) {

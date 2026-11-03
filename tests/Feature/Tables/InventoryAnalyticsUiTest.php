@@ -94,6 +94,16 @@ class InventoryAnalyticsUiTest extends TestCase
             $this->assertSame((string) $row['sold_count'], trim($xp->evaluate('string(.//*[@data-sales-count])', $element)));
             $this->assertSame($shares[$sourceIndex], trim($xp->evaluate('string(.//*[@data-sales-share])', $element)));
             $this->assertSame(1, $xp->query('.//*[@data-revenue-bar]', $element)->length);
+            $trigger = $xp->query('.//button[@data-chart-tip="true"]', $element)->item(0);
+            $this->assertNotNull($trigger, 'A bar must support keyboard focus and tapping, not hover alone.');
+            $this->assertSame('button', $trigger->getAttribute('type'));
+            $this->assertSame('false', $trigger->getAttribute('aria-expanded'));
+            $this->assertFalse($trigger->hasAttribute('aria-hidden'));
+            $this->assertStringContainsString($row['category'], $trigger->getAttribute('data-tip'));
+            $this->assertStringContainsString('Revenue: ₹'.number_format($row['total_revenue'], 2), $trigger->getAttribute('data-tip'));
+            $this->assertStringContainsString('Units sold: '.number_format($row['sold_count']), $trigger->getAttribute('aria-label'));
+            $this->assertStringContainsString('Share of units: '.$shares[$sourceIndex], $trigger->getAttribute('aria-label'));
+            $this->assertStringContainsString('Period: Last 90 days', $trigger->getAttribute('data-tip'));
         }
         $this->assertSame($rows === [] ? 0 : 1, $xp->query('//*[@data-revenue-scale]')->length);
         if ($expectedOrder === ['Chains', 'Rings']) {

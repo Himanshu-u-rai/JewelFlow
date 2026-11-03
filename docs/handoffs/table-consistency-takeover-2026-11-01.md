@@ -2,7 +2,37 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Ranked revenue bars and independent disclosure heights
+## Latest checkpoint — Sell Trend bar detail bubbles
+
+Started clean `7c0653f7e403f9ba1c85508d0bfb381df07085a0`, same sole writer and
+branch. Owner requested trend-chart-style detail bubbles. Revenue bars are now
+native, named buttons: hover, keyboard focus or tap opens category, exact revenue,
+units, unit share and selected period. Tap/click pins and toggles; outside click,
+Escape, scrolling and Turbo navigation dismiss. Reused the existing body-mounted
+floating row-label controller, including native popover layering, viewport-edge
+placement and hoverable labels. Chart-only multiline styling leaves ordinary row
+action labels unchanged. Full values remain in the button's accessible name and
+visible table data; no hover-only data. Minimum44px target/focus outline; no chart
+library, duplicated tooltip engine, backend/query/data/permissions changes.
+Main Stock Items and Aging untouched. Impeccable informed reuse and the keyboard,
+touch-target and overflow treatment rather than another redesign.
+
+Regression RED:3new frontend cases and6render cases failed before implementation.
+Focused results:11frontend pass;11PHP pass/359assertions. Fresh destructive-test
+guard confirmed testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Final PHP:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`.
+Final PHP result:69pass/750assertions. Full frontend
+`node --test tests/Frontend/*.test.mjs`:142pass/22existing optional
+browser skips/0fail. `npm run build`:79modules, passed. Blade cache/389compiled
+PHP lints/clear, changedPHP lint, Pint, diff-check and Impeccable layout[] passed.
+Evidence: sales-bar-tooltip-* in existing quick-bill-notes-dialog directory.
+Event tests exercise actual helper with stubbed DOM boundaries, not real touch
+hardware. Browser policy still blocks painted desktop/phone geometry and actual
+hover/focus acceptance; no browser pass or after-screenshot claimed. Next owner
+refresh Sell Trend, hover/focus/tap bars and confirm edge placement/legibility.
+Local commit only/no push/deploy; preview/private PG/data preserved.
+
+## Earlier checkpoint — Ranked revenue bars and independent disclosure heights
 
 Started clean `ec209d8797691cdb6c4a318882cfafcde558aa6c`. Owner could not
 interpret dot tracks and approved a ranked revenue-bar comparison instead.

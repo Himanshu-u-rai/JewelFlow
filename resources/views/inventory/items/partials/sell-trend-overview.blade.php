@@ -52,11 +52,23 @@
                         $barStart = (min(0, $revenue) - $revenueScaleMin) / $revenueScaleRange * 100;
                         $barWidth = abs($revenue) / $revenueScaleRange * 100;
                         $unitShare = $sellerTotalSold > 0 ? (int) $row['sold_count'] / $sellerTotalSold * 100 : 0;
+                        $barDetails = ($row['category'] ?? '—')."\nRevenue: ₹".number_format($revenue, 2)
+                            ."\nUnits sold: ".number_format($row['sold_count'])
+                            ."\nShare of units: ".number_format($unitShare, 1).'%'
+                            ."\nPeriod: ".$sellerPeriodLabel;
                     @endphp
                     <tr role="row" data-sales-category="{{ $row['category'] ?? '—' }}">
                         <td role="cell" class="items-sales-index">{{ $loop->iteration }}</td>
                         <th role="rowheader" scope="row">{{ $row['category'] ?? '—' }}</th>
-                        <td role="cell" data-field="Revenue"><div class="items-sales-measure"><span class="items-revenue-bar {{ $revenue < 0 ? 'is-negative' : '' }}" data-revenue-bar style="--bar-start: {{ $barStart }}%; --bar-width: {{ $barWidth }}%; --bar-zero: {{ $revenueZero }}%" aria-hidden="true"><i></i></span><strong>₹{{ number_format($row['total_revenue'], 2) }}</strong></div></td>
+                        <td role="cell" data-field="Revenue">
+                            <div class="items-sales-measure">
+                                <button type="button" class="items-revenue-trigger" data-chart-tip="true" data-tip="{{ $barDetails }}"
+                                        aria-label="{{ str_replace("\n", '. ', $barDetails) }}" aria-expanded="false">
+                                    <span class="items-revenue-bar {{ $revenue < 0 ? 'is-negative' : '' }}" data-revenue-bar style="--bar-start: {{ $barStart }}%; --bar-width: {{ $barWidth }}%; --bar-zero: {{ $revenueZero }}%" aria-hidden="true"><i></i></span>
+                                </button>
+                                <strong>₹{{ number_format($row['total_revenue'], 2) }}</strong>
+                            </div>
+                        </td>
                         <td role="cell" data-field="Units sold"><strong data-sales-count>{{ number_format($row['sold_count']) }}</strong></td>
                         <td role="cell" data-field="Share of units"><span class="items-sales-share" data-sales-share>{{ number_format($unitShare, 1) }}%</span></td>
                     </tr>
@@ -71,6 +83,6 @@
         @if($sellerByCategory->isNotEmpty())
             All bars use the same ₹{{ number_format($revenueScaleMin, floor($revenueScaleMin) == $revenueScaleMin ? 0 : 2) }}–₹{{ number_format($revenueScaleMax, floor($revenueScaleMax) == $revenueScaleMax ? 0 : 2) }} scale.
         @endif
-        Refreshed every 10 minutes.
+        Hover, focus or tap a bar for details. Refreshed every 10 minutes.
     </footer>
 </section>
