@@ -1,7 +1,7 @@
-@props(['active' => null])
+@props(['active' => 'items'])
 
 @php
-    $stockTitle = match ($active ?? request('view', 'items')) {
+    $stockTitle = match ($active) {
         'aging' => 'Stock Aging',
         'sellers' => 'Sell Trend',
         'categories' => 'Categories',
@@ -13,7 +13,7 @@
 
 <x-page-header legacy {{ $attributes->class(['inventory-items-header']) }}>
     <div class="min-w-0 stock-header-title">
-        <h1 class="page-title" @if($active === null) x-text="({ items: 'Stock Items', aging: 'Stock Aging', sellers: 'Sell Trend' })[view] || 'Stock Items'" @endif>{{ $stockTitle }}</h1>
+        <h1 class="page-title">{{ $stockTitle }}</h1>
     </div>
     <div class="page-actions">
         @include('inventory.items.partials.navigation', ['placement' => 'header', 'active' => $active])

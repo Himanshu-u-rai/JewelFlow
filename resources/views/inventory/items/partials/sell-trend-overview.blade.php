@@ -1,8 +1,7 @@
 <section class="items-analysis-board" aria-label="Sell trend summary">
     <header class="items-analysis-header">
         <div><h2>Sell Trend</h2><p>{{ $sellerPeriodLabel }} · comparing the shown categories.</p></div>
-        <form method="GET" action="{{ route('inventory.items.index') }}" class="items-sell-period" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-            <input type="hidden" name="view" value="sellers">
+        <form method="GET" action="{{ route('inventory.sell-trend') }}" class="items-sell-period" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
             <label class="jf-sr-only" for="stock-seller-period">Period</label>
             <select id="stock-seller-period" name="seller_period" class="items-analytics-select">
                 @foreach(['7' => 'Last 7 days', '30' => 'Last 30 days', '90' => 'Last 90 days', '365' => 'Last year'] as $period => $label)
@@ -11,7 +10,7 @@
             </select>
             <button type="submit" class="btn btn-primary btn-sm">Apply</button>
             @if(request()->has('seller_period'))
-                <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="btn btn-secondary btn-sm">Clear</a>
+                <a href="{{ route('inventory.sell-trend') }}" class="btn btn-secondary btn-sm">Clear</a>
             @endif
         </form>
     </header>

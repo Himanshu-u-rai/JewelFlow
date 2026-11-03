@@ -13,7 +13,6 @@ use App\Models\AuditLog;
 use App\Services\CatalogShareService;
 use App\Services\ItemManufacturingService;
 use App\Services\ReorderAlertService;
-use App\Services\RetailerReportService;
 use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
 use App\Services\ReferencePriceService;
@@ -46,6 +45,14 @@ class ItemController extends Controller
         $shopId = auth()->user()->shop_id;
         $shop   = auth()->user()->shop;
         $isRetailer = $shop->isRetailer();
+        $legacyReport = match ($request->query('view')) {
+            'aging' => 'inventory.stock-aging',
+            'sellers' => 'inventory.sell-trend',
+            default => null,
+        };
+        if ($isRetailer && $legacyReport) {
+            return redirect()->route($legacyReport, $request->except('view'));
+        }
         $stockValueDisplay = $shop->preferences?->stock_value_display ?? 'total';
 
         // Categories for filter — loaded once, reused for name lookup below
@@ -134,22 +141,9 @@ class ItemController extends Controller
             $stats['total_fine_gold'] = (float) $rawStats->total_fine_gold;
         }
 
-        // Stock aging & sellers data for retailers
-        $stockAgingData = null;
-        $sellersData = null;
         $pricingAlertCount = 0;
         $reorderAlertCount = 0;
         if ($isRetailer) {
-            $reportService = app(RetailerReportService::class);
-            $stockAgingData = $reportService->stockAging();
-
-            $period = $request->input('seller_period', '30');
-            $sellersData = [
-                'best' => $reportService->bestSellers(10, $period),
-                'worst' => $reportService->worstSellers(10, $period),
-                'period' => $period,
-            ];
-
             $pricingAlertCount = $this->pricing->pricingAlerts($shop)['count'];
 
             // The count on the page's Reorder Alerts link: the sidebar's own
@@ -157,7 +151,7 @@ class ItemController extends Controller
             $reorderAlertCount = app(ReorderAlertService::class)->alertCount($shopId);
         }
 
-        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount', 'reorderAlertCount', 'stockValueDisplay'));
+        return view('inventory.items.index', compact('items', 'stats', 'categories', 'isRetailer', 'statusFilter', 'pricingAlertCount', 'reorderAlertCount', 'stockValueDisplay'));
     }
 
     /**

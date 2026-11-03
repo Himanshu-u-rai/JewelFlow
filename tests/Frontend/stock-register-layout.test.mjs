@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
 import postcss from 'postcss';
 
 const css = postcss.parse(readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8'));
@@ -101,11 +100,9 @@ test('moving stock actions into their group preserves the pricing bell icon geom
     assert.equal(value(bell + ':focus-visible', 'outline-offset'), '2px');
 });
 
-test('the actual stock heading binding follows inline tab state and has a safe fallback', () => {
-    const header = readFileSync(new URL('../../resources/views/components/stock-workspace-header.blade.php', import.meta.url), 'utf8');
-    const expression = header.match(/x-text="([^"]+)"/)?.[1];
-    assert.ok(expression);
-    for (const [view, expected] of Object.entries({ items: 'Stock Items', aging: 'Stock Aging', sellers: 'Sell Trend', unknown: 'Stock Items' })) {
-        assert.equal(runInNewContext(expression, { view }), expected);
-    }
+test('stock navigation uses real links rather than client-only tabs or custom history code', () => {
+    const nav = readFileSync(new URL('../../resources/views/inventory/items/partials/navigation.blade.php', import.meta.url), 'utf8');
+    assert.doesNotMatch(nav, /@click|role="tab|pushState|replaceState/);
+    assert.match(nav, /inventory\.stock-aging/);
+    assert.match(nav, /inventory\.sell-trend/);
 });

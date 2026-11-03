@@ -94,17 +94,15 @@ class StockRegisterUiTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
         TenantContext::runFor($shop->id, fn () => ReorderRule::create(['category' => 'Synthetic low-stock', 'min_stock_threshold' => 5]));
         $this->withoutVite();
-        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/items?view=aging')->assertOk()->getContent());
+        $xp = $this->xpath($this->actingAs($owner)->get('/inventory/items')->assertOk()->getContent());
         $desktop = $xp->query('//*[contains(@class,"inventory-items-header")]//nav[contains(@class,"items-header-nav")]')->item(0);
         $mobile = $xp->query('//*[@data-list-workspace]//nav[contains(@class,"items-body-nav")]')->item(0);
         $this->assertNotNull($desktop);
         $this->assertNotNull($mobile);
-        $desktopScope = $xp->query('ancestor::*[@x-data][1]', $desktop)->item(0);
-        $mobileScope = $xp->query('ancestor::*[@x-data][1]', $mobile)->item(0);
-        $this->assertTrue($desktopScope->isSameNode($mobileScope), 'Both responsive locations must control the actual panels, not separate Alpine state.');
-        $this->assertStringContainsString("view: 'aging'", $desktopScope->getAttribute('x-data'));
         foreach ([$desktop, $mobile] as $nav) {
-            $this->assertSame(3, $xp->query('.//button[@role="tab"]', $nav)->length);
+            $this->assertSame(6, $xp->query('.//a[@data-stock-section]', $nav)->length);
+            $this->assertSame(0, $xp->query('.//button', $nav)->length);
+            $this->assertSame('items', $xp->evaluate('string(.//a[@aria-current="page"]/@data-stock-section)', $nav));
             foreach (['categories.index', 'tags.index', 'reorder.index'] as $route) {
                 $this->assertSame(1, $xp->query('.//a[@href="'.route($route).'"]', $nav)->length);
             }

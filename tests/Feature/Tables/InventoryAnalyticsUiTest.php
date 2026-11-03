@@ -122,7 +122,8 @@ class InventoryAnalyticsUiTest extends TestCase
         $this->assertStringNotContainsString('NAN', $html);
         $this->assertStringNotContainsString('INF', $html);
         $this->assertStringContainsString('shown categories', $html);
-        $this->assertSame('sellers', $xp->evaluate('string(//form/input[@name="view"]/@value)'));
+        $this->assertSame(route('inventory.sell-trend'), $xp->evaluate('string(//form/@action)'));
+        $this->assertSame(0, $xp->query('//form/input[@name="view"]')->length);
         $this->assertSame('90', $xp->evaluate('string(//select[@name="seller_period"]/option[@selected]/@value)'));
         $this->assertSame(4, $xp->query('//select[@name="seller_period"]/option')->length);
         $this->assertSame(1, $xp->query('//form/button[@type="submit"]')->length);

@@ -35,7 +35,7 @@ class StockWorkspaceUiTest extends TestCase
             $this->assertSame(1, $xp->query('.//a[@aria-current="page"]', $nav)->length);
             $this->assertSame($section, $xp->evaluate('string(.//a[@aria-current="page"]/@data-stock-section)', $nav));
             foreach (['items', 'aging', 'sellers'] as $view) {
-                $url = route('inventory.items.index', $view === 'items' ? [] : ['view' => $view]);
+                $url = route(['items' => 'inventory.items.index', 'aging' => 'inventory.stock-aging', 'sellers' => 'inventory.sell-trend'][$view]);
                 $this->assertSame($url, $xp->evaluate('string(.//a[@data-stock-section="'.$view.'"]/@href)', $nav));
             }
             foreach (self::sections() as [$key, $name]) {
@@ -73,8 +73,8 @@ class StockWorkspaceUiTest extends TestCase
         $this->withoutVite();
         foreach ([
             [route('inventory.items.index'), 'Stock Items'],
-            [route('inventory.items.index', ['view' => 'aging']), 'Stock Aging'],
-            [route('inventory.items.index', ['view' => 'sellers']), 'Sell Trend'],
+            [route('inventory.stock-aging'), 'Stock Aging'],
+            [route('inventory.sell-trend'), 'Sell Trend'],
             [route('categories.index'), 'Categories'],
             [route('tags.index'), 'Tag Printing'],
             [route('reorder.index'), 'Reorder Alerts'],
@@ -83,10 +83,7 @@ class StockWorkspaceUiTest extends TestCase
             $header = $xp->query('//*[contains(@class,"inventory-items-header")]')->item(0);
             $this->assertNotNull($header);
             $this->assertSame($title, trim($xp->evaluate('string(.//h1)', $header)));
-            if (in_array($title, ['Stock Items', 'Stock Aging', 'Sell Trend'], true)) {
-                $this->assertStringContainsString('[view]', $xp->evaluate('string(.//h1/@x-text)', $header));
-                $this->assertStringContainsString($title, $xp->evaluate('string(.//h1/@x-text)', $header));
-            }
+            $this->assertSame('', $xp->evaluate('string(.//h1/@x-text)', $header));
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/nav[contains(@class,"items-header-nav")]', $header)->length);
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/div[@class="stock-header-actions"]', $header)->length);
             $this->assertSame(0, $xp->query('.//nav//a[contains(@href,"/create")] | .//nav//button[@id="pricing-alert-bell"]', $header)->length);

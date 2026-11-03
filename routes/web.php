@@ -541,6 +541,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // ======= ITEMS / STOCK =======
     // Staff: view + show only. Create/edit/delete = owner + manager.
     Route::get('/inventory/items', [ItemController::class, 'index'])->middleware('can:inventory.view')->name('inventory.items.index');
+    Route::get('/inventory/stock-aging', [\App\Http\Controllers\InventoryAnalyticsController::class, 'aging'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.stock-aging');
+    Route::get('/inventory/sell-trend', [\App\Http\Controllers\InventoryAnalyticsController::class, 'sellers'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.sell-trend');
     Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.items.pricing-alerts');
     Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('can:inventory.create')->name('inventory.items.create');
     Route::post('/inventory/items', [ItemController::class, 'store'])->middleware('can:inventory.create')->name('inventory.items.store');

@@ -418,7 +418,7 @@
                         {{-- Categories, Tag Printing and Reorder Alerts open from the Stock page's navigation row,
                              so their pages light this link. The reorder alert count came with them: it stays in
                              sight from every page here, on the way to the link that carries it. --}}
-                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'categories.*', 'sub-categories.*', 'tags.*', 'reorder.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories,/tags,/reorder">
+                        <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'inventory.stock-aging', 'inventory.sell-trend', 'categories.*', 'sub-categories.*', 'tags.*', 'reorder.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories,/tags,/reorder,/inventory/stock-aging,/inventory/sell-trend">
                             <span class="nav-icon"><x-icon name="package" size="16" /></span>
                             {{ __('Jewellery Stock') }}
                             {{-- Always present: the sidebar survives Turbo visits, so app.js re-reads the count from each page's bell. --}}

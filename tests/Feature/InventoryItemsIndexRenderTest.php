@@ -32,8 +32,10 @@ class InventoryItemsIndexRenderTest extends TestCase
         $this->actingAs($owner)
             ->get(route('inventory.items.index'))
             ->assertOk()
-            ->assertSee('data-aging-empty', false)
-            ->assertSee('data-sales-empty', false);
+            ->assertDontSee('data-aging-empty', false)
+            ->assertDontSee('data-sales-empty', false);
+        $this->get(route('inventory.stock-aging'))->assertOk()->assertSee('data-aging-empty', false);
+        $this->get(route('inventory.sell-trend'))->assertOk()->assertSee('data-sales-empty', false);
     }
 
     /**
@@ -52,7 +54,7 @@ class InventoryItemsIndexRenderTest extends TestCase
         }
 
         $this->actingAs($owner)
-            ->get(route('inventory.items.index', ['view' => 'aging']))
+            ->get(route('inventory.stock-aging'))
             ->assertOk()
             ->assertSee('Stock age distribution')
             ->assertSee('Stock over 90 days')

@@ -2,7 +2,42 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stable Stock navigation position and section titles
+## Latest checkpoint — Separate Stock pages, same header navigation
+
+Started clean `39806bf8ba7bb0da1639a1af37b168d2a4233d4b`. Owner approved real
+pages, retaining tab-like navigation, followed by Categories/Tags/Reorder redesign.
+This checkpoint is the first stage only. Canonical routes inventory.stock-aging
+(`/inventory/stock-aging`) and inventory.sell-trend (`/inventory/sell-trend`) use
+a thin InventoryAnalyticsController and the existing RetailerReportService. No
+report calculations, cache policies, financial services or data writes changed.
+Both routes retain inventory.view plus retailer edition; the older /report/*
+screens and their distinct reports.view gate remain untouched. Legacy retailer
+`/inventory/items?view=aging|sellers` redirects before stock queries, carrying all
+other query fields. Unknown/manufacturer view input stays on stock (no analytics
+exposure). No permanent redirects during local review.
+
+Native section links replace client-only tab buttons; Turbo/browser navigation
+owns URL/history/refresh/new tabs. Header/active state now come from one explicit
+section prop, no duplicate Alpine heading binding or manual History API code.
+Moved the existing analytics markup intact into aging/sellers Blade pages; main
+Stock no longer requests either report or ships their hidden HTML. Sell period
+GET/Clear target its own canonical page. Stock filters stay on stock; Back uses
+their original URL instead of mixing unrelated filters into report pages. Updated
+server and Turbo sidebar matching for both new paths. Shared fixed header layout,
+bar-detail tooltips, disclosures, pricing drawer and action permissions remain.
+
+Fresh guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. New tests RED4
+before implementation; main test explicitly refuses all analytics-service calls.
+Final scoped PHP151pass/1685assertions using the previous broad Stock/Categories/
+Tag/Reorder/Navigation command PLUS tests/Feature/Tables/InventoryStockPagesTest.php.
+Frontend147pass/22existing optional-browser skips/0fail; build79modules; Blade
+compile/compiled PHP lints/clear, PHP lint for both controllers/routes, new/focused
+PHP Pint and diff-check passed. Evidence stock-pages-* in existing quick-bill-notes
+directory. Real GET/redirect/access checks are not browser Back/Forward acceptance;
+existing browser-policy block still applies. Preview/private PG preserved; local
+only/no push/deploy. Next: requested theme redesign of Categories, Tags and Reorder.
+
+## Earlier checkpoint — Stable Stock navigation position and section titles
 
 Started clean `7c8f29bfabd06a3167599e032609e3dea7a35e37`, same sole writer/branch.
 Owner reported navigation moving between tools and additionally requested the
