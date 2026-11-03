@@ -2,7 +2,24 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Single-strip desktop Stock header
+## Latest checkpoint — Separate Stock filters from totals
+
+Started clean `efe7590710a11c11fd86c739b34398489681c0c3`. Owner requested a
+clearer division between filters and KPI data in the compact header. CSS-only:
+metrics get a neutral 1px start-edge divider and 16px inset at the existing wide
+desktop breakpoint (1280px). Below that breakpoint, where the header is a grid,
+use a horizontal divider with 12px top spacing. Flexible sizing, row wrapping,
+menu overflow/focus and existing table boundary remain unchanged. No new cards,
+backgrounds, DOM, scripts, data or Metal Holdings changes.
+
+Two source checks failed before implementation. Five-file focused frontend
+command from the prior checkpoint now passes 32/32, including unchanged holdings
+timer execution. Build and diff check passed; logs `stock-header-divider-*`.
+No PHP/database tests for CSS-only change. Browser verification remains blocked;
+actual divider appearance, wrapping and phone review NOT RUN. Owner refresh/review
+is still required. No push, preview-data or remote changes.
+
+## Earlier checkpoint — Single-strip desktop Stock header
 
 Started clean `90422979eb8460e3d4b280b4ea0ba5c148a9fb10`. Owner requested
 removing “Stock Register / n items” and putting controls/metrics on one strip,

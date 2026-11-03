@@ -18,12 +18,22 @@ const value = (selector, prop, media) => {
 test('header metrics share the desktop strip instead of forcing a second full-width row', () => {
     assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '1 1 440px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'grid-template-columns'), 'repeat(3, minmax(0, 1fr)) minmax(0, 3fr)');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), undefined);
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), undefined);
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), '12px');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), '1px solid var(--jf-border)');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'height'), undefined);
     assert.equal(value('.inventory-items-page .items-register-metal-list', 'flex-wrap'), 'wrap');
     assert.equal(value('.inventory-items-page .items-register-metric dd', 'overflow-wrap'), 'anywhere');
+});
+
+test('wide header separates filters from totals with a thin vertical divider without forcing another row', () => {
+    const wide = '(min-width: 1280px)';
+    const metrics = '.inventory-items-page .items-register-metrics';
+    assert.equal(value(metrics, 'border-top', wide), '0');
+    assert.equal(value(metrics, 'padding-top', wide), '0');
+    assert.equal(value(metrics, 'border-inline-start', wide), '1px solid var(--jf-border)');
+    assert.equal(value(metrics, 'padding-inline-start', wide), '16px');
+    assert.equal(value(metrics, 'flex', wide), undefined, 'Keep the existing flexible basis rather than reserving a full row.');
 });
 
 test('phone metrics reflow without narrow holdings or clipping the eye control focus', () => {
