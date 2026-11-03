@@ -1,0 +1,47 @@
+/* Neutral Retail workspace surfaces, matching Edit Reorder Rule.
+   Explicit panels only: no controls, text, semantic states, nested row cards or
+   product-theme tokens. Paint-only overrides preserve every existing dimension.
+   Important is needed for legacy per-page shadow:none!important resets, including
+   styles rendered after Vite. Print keeps its existing flat document treatment. */
+@media screen {
+    body.app-shell main .content-inner :is(
+        .customers-table-card,
+        .customers-show-table-card,
+        .invoices-table-card,
+        .invoice-show-table-card,
+        .invoice-show-card,
+        .invoices-edit-card,
+        .repairs-surface-card,
+        .repairs-report-table-card,
+        .repairs-show-card,
+        .masters-links,
+        .schemes-card,
+        .qb-register,
+        .qb-form-panel,
+        .qb-item-panel,
+        .qb-detail-card:not(.is-danger),
+        .purchase-card,
+        .purchase-summary,
+        .items-register-frame,
+        .items-analysis-board,
+        .items-analytics-details,
+        .items-aging-slow-card,
+        .stock-tool-board,
+        .returns-create-card,
+        .cashbook-table-card,
+        .ledger-table-card,
+        .jo-table-card,
+        .metal-exchange-table-card,
+        section.rounded-2xl.border-slate-200.bg-white,
+        [data-historical-form-section].border-slate-200,
+        [data-historical-preview-summary],
+        [data-historical-preview-card],
+        [data-historical-preview-items],
+        [data-historical-document-card],
+        .historical-batch-page > div.rounded-2xl.border-slate-200.bg-white
+    ) {
+        background-color: #ffffff !important;
+        border-color: #dbe4ef !important;
+        box-shadow: 0 12px 22px -22px rgba(15, 23, 42, 0.68) !important;
+    }
+}

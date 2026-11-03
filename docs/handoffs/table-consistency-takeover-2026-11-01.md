@@ -2,7 +2,36 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Tag search icon spacing and aligned compact filters
+## Latest checkpoint — Shared neutral panel surfaces, no layout/control changes
+
+Started clean `15067640346dcee405ba7bd7b5e1d378870cd944`. Owner supplied the
+Edit Reorder Rule screenshot and approved its card colour/border/shadow across
+our redesigned pages, explicitly excluding muted inputs, dark labels and action
+restyling. New `resources/css/workspace-surfaces.css`, imported by the existing
+Vite app entry, applies only background-color/#ffffff, border-color/#dbe4ef and
+the exact reference shadow `0 12px 22px -22px rgba(15, 23, 42, 0.68)`.
+Explicit neutral containers in the Retail app shell: Customer family registers,
+invoice register/details, Repairs receive/register/details, Masters lists,
+Schemes panels, Quick Bill register/form/detail panels, purchase panels, Stock
+register/analytics, Categories/Tags/Reorder boards, Returns creation, shared
+cashbook/ledger/job-order/metal-exchange table cards and neutral Historical
+workflow sections. Existing pale page background retained. No body-wide reset,
+DOM/Blade/JS/route/data edits; no dimensions, radii, spacing, typography, inputs,
+labels, buttons, row styling or interaction changes. Product-scoped Dhiran/admin
+palettes, KPIs, coloured notices, dropdowns and danger panels left alone.
+Screen-only layer preserves existing print styles. Important is intentional to
+beat legacy per-page shadow:none!important resets, including later Blade styles.
+
+Three paint/import/scope contracts RED before implementation, then GREEN.
+`node --test tests/Frontend/*.test.mjs`:156passed/22existing optional-browser
+skips/0fail. `npm run build`:79modules passed; diffcheck passed. No PHP rerun,
+Blade compile or DB access needed for this CSS-only tranche. Logs
+`workspace-surfaces-*` in existing quick-bill-notes evidence directory. Source
+contracts establish paint-only/screen-only scope, not computed geometry. Browser
+policy still prevents after-screenshots/real mobile/keyboard visual acceptance.
+Owner refresh and visual comparison is next; no remote work or deployment.
+
+## Earlier checkpoint — Tag search icon spacing and aligned compact filters
 
 Started clean `616c729a47f12196b99c4e2ac7efd9a843da6243`. Search text/icon
 overlap traced to shared input :is() taking its highest argument specificity

@@ -1,6 +1,7 @@
 @import "flatpickr/dist/flatpickr.min.css";
 @import "./customer-photo.css";
 @import "./tables.css";
+@import "./workspace-surfaces.css";
 
 @tailwind base;
 @tailwind components;
