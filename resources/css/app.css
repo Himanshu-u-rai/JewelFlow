@@ -31516,15 +31516,8 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-eye:hover { background: var(--jf-surface-soft); }
 .inventory-items-page .items-register-eye:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
 .inventory-items-page .items-register-eye svg { width: 16px; height: 16px; flex: none; }
-.inventory-items-page .items-register-metal-list { grid-column: 1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 4px 16px; min-width: 0; margin: 4px 0 0; padding: 0; list-style: none; }
-.inventory-items-page .items-register-metal-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
-.inventory-items-page .items-register-metal-label { display: inline-flex; align-items: center; gap: 4px; color: var(--jf-text-muted); font-size: 12px; }
-.inventory-items-page .items-register-metal-label i { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .inventory-items-page .items-register-metal-weight { min-width: 0; margin: 4px 0 0; color: var(--jf-ink); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.inventory-items-page .items-register-holdings > .items-register-metal-weight,
-.inventory-items-page .items-register-holdings-empty { grid-column: 1; grid-row: 2; }
-.inventory-items-page .items-register-holdings-empty { margin: 4px 0 0; font-size: 13px; color: var(--jf-ink); }
-.inventory-items-page .items-register-holdings-empty small { display: block; }
+.inventory-items-page .items-register-holdings > .items-register-metal-weight { grid-column: 1; grid-row: 2; }
 /* Keep sticky headings below the filter header and its open menus. */
 .inventory-items-page .items-register-frame .items-stock-table-shell { position: relative; z-index: 0; border-radius: 0; }
 @media (min-width: 1280px) {

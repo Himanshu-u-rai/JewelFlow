@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Keep Metal Holdings beside counts
+## Latest checkpoint — Remove Retail Metal Holdings completely
+
+Started clean `d560422b445bb2c3bbc3c2835665d020cabf6899` after the owner
+interrupted the previous turn following its successful commit. Reverified clean
+state and recorded that commit in the external ledger before continuing. Owner
+now requests deleting the entire Retail Metal Holdings display, not repositioning
+it. Removed its labels/helper, Gold/Silver masks and values, eye button, local
+Alpine state and now-unused local list/empty-state styles. Retail header now has
+only Total Items, In Stock and Sold counts. Header/popup search and Filters remain.
+Manufacturer's separately labelled Total Fine Gold display/timer retained; no
+backend aggregation, weights, records, routes or permissions changed.
+
+Removal checks RED before implementation: 2 PHP / 2 frontend failures. Guard
+confirmed testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing`. Focused PHP
+StockRegisterUiTest: 10 passed / 171 assertions, including Retail three counts
+with/without rows and unchanged manufacturer fine gold. Same five-file focused
+frontend command: 31 passed / 0 skipped; remaining manufacturer timer exercised.
+Build, guarded Blade compile/clear, PHP lint, Pint and diff check passed. Logs
+`stock-remove-holdings-*`. Browser visual checks remain blocked/NOT RUN. Owner
+refresh/review. No push, remote or preview-data changes.
+
+## Earlier checkpoint — Keep Metal Holdings beside counts
 
 Started clean `a722164e63eb5642bc4c6eb2f56000e7a9d81202`. Owner reported Metal
 Holdings dropping below the other totals. Metrics flex-wrap is now nowrap above

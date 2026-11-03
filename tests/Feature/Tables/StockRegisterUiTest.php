@@ -165,7 +165,7 @@ class StockRegisterUiTest extends TestCase
     }
 
     #[DataProvider('editions')]
-    public function test_four_compact_metrics_live_in_header_and_preserve_edition_specific_holdings(string $edition, int $columns): void
+    public function test_header_has_three_counts_and_only_manufacturer_keeps_fine_gold(string $edition, int $columns): void
     {
         [$owner, $shop] = $edition === 'retailer' ? $this->createRetailerTenant() : $this->createManufacturerTenant();
         $this->createItem($shop->id, null, ['metal_type' => 'gold', 'net_metal_weight' => 1.25]);
@@ -179,23 +179,23 @@ class StockRegisterUiTest extends TestCase
         $this->assertSame(1, $xp->query('//*[@data-stock-metrics]')->length);
         $this->assertSame(0, $xp->query('//*[@data-list-scroll]//*[@data-stock-metrics]')->length);
         $this->assertSame(0, $xp->query('//*[contains(concat(" ",@class," ")," items-kpi-grid ")]')->length);
-        $this->assertSame(4, $xp->query('./*', $metrics)->length);
+        $this->assertSame($edition === 'retailer' ? 3 : 4, $xp->query('./*', $metrics)->length);
         foreach (['Total Items' => '3', 'In Stock' => '2', 'Sold' => '1'] as $label => $value) {
             $this->assertSame($value, trim($xp->evaluate('string(./dl[dt="'.$label.'"]/dd)', $metrics)));
         }
         $holdings = $xp->query('./section[@data-stock-holdings]', $metrics)->item(0);
-        $this->assertNotNull($holdings);
-        $this->assertStringContainsString('show: false', $holdings->getAttribute('x-data'));
-        $this->assertStringContainsString('3000', $holdings->getAttribute('x-data'));
-        $this->assertSame(1, $xp->query('.//button[@type="button"]', $holdings)->length);
-        $this->assertStringContainsString('class="items-register-eye" @click="toggle()"', $html);
-        $this->assertGreaterThan(0, $xp->query('.//span[@x-show="!show" and @x-cloak]', $holdings)->length);
         if ($edition === 'retailer') {
-            $this->assertSame('Metal holdings KPI', $holdings->getAttribute('aria-label'));
-            $this->assertStringContainsString('1.250 g', $holdings->textContent);
-            $this->assertStringContainsString('2.500 g', $holdings->textContent);
-            $this->assertStringNotContainsString('99.900 g', $holdings->textContent);
+            $this->assertNull($holdings);
+            $this->assertStringNotContainsString('Metal Holdings', $html);
+            $this->assertStringNotContainsString('Net weight in stock', $html);
+            $this->assertSame(0, $xp->query('.//button | .//*[@x-data]', $metrics)->length);
         } else {
+            $this->assertNotNull($holdings);
+            $this->assertStringContainsString('show: false', $holdings->getAttribute('x-data'));
+            $this->assertStringContainsString('3000', $holdings->getAttribute('x-data'));
+            $this->assertSame(1, $xp->query('.//button[@type="button"]', $holdings)->length);
+            $this->assertStringContainsString('class="items-register-eye" @click="toggle()"', $html);
+            $this->assertGreaterThan(0, $xp->query('.//span[@x-show="!show" and @x-cloak]', $holdings)->length);
             $this->assertSame('Total fine gold KPI', $holdings->getAttribute('aria-label'));
             $this->assertStringContainsString('1.146 g', $holdings->textContent);
             $this->assertStringNotContainsString('Metal Holdings', $holdings->textContent);
@@ -203,15 +203,13 @@ class StockRegisterUiTest extends TestCase
         $this->assertSame($columns, $xp->query('//*[@data-list-scroll]//table/thead/tr/th')->length);
     }
 
-    public function test_empty_stock_metrics_keep_zero_holdings_message(): void
+    public function test_empty_retail_stock_has_only_three_zero_counts(): void
     {
         [$owner] = $this->createRetailerTenant();
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get('/inventory/items')->assertOk()->getContent());
-        $holdings = $xp->query('//*[@data-stock-metrics]/*[@data-stock-holdings]')->item(0);
-        $this->assertNotNull($holdings);
-        $this->assertStringContainsString('0.000 g', $holdings->textContent);
-        $this->assertStringContainsString('No in-stock items', $holdings->textContent);
+        $this->assertSame(0, $xp->query('//*[@data-stock-metrics]/*[@data-stock-holdings]')->length);
+        $this->assertSame(3, $xp->query('//*[@data-stock-metrics]/dl[normalize-space(dd)="0"]')->length);
     }
 
     private function xpath(string $html): \DOMXPath

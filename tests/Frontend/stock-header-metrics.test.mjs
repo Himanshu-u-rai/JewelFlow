@@ -26,7 +26,7 @@ test('header metrics keep holdings beside compact counts rather than wrapping th
     assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), '1px solid var(--jf-border)');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'height'), undefined);
-    assert.equal(value('.inventory-items-page .items-register-metal-list', 'flex-wrap'), 'wrap');
+    assert.doesNotMatch(source, /Metal Holdings|Net weight in stock|items-register-metal-list/);
     assert.equal(value('.inventory-items-page .items-register-metric dd', 'overflow-wrap'), 'anywhere');
 });
 
@@ -58,9 +58,9 @@ test('phone metrics reflow without narrow holdings or clipping the eye control f
     assert.notEqual(value('.inventory-items-page .items-register-metrics', 'overflow'), 'hidden');
 });
 
-test('both existing holdings controls still mask, reveal, auto-hide after three seconds and cancel manual hide timers', () => {
+test('remaining manufacturer fine-gold control still masks, reveals and auto-hides after three seconds', () => {
     const models = [...source.matchAll(/x-data="(\{ show: false, timer: null, toggle\(\)[^"]+)"/g)];
-    assert.equal(models.length, 2);
+    assert.equal(models.length, 1);
     for (const [, expression] of models) {
         const pending = new Map();
         let id = 0;

@@ -304,41 +304,7 @@
                             <dd class="jf-skel jf-skel-value">{{ number_format((int) ($stats[$key] ?? 0)) }}</dd>
                         </dl>
                     @endforeach
-                    @if($isRetailer)
-                        @php
-                            $mh = $stats['metal_holdings'] ?? ['gold'=>0,'silver'=>0,'platinum'=>0];
-                            $metals = collect([
-                                ['key'=>'gold','label'=>'Gold','dot'=>'#f59e0b','weight'=>(float) ($mh['gold'] ?? 0)],
-                                ['key'=>'silver','label'=>'Silver','dot'=>'#94a3b8','weight'=>(float) ($mh['silver'] ?? 0)],
-                                ['key'=>'platinum','label'=>'Platinum','dot'=>'#64748b','weight'=>(float) ($mh['platinum'] ?? 0)],
-                            ])->filter(fn($m) => $m['weight'] > 0)->values();
-                        @endphp
-                        <section class="items-register-holdings" data-stock-holdings aria-label="Metal holdings KPI"
-                                 x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
-                            <div class="items-register-holdings-head">
-                                <span>Metal Holdings <small>Net weight in stock</small></span>
-                                <button type="button" class="items-register-eye" @click="toggle()" :aria-label="show ? 'Hide metal weights' : 'Show metal weights'" :title="show ? 'Hide' : 'Show'">
-                                    <x-icon name="eye" size="16" x-show="show" />
-                                    <x-icon name="eye-off" size="16" x-show="!show" x-cloak />
-                                </button>
-                            </div>
-                            @if($metals->isEmpty())
-                                <p class="items-register-holdings-empty">0.000 g <small>No in-stock items</small></p>
-                            @else
-                                <ul class="items-register-metal-list">
-                                    @foreach($metals as $m)
-                                        <li>
-                                            <span class="items-register-metal-label"><i aria-hidden="true" style="background: {{ $m['dot'] }}"></i>{{ $m['label'] }}</span>
-                                            <span class="items-register-metal-weight">
-                                                <span x-show="show">{{ number_format($m['weight'], 3) }} g</span>
-                                                <span x-show="!show" x-cloak>••••••</span>
-                                            </span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                        </section>
-                    @else
+                    @unless($isRetailer)
                         <section class="items-register-holdings" data-stock-holdings aria-label="Total fine gold KPI"
                                  x-data="{ show: false, timer: null, toggle() { if (this.show) { this.show = false; clearTimeout(this.timer); } else { this.show = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.show = false, 3000); } } }">
                             <div class="items-register-holdings-head">
@@ -353,7 +319,7 @@
                                 <span x-show="!show" x-cloak>••••••</span>
                             </p>
                         </section>
-                    @endif
+                    @endunless
                 </div>
                 <div class="items-register-tools">
                     <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-header-search" data-stock-search>
