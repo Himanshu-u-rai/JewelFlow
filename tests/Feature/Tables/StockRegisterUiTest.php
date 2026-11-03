@@ -41,7 +41,9 @@ class StockRegisterUiTest extends TestCase
             $this->assertSame($value, $xp->evaluate('string(.//input[@name="'.$name.'"]/@value)', $form));
         }
         $this->assertSame((string) $category->id, $xp->evaluate('string(.//select[@name="category"]/option[@selected]/@value)', $form));
-        $this->assertSame(1, $xp->query('.//button[@type="submit"]', $form)->length, 'Apply remains available with active filters.');
+        $this->assertSame(1, $xp->query('.//button[@type="submit" and @x-show="dirty || !hasFilters"]', $form)->length, 'Editing an applied filter must still allow submission.');
+        $this->assertStringContainsString('hasFilters: true', $form->getAttribute('x-data'));
+        $this->assertSame(route('inventory.items.index'), $xp->evaluate('string(.//a[@data-stock-filter-clear]/@href)', $form));
         $search = $xp->query('.//input[@name="search"]', $form)->item(0);
         $this->assertSame('items', $search->getAttribute('data-suggest'));
         $this->assertSame(1, $xp->query('.//label[@for="'.$search->getAttribute('id').'"]', $form)->length);
@@ -64,6 +66,18 @@ class StockRegisterUiTest extends TestCase
         $this->assertSame(1, $xp->query('.//a[@aria-current="page"]', $toggle)->length);
         $this->assertSame($columns, $xp->query('//*[@data-list-scroll]//table/thead/tr/th')->length);
         $this->assertSame((string) $columns, $xp->evaluate('string(//*[@data-list-scroll]//td[@colspan]/@colspan)'));
+    }
+
+    public function test_default_stock_status_and_empty_fields_do_not_count_as_applied_filters(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        foreach ([[], ['status' => 'in_stock'], ['status' => 'in_stock', 'category' => '', 'purity' => '', 'search' => '']] as $params) {
+            $html = $this->actingAs($owner)->get(route('inventory.items.index', $params))->assertOk()->getContent();
+            $xp = $this->xpath($html);
+            $this->assertStringContainsString('hasFilters: false', $xp->evaluate('string(//form[@data-stock-filters]/@x-data)'));
+            $this->assertSame(0, $xp->query('//form[@data-stock-filters]//noscript')->length);
+        }
     }
 
     public function test_populated_page_two_has_continuous_numbers_external_pagination_and_restricted_actions(): void

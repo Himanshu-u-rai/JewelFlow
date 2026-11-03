@@ -2,7 +2,31 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock filter sizing, KPI move deferred
+## Latest checkpoint — One visible Stock Apply/Clear action
+
+Started clean `fc80862295be2df190bdfe10070e6dd283fd062a`. Owner requested Apply
+also serve as Clear after filters apply. Stock form now has a small local Alpine
+dirty/hasFilters state: pristine filtered GET shows the normal Clear link in the
+same primary-action position; any bubbled input/change brings back normal Apply
+submission. No submit interception/new navigation code. Native no-JS fallback
+retains Apply plus Clear when needed. Filled category/subcategory/purity/search
+or nondefault Sold status count as applied; explicit default In Stock and blank
+query values do not. Clear uses the existing bare index URL, resetting pagination
+and all filters. Form fields, controller queries, permissions, suggestions and
+status navigation preserved. No CSS or KPI-layout changes.
+
+New frontend transition and two edition render checks RED before implementation.
+Fresh guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing; final
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php`
+passed6tests/110assertions, including default/empty-query cases.
+`node --test tests/Frontend/stock-filter-action.test.mjs tests/Frontend/stock-register-layout.test.mjs`
+passed13/13. Build79, Bladecompile/clear, PHP lint/Pint/diffcheck and Impeccable[]
+passed. Logs `stock-filter-action-*`. Browser-policy block persists: real Alpine,
+keyboard, suggestion-menu and Turbo Back/Forward visual acceptance NOT RUN;
+VM/source-expression tests are not that evidence. Next owner visual review and
+next KPI instruction. No preview-data changes, push or remote work.
+
+## Earlier checkpoint — Stock filter sizing, KPI move deferred
 
 Started clean `ffd258929f1076f697904279f573e302dc959ac5`. Owner asked for first
 preparatory changes before moving four Stock KPIs into the register header.

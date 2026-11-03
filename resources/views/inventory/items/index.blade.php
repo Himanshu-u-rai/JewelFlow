@@ -339,6 +339,7 @@
         @php
             $statusToggles = ['in_stock' => 'In Stock', 'sold' => 'Sold'];
             $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
+            $hasStockFilters = $statusFilter !== 'in_stock' || request()->anyFilled(['category', 'sub_category', 'purity', 'search']);
         @endphp
 
         <!-- Stock register: controls stay outside the scrolling rows. -->
@@ -358,6 +359,8 @@
                     </nav>
                 </div>
                 <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-filters" data-stock-filters
+                      x-data="{ dirty: false, hasFilters: @js($hasStockFilters) }"
+                      @input="dirty = true" @change="dirty = true"
                       data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
                     <input type="hidden" name="status" value="{{ $statusFilter }}">
                     <div class="items-register-field items-register-category">
@@ -402,9 +405,10 @@
                                data-suggest="items" autocomplete="off">
                     </div>
                     <div class="items-register-actions">
-                        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                        @if(request()->hasAny(['status', 'category', 'sub_category', 'purity', 'search']))
-                            <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary btn-sm">Clear</a>
+                        <button type="submit" data-stock-filter-apply x-show="dirty || !hasFilters" class="btn btn-primary btn-sm">Apply</button>
+                        <a href="{{ route('inventory.items.index') }}" data-stock-filter-clear x-show="!dirty && hasFilters" x-cloak class="btn btn-primary btn-sm">Clear</a>
+                        @if($hasStockFilters)
+                            <noscript><a href="{{ route('inventory.items.index') }}" class="btn btn-secondary btn-sm">Clear</a></noscript>
                         @endif
                     </div>
                 </form>
