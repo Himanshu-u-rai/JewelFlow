@@ -209,11 +209,9 @@
             @include('partials.view-only-banner', ['permission' => 'inventory.edit', 'message' => 'inventory management'])
         @endunless
 
-        {{-- The Stock page's navigation row: its view tabs (retailers) and, beside them,
-             the pages that open from here. Categories left the main sidebar for this row;
-             it needs what this page needs (inventory.view), in either edition, so anyone
-             who may open it can find it here. Tag Printing and Reorder Alerts followed: the
-             same permission, and retailer-only like their routes. --}}
+        {{-- Shared Stock navigation: the same shell continues on Categories,
+             Tag Printing and Reorder Alerts. All require inventory.view;
+             the last two remain retailer-only, matching their route gates. --}}
         @include('inventory.items.partials.navigation', ['placement' => 'body'])
 
         {{-- ==================== STOCK ITEMS VIEW ==================== --}}

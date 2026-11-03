@@ -7304,104 +7304,6 @@ body.admin-shell {
         linear-gradient(180deg, #f8fafc 0%, #ffffff 42%, #f8fafc 100%);
 }
 
-.inventory-items-page .items-view-toggle {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 14px;
-    background: #ffffff;
-    padding: 4px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-}
-
-.inventory-items-page .items-view-tab {
-    min-height: 38px;
-    box-sizing: border-box;
-    border: 1px solid transparent;
-    color: #64748b;
-    background: transparent;
-    line-height: 1;
-    transform: none;
-    box-shadow: none;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-    will-change: background-color, border-color, color;
-}
-
-.inventory-items-page .items-view-tab:hover {
-    background: #f8fafc;
-    color: #0f172a;
-}
-
-.inventory-items-page .items-view-tab.is-active {
-    border-color: #0f172a;
-    background: #0f172a;
-    color: #ffffff;
-    box-shadow: none;
-}
-
-.inventory-items-page .items-view-tab:active {
-    transform: none;
-}
-
-.inventory-items-page .items-view-tab:focus-visible {
-    outline: 2px solid rgba(15, 118, 110, 0.28);
-    outline-offset: 2px;
-}
-
-.inventory-items-page .items-view-tab svg {
-    flex: 0 0 auto;
-    transition: color 140ms ease;
-}
-
-/* The Stock page's navigation row: the view tabs and, beside them, the pages
-   that open from here (Categories, Tag Printing, Reorder Alerts). A page link
-   stands next to the tab strip at the strip's height, with a chevron to say it
-   leaves this page. The links are one group: where the row is too narrow for
-   the strip and all of them, they take the next line together. */
-.inventory-items-page .items-page-nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 24px;
-}
-
-.inventory-items-page .items-page-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.inventory-items-page .items-page-link {
-    min-height: 48px; /* the strip: 38px tabs + 4px padding and 1px border each side */
-    box-sizing: border-box;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 14px;
-    background: #ffffff;
-    color: #334155;
-    line-height: 1;
-    white-space: nowrap;
-    text-decoration: none;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.inventory-items-page .items-page-link:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-    color: #0f172a;
-}
-
-.inventory-items-page .items-page-link:focus-visible {
-    outline: 2px solid rgba(15, 118, 110, 0.28);
-    outline-offset: 2px;
-}
-
-.inventory-items-page .items-page-link svg {
-    flex: 0 0 auto;
-}
-
-.inventory-items-page .items-page-link-chevron {
-    color: #94a3b8;
-}
-
 /* "Back to Stock", in the header of each page the row opens. A phone header has
    room for "Back" beside the page's own action. */
 .stock-back-label-short {
@@ -7424,21 +7326,6 @@ body.admin-shell {
     .content-header .page-actions .stock-back-btn .stock-back-label-short {
         display: none !important;
     }
-}
-
-/* How many reorder alerts are waiting: the number the sidebar entry carried. */
-.inventory-items-page .items-page-link-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    padding: 3px 6px;
-    border-radius: 999px;
-    background: #dc2626;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.2;
 }
 
 .inventory-items-page .items-kpi-grid {
@@ -10048,49 +9935,6 @@ body.admin-shell {
 @media (max-width: 768px) {
     .inventory-items-page .items-stock-register--retailer {
         gap: 10px;
-    }
-
-    .inventory-items-page .items-view-toggle {
-        width: 100%;
-        display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 5px !important;
-    }
-
-    .inventory-items-page .items-view-tab {
-        min-height: 34px;
-        justify-content: center;
-        padding: 7px 8px !important;
-        font-size: 12px !important;
-        line-height: 1.15;
-    }
-
-    /* The strip fills the row with its three equal tabs, so the page links take
-       the rows below it: never a fourth, clipped tab. They share a row while
-       their labels fit side by side; one that does not fit fills the next. */
-    .inventory-items-page .items-page-nav {
-        gap: 6px;
-        margin-bottom: 12px;
-    }
-
-    /* Every control in the row is a 40px touch target. */
-    .inventory-items-page .items-page-nav .items-view-tab {
-        min-height: 40px;
-    }
-
-    .inventory-items-page .items-page-links {
-        width: 100%;
-        gap: 6px;
-    }
-
-    .inventory-items-page .items-page-link {
-        flex: 1 1 0;
-        min-height: 40px;
-        justify-content: center;
-        padding-left: 10px;
-        padding-right: 10px;
-        border-radius: 12px;
-        font-size: 13px;
     }
 
     .inventory-items-page .items-stock-register--retailer .items-kpi-card {
@@ -31596,16 +31440,29 @@ a.notice-bell-item:focus-visible {
     .inventory-items-header > .content-header-nav { display: none; }
     .inventory-items-header .page-actions { min-width: 0; flex-wrap: nowrap; gap: 8px; }
     .inventory-items-header .items-header-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; max-width: 100%; }
-    .inventory-items-header .items-view-toggle { display: inline-flex; flex-wrap: wrap; gap: 2px; max-width: 100%; padding: 3px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface); box-shadow: none; }
-    .inventory-items-header .items-view-tab { min-height: 40px; padding: 7px 8px; border-radius: 7px; background: transparent; color: var(--jf-text); font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .inventory-items-header .items-view-tab.is-active { background: #b45309; color: #fff; }
-    .inventory-items-header .items-page-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; }
-    .inventory-items-header .items-page-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 7px 8px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface); color: var(--jf-text); font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .inventory-items-header .items-page-link:hover { background: var(--jf-surface-soft); }
-    .inventory-items-header :is(.items-view-tab, .items-page-link):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
-    .inventory-items-header .items-page-link-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; min-height: 18px; padding: 0 4px; border-radius: 5px; background: var(--jf-gold-soft); color: #92400e; font-size: 11px; }
-    .inventory-items-header .items-page-link-chevron { display: none; }
     .inventory-items-header :is(.inventory-items-create-btn, #pricing-alert-bell) { flex: none; }
+}
+/* One Stock workspace across inventory, categories, tag printing and reorder rules. */
+.stock-workspace-nav { min-width: 0; max-width: 100%; }
+.stock-workspace-nav.items-body-nav { margin-bottom: 20px; }
+.stock-workspace-nav .items-view-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 100%; padding: 3px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface); box-shadow: none; overflow: visible; }
+.stock-workspace-nav :is(.items-primary-views, .items-page-links) { display: contents; }
+.stock-workspace-nav :is(.items-view-tab, .items-page-link) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; flex: 0 0 auto; min-width: 0; min-height: 40px; padding: 7px 8px; border: 0; border-radius: 7px; background: transparent; color: var(--jf-text); font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; text-decoration: none; cursor: pointer; transform: none; box-shadow: none; }
+.stock-workspace-nav :is(.items-view-tab, .items-page-link):hover { background: var(--jf-surface-soft); }
+.stock-workspace-nav .is-active,
+.stock-workspace-nav .is-active:hover { background: #b45309; color: #fff; }
+.stock-workspace-nav :is(.items-view-tab, .items-page-link):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+.stock-workspace-nav svg { flex: none; }
+.stock-workspace-nav .items-page-link-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; min-height: 18px; padding: 0 4px; border-radius: 5px; background: var(--jf-gold-soft); color: #92400e; font-size: 11px; }
+.stock-tool-intro { margin-bottom: 20px; }
+.stock-tool-intro h2 { margin: 0; color: var(--jf-ink); font-size: 20px; font-weight: 700; line-height: 1.4; }
+.stock-tool-intro p { margin: 4px 0 0; color: var(--jf-text-muted); font-size: 13px; }
+@media (min-width: 1024px) {
+    .stock-workspace-nav.items-body-nav { display: none; }
+}
+@media (max-width: 768px) {
+    .stock-workspace-nav .items-view-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 4px; }
+    .stock-workspace-nav :is(.items-view-tab, .items-page-link) { min-height: 44px; padding: 7px 6px; white-space: normal; }
 }
 .inventory-items-page .items-stock-register .items-register-frame { border: 1px solid var(--jf-border); border-radius: 14px; background: var(--jf-surface); box-shadow: none; overflow: visible; }
 .inventory-items-page .items-register-header { position: relative; z-index: 3; display: grid; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--jf-border); border-radius: 14px 14px 0 0; background: var(--jf-surface); }

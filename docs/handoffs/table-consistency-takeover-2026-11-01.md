@@ -2,7 +2,46 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Sell Trend bar detail bubbles
+## Latest checkpoint — Categories, Tags and Reorder in the Stock workspace
+
+Started clean `b17c9e29c3291e26d10ba3df6210b6a64ec638ff`, same branch/sole writer.
+Owner requested these three destinations as sections of Stock BEFORE redesigning
+Categories. They now continue the same Stock / Items header and unified six-choice
+navigation, with the current tool highlighted/aria-current. Desktop navigation
+stays in the header; phone/tablet uses the body strip (two columns/44px controls on
+phones) rather than crowding the title/actions. Existing task title/copy moves
+into the content area. One tiny shared header component reuses page-header and
+notice bell; no iframe, copied controller, fetch-based embedding or duplicated
+page/form. Removed separate-link chevrons and superseded main-only nav styles.
+Impeccable guided matching the incumbent shell and accessible responsive controls,
+not a new palette or broader redesign. Categories content redesign remains next.
+
+Existing `/categories`, `/tags`, `/reorder` URLs, named routes, authorization,
+controllers, redirects and mutations stay intact. Native links from each tool
+return to Stock Items/Aging/Sell Trend; the existing three inline stock panels
+keep their shared Alpine state. Retailer-only links stay retailer-only; maker
+Categories retains its Stock destination. Alert counts use the existing cached,
+explicit-shop service. Sidebar already selects Jewellery Stock for all three.
+Category modals/search/pagination, tag localStorage selection/options and print
+target, reorder CRUD handlers and all page scripts are unchanged (script blocks
+compared byte-for-byte to starting HEAD). No preview data writes or dependencies.
+
+Regression RED:6new PHP cases/1CSS contract before implementation. Focused11PHP/
+200assertions plus7Node passed. Final destructive-test guard confirmed
+testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Masters/Category*.php tests/Feature/Masters/SubCategoryIndexRedirectTest.php tests/Feature/TagPrintSizesTest.php tests/Feature/ReorderAlertTriggerTest.php tests/Feature/Navigation/MovedShortcutsAccessTest.php tests/Feature/HeaderNoticeBellTest.php`
+passed146tests/1591assertions, including search/page2, action/access tests, tag
+print validation and reorder behavior. Full frontend `node --test
+tests/Frontend/*.test.mjs`:143pass/22existing optional-browser skips/0fail.
+Build79modules; Blade compile/390compiled PHP lints/clear; newPHP lint/Pint,
+diff-check and Impeccable layout[] passed. stock-tools-* evidence logs in existing
+quick-bill-notes-dialog directory. Browser access remains policy-blocked: actual
+desktop/phone geometry, keyboard traversal, Turbo Back/Forward and printer output
+NOT visually verified; no workaround or new screenshots. Existing preview/private
+PostgreSQL preserved. Local commit only/no push/deploy. Next owner refresh Stock,
+open each tool and check the common shell before the Categories content redesign.
+
+## Earlier checkpoint — Sell Trend bar detail bubbles
 
 Started clean `7c0653f7e403f9ba1c85508d0bfb381df07085a0`, same sole writer and
 branch. Owner requested trend-chart-style detail bubbles. Revenue bars are now

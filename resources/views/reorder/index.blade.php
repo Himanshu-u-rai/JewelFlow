@@ -536,22 +536,18 @@
         }
     </style>
 
-    <x-page-header class="ops-treatment-header">
-        <div>
-            <h1 class="page-title">Reorder Rules</h1>
-        </div>
-        <div class="page-actions">
-            @include('partials.back-to-stock')
-            <a href="{{ route('reorder.create') }}" class="reorder-index-add">
-                <x-icon name="plus" size="15" stroke-width="2.1" />
-                <span class="reorder-index-add-full">Add Rule</span>
-                <span class="reorder-index-add-short">Add</span>
-            </a>
-        </div>
-    </x-page-header>
+    <x-stock-workspace-header active="reorder">
+        <a href="{{ route('reorder.create') }}" class="btn btn-primary btn-sm reorder-index-add">
+            <x-icon name="plus" size="15" stroke-width="2.1" />
+            <span class="reorder-index-add-full">Add Rule</span>
+            <span class="reorder-index-add-short">Add</span>
+        </a>
+    </x-stock-workspace-header>
 
     <div class="content-inner reorder-index-page">
-<section class="reorder-stats-grid" aria-label="Reorder overview">
+        @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'reorder'])
+        <div class="stock-tool-intro"><h2>Reorder Rules</h2></div>
+        <section class="reorder-stats-grid" aria-label="Reorder overview">
             <article class="reorder-stat-card">
                 <span class="reorder-stat-icon" aria-hidden="true">
                     <x-icon name="layers" size="20" stroke-width="1.9" />

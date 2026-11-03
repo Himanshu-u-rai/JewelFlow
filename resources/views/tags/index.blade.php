@@ -1,15 +1,12 @@
 <x-app-layout>
-    <x-page-header class="ops-treatment-header">
-        <div>
-            <h1 class="page-title">Tag / Label Printing</h1>
-            <p class="text-sm text-gray-600 mt-1">Select items to generate printable price tags</p>
-        </div>
-        <div class="page-actions">
-            @include('partials.back-to-stock')
-        </div>
-    </x-page-header>
+    <x-stock-workspace-header active="tags" />
 
     <div class="content-inner ops-treatment-page">
+        @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'tags'])
+        <div class="stock-tool-intro">
+            <h2>Tag / Label Printing</h2>
+            <p>Select items to generate printable price tags</p>
+        </div>
 
         {{-- ── Filter bar ─────────────────────────────────────────────────── --}}
         <div class="border border-slate-200 bg-white p-4 shadow-sm mb-6 rounded-xl overflow-hidden ui-filter-enhanced-wrap">

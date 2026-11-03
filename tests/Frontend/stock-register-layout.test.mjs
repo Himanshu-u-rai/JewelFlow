@@ -63,3 +63,12 @@ test('sticky stock headings are confined below filter menus instead of painting 
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
     assert.equal(value('.inventory-items-page .items-sellers-tables-grid', 'align-items'), 'start');
 });
+
+test('shared stock navigation wraps one tab strip and moves out of phone headers without clipped controls', () => {
+    assert.equal(value('.stock-workspace-nav .items-view-toggle', 'flex-wrap'), 'wrap');
+    assert.equal(value('.stock-workspace-nav .items-view-toggle', 'overflow'), 'visible');
+    assert.equal(value('.stock-workspace-nav.items-body-nav', 'display', '(min-width: 1024px)'), 'none');
+    assert.equal(value('.stock-workspace-nav .items-view-toggle', 'grid-template-columns', '(max-width: 768px)'), 'repeat(2, minmax(0, 1fr))');
+    assert.equal(value('.stock-workspace-nav :is(.items-view-tab, .items-page-link)', 'min-height', '(max-width: 768px)'), '44px');
+    assert.equal(value('.stock-workspace-nav :is(.items-view-tab, .items-page-link)', 'white-space', '(max-width: 768px)'), 'normal');
+});

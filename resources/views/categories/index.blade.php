@@ -1,23 +1,21 @@
 <x-app-layout>
-    <x-page-header
-        class="categories-page-header"
-        :title="__('Categories')"
-        :subtitle="__('Manage product categories and sub-categories')"
-    >
-        <x-slot:actions>
-            @include('partials.back-to-stock')
-            @can('catalog.manage')
-            <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
-                class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                <x-icon name="plus" class="w-4 h-4 mr-2" />
-                <span class="categories-add-label-full">{{ __('Add Category') }}</span>
-                <span class="categories-add-label-short">{{ __('Add') }}</span>
-            </button>
-            @endcan
-        </x-slot:actions>
-    </x-page-header>
+    <x-stock-workspace-header active="categories" class="categories-page-header">
+        @can('catalog.manage')
+        <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
+            class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+            <x-icon name="plus" class="w-4 h-4 mr-2" />
+            <span class="categories-add-label-full">{{ __('Add Category') }}</span>
+            <span class="categories-add-label-short">{{ __('Add') }}</span>
+        </button>
+        @endcan
+    </x-stock-workspace-header>
 
     <div class="content-inner categories-index-page">
+        @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'categories'])
+        <div class="stock-tool-intro">
+            <h2>{{ __('Categories') }}</h2>
+            <p>{{ __('Manage product categories and sub-categories') }}</p>
+        </div>
 
         @unless(auth()->user()->can('catalog.manage'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'category management'])
