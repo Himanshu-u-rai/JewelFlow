@@ -219,31 +219,39 @@
                 || request('status') === 'sold';
         @endphp
         @php
-            $statusToggles = ['in_stock' => 'In Stock', 'sold' => 'Sold'];
-            $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
-            $nextStockStatus = $statusFilter === 'in_stock' ? 'sold' : 'in_stock';
             $hasStockFilters = $statusFilter !== 'in_stock' || request()->anyFilled(['category', 'sub_category', 'purity', 'search']);
         @endphp
 
         <!-- Stock register: controls stay outside the scrolling rows. -->
-        <div class="items-table-card items-table-card--stock items-register-frame" data-list-frame>
+        <div class="items-table-card items-table-card--stock items-register-frame" data-list-frame x-data="{}">
             <div class="items-register-header">
                 <div class="items-register-heading">
-                    <nav aria-label="Stock status">
-                        <a href="{{ route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $nextStockStatus])) }}"
-                           class="items-register-status"
-                           aria-label="Stock status: {{ $statusToggles[$statusFilter] }}. Switch to {{ $statusToggles[$nextStockStatus] }}">
-                            @foreach($statusToggles as $value => $label)
-                                <span class="items-register-status-btn {{ $statusFilter === $value ? 'is-active' : '' }}" aria-hidden="true">{{ $label }}</span>
-                            @endforeach
-                        </a>
-                    </nav>
+                    <h2 class="items-register-title">Stock Register</h2>
+                    <button type="button" class="btn btn-secondary btn-sm items-register-filter-open" x-cloak
+                            data-stock-filter-open aria-haspopup="dialog" aria-controls="stock-filter-dialog" aria-label="Open stock filters"
+                            @click="$refs.stockFilters.close(); $refs.stockFilters.showModal(); $refs.stockFilters.querySelector('[name=search]').focus()">
+                        <x-icon name="list-filter" size="16" /> Filters
+                    </button>
                 </div>
+                <dialog open id="stock-filter-dialog" x-ref="stockFilters" class="items-register-filter-dialog" aria-labelledby="stock-filter-title"
+                        x-init="$el.dataset.ready = 'true'; $el.close()"
+                        @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()">
+                    <div class="items-register-filter-head">
+                        <h3 id="stock-filter-title">Stock filters</h3>
+                        <button type="button" class="btn btn-secondary btn-sm" aria-label="Close stock filters" @click="$refs.stockFilters.close()">
+                            <x-icon name="x" size="18" />
+                        </button>
+                    </div>
                 <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-filters" data-stock-filters
                       x-data="{ dirty: false, hasFilters: @js($hasStockFilters) }"
-                      @input="dirty = true" @change="dirty = true"
-                      data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                    <input type="hidden" name="status" value="{{ $statusFilter }}">
+                      @input="dirty = true" @change="dirty = true">
+                    <div class="items-register-field">
+                        <label for="stock-filter-status">Stock status</label>
+                        <select id="stock-filter-status" name="status" class="items-register-control">
+                            <option value="in_stock" @selected($statusFilter === 'in_stock')>In Stock</option>
+                            <option value="sold" @selected($statusFilter === 'sold')>Sold</option>
+                        </select>
+                    </div>
                     <div class="items-register-field items-register-category">
                         <label for="stock-filter-category">Category</label>
                         <select id="stock-filter-category" name="category" class="items-register-control">
@@ -293,6 +301,7 @@
                         @endif
                     </div>
                 </form>
+                </dialog>
                 <div class="items-register-metrics" data-stock-metrics role="group" aria-label="Inventory summary, all stock">
                     @foreach(['total' => 'Total Items', 'in_stock' => 'In Stock', 'sold' => 'Sold'] as $key => $label)
                         <dl class="items-register-metric">

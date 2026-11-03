@@ -20,7 +20,7 @@ class StockRegisterUiTest extends TestCase
     }
 
     #[DataProvider('editions')]
-    public function test_stock_filters_are_inside_header_with_full_search_and_edition_specific_purity(string $edition, int $columns): void
+    public function test_header_has_title_data_and_filter_button_with_controls_in_dialog(string $edition, int $columns): void
     {
         [$owner, $shop] = $edition === 'retailer' ? $this->createRetailerTenant() : $this->createManufacturerTenant();
         $category = TenantContext::runFor($shop->id, fn () => Category::create(['name' => 'Synthetic Rings']));
@@ -32,13 +32,19 @@ class StockRegisterUiTest extends TestCase
         $xp = $this->xpath($response->getContent());
         $header = $xp->query('//*[contains(concat(" ",@class," ")," items-register-header ")]')->item(0);
         $this->assertNotNull($header);
-        $this->assertSame(0, $xp->query('.//*[contains(@class,"items-register-title") or contains(@class,"items-register-count")]', $header)->length);
-        $form = $xp->query('.//form[@data-stock-filters]', $header)->item(0);
+        $this->assertSame('Stock Register', trim($xp->evaluate('string(.//h2)', $header)));
+        $this->assertSame(0, $xp->query('.//input[not(ancestor::dialog)] | .//select[not(ancestor::dialog)] | .//form[not(ancestor::dialog)] | .//nav', $header)->length);
+        $this->assertSame(1, $xp->query('.//button[@data-stock-filter-open and @aria-controls="stock-filter-dialog"]', $header)->length);
+        $dialog = $xp->query('//dialog[@id="stock-filter-dialog" and @aria-labelledby="stock-filter-title"]')->item(0);
+        $this->assertNotNull($dialog);
+        $form = $xp->query('.//form[@data-stock-filters]', $dialog)->item(0);
         $this->assertNotNull($form);
         $this->assertSame('GET', $form->getAttribute('method'));
         $this->assertSame(route('inventory.items.index'), $form->getAttribute('action'));
         $this->assertSame(0, $xp->query('//*[@data-list-scroll]//form[@data-stock-filters]')->length);
-        foreach (['status' => 'sold', 'sub_category' => 'Synthetic bands', 'search' => 'Synthetic'] as $name => $value) {
+        $this->assertSame('sold', $xp->evaluate('string(.//select[@name="status"]/option[@selected]/@value)', $form));
+        $this->assertFalse($form->hasAttribute('data-enhance-selects'), 'Native selects must stay in the modal top layer, not a body portal.');
+        foreach (['sub_category' => 'Synthetic bands', 'search' => 'Synthetic'] as $name => $value) {
             $this->assertSame($value, $xp->evaluate('string(.//input[@name="'.$name.'"]/@value)', $form));
         }
         $this->assertSame((string) $category->id, $xp->evaluate('string(.//select[@name="category"]/option[@selected]/@value)', $form));
@@ -54,42 +60,25 @@ class StockRegisterUiTest extends TestCase
         } else {
             $this->assertSame('22', $xp->evaluate('string(.//select[@name="purity"]/option[@selected]/@value)', $form));
         }
-        $toggle = $xp->query('.//nav[@aria-label="Stock status"]', $header)->item(0);
-        $this->assertNotNull($toggle);
-        $this->assertSame(1, $xp->query('.//a', $toggle)->length);
-        foreach ($xp->query('.//a', $toggle) as $link) {
-            parse_str(parse_url($link->getAttribute('href'), PHP_URL_QUERY), $query);
-            foreach (['category', 'sub_category', 'purity', 'search'] as $name) {
-                $this->assertSame((string) $params[$name], $query[$name]);
-            }
-            $this->assertArrayNotHasKey('page', $query);
-        }
-        $this->assertSame(2, $xp->query('.//a/span', $toggle)->length);
-        $this->assertSame('Sold', trim($xp->evaluate('string(.//span[contains(@class,"is-active")])', $toggle)));
-        $this->assertSame('Stock status: Sold. Switch to In Stock', $xp->evaluate('string(.//a/@aria-label)', $toggle));
+        $this->assertSame(0, $xp->query('.//input[@name="page"]', $form)->length);
         $this->assertSame($columns, $xp->query('//*[@data-list-scroll]//table/thead/tr/th')->length);
         $this->assertSame((string) $columns, $xp->evaluate('string(//*[@data-list-scroll]//td[@colspan]/@colspan)'));
     }
 
-    public function test_clicking_anywhere_in_stock_toggle_navigates_to_opposite_status_and_back(): void
+    public function test_dialog_status_filter_get_form_changes_rows_and_preserves_search(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $this->createItem($shop->id, null, ['design' => 'Synthetic available toggle item', 'status' => 'in_stock']);
         $this->createItem($shop->id, null, ['design' => 'Synthetic sold toggle item', 'status' => 'sold']);
         $this->withoutVite();
-        $url = route('inventory.items.index', ['search' => 'Synthetic', 'status' => 'in_stock']);
-        foreach (['in_stock' => 'sold', 'sold' => 'in_stock'] as $current => $next) {
+        foreach (['in_stock', 'sold', 'in_stock'] as $current) {
+            $url = route('inventory.items.index', ['search' => 'Synthetic', 'status' => $current]);
             $response = $this->actingAs($owner)->get($url)->assertOk();
             $xp = $this->xpath($response->getContent());
-            $link = $xp->query('//nav[@aria-label="Stock status"]/a')->item(0);
-            $this->assertNotNull($link);
-            $this->assertSame(0, $xp->query('.//a | .//button | .//input', $link)->length, 'No separate label intercepts a click on the whole link.');
-            $this->assertSame(2, $xp->query('./span[@aria-hidden="true"]', $link)->length);
-            $this->assertSame($current === 'sold' ? 'Sold' : 'In Stock', trim($xp->evaluate('string(.//span[contains(@class,"is-active")])', $link)));
-            parse_str(parse_url($link->getAttribute('href'), PHP_URL_QUERY), $query);
-            $this->assertSame($next, $query['status']);
-            $this->assertSame('Synthetic', $query['search']);
-            $url = $link->getAttribute('href');
+            $form = $xp->query('//dialog[@id="stock-filter-dialog"]//form[@data-stock-filters]')->item(0);
+            $this->assertNotNull($form);
+            $this->assertSame($current, $xp->evaluate('string(.//select[@name="status"]/option[@selected]/@value)', $form));
+            $this->assertSame('Synthetic', $xp->evaluate('string(.//input[@name="search"]/@value)', $form));
             $rows = $xp->evaluate('string(//*[@data-list-scroll]//tbody)');
             $this->assertStringContainsString($current === 'sold' ? 'Synthetic sold toggle item' : 'Synthetic available toggle item', $rows);
             $this->assertStringNotContainsString($current === 'sold' ? 'Synthetic available toggle item' : 'Synthetic sold toggle item', $rows);

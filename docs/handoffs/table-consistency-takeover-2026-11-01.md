@@ -2,7 +2,40 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Separate Stock filters from totals
+## Latest checkpoint — Stock filters in a native popup
+
+Started clean `5fd254f1435ca264f4a5d0c583117bc1a91715d0`. Owner requested
+removing inline filters/status toggle, restoring the title, and opening all
+filters/search from one button. Header now shows Stock Register, Filters and the
+same four metrics. Removed toggle markup/variables/CSS. Local native dialog uses
+the existing application's dialog pattern: showModal(), search focus on open,
+Close button, native Escape/focus containment/restoration, close before Turbo
+cache/render. No custom focus trap or new JavaScript module/dependency. Form
+stays mounted so closing does not discard edits; without JS it is inline/open
+as progressive fallback. Popup is viewport-height bounded and internally scrollable,
+two fields per row on desktop, one readable column/16px inputs on phones.
+
+Status is a native In Stock/Sold select in the same GET form as category, active
+sub-category, edition-specific purity and expanded search. Same names, values,
+route, sub-category removal and Apply/Clear dirty-state behavior. Removed opt-in
+body-portaled custom select enhancement here because it would sit outside native
+modal top layer; native dropdowns remain reachable inside it. Search suggestions
+remain enabled and attached to their field inside the dialog. No shared component,
+controller, permission, calculation, customer data or Metal Holdings logic change.
+
+Regression RED before implementation: 3 PHP / 4 frontend failures. Guard confirmed
+testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing`; focused StockRegisterUiTest
+passed 10 / 160 assertions. Old toggle-link tests replaced with popup controls,
+restored title, preserved fields and both status GET views/rows tests. Same five-file
+focused frontend command: 30 passed / 0 skipped, including native-dialog handler
+execution against stubs (open/focus/Close/cache/render), CSS closed/scrollable
+contracts and unchanged holdings timers. These are NOT browser input tests.
+Build, guarded Blade compile/clear, PHP lint, Pint, diff check and Impeccable layout
+[] passed. Evidence `stock-filter-popup-*`. Browser policy still blocks actual
+modal keyboard/focus-return, suggestions, narrow-screen and Back/Forward visual
+acceptance; owner refresh/review needed. No push, remote or preview-data writes.
+
+## Earlier checkpoint — Separate Stock filters from totals
 
 Started clean `efe7590710a11c11fd86c739b34398489681c0c3`. Owner requested a
 clearer division between filters and KPI data in the compact header. CSS-only:

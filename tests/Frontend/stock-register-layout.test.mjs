@@ -14,33 +14,30 @@ const value = (selector, prop, media) => {
     return result;
 };
 
-test('stock header wraps compact filters but keeps a permanently expanded search with room for suggestions', () => {
-    assert.equal(value('.inventory-items-page .items-register-filters', 'flex-wrap'), 'wrap');
-    assert.equal(value('.inventory-items-page .items-register-category', 'flex-basis'), '180px');
-    assert.equal(value('.inventory-items-page .items-register-purity', 'flex-basis'), '112px');
-    assert.equal(value('.inventory-items-page .items-register-search', 'flex'), '0 1 256px');
-    assert.equal(value('.inventory-items-page .items-register-search', 'min-width'), '192px');
+test('stock popup keeps full-width search and native controls outside scrolling records', () => {
+    assert.equal(value('.inventory-items-page .items-register-filters', 'display'), 'grid');
+    assert.equal(value('.inventory-items-page .items-register-search', 'grid-column'), '1 / -1');
+    assert.equal(value('.inventory-items-page .items-register-search', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-stock-register .items-register-frame', 'overflow'), 'visible');
     assert.equal(value('.inventory-items-page .items-register-header', 'z-index'), '3');
 });
 
-test('phone filters use two compact columns, full-row search and 44px controls without body overflow locks', () => {
+test('phone popup filters use one readable column and 44px controls without body overflow locks', () => {
     const phone = '(max-width: 768px)';
-    assert.equal(value('.inventory-items-page .items-register-filters', 'grid-template-columns', phone), 'repeat(2, minmax(0, 1fr))');
-    assert.equal(value('.inventory-items-page .items-register-search', 'grid-column', phone), '1 / -1');
-    assert.equal(value('.inventory-items-page .items-register-search', 'min-width', phone), '0');
+    assert.equal(value('.inventory-items-page .items-register-filters', 'grid-template-columns', phone), 'minmax(0, 1fr)');
+    assert.equal(value('.inventory-items-page .items-register-search', 'grid-column'), '1 / -1');
+    assert.equal(value('.inventory-items-page .items-register-search', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-register-control', 'min-height'), '44px');
     assert.equal(value('.inventory-items-page .items-register-control', 'font-size', phone), '16px');
 });
 
-test('wide stock header aligns the heading and filter form in one wrapping row rather than stacking them', () => {
+test('wide stock header aligns title, filter button and metrics without an inline filter form', () => {
     const wide = '(min-width: 1280px)';
     assert.equal(value('.inventory-items-page .items-register-header', 'display', wide), 'flex');
     assert.equal(value('.inventory-items-page .items-register-header', 'flex-wrap', wide), 'wrap');
     assert.equal(value('.inventory-items-page .items-register-header', 'align-items', wide), 'center');
     assert.equal(value('.inventory-items-page .items-register-heading', 'flex', wide), '0 1 auto');
-    assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), '1 1 500px');
-    assert.equal(value('.inventory-items-page .items-register-filters', 'justify-content', wide), 'flex-end');
+    assert.equal(value('.inventory-items-page .items-register-filters', 'flex', wide), undefined);
 });
 
 test('only desktop moves stock navigation to the header and keeps shrinking/wrapping controls reachable', () => {
@@ -60,37 +57,36 @@ test('sticky stock headings are confined below filter menus instead of painting 
     assert.ok(Number(value('.inventory-items-page .items-register-header', 'z-index')) > Number(value(scroll, 'z-index')));
 });
 
-test('desktop Retail purity is square while phone and manufacturer filters retain their usable sizing', () => {
-    const desktop = '(min-width: 769px)';
-    assert.equal(value('.inventory-items-page .items-register-purity:has(> input)', 'flex', desktop), '0 0 44px');
-    assert.equal(value('.inventory-items-page .items-register-purity > input', 'height', desktop), '44px');
-    assert.equal(value('.inventory-items-page .items-register-purity > input', 'padding', desktop), '4px');
-    assert.equal(value('.inventory-items-page .items-register-purity > input', 'height'), undefined);
-    assert.equal(value('.inventory-items-page .items-register-purity', 'flex-basis'), '112px');
-});
-
-test('stock status is a compact pill toggle with a clear selected side and usable touch targets', () => {
-    assert.equal(value('.inventory-items-page .items-register-status', 'flex-wrap'), 'nowrap');
-    assert.equal(value('.inventory-items-page .items-register-status', 'border-radius'), '999px');
-    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height'), '28px');
-    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-width'), '56px');
-    assert.equal(value('.inventory-items-page .items-register-status', 'background'), 'var(--jf-surface-muted)');
-    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'background'), 'var(--jf-surface)');
-    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'color'), 'var(--jf-ink)');
-    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'border-color'), 'var(--jf-border-strong)');
-    assert.equal(value('.inventory-items-page .items-register-status:focus-visible', 'outline'), '2px solid #b45309');
-    assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height', '(pointer: coarse)'), '44px');
-});
-
-test('stock labels share one native link and avoid the legacy button-link radius override', () => {
+test('stock filters open a native modal, focus search and close before Turbo caches or replaces it', () => {
     const source = readFileSync(new URL('../../resources/views/inventory/items/index.blade.php', import.meta.url), 'utf8');
-    const toggle = source.match(/<nav aria-label="Stock status">([\s\S]*?)<\/nav>/)?.[1];
-    assert.ok(toggle);
-    assert.equal((toggle.match(/<a\b/g) || []).length, 1);
-    assert.match(toggle, /<a\b[\s\S]*?class="items-register-status"/);
-    assert.match(toggle, /<span[^>]*class="items-register-status-btn/);
-    assert.equal(value('.inventory-items-page .items-register-status-btn', 'border-radius'), '999px');
-    assert.equal(value('.inventory-items-page .items-register-status-btn:hover', 'background'), undefined, 'Hover should not paint a second selected-looking pill.');
+    const button = source.match(/<button\b[^>]*data-stock-filter-open[^>]*>/)?.[0];
+    const dialog = source.match(/<dialog\b[^>]*id="stock-filter-dialog"[^>]*>/)?.[0];
+    assert.ok(button);
+    assert.ok(dialog);
+    let opened = 0, closed = 0, focused = 0;
+    const element = { dataset: {}, close: () => closed++, showModal: () => opened++, querySelector: selector => {
+        assert.equal(selector, '[name=search]'); return { focus: () => focused++ };
+    } };
+    const run = (markup, attr) => {
+        const expression = markup.match(new RegExp(`${attr}="([^"]+)"`))?.[1];
+        assert.ok(expression, attr);
+        new Function('$refs', '$el', expression)({ stockFilters: element }, element);
+    };
+    run(dialog, 'x-init');
+    assert.equal(element.dataset.ready, 'true');
+    run(button, '@click');
+    assert.equal(opened, 1);
+    assert.equal(focused, 1);
+    run(dialog, '@turbo:before-cache.document');
+    run(dialog, '@turbo:before-render.document');
+    assert.equal(closed, 4);
+    const close = source.match(/<button\b[^>]*aria-label="Close stock filters"[^>]*>/)?.[0];
+    assert.ok(close);
+    run(close, '@click');
+    assert.equal(closed, 5);
+    assert.doesNotMatch(dialog, /@cancel.prevent|@keydown.tab/);
+    assert.equal(value('.inventory-items-page .items-register-filter-dialog[data-ready]:not([open])', 'display'), 'none');
+    assert.equal(value('.inventory-items-page .items-register-filter-dialog[data-ready]', 'overflow-y'), 'auto');
 });
 
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
