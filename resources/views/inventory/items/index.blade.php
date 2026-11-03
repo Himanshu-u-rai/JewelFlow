@@ -339,6 +339,7 @@
         @php
             $statusToggles = ['in_stock' => 'In Stock', 'sold' => 'Sold'];
             $toggleBaseParams = request()->except(['status', 'page', 'view', 'seller_period']);
+            $nextStockStatus = $statusFilter === 'in_stock' ? 'sold' : 'in_stock';
             $hasStockFilters = $statusFilter !== 'in_stock' || request()->anyFilled(['category', 'sub_category', 'purity', 'search']);
         @endphp
 
@@ -350,12 +351,14 @@
                         <h2 class="items-register-title">Stock Register</h2>
                         <p class="items-register-count">{{ number_format($items->total()) }} {{ Str::plural('item', $items->total()) }}</p>
                     </div>
-                    <nav class="items-register-status" aria-label="Stock status">
-                        @foreach($statusToggles as $value => $label)
-                            @php $url = route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $value])); @endphp
-                            <a href="{{ $url }}" class="items-register-status-btn {{ $statusFilter === $value ? 'is-active' : '' }}"
-                               aria-current="{{ $statusFilter === $value ? 'page' : 'false' }}">{{ $label }}</a>
-                        @endforeach
+                    <nav aria-label="Stock status">
+                        <a href="{{ route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $nextStockStatus])) }}"
+                           class="items-register-status"
+                           aria-label="Stock status: {{ $statusToggles[$statusFilter] }}. Switch to {{ $statusToggles[$nextStockStatus] }}">
+                            @foreach($statusToggles as $value => $label)
+                                <span class="items-register-status-btn {{ $statusFilter === $value ? 'is-active' : '' }}" aria-hidden="true">{{ $label }}</span>
+                            @endforeach
+                        </a>
                     </nav>
                 </div>
                 <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-filters" data-stock-filters

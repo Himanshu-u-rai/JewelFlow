@@ -55,7 +55,7 @@ class StockRegisterUiTest extends TestCase
         }
         $toggle = $xp->query('.//nav[@aria-label="Stock status"]', $header)->item(0);
         $this->assertNotNull($toggle);
-        $this->assertSame(2, $xp->query('.//a', $toggle)->length);
+        $this->assertSame(1, $xp->query('.//a', $toggle)->length);
         foreach ($xp->query('.//a', $toggle) as $link) {
             parse_str(parse_url($link->getAttribute('href'), PHP_URL_QUERY), $query);
             foreach (['category', 'sub_category', 'purity', 'search'] as $name) {
@@ -63,9 +63,37 @@ class StockRegisterUiTest extends TestCase
             }
             $this->assertArrayNotHasKey('page', $query);
         }
-        $this->assertSame(1, $xp->query('.//a[@aria-current="page"]', $toggle)->length);
+        $this->assertSame(2, $xp->query('.//a/span', $toggle)->length);
+        $this->assertSame('Sold', trim($xp->evaluate('string(.//span[contains(@class,"is-active")])', $toggle)));
+        $this->assertSame('Stock status: Sold. Switch to In Stock', $xp->evaluate('string(.//a/@aria-label)', $toggle));
         $this->assertSame($columns, $xp->query('//*[@data-list-scroll]//table/thead/tr/th')->length);
         $this->assertSame((string) $columns, $xp->evaluate('string(//*[@data-list-scroll]//td[@colspan]/@colspan)'));
+    }
+
+    public function test_clicking_anywhere_in_stock_toggle_navigates_to_opposite_status_and_back(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->createItem($shop->id, null, ['design' => 'Synthetic available toggle item', 'status' => 'in_stock']);
+        $this->createItem($shop->id, null, ['design' => 'Synthetic sold toggle item', 'status' => 'sold']);
+        $this->withoutVite();
+        $url = route('inventory.items.index', ['search' => 'Synthetic', 'status' => 'in_stock']);
+        foreach (['in_stock' => 'sold', 'sold' => 'in_stock'] as $current => $next) {
+            $response = $this->actingAs($owner)->get($url)->assertOk();
+            $xp = $this->xpath($response->getContent());
+            $link = $xp->query('//nav[@aria-label="Stock status"]/a')->item(0);
+            $this->assertNotNull($link);
+            $this->assertSame(0, $xp->query('.//a | .//button | .//input', $link)->length, 'No separate label intercepts a click on the whole link.');
+            $this->assertSame(2, $xp->query('./span[@aria-hidden="true"]', $link)->length);
+            $this->assertSame($current === 'sold' ? 'Sold' : 'In Stock', trim($xp->evaluate('string(.//span[contains(@class,"is-active")])', $link)));
+            parse_str(parse_url($link->getAttribute('href'), PHP_URL_QUERY), $query);
+            $this->assertSame($next, $query['status']);
+            $this->assertSame('Synthetic', $query['search']);
+            $url = $link->getAttribute('href');
+            $rows = $xp->evaluate('string(//*[@data-list-scroll]//tbody)');
+            $this->assertStringContainsString($current === 'sold' ? 'Synthetic sold toggle item' : 'Synthetic available toggle item', $rows);
+            $this->assertStringNotContainsString($current === 'sold' ? 'Synthetic available toggle item' : 'Synthetic sold toggle item', $rows);
+        }
+        $this->actingAs($owner)->get($url)->assertOk()->assertSee('Synthetic available toggle item')->assertDontSee('Synthetic sold toggle item');
     }
 
     public function test_default_stock_status_and_empty_fields_do_not_count_as_applied_filters(): void

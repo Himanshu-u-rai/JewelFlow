@@ -2,7 +2,32 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock inner pill cascade correction
+## Latest checkpoint — Whole-control Stock status switching
+
+Started clean `e5f818c098141fae49d3fd835ee458ad9f33697b`. Owner screenshot
+clarified that Sold label works but clicking the selected white In Stock pill
+does not change view. Previous implementation was two independent filter links;
+now the entire track is one native link to the opposite status, with both visual
+labels inside it. Current state and destination are explicitly named for assistive
+technology. Other filters preserved; page reset retained; no custom click script,
+controller or route changes. Same neutral palette/sizing. Keyboard focus moved
+to the whole link. Removed per-label hover (which could paint two white pills)
+and the now-unneeded important radius override: labels are spans and no longer
+match legacy button-link normalization.
+
+PHP regression RED (three failures) and frontend RED before implementation.
+Guard confirmed testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing` before
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php`:
+7 passed / 125 assertions. Includes synthetic available/sold items, following
+rendered target URLs in both directions, filtered rows and query preservation;
+this is HTTP/render testing, not browser click simulation.
+`node --test tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs`:
+15 passed. Build, guarded Blade compile/clear, PHP lint, Pint, diff check and
+Impeccable layout scan [] passed. Logs `stock-toggle-whole-*`. Browser-policy
+restriction still blocks rendered click/keyboard/touch acceptance. Owner must
+refresh and review. Preview data unchanged, four KPIs unmoved; no remote work.
+
+## Earlier checkpoint — Stock inner pill cascade correction
 
 Started clean `52229885bfc015d9c4ca7e9f5ade621787bf8816`. Owner reported
 inner/outer curves do not match. Source confirms legacy

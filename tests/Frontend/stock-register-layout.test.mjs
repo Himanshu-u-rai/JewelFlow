@@ -78,25 +78,19 @@ test('stock status is a compact pill toggle with a clear selected side and usabl
     assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'background'), 'var(--jf-surface)');
     assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'color'), 'var(--jf-ink)');
     assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'border-color'), 'var(--jf-border-strong)');
-    assert.equal(value('.inventory-items-page .items-register-status-btn:focus-visible', 'outline'), '2px solid #b45309');
+    assert.equal(value('.inventory-items-page .items-register-status:focus-visible', 'outline'), '2px solid #b45309');
     assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height', '(pointer: coarse)'), '44px');
 });
 
-test('stock inner pill radius overrides the legacy important button-link radius', () => {
-    const legacy = '.content-inner a[class*="btn"]';
-    const scoped = '.content-inner.inventory-items-page .items-register-status-btn';
-    const radius = selector => {
-        let result;
-        css.walkRules(rule => {
-            if (rule.selectors.includes(selector)) {
-                rule.walkDecls('border-radius', decl => { result = decl; });
-            }
-        });
-        return result;
-    };
-    assert.ok(radius(legacy)?.important, 'legacy normalization is important and matches the btn class name');
-    assert.equal(radius(scoped)?.value, '999px');
-    assert.ok(radius(scoped)?.important, 'three-class scoped override must beat the two-class/attribute legacy selector');
+test('stock labels share one native link and avoid the legacy button-link radius override', () => {
+    const source = readFileSync(new URL('../../resources/views/inventory/items/index.blade.php', import.meta.url), 'utf8');
+    const toggle = source.match(/<nav aria-label="Stock status">([\s\S]*?)<\/nav>/)?.[1];
+    assert.ok(toggle);
+    assert.equal((toggle.match(/<a\b/g) || []).length, 1);
+    assert.match(toggle, /<a\b[\s\S]*?class="items-register-status"/);
+    assert.match(toggle, /<span[^>]*class="items-register-status-btn/);
+    assert.equal(value('.inventory-items-page .items-register-status-btn', 'border-radius'), '999px');
+    assert.equal(value('.inventory-items-page .items-register-status-btn:hover', 'background'), undefined, 'Hover should not paint a second selected-looking pill.');
 });
 
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
