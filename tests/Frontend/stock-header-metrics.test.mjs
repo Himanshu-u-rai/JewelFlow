@@ -15,11 +15,13 @@ const value = (selector, prop, media) => {
     return result;
 };
 
-test('header metrics stay content-sized rather than spreading counts across spare width', () => {
+test('header metrics keep holdings beside compact counts rather than wrapping the group underneath', () => {
     assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '0 1 auto');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'display'), 'flex');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex-wrap'), 'wrap');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'gap'), '12px 20px');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex-wrap'), 'nowrap');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'gap'), '12px 16px');
+    assert.equal(value('.inventory-items-page .items-register-metric dd', 'font-size'), '18px');
+    assert.equal(value('.inventory-items-page .items-register-holdings', 'flex'), '0 1 240px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), '12px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), '1px solid var(--jf-border)');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'min-width'), '0');

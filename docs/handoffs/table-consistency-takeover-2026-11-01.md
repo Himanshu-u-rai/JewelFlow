@@ -2,7 +2,23 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Right-aligned header search and compact totals
+## Latest checkpoint — Keep Metal Holdings beside counts
+
+Started clean `a722164e63eb5642bc4c6eb2f56000e7a9d81202`. Owner reported Metal
+Holdings dropping below the other totals. Metrics flex-wrap is now nowrap above
+the existing phone grid fallback; reduced horizontal gaps 20 to 16px, count size
+20 to 18px, and holdings flex basis 280 to 240px. The outer header may still wrap
+its groups on constrained windows, but the desktop metrics group itself does not
+wrap Holdings underneath. Phone grid/full-width holdings, 44px eye control, values,
+masks/timer, popup and right-hand tools untouched. No fixed row height or clipping.
+
+Regression failed before implementation, final five-file focused frontend command
+31 passed / 0 skipped; build and diff check passed. Logs `stock-holdings-inline-*`.
+No PHP/database access for CSS-only adjustment. Actual rendered alignment and
+input/browser verification remain blocked and NOT RUN. Owner refresh/review.
+No push, remote or preview-data changes.
+
+## Earlier checkpoint — Right-aligned header search and compact totals
 
 Started clean `7612e67fba0b2061fc187fdfcd575433d9a50b66`. Owner requested
 an additional search bar in the header, grouping search/Filters far right and
