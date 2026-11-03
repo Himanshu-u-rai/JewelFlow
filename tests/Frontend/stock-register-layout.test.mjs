@@ -18,8 +18,8 @@ test('stock header wraps compact filters but keeps a permanently expanded search
     assert.equal(value('.inventory-items-page .items-register-filters', 'flex-wrap'), 'wrap');
     assert.equal(value('.inventory-items-page .items-register-category', 'flex-basis'), '180px');
     assert.equal(value('.inventory-items-page .items-register-purity', 'flex-basis'), '112px');
-    assert.equal(value('.inventory-items-page .items-register-search', 'flex'), '0 1 320px');
-    assert.equal(value('.inventory-items-page .items-register-search', 'min-width'), '240px');
+    assert.equal(value('.inventory-items-page .items-register-search', 'flex'), '0 1 256px');
+    assert.equal(value('.inventory-items-page .items-register-search', 'min-width'), '192px');
     assert.equal(value('.inventory-items-page .items-stock-register .items-register-frame', 'overflow'), 'visible');
     assert.equal(value('.inventory-items-page .items-register-header', 'z-index'), '3');
 });
@@ -58,6 +58,15 @@ test('sticky stock headings are confined below filter menus instead of painting 
     assert.equal(value(scroll, 'position'), 'relative');
     assert.equal(value(scroll, 'z-index'), '0');
     assert.ok(Number(value('.inventory-items-page .items-register-header', 'z-index')) > Number(value(scroll, 'z-index')));
+});
+
+test('desktop Retail purity is square while phone and manufacturer filters retain their usable sizing', () => {
+    const desktop = '(min-width: 769px)';
+    assert.equal(value('.inventory-items-page .items-register-purity:has(> input)', 'flex', desktop), '0 0 44px');
+    assert.equal(value('.inventory-items-page .items-register-purity > input', 'height', desktop), '44px');
+    assert.equal(value('.inventory-items-page .items-register-purity > input', 'padding', desktop), '4px');
+    assert.equal(value('.inventory-items-page .items-register-purity > input', 'height'), undefined);
+    assert.equal(value('.inventory-items-page .items-register-purity', 'flex-basis'), '112px');
 });
 
 test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {

@@ -384,7 +384,7 @@
                         <label for="stock-filter-purity">Purity</label>
                         @if($isRetailer)
                             <input id="stock-filter-purity" type="text" name="purity" value="{{ request('purity') }}"
-                                   placeholder="22, 925…" class="items-register-control">
+                                   placeholder="22" title="Purity, e.g. 22 or 925" class="items-register-control">
                         @else
                             <select id="stock-filter-purity" name="purity" class="items-register-control">
                                 <option value="">All purities</option>

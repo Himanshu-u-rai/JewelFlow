@@ -2,7 +2,26 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Shared painted card-corner correction
+## Latest checkpoint — Stock filter sizing, KPI move deferred
+
+Started clean `ffd258929f1076f697904279f573e302dc959ac5`. Owner asked for first
+preparatory changes before moving four Stock KPIs into the register header.
+Interpreted “2x2” Purity as compact/square and stated that interpretation: Retail
+desktop input44x44 with4px padding, centred editable text. Manufacturer dropdown
+keeps112px basis; phone grid/full-width controls unchanged. Search desktop basis
+320→256px and minimum240→192px (both20% smaller). Retail placeholder shortened to
+22 with native title retaining22/925 examples. No field names/query/validation,
+permissions/calculations, suggestion behavior, KPI structure or placement changed.
+Two frontend checks RED before edits. Fresh guard testing/pgsql/127.0.0.1:5432/
+exact jewelflow_testing, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockRegisterUiTest.php`
+passed5tests/97assertions; `node --test tests/Frontend/stock-register-layout.test.mjs`
+passed12/12. Build79, Bladecompile/clear, diffcheck and Impeccable layout[] passed.
+Logs `stock-filter-sizing-*`. Browser visual verification remains blocked. Next:
+owner review these widths and give the next KPI-layout instruction. No KPI move,
+preview-data writes, push or remote actions in this tranche.
+
+## Earlier checkpoint — Shared painted card-corner correction
 
 Started clean `94017ff6dbb1f7d186c877f84e1ab8b3583e996c`. Owner supplied zoomed
 Stock Purchases screenshot showing a rounded outline covered by square white

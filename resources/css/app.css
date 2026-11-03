@@ -31484,7 +31484,7 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-field { flex: 0 1 160px; min-width: 0; max-width: 100%; }
 .inventory-items-page .items-register-category { flex-basis: 180px; }
 .inventory-items-page .items-register-purity { flex-basis: 112px; }
-.inventory-items-page .items-register-search { flex: 0 1 320px; min-width: 240px; }
+.inventory-items-page .items-register-search { flex: 0 1 256px; min-width: 192px; }
 .inventory-items-page .items-register-filters label,
 .inventory-items-page .items-register-label { display: block; margin: 0 0 6px; color: var(--jf-text); font-size: 12px; font-weight: 600; line-height: 1.4; }
 .inventory-items-page .items-register-control,
@@ -31498,6 +31498,10 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-actions .btn { min-height: 44px; }
 /* Keep sticky headings below the filter header and its open menus. */
 .inventory-items-page .items-register-frame .items-stock-table-shell { position: relative; z-index: 0; border-radius: 0; }
+@media (min-width: 769px) {
+    .inventory-items-page .items-register-purity:has(> input) { flex: 0 0 44px; }
+    .inventory-items-page .items-register-purity > input { height: 44px; padding: 4px; text-align: center; }
+}
 @media (min-width: 1280px) {
     .inventory-items-page .items-register-header { display: flex; flex-wrap: wrap; align-items: center; }
     .inventory-items-page .items-register-heading { flex: 0 1 auto; gap: 16px; }
