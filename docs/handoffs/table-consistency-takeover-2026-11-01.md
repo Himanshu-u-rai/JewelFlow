@@ -2,7 +2,22 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Shared neutral panel surfaces, no layout/control changes
+## Latest checkpoint — Alert rules always visible
+
+Started clean `2c80cf38327b9309e9657e368b609dfa3c74c7d6`. Owner requested
+Alert rules remain open with no dropdown. Replaced details/summary with a labelled
+section/header, removed chevron/hint and six unused disclosure CSS rules. Rules,
+actions, permissions, shortage presentation and new shared surfaces unchanged.
+Updated shortage/no-shortage render regressions failed2before implementation.
+Fresh guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing passed, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed9tests/49assertions. `node --test tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/workspace-surfaces.test.mjs`
+passed7/7. Build79, Bladecompile/clear, PHP lint/Pint/diffcheck and Impeccable[]
+passed. Logs `reorder-always-open-*` in existing evidence. Browser visual checks
+remain blocked; no new screenshot claim. Separate card-corner bleed diagnosis
+has NOT been implemented in this change. No preview-data/remote writes.
+
+## Earlier checkpoint — Shared neutral panel surfaces, no layout/control changes
 
 Started clean `15067640346dcee405ba7bd7b5e1d378870cd944`. Owner supplied the
 Edit Reorder Rule screenshot and approved its card colour/border/shadow across

@@ -31799,12 +31799,6 @@ a.notice-bell-item:focus-visible {
 .reorder-index-page .reorder-state.is-clear > svg { color: #047857; }
 .reorder-index-page .reorder-state h3 { margin: 0; color: var(--jf-ink); font-size: 14px; font-weight: 600; }
 .reorder-index-page .reorder-state p { max-width: 65ch; margin: 6px 0 0; color: var(--jf-text-muted); font-size: 13px; line-height: 1.6; }
-.reorder-index-page .reorder-rules > summary { list-style: none; cursor: pointer; min-height: 64px; }
-.reorder-index-page .reorder-rules > summary::-webkit-details-marker { display: none; }
-.reorder-index-page .reorder-rules > summary:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
-.reorder-index-page .reorder-rules:not([open]) > summary { border-bottom: 0; border-radius: 14px; }
-.reorder-index-page .reorder-rules-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--jf-text-muted); font-size: 12px; }
-.reorder-index-page .reorder-rules[open] .reorder-rules-hint > svg { transform: rotate(180deg); }
 .reorder-index-page .stock-tool-scroll:focus-visible { outline: 2px solid #b45309; outline-offset: -2px; }
 @media (max-width: 768px) {
     .reorder-index-page .reorder-alert-table { min-width: 0; }

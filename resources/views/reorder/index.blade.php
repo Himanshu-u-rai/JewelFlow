@@ -65,14 +65,13 @@
                 </div>
             @endif
         </section>
-        <details id="reorder-rules" class="stock-tool-board reorder-rules" data-reorder-rules @if($alertCount === 0) open @endif>
-            <summary class="stock-tool-header">
+        <section id="reorder-rules" class="stock-tool-board reorder-rules" data-reorder-rules aria-labelledby="reorder-rules-title">
+            <header class="stock-tool-header">
                 <div>
-                    <h2>Alert rules</h2>
+                    <h2 id="reorder-rules-title">Alert rules</h2>
                     <p class="stock-tool-muted">{{ number_format($ruleCount) }} rules · {{ number_format($activeRuleCount) }} active · {{ number_format($ruleCount - $activeRuleCount) }} paused</p>
                 </div>
-                <span class="reorder-rules-hint">View and manage <x-icon name="chevron-down" size="16" /></span>
-            </summary>
+            </header>
             <p class="stock-tool-notice">Set the minimum number of matching in-stock items. Edit a rule to change its group, vendor or active status.</p>
             @if($ruleCount > 0)
                 <div class="stock-tool-scroll" data-list-scroll tabindex="0" role="region" aria-label="Reorder rule records">
@@ -115,6 +114,6 @@
                     @can('inventory.edit')<a href="{{ route('reorder.create') }}" class="btn btn-primary">Add first rule</a>@endcan
                 </div>
             @endif
-        </details>
+        </section>
     </div>
 </x-app-layout>

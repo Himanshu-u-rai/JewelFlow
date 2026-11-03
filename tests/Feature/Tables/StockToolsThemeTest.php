@@ -86,7 +86,8 @@ class StockToolsThemeTest extends TestCase
         $this->assertStringContainsString('Synthetic <Ring>', $xp->evaluate('string(//*[@data-reorder-alerts]//tbody/tr/th)'));
         $this->assertSame(['2', '5', '3'], array_map(fn ($node) => trim($node->textContent), iterator_to_array($xp->query('//*[@data-reorder-alerts]//tbody/tr/td[@class="text-right"]'))));
         $this->assertSame(3, $xp->query('//*[@data-reorder-rules]//tbody/tr')->length);
-        $this->assertSame(1, $xp->query('//*[@data-reorder-alerts]/following-sibling::details[@data-reorder-rules and not(@open)]')->length);
+        $this->assertSame(1, $xp->query('//*[@data-reorder-alerts]/following-sibling::section[@data-reorder-rules]')->length);
+        $this->assertSame(0, $xp->query('//*[@data-reorder-rules]//summary | //details[@data-reorder-rules]')->length);
     }
 
     public function test_reorder_distinguishes_no_rules_from_configured_stock_with_no_shortages(): void
@@ -102,7 +103,7 @@ class StockToolsThemeTest extends TestCase
         });
         $response = $this->actingAs($owner)->get(route('reorder.index'))->assertOk()
             ->assertSee('Stock is within your minimums')->assertDontSee('No reorder rules yet');
-        $this->assertSame(1, $this->xpath($response->getContent())->query('//details[@data-reorder-rules and @open]')->length);
+        $this->assertSame(1, $this->xpath($response->getContent())->query('//section[@data-reorder-rules]//tbody/tr')->length);
     }
 
     public function test_reorder_does_not_call_an_all_paused_configuration_all_clear(): void
