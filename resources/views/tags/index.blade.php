@@ -1,45 +1,39 @@
 <x-app-layout>
     <x-stock-workspace-header active="tags" />
 
-    <div class="content-inner ops-treatment-page">
+    <div class="content-inner stock-tool-page tags-index-page" data-list-workspace>
         @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'tags'])
-        <div class="stock-tool-intro">
-            <h2>Tag / Label Printing</h2>
-            <p>Select items to generate printable price tags</p>
-        </div>
-
+        <section class="stock-tool-board" data-list-frame aria-label="Tag printing workspace">
         {{-- ── Filter bar ─────────────────────────────────────────────────── --}}
-        <div class="border border-slate-200 bg-white p-4 shadow-sm mb-6 rounded-xl overflow-hidden ui-filter-enhanced-wrap">
-            <form method="GET" action="{{ route('tags.index') }}" class="flex flex-wrap gap-3 items-end" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="flex-1 min-w-[220px]">
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
+        <header class="stock-tool-header">
+            <div><h2>Print queue</h2><p class="stock-tool-muted">{{ number_format($items->total()) }} matching in-stock items · select items, then print</p></div>
+            <form method="GET" action="{{ route('tags.index') }}" class="stock-tool-filters" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                <div class="stock-tool-search">
+                    <label for="tags-search" class="stock-tool-label">Search</label>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
                             <x-icon name="search" size="16" />
                         </span>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Barcode, design, category, HUID…" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                        <input type="text" id="tags-search" name="search" value="{{ request('search') }}" placeholder="Barcode, design, category, HUID…" class="stock-tool-input stock-tool-search-input">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Category</label>
-                    <select name="category" class="border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500">
+                    <label for="tags-category" class="stock-tool-label">Category</label>
+                    <select id="tags-category" name="category" class="stock-tool-input">
                         <option value="">All</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
                         @endforeach
                     </select>
                 </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
                 @if(request()->hasAny(['search', 'category']))
-                    <a href="{{ route('tags.index') }}" class="inline-flex items-center gap-2 border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 rounded-lg">
+                    <a href="{{ route('tags.index') }}" class="btn btn-secondary">
                         Clear
                     </a>
-                @else
-                    <button type="submit" class="inline-flex items-center gap-2 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 rounded-lg">
-                        Filter
-                    </button>
                 @endif
             </form>
-        </div>
+        </header>
 
         {{-- ── Print form ──────────────────────────────────────────────────── --}}
         {{--
@@ -62,6 +56,7 @@
             id="print-form"
             data-enhance-selects="true"
             data-enhance-selects-variant="compact"
+            data-enhance-selects-placement="viewport"
             data-turbo="false"
             target="_blank"
             x-data="tagPrint({
@@ -84,7 +79,7 @@
             </template>
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
-            <div class="flex flex-wrap items-center gap-3 mb-4">
+            <div class="stock-tool-print-settings">
                 <div class="flex items-center gap-2">
                     <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tag type</label>
                     <div class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
@@ -93,7 +88,7 @@
                                 :aria-pressed="printFormat === 'standard'"
                                 class="rounded-md px-3 py-1.5 text-sm font-semibold transition"
                                 :class="printFormat === 'standard'
-                                    ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
+                                    ? 'bg-amber-700 text-white'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
                             Label
                         </button>
@@ -102,7 +97,7 @@
                                 :aria-pressed="printFormat === 'folded'"
                                 class="rounded-md px-3 py-1.5 text-sm font-semibold transition"
                                 :class="printFormat === 'folded'
-                                    ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
+                                    ? 'bg-amber-700 text-white'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
                             Jewellery tag
                         </button>
@@ -114,7 +109,7 @@
 
                 <div class="flex items-center gap-2" x-show="printFormat === 'standard'">
                     <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
-                    <select x-model="flatSize" class="{{ $selectClass }}">
+                    <select x-model="flatSize" aria-label="Flat label size" class="{{ $selectClass }}">
                         @foreach(\App\Http\Controllers\TagPrintController::FLAT_SIZES as $key => $s)
                             <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm</option>
                         @endforeach
@@ -124,7 +119,7 @@
 
                 <div class="flex items-center gap-2" x-show="printFormat === 'folded'">
                     <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
-                    <select x-model="foldedSize" class="{{ $selectClass }}">
+                    <select x-model="foldedSize" aria-label="Folded tag size" class="{{ $selectClass }}">
                         @foreach(\App\Http\Controllers\TagPrintController::FOLDED_SIZES as $key => $s)
                             <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm (ends {{ $s['end'] }} mm)</option>
                         @endforeach
@@ -149,7 +144,7 @@
 
                 <div class="flex items-center gap-2">
                     <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codes</label>
-                    <select x-model="codes" class="{{ $selectClass }}">
+                    <select x-model="codes" aria-label="Printed codes" class="{{ $selectClass }}">
                         <option value="both">QR + barcode (recommended)</option>
                         <option value="qr">QR only</option>
                         <option value="barcode">Barcode only</option>
@@ -158,7 +153,7 @@
                 </div>
 
                 <button type="submit"
-                    class="inline-flex items-center gap-2 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                    class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="selected.length === 0">
                     <x-icon name="printer" size="14" />
                     Print
@@ -191,12 +186,13 @@
             </div>
 
             {{-- ── Item table ───────────────────────────────────────────── --}}
-            <div class="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-xl">
-                <div class="overflow-x-auto">
-                    <table class="w-full jf-table">
+            <div class="stock-tool-table-frame">
+                <div class="stock-tool-scroll" data-list-scroll tabindex="0" role="region" aria-label="Printable stock items">
+                    <table class="w-full jf-table stock-tool-table">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-4 py-3 w-10 text-center"></th>
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
+                                <th scope="col" class="px-4 py-3 w-10 text-center"><span class="jf-sr-only">Select</span></th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Barcode</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Design</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Category</th>
@@ -211,13 +207,15 @@
                             <tr class="hover:bg-slate-50/70 cursor-pointer"
                                 :class="isSelected('{{ $item->id }}') ? 'bg-amber-50/40' : ''"
                                 @click="toggle('{{ $item->id }}')">
+                                <td class="jf-table-index">{{ $items->firstItem() + $loop->index }}</td>
                                 <td class="px-4 py-3 text-center" @click.stop="toggle('{{ $item->id }}')">
                                     {{-- Visual-only checkbox — form submission uses hidden inputs, not this --}}
                                     <input type="checkbox"
-                                           class="rounded border-slate-300 text-amber-600 focus:ring-amber-500 pointer-events-none"
+                                           aria-label="Select {{ $item->barcode }} for printing"
+                                           @click.stop="toggle('{{ $item->id }}')"
+                                           class="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
                                            :checked="isSelected('{{ $item->id }}')"
-                                           tabindex="-1"
-                                           readonly>
+                                           >
                                 </td>
                                 <td class="px-4 py-3 text-sm font-mono text-slate-700">{{ $item->barcode }}</td>
                                 <td class="px-4 py-3 text-sm text-slate-700">{{ $item->design ?? '—' }}</td>
@@ -229,7 +227,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No items in stock.</td>
+                                <td colspan="9" class="jf-table-empty">No matching items in stock. Try another search or category.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -238,10 +236,11 @@
 
                 @if($items->hasPages())
                     {{-- withQueryString() already appended search+category to pagination links --}}
-                    <div class="px-6 py-4 border-t border-slate-200">{{ $items->links() }}</div>
+                    <footer class="stock-tool-footer">{{ $items->links() }}</footer>
                 @endif
             </div>
         </form>
+        </section>
     </div>
 
     <script>
@@ -257,8 +256,9 @@
      * are not currently in the DOM.
      */
     // Tag options a shop sets once for its printer, remembered on this computer.
-    const TAG_OPTIONS_KEY = 'tag_print_options';
-    const savedTagOptions = (() => {
+    // Turbo evaluates this page script again in the same global scope.
+    var TAG_OPTIONS_KEY = 'tag_print_options';
+    var savedTagOptions = (() => {
         try { return JSON.parse(localStorage.getItem(TAG_OPTIONS_KEY) || '{}') || {}; } catch (_) { return {}; }
     })();
 

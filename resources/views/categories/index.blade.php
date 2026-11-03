@@ -10,117 +10,65 @@
         @endcan
     </x-stock-workspace-header>
 
-    <div class="content-inner categories-index-page">
+    <div class="content-inner categories-index-page stock-tool-page">
         @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'categories'])
-        <div class="stock-tool-intro">
-            <h2>{{ __('Categories') }}</h2>
-            <p>{{ __('Manage product categories and sub-categories') }}</p>
-        </div>
-
         @unless(auth()->user()->can('catalog.manage'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'category management'])
         @endunless
-
-        @if($totalCategories === 0)
-            {{-- Genuinely no categories in this shop — distinct from a search miss below. --}}
-            <div class="categories-empty-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-                <div class="categories-empty-icon mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-                    <x-icon name="menu" class="h-6 w-6" />
+        <section class="stock-tool-board" aria-label="Category directory">
+            <header class="stock-tool-header">
+                <div>
+                    <h2>Category directory</h2>
+                    @if($totalCategories > 0)
+                        <div class="stock-tool-stats" aria-label="Category totals">
+                            <div><p class="categories-kpi-label">{{ __('Categories') }}</p><p class="categories-kpi-value">{{ number_format($totalCategories) }}</p></div>
+                            <div><p class="categories-kpi-label">{{ __('Sub-Categories') }}</p><p class="categories-kpi-value">{{ number_format($totalSubCategories) }}</p></div>
+                            <div><p class="categories-kpi-label">{{ __('Need Setup') }}</p><p class="categories-kpi-value">{{ number_format($emptyCategoryCount) }}</p></div>
+                        </div>
+                    @endif
                 </div>
-                <h2 class="text-lg font-semibold text-slate-900">{{ __('No Categories Yet') }}</h2>
-                <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
-                @can('catalog.manage')
-                    <button onclick="openAddCategoryModal()" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                        <x-icon name="plus" class="w-4 h-4 mr-2" />
-                        {{ __('Add First Category') }}
-                    </button>
-                @endcan
-            </div>
-        @else
-            {{-- KPI cards are shop-wide totals from the controller, never the
-                 count of what's on the current page or filtered by search. --}}
-            <div class="categories-kpi-grid mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="categories-kpi-icon">
-                            <x-icon name="menu" class="h-4 w-4" />
-                        </div>
-                        <div>
-                            <p class="categories-kpi-label">{{ __('Categories') }}</p>
-                            <p class="categories-kpi-value">{{ number_format($totalCategories) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="categories-kpi-icon">
-                            <x-icon name="list" class="h-4 w-4" />
-                        </div>
-                        <div>
-                            <p class="categories-kpi-label">{{ __('Sub-Categories') }}</p>
-                            <p class="categories-kpi-value">{{ number_format($totalSubCategories) }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="categories-kpi-icon categories-kpi-icon--quiet">
-                            <x-icon name="triangle-alert" class="h-4 w-4" />
-                        </div>
-                        <div>
-                            <p class="categories-kpi-label">{{ __('Need Setup') }}</p>
-                            <p class="categories-kpi-value">{{ number_format($emptyCategoryCount) }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Server-side search (GET). Blank q behaves as the normal index. --}}
-            <form method="GET" action="{{ route('categories.index') }}" class="categories-search-form mb-5 flex flex-wrap items-center gap-2">
-                <label for="categorySearchInput" class="sr-only">{{ __('Search categories or sub-categories') }}</label>
-                <input type="search" name="q" id="categorySearchInput" value="{{ $q }}" maxlength="100"
-                       placeholder="{{ __('Search categories or sub-categories…') }}"
-                       class="categories-input min-w-[12rem] flex-1"
-                       aria-label="{{ __('Search categories or sub-categories') }}">
-                <button type="submit"
-                        class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                    {{ __('Search') }}
-                </button>
-                @if($q !== '')
-                    <a href="{{ route('categories.index') }}"
-                       class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                        {{ __('Clear') }}
-                    </a>
+                @if($totalCategories > 0)
+                    <form method="GET" action="{{ route('categories.index') }}" class="categories-search-form stock-tool-filters">
+                        <label for="categorySearchInput" class="sr-only">{{ __('Search categories or sub-categories') }}</label>
+                        <input type="search" name="q" id="categorySearchInput" value="{{ $q }}" maxlength="100"
+                               placeholder="{{ __('Search categories or sub-categories…') }}" class="categories-input" aria-label="{{ __('Search categories or sub-categories') }}">
+                        <button type="submit" class="categories-primary-action btn btn-primary !min-h-[44px] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">{{ __('Search') }}</button>
+                        @if($q !== '')
+                            <a href="{{ route('categories.index') }}" class="btn btn-secondary !min-h-[44px] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">{{ __('Clear') }}</a>
+                        @endif
+                    </form>
                 @endif
-            </form>
-
-            @if($q !== '')
-                <p class="mb-4 text-sm text-slate-500">{{ __('Showing results for “:q”', ['q' => $q]) }}</p>
-            @endif
-
-            @if($categories->isEmpty())
-                {{-- Search miss — explicitly different from the empty-shop state above. --}}
-                <div class="categories-empty-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-                    <h2 class="text-lg font-semibold text-slate-900">{{ __('No matching categories') }}</h2>
-                    <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('No categories or sub-categories match your search.') }}</p>
-                    <a href="{{ route('categories.index') }}" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-                        {{ __('Clear search') }}
-                    </a>
+            </header>
+            @if($totalCategories === 0)
+                <div class="categories-empty-card stock-tool-empty">
+                    <x-icon name="tag" size="28" />
+                    <h2>{{ __('No Categories Yet') }}</h2>
+                    <p>{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
+                    @can('catalog.manage')
+                        <button onclick="openAddCategoryModal()" class="categories-primary-action btn btn-primary !min-h-[44px] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">{{ __('Add First Category') }}</button>
+                    @endcan
                 </div>
-            @endif
-
-            <div id="categories-list" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 categories-grid">
-                @foreach($categories as $category)
-                    @include('categories._category-card', ['category' => $category])
-                @endforeach
-            </div>
-
-            @if($categories->hasPages())
-                <div class="categories-pagination mt-6">
-                    {{ $categories->links() }}
+            @else
+                @if($q !== '')
+                    <p class="stock-tool-notice">{{ __('Showing results for “:q”', ['q' => $q]) }}</p>
+                @endif
+                @if($categories->isEmpty())
+                    <div class="categories-empty-card stock-tool-empty">
+                        <h2>{{ __('No matching categories') }}</h2>
+                        <p>{{ __('No categories or sub-categories match your search.') }}</p>
+                        <a href="{{ route('categories.index') }}" class="categories-primary-action btn btn-primary !min-h-[44px] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">{{ __('Clear search') }}</a>
+                    </div>
+                @endif
+                <div id="categories-list" class="categories-grid stock-category-directory">
+                    @foreach($categories as $category)
+                        @include('categories._category-card', ['category' => $category, 'rowNumber' => $categories->firstItem() + $loop->index])
+                    @endforeach
                 </div>
+                @if($categories->hasPages())
+                    <footer class="categories-pagination stock-tool-footer">{{ $categories->links() }}</footer>
+                @endif
             @endif
-        @endif
+        </section>
     </div>
 
     {{-- ==================== ADD CATEGORY MODAL ==================== --}}

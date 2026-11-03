@@ -2,7 +2,61 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Separate Stock pages, same header navigation
+## Latest checkpoint — Categories, Tags and Reorder theme integration
+
+Second stage started clean `ad767569692128aa8d738bc8e0d71c4d0411b340`, same sole
+writer/branch. These three pages now reuse the register theme: one light-bordered
+workspace, compact summary/header controls, existing table stripes/typography,
+clear white bordered inputs, semantic states and shared focus/hover action labels.
+The shared fixed Stock navigation/header from stage1 is unchanged. Impeccable
+guided grouping, restrained ERP styling and removal of duplicated card treatments.
+
+Categories: shop-wide totals and existing GET search move into directory header;
+one-column numbered category groups replace the3-column card field. Sub-category
+rows use desktop2columns/phone1column, light dividers and shared icon labels.
+Continuous category indexes use paginator firstItem+loop index. Existing category
+and subcategory forms/IDs/intents/errors/permissions, delete confirmation and
+pagination stay intact. Collapse/return-place/modal script is BYTE-IDENTICAL to
+starting HEAD; normal page scrolling retained to preserve its scroll restoration.
+Empty-shop versus search-miss behavior and totals semantics unchanged.
+
+Tags: integrated filter/print-options/record workspace, continuous indexes and
+external pagination. Apply remains available with active filters; Clear is
+separate. Same GET print form/target, field names, options, dimensions, selection
+store keys and hidden-ID injection. Checkbox now labelled, focusable and stops
+click propagation so keyboard Space/mouse toggles only once. Both select groups
+use existing viewport placement to escape scrolling ancestors. Desktop list-fit
+uses existing helper, with shrinking form/table wrappers; short/phone layouts
+keep normal page flow. Found a pre-existing repeated-Turbo-script const redeclare
+failure: only2page globals changed to var (same pattern as Categories). Regression
+VM tests fail on old script/pass on new and verify22-item cross-page restore,
+invalid/stale selected IDs, shop keys, saved options, duplicate hidden-ID cleanup,
+and empty-selection submission prevention. These are language/controller tests,
+not an actual browser/physical printer pass.
+
+Reorder: removed500+lines of inline CSS and duplicate desktop/mobile rule forms.
+One shared indexed table, compact real Rules/Active/Alerts totals, native Low stock
+watch disclosure with actual counts/current/threshold/gap/vendor. Edit/delete
+remain the existing routes/confirmation/AJAX handler, now with contextual names;
+create and mutation controls consistently respect inventory.edit on every width.
+No reorder evaluation, cache, lifecycle, service, controller or database changes.
+Existing AJAX-delete summary-refresh behavior was not rewritten in this UI tranche.
+
+Fresh isolated guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. New3UI
+cases RED before edits;2tag-revisit cases RED before the declaration fix. Final:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InventoryStockPagesTest.php tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Masters/Category*.php tests/Feature/Masters/SubCategoryIndexRedirectTest.php tests/Feature/TagPrintSizesTest.php tests/Feature/ReorderAlertTriggerTest.php tests/Feature/Navigation/MovedShortcutsAccessTest.php tests/Feature/HeaderNoticeBellTest.php`
+passed154tests/1708assertions. Frontend `node --test tests/Frontend/*.test.mjs`:
+151pass/22existing optional-browser skips/0fail. Final focused after tooltip title
+cleanup:17pass131assertions. Build79modules, Blade compile/392compiled PHP lints/
+clear, newPHP lint/Pint/diff and Impeccable layout[] passed. Evidence stock-tools-
+theme-* plus stock-tools-tag-revisit-* in existing quick-bill-notes directory.
+No full repository rerun, no preview data writes, no remote work/push/deployment.
+Preview/private PG preserved. Browser policy still prevents after-screenshots,
+real keyboard/wheel/dropdown/phone geometry/Turbo Back-Forward/print checks; do
+not equate source contracts or VM evaluation with that acceptance. Owner visual
+review across all6Stock sections is the next step; no further redesign begun.
+
+## Earlier checkpoint — Separate Stock pages, same header navigation
 
 Started clean `39806bf8ba7bb0da1639a1af37b168d2a4233d4b`. Owner approved real
 pages, retaining tab-like navigation, followed by Categories/Tags/Reorder redesign.

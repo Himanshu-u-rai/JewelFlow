@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import postcss from 'postcss';
+
+const css = postcss.parse(readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8'));
+function value(selector, property, media) {
+    let found;
+    css.walkRules(rule => {
+        if (rule.selectors.includes(selector) && (rule.parent.type === 'atrule' ? rule.parent.params : undefined) === media) {
+            for (const node of rule.nodes) if (node.prop === property) found = node.value;
+        }
+    });
+    return found;
+}
+
+test('stock tools use contained table scrolling and wrapping filter controls without fixed page heights', () => {
+    assert.equal(value('.stock-tool-page .stock-tool-scroll', 'overflow'), 'auto');
+    assert.equal(value('.stock-tool-page .stock-tool-scroll', 'min-width'), '0');
+    assert.equal(value('.stock-tool-page .stock-tool-header', 'flex-wrap'), 'wrap');
+    assert.equal(value('.stock-tool-page .stock-tool-filters', 'flex-wrap'), 'wrap');
+    assert.equal(value('.stock-tool-page .stock-tool-header', 'position'), undefined);
+    assert.equal(value('.stock-tool-page', 'height'), undefined);
+    assert.equal(value('.stock-tool-page .categories-sub-list ul', 'grid-template-columns', '(max-width: 768px)'), 'minmax(0, 1fr)');
+});
+
+test('tag form nesting can shrink inside an enhanced list workspace and reorder styles live in compiled CSS', () => {
+    assert.equal(value('.tags-index-page[data-list-fit] #print-form', 'min-height', 'screen and (min-width: 1024px) and (min-height: 800px)'), '0');
+    assert.equal(value('.tags-index-page[data-list-fit] .stock-tool-table-frame', 'flex', 'screen and (min-width: 1024px) and (min-height: 800px)'), '1 1 auto');
+    const reorder = readFileSync(new URL('../../resources/views/reorder/index.blade.php', import.meta.url), 'utf8');
+    assert.doesNotMatch(reorder, /<style|reorder-mobile-list/);
+});
