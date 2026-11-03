@@ -2,7 +2,23 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Tag Printing toolbar
+## Latest checkpoint — Tag search icon spacing and aligned compact filters
+
+Started clean `616c729a47f12196b99c4e2ac7efd9a843da6243`. Search text/icon
+overlap traced to shared input :is() taking its highest argument specificity
+(three classes), beating the two-class36px icon-padding rule despite source
+order. Tags-only three-class override restores36px leading space after padding,
+including phone/coarse-pointer mode. Search, Category and Apply/Clear now match
+the36px desktop print toolbar;44px/16px touch sizing retained. Filter basis560px,
+category150px, existing flex wrapping retained. No Blade/JS/form/query changes.
+New CSS contract RED before fix; `node --test tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/stock-tools-interaction.test.mjs`
+passed6/6. `npm run build`79modules passed; diffcheck/Impeccable layout[] passed.
+No PHPUnit rerun or DB access for this CSS-only change. Logs `tag-search-*` in
+existing evidence directory. Browser-policy block still prevents actual painted
+desktop/phone/keyboard screenshots; source checks are not browser acceptance.
+Preview8001 listening; no remote writes. Next owner refresh/visual review.
+
+## Earlier checkpoint — Compact Tag Printing toolbar
 
 Started clean `6f80a373383c93d2467530d4fa1209ac4574f658`, sole Local Codex
 writer. Owner requested smaller Tag type/Size/Codes/Print/Select All/Clear and a

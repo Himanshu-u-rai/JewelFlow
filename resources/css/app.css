@@ -31833,6 +31833,19 @@ a.notice-bell-item:focus-visible {
 .stock-tool-page .stock-tool-print-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 16px 18px; border-bottom: 1px solid var(--jf-border); }
 .stock-tool-page .stock-tool-print-settings label { color: var(--jf-text); font-size: 12px; letter-spacing: 0; text-transform: none; }
 .stock-tool-page .stock-tool-print-settings button { min-height: 44px; box-shadow: none; }
+/* Match Tag Printing's compact toolbar; keep icon padding above the shared :is() specificity. */
+.tags-index-page .stock-tool-filters { flex-basis: 560px; }
+.tags-index-page .stock-tool-filters > div:not(.stock-tool-search) { flex-basis: 150px; }
+.tags-index-page .stock-tool-filters .stock-tool-input,
+.tags-index-page .stock-tool-filters .ui-filter-select-trigger,
+.tags-index-page .stock-tool-filters .btn { min-height: 36px; padding: 6px 10px; border-radius: 8px; font-size: 13px; line-height: 1.4; }
+.tags-index-page .stock-tool-search .stock-tool-search-input { padding-left: 36px; }
+@media (max-width: 768px), (pointer: coarse) {
+    .tags-index-page .stock-tool-filters .stock-tool-input,
+    .tags-index-page .stock-tool-filters .ui-filter-select-trigger,
+    .tags-index-page .stock-tool-filters .btn { min-height: 44px; padding: 8px 10px; font-size: 16px; }
+    .tags-index-page .stock-tool-search .stock-tool-search-input { padding-left: 36px; }
+}
 /* Compact print options, with enough Codes width for the longest option to wrap normally. */
 .tags-index-page .stock-tool-print-settings { padding: 10px 12px; gap: 8px 12px; }
 .tags-index-page .stock-tool-print-settings .tags-print-label { color: var(--jf-text-muted); font-size: 12px; font-weight: 500; white-space: nowrap; }

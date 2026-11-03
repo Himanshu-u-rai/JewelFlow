@@ -39,3 +39,13 @@ test('tag print toolbar is compact on desktop without squeezing code options or 
     assert.equal(value('.tags-index-page .stock-tool-print-settings .ui-filter-select-option', 'min-height'), '40px');
     assert.equal(value('.tags-index-page .stock-tool-print-settings button:not(.ui-filter-select-option)', 'min-height', '(max-width: 768px), (pointer: coarse)'), '44px');
 });
+
+test('tag search reserves icon space after compact padding and retains touch sizing', () => {
+    assert.equal(value('.tags-index-page .stock-tool-filters .stock-tool-input', 'padding'), '6px 10px');
+    // Three classes match the specificity of the shared :is() input rule.
+    assert.equal(value('.tags-index-page .stock-tool-search .stock-tool-search-input', 'padding-left'), '36px');
+    assert.equal(value('.tags-index-page .stock-tool-filters .stock-tool-input', 'min-height'), '36px');
+    assert.equal(value('.tags-index-page .stock-tool-filters .ui-filter-select-trigger', 'min-height'), '36px');
+    assert.equal(value('.tags-index-page .stock-tool-filters .stock-tool-input', 'min-height', '(max-width: 768px), (pointer: coarse)'), '44px');
+    assert.equal(value('.tags-index-page .stock-tool-search .stock-tool-search-input', 'padding-left', '(max-width: 768px), (pointer: coarse)'), '36px');
+});
