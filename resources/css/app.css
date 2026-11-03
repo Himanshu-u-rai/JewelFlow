@@ -5359,7 +5359,7 @@ body.admin-shell {
 /* Pricing-alert bell: an icon button, not a text action. The header's action
    defaults (10px 16px of padding, forced white and ink) left its 20px icon
    2px of width and washed its amber out: it looked like an empty white box. */
-.inventory-items-header .page-actions > #pricing-alert-bell {
+.inventory-items-header .stock-header-actions > #pricing-alert-bell {
     flex: 0 0 auto;
     width: 40px;
     height: 40px;
@@ -5371,17 +5371,17 @@ body.admin-shell {
     color: #b45309 !important;
 }
 
-.inventory-items-header .page-actions > #pricing-alert-bell:hover {
+.inventory-items-header .stock-header-actions > #pricing-alert-bell:hover {
     border-color: #d97706 !important;
     background: #fef3c7 !important;
 }
 
-.inventory-items-header .page-actions > #pricing-alert-bell:focus-visible {
+.inventory-items-header .stock-header-actions > #pricing-alert-bell:focus-visible {
     outline: 3px solid rgba(245, 158, 11, 0.45);
     outline-offset: 2px;
 }
 
-.inventory-items-header .page-actions > #pricing-alert-bell > svg {
+.inventory-items-header .stock-header-actions > #pricing-alert-bell > svg {
     flex: 0 0 auto;
     width: 20px;
     height: 20px;
@@ -18274,13 +18274,13 @@ input::-webkit-calendar-picker-indicator {
     }
 
     /* The bell matches the phone-sized Create Item button beside it. */
-    .inventory-items-header .page-actions > #pricing-alert-bell {
+    .inventory-items-header .stock-header-actions > #pricing-alert-bell {
         width: 34px;
         height: 34px;
         min-height: 34px;
     }
 
-    .inventory-items-header .page-actions > #pricing-alert-bell > svg {
+    .inventory-items-header .stock-header-actions > #pricing-alert-bell > svg {
         width: 18px;
         height: 18px;
     }
@@ -31434,13 +31434,23 @@ a.notice-bell-item:focus-visible {
 
 /* Stock register filters are always visible; only the records scroll. */
 .inventory-items-header .items-header-nav { display: none; }
+.inventory-items-header .stock-header-title { display: flex; align-items: center; min-width: 0; min-height: 52px; }
+.inventory-items-header .stock-header-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; min-height: 44px; }
 @media (min-width: 1024px) {
     .inventory-items-page .items-body-nav { display: none; }
-    .inventory-items-header { display: grid; grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) auto; gap: 14px; overflow: visible; }
+    .inventory-items-header { display: grid; grid-template-columns: 160px minmax(0, 1fr) 40px; gap: 14px; overflow: visible; }
     .inventory-items-header > .content-header-nav { display: none; }
-    .inventory-items-header .page-actions { min-width: 0; flex-wrap: nowrap; gap: 8px; }
-    .inventory-items-header .items-header-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; max-width: 100%; }
+    .inventory-items-header .page-actions { display: grid; grid-template-columns: minmax(0, 1fr) 200px; width: 100%; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 14px; }
+    .inventory-items-header .items-header-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; min-width: 0; max-width: 100%; }
     .inventory-items-header :is(.inventory-items-create-btn, #pricing-alert-bell) { flex: none; }
+}
+@media (max-width: 1023px) {
+    .content-header.inventory-items-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+    .inventory-items-header > .content-header-nav { grid-column: 1; grid-row: 1; margin: 0; padding: 0; }
+    .inventory-items-header > .min-w-0 { grid-column: 2; grid-row: 1; }
+    .inventory-items-header .page-title { margin: 0; font-size: 20px; }
+    .inventory-items-header .page-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; margin: 0; }
+    .inventory-items-header > .notice-bell { grid-column: 3; grid-row: 1; }
 }
 /* One Stock workspace across inventory, categories, tag printing and reorder rules. */
 .stock-workspace-nav { min-width: 0; max-width: 100%; }

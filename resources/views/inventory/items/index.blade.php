@@ -4,9 +4,7 @@
     @endphp
 
     <div class="inventory-items-workspace" x-data="{ view: '{{ $viewDefault }}' }">
-    <x-page-header class="inventory-items-header" title="Stock / Items">
-        <x-slot:actions>
-            @include('inventory.items.partials.navigation', ['placement' => 'header'])
+    <x-stock-workspace-header>
             @if($isRetailer && $pricingAlertCount > 0)
             <button type="button"
                     id="pricing-alert-bell"
@@ -27,8 +25,7 @@
                 Create Item
             </a>
             @endcan
-        </x-slot:actions>
-    </x-page-header>
+    </x-stock-workspace-header>
 
     @if($isRetailer && $pricingAlertCount > 0)
     @php $paStorageKey = 'pa_dismissed_' . (int) auth()->user()->shop_id . '_' . now()->toDateString(); @endphp

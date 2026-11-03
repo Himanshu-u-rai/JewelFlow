@@ -26,7 +26,7 @@ class StockWorkspaceUiTest extends TestCase
         TenantContext::runFor($shop->id, fn () => ReorderRule::create(['category' => 'Synthetic shortage', 'min_stock_threshold' => 2]));
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get(route($route))->assertOk()->getContent());
-        $this->assertSame('Stock / Items', trim($xp->evaluate('string(//*[contains(@class,"inventory-items-header")]//h1)')));
+        $this->assertSame(['categories' => 'Categories', 'tags' => 'Tag Printing', 'reorder' => 'Reorder Alerts'][$section], trim($xp->evaluate('string(//*[contains(@class,"inventory-items-header")]//h1)')));
         foreach (['header', 'body'] as $placement) {
             $nav = $xp->query('//nav[contains(@class,"items-'.$placement.'-nav")]')->item(0);
             $this->assertNotNull($nav);
@@ -65,6 +65,33 @@ class StockWorkspaceUiTest extends TestCase
         }
         $this->get(route('tags.index'))->assertForbidden();
         $this->get(route('reorder.index'))->assertForbidden();
+    }
+
+    public function test_all_stock_sections_keep_actions_in_a_separate_reserved_group_after_navigation(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        foreach ([
+            [route('inventory.items.index'), 'Stock Items'],
+            [route('inventory.items.index', ['view' => 'aging']), 'Stock Aging'],
+            [route('inventory.items.index', ['view' => 'sellers']), 'Sell Trend'],
+            [route('categories.index'), 'Categories'],
+            [route('tags.index'), 'Tag Printing'],
+            [route('reorder.index'), 'Reorder Alerts'],
+        ] as [$url, $title]) {
+            $xp = $this->xpath($this->actingAs($owner)->get($url)->assertOk()->getContent());
+            $header = $xp->query('//*[contains(@class,"inventory-items-header")]')->item(0);
+            $this->assertNotNull($header);
+            $this->assertSame($title, trim($xp->evaluate('string(.//h1)', $header)));
+            if (in_array($title, ['Stock Items', 'Stock Aging', 'Sell Trend'], true)) {
+                $this->assertStringContainsString('[view]', $xp->evaluate('string(.//h1/@x-text)', $header));
+                $this->assertStringContainsString($title, $xp->evaluate('string(.//h1/@x-text)', $header));
+            }
+            $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/nav[contains(@class,"items-header-nav")]', $header)->length);
+            $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/div[@class="stock-header-actions"]', $header)->length);
+            $this->assertSame(0, $xp->query('.//nav//a[contains(@href,"/create")] | .//nav//button[@id="pricing-alert-bell"]', $header)->length);
+            $this->assertSame(1, $xp->query('.//*[@data-notice-bell]', $header)->length);
+        }
     }
 
     public function test_restricted_staff_keep_read_access_without_gaining_mutation_permissions(): void

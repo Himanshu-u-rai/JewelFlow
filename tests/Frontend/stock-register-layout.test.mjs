@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 import postcss from 'postcss';
 
 const css = postcss.parse(readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8'));
@@ -71,4 +72,40 @@ test('shared stock navigation wraps one tab strip and moves out of phone headers
     assert.equal(value('.stock-workspace-nav .items-view-toggle', 'grid-template-columns', '(max-width: 768px)'), 'repeat(2, minmax(0, 1fr))');
     assert.equal(value('.stock-workspace-nav :is(.items-view-tab, .items-page-link)', 'min-height', '(max-width: 768px)'), '44px');
     assert.equal(value('.stock-workspace-nav :is(.items-view-tab, .items-page-link)', 'white-space', '(max-width: 768px)'), 'normal');
+});
+
+test('stock tabs keep a stable desktop origin independently of each page action width', () => {
+    const desktop = '(min-width: 1024px)';
+    assert.equal(value('.inventory-items-header', 'grid-template-columns', desktop), '160px minmax(0, 1fr) 40px');
+    assert.equal(value('.inventory-items-header .page-actions', 'display', desktop), 'grid');
+    assert.equal(value('.inventory-items-header .page-actions', 'grid-template-columns', desktop), 'minmax(0, 1fr) 200px');
+    assert.equal(value('.inventory-items-header .page-actions', 'width', desktop), '100%');
+    assert.equal(value('.inventory-items-header .items-header-nav', 'justify-content', desktop), 'flex-start');
+    assert.equal(value('.inventory-items-header .stock-header-actions', 'min-height'), '44px');
+    assert.equal(value('.inventory-items-header .stock-header-title', 'min-height'), '52px');
+});
+
+test('narrow stock headers reserve the same action row even when a tool has no action', () => {
+    const narrow = '(max-width: 1023px)';
+    assert.equal(value('.content-header.inventory-items-header', 'display', narrow), 'grid');
+    assert.equal(value('.inventory-items-header .page-actions', 'grid-row', narrow), '2');
+    assert.equal(value('.inventory-items-header .page-actions', 'grid-column', narrow), '1 / -1');
+    assert.equal(value('.inventory-items-header .stock-header-actions', 'min-height'), '44px');
+});
+
+test('moving stock actions into their group preserves the pricing bell icon geometry and focus styling', () => {
+    const bell = '.inventory-items-header .stock-header-actions > #pricing-alert-bell';
+    assert.equal(value(bell, 'width'), '40px');
+    assert.equal(value(bell, 'padding'), '0');
+    assert.equal(value(bell + ' > svg', 'width'), '20px');
+    assert.equal(value(bell + ':focus-visible', 'outline-offset'), '2px');
+});
+
+test('the actual stock heading binding follows inline tab state and has a safe fallback', () => {
+    const header = readFileSync(new URL('../../resources/views/components/stock-workspace-header.blade.php', import.meta.url), 'utf8');
+    const expression = header.match(/x-text="([^"]+)"/)?.[1];
+    assert.ok(expression);
+    for (const [view, expected] of Object.entries({ items: 'Stock Items', aging: 'Stock Aging', sellers: 'Sell Trend', unknown: 'Stock Items' })) {
+        assert.equal(runInNewContext(expression, { view }), expected);
+    }
 });

@@ -2,7 +2,49 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Categories, Tags and Reorder in the Stock workspace
+## Latest checkpoint — Stable Stock navigation position and section titles
+
+Started clean `7c8f29bfabd06a3167599e032609e3dea7a35e37`, same sole writer/branch.
+Owner reported navigation moving between tools and additionally requested the
+header title follow the selected page. Root cause: navigation was right-aligned
+inside page-actions alongside variable-width/absent buttons. Main Stock also
+used a separate header template. All six sections now use stock-workspace-header;
+the existing page-header's supported custom-slot layout still supplies menu and
+notice bell, without changing that generic component or other pages.
+
+Desktop grid reserves title160px/notice40px; its middle area independently lays
+out navigation and a200px action group even when no button exists. Tabs start
+at the same origin regardless of Create Item/Add Category/Add Rule/no action.
+Narrow layouts use the same title/menu/bell row and reserved44px action row, with
+navigation still in the body. Title has52px minimum room for wrapping without
+displacing tabs; no fixed top coordinates, body lock or clipped fixed height.
+Impeccable layout guidance informed separation of navigation from actions rather
+than offsets on individual pages. Pricing-bell selectors now follow its new group
+so its icon sizing/colour/focus states persist. Page action handlers unchanged.
+
+Header title is Stock Items/Stock Aging/Sell Trend/Categories/Tag Printing/Reorder
+Alerts. Server-rendered title matches the query/page immediately; the existing
+Alpine view binding updates the three inline panels' heading without navigation.
+Main Stock remains in the SAME Alpine scope; pricing drawer, controls, forms,
+routes, permissions, datasets and page scripts otherwise unchanged.
+
+Guard testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Regressions first failed
+for missing action group/grid, old titles and moved bell selectors. Focused PHP
+14pass/260assertions; final command (same scope as prior checkpoint):
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Masters/Category*.php tests/Feature/Masters/SubCategoryIndexRedirectTest.php tests/Feature/TagPrintSizesTest.php tests/Feature/ReorderAlertTriggerTest.php tests/Feature/Navigation/MovedShortcutsAccessTest.php tests/Feature/HeaderNoticeBellTest.php`
+passed147tests/1639assertions. Full frontend `node --test tests/Frontend/*.test.mjs`
+147pass/22existing optional-browser skips/0fail; actual heading expression evaluated
+for each inline view and fallback. Build79modules; Blade compile/430compiled PHP
+lints/clear; changedPHP lint/Pint/diff and Impeccable layout[] passed. Evidence
+stock-nav-anchor-* in existing quick-bill-notes-dialog directory. CSS contracts,
+expression checks and real PHP page responses are NOT rendered geometry/keyboard
+acceptance. Browser policy still blocks visual verification; no workaround or
+after-screenshot claimed. Preview/private PG preserved; no data writes outside
+isolated PHPUnit fixtures. Local commit only/no push/deploy. Next owner refresh
+and switch all six sections to inspect fixed tab origin and changing titles;
+Categories content redesign remains next.
+
+## Earlier checkpoint — Categories, Tags and Reorder in the Stock workspace
 
 Started clean `b17c9e29c3291e26d10ba3df6210b6a64ec638ff`, same branch/sole writer.
 Owner requested these three destinations as sections of Stock BEFORE redesigning
