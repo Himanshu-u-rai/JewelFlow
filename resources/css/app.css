@@ -2,6 +2,7 @@
 @import "./customer-photo.css";
 @import "./tables.css";
 @import "./workspace-surfaces.css";
+@import "./workspace-corners.css";
 
 @tailwind base;
 @tailwind components;

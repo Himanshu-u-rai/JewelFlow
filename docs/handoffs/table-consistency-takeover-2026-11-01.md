@@ -2,7 +2,39 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Alert rules always visible
+## Latest checkpoint — Shared painted card-corner correction
+
+Started clean `94017ff6dbb1f7d186c877f84e1ab8b3583e996c`. Owner supplied zoomed
+Stock Purchases screenshot showing a rounded outline covered by square white
+header corners, then approved checking/fixing the same issue on pages we worked
+on. Confirmed shared `.content-inner > div[class*="border"][class*="bg-white"]`
+overflow:visible beats the less-specific Customers overflow:hidden rule. Invoices
+and Stock explicitly retain visible overflow for floating controls. These rules
+are NOT removed or replaced with blanket clipping.
+
+New `workspace-corners.css` in existing Vite entry makes painted first headers
+inherit their actual parent top radii across shared registers, Quick Bills,
+Repairs, Schemes, Stock analytics/tools and neutral Historical sections. Historical
+fieldset headers handled separately because their hidden legend precedes them.
+Footer/pagination bottom corners inherit as well; no-pagination scrollers/mobile
+alternatives handled without relying on last-child when hidden alternatives
+follow them. Tags propagates board radius through form/frame to pagination;
+collapsed stock analytics summaries retain both sets of corners. Only radius
+properties change; card dimensions/spacing/structure/colours/shadows and all
+overflow/scroll/menu/tooltip/focus rules remain untouched. Screen-only/Retail
+scope; no changes to print, product palettes, Blade, JavaScript or application data.
+
+Three source-contract cases RED before implementation. Final
+`node --test tests/Frontend/*.test.mjs`:159passed/22existing optional-browser
+skips/0fail; `npm run build`:79modules passed; diffcheck passed. No PHP rerun or
+database access for this CSS-only change. Logs `workspace-corners-*` in existing
+quick-bill-notes evidence. Supplied screenshot is before-evidence; browser-policy
+block still prevents after-screenshots, actual zoom/phone geometry or dropdown/
+keyboard acceptance. Source contracts do not prove painted results. Next owner
+refresh/visual comparison, especially Purchases/Customers/Invoices at zoom and
+Tags pagination. No push/deploy/remote actions.
+
+## Earlier checkpoint — Alert rules always visible
 
 Started clean `2c80cf38327b9309e9657e368b609dfa3c74c7d6`. Owner requested
 Alert rules remain open with no dropdown. Replaced details/summary with a labelled

@@ -1,0 +1,51 @@
+/* Match painted edge layers to their existing card radius. Do not clip the
+   card: dropdowns, floating action labels and keyboard outlines must escape it.
+   Important wins legacy per-page/utility corner resets loaded after this file. */
+@media screen {
+    body.app-shell main .content-inner :is(
+        [data-list-frame], .stock-tool-board, .schemes-card,
+        .repairs-surface-card, .repairs-show-card, .invoice-show-card,
+        .invoice-show-table-card, .qb-register, .qb-detail-card, .qb-form-panel,
+        .qb-item-panel, .items-register-frame, .items-analysis-board,
+        .items-analytics-details, .items-aging-slow-card,
+        section.rounded-2xl.border-slate-200.bg-white
+    ) > :is(
+        header, summary, div.border-b, .customers-table-card-header,
+        .invoices-register-head, .qb-register__head, .qb-detail-card-head,
+        .qb-panel-toolbar, .repairs-card-header, .repairs-show-card-head,
+        .schemes-card-head, .items-register-header, .items-analysis-header,
+        .items-analytics-card-head
+    ):first-child,
+    body.app-shell main .content-inner fieldset[data-historical-form-section] > [data-historical-card-header] {
+        border-top-left-radius: inherit !important;
+        border-top-right-radius: inherit !important;
+    }
+
+    /* Tag pagination is nested inside the form and frame, not the board itself. */
+    body.app-shell main .content-inner.tags-index-page #print-form,
+    body.app-shell main .content-inner.tags-index-page #print-form > .stock-tool-table-frame,
+    body.app-shell main .content-inner details.items-analytics-details:not([open]) > summary {
+        border-radius: inherit !important;
+    }
+
+    body.app-shell main .content-inner :is([data-list-frame], .stock-tool-board) > :is(footer, div.border-t):last-child,
+    body.app-shell main .content-inner.tags-index-page .stock-tool-footer:last-child,
+    body.app-shell main .content-inner .qb-register > .qb-pagination,
+    body.app-shell main .content-inner .installments-register-card > .installments-pagination,
+    body.app-shell main .content-inner .schemes-table-card > .schemes-pagination {
+        border-bottom-left-radius: inherit !important;
+        border-bottom-right-radius: inherit !important;
+    }
+
+    /* Without pagination, the scrolling table or mobile list is the bottom edge.
+       Hidden desktop/mobile alternatives must not defeat a :last-child check. */
+    body.app-shell main .content-inner :is([data-list-frame], .stock-tool-board):not(:has(> footer, > div.border-t, > .installments-pagination, > .schemes-pagination)) > :is(
+        .customers-table-shell, .customers-mobile-cards,
+        .invoices-table-shell, .invoices-mobile-cards,
+        .stock-tool-scroll, .items-stock-table-shell, .items-stock-mobile-list
+    ),
+    body.app-shell main .content-inner.tags-index-page .stock-tool-table-frame > .stock-tool-scroll:last-child {
+        border-bottom-left-radius: inherit !important;
+        border-bottom-right-radius: inherit !important;
+    }
+}
