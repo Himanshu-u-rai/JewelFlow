@@ -227,11 +227,6 @@
             <div class="items-register-header">
                 <div class="items-register-heading">
                     <h2 class="items-register-title">Stock Register</h2>
-                    <button type="button" class="btn btn-secondary btn-sm items-register-filter-open" x-cloak
-                            data-stock-filter-open aria-haspopup="dialog" aria-controls="stock-filter-dialog" aria-label="Open stock filters"
-                            @click="$refs.stockFilters.close(); $refs.stockFilters.showModal(); $refs.stockFilters.querySelector('[name=search]').focus()">
-                        <x-icon name="list-filter" size="16" /> Filters
-                    </button>
                 </div>
                 <dialog open id="stock-filter-dialog" x-ref="stockFilters" class="items-register-filter-dialog" aria-labelledby="stock-filter-title"
                         x-init="$el.dataset.ready = 'true'; $el.close()"
@@ -359,6 +354,27 @@
                             </p>
                         </section>
                     @endif
+                </div>
+                <div class="items-register-tools">
+                    <form method="GET" action="{{ route('inventory.items.index') }}" class="items-register-header-search" data-stock-search>
+                        <input type="hidden" name="status" value="{{ $statusFilter }}">
+                        @foreach(['category', 'sub_category', 'purity'] as $field)
+                            @if(request()->filled($field))
+                                <input type="hidden" name="{{ $field }}" value="{{ request($field) }}">
+                            @endif
+                        @endforeach
+                        <label for="stock-header-search" class="jf-sr-only">Search stock</label>
+                        <input id="stock-header-search" type="search" name="search" value="{{ request('search') }}"
+                               placeholder="Barcode, design..." class="items-register-control" data-suggest="items" autocomplete="off" enterkeyhint="search">
+                        <button type="submit" class="items-register-search-submit" aria-label="Search stock">
+                            <x-icon name="search" size="18" />
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-secondary btn-sm items-register-filter-open" x-cloak
+                            data-stock-filter-open aria-haspopup="dialog" aria-controls="stock-filter-dialog" aria-label="Open stock filters"
+                            @click="$refs.stockFilters.close(); $refs.stockFilters.showModal(); $refs.stockFilters.querySelector('[name=search]').focus()">
+                        <x-icon name="list-filter" size="16" /> Filters
+                    </button>
                 </div>
             </div>
             <div class="overflow-x-auto ui-table-shell items-stock-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Stock item records">

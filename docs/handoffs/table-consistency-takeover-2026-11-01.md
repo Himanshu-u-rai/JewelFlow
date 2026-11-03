@@ -2,7 +2,33 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock filters in a native popup
+## Latest checkpoint — Right-aligned header search and compact totals
+
+Started clean `7612e67fba0b2061fc187fdfcd575433d9a50b66`. Owner requested
+an additional search bar in the header, grouping search/Filters far right and
+tighter KPI spacing. Moved Filters into a right-aligned tools group after the
+metrics, beside a normal GET search form with labelled search input, suggestions
+and a 44px icon submit. Hidden fields preserve applied status/category/sub-category/
+purity; no page field, so changing search resets pagination. Popup search remains.
+Each form starts with the saved query; unsaved edits are independent (no new
+cross-form synchronizing state). Both use the existing index route and field names.
+
+Metrics now use content-sized wrapping flex rather than growing fractional grid
+columns, 20px horizontal gaps and a 280px flexible holdings group. Phone metrics
+retain the three-count grid/full-row holdings; tools fill available width with a
+shrinkable search input. No new card, backend/query/calculation or Metal Holdings
+state change. Popup lifecycle and all other controls preserved.
+
+RED before implementation: 2 PHP / 2 frontend failures. Guard confirmed
+testing/pgsql/127.0.0.1:5432/exact `jewelflow_testing`. StockRegisterUiTest passed
+10 / 178 assertions, including preserved header-search filters and popup controls.
+Same five-file focused frontend command: 31 passed / 0 skipped. Build, guarded
+Blade compile/clear, PHP lint, Pint, diff check and Impeccable layout [] passed.
+Evidence `stock-header-search-*`. Browser actual clicks, suggestion overlays,
+modal focus/Back-Forward and responsive pixel acceptance remain NOT RUN (policy).
+Owner refresh/review needed. No push, remote or preview-data changes.
+
+## Earlier checkpoint — Stock filters in a native popup
 
 Started clean `5fd254f1435ca264f4a5d0c583117bc1a91715d0`. Owner requested
 removing inline filters/status toggle, restoring the title, and opening all

@@ -15,15 +15,26 @@ const value = (selector, prop, media) => {
     return result;
 };
 
-test('header metrics share the desktop strip instead of forcing a second full-width row', () => {
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '1 1 440px');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'grid-template-columns'), 'repeat(3, minmax(0, 1fr)) minmax(0, 3fr)');
+test('header metrics stay content-sized rather than spreading counts across spare width', () => {
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '0 1 auto');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'display'), 'flex');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex-wrap'), 'wrap');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'gap'), '12px 20px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), '12px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), '1px solid var(--jf-border)');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'min-width'), '0');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'height'), undefined);
     assert.equal(value('.inventory-items-page .items-register-metal-list', 'flex-wrap'), 'wrap');
     assert.equal(value('.inventory-items-page .items-register-metric dd', 'overflow-wrap'), 'anywhere');
+});
+
+test('header search and filter tools stay grouped on the right, with usable phone input sizing', () => {
+    assert.equal(value('.inventory-items-page .items-register-tools', 'margin-inline-start'), 'auto');
+    assert.equal(value('.inventory-items-page .items-register-tools', 'display'), 'flex');
+    assert.equal(value('.inventory-items-page .items-register-tools', 'min-width'), '0');
+    assert.equal(value('.inventory-items-page .items-register-header-search', 'flex'), '1 1 240px');
+    assert.equal(value('.inventory-items-page .items-register-header-search .items-register-control', 'padding-inline-end'), '48px');
+    assert.equal(value('.inventory-items-page .items-register-tools', 'width', '(max-width: 768px)'), '100%');
 });
 
 test('wide header separates filters from totals with a thin vertical divider without forcing another row', () => {

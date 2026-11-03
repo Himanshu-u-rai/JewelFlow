@@ -33,7 +33,15 @@ class StockRegisterUiTest extends TestCase
         $header = $xp->query('//*[contains(concat(" ",@class," ")," items-register-header ")]')->item(0);
         $this->assertNotNull($header);
         $this->assertSame('Stock Register', trim($xp->evaluate('string(.//h2)', $header)));
-        $this->assertSame(0, $xp->query('.//input[not(ancestor::dialog)] | .//select[not(ancestor::dialog)] | .//form[not(ancestor::dialog)] | .//nav', $header)->length);
+        $this->assertSame(0, $xp->query('.//select[not(ancestor::dialog)] | .//form[not(ancestor::dialog) and not(@data-stock-search)] | .//nav', $header)->length);
+        $headerSearch = $xp->query('.//form[@data-stock-search]', $header)->item(0);
+        $this->assertNotNull($headerSearch);
+        $this->assertSame('GET', $headerSearch->getAttribute('method'));
+        $this->assertSame(route('inventory.items.index'), $headerSearch->getAttribute('action'));
+        foreach (['status', 'category', 'sub_category', 'purity', 'search'] as $field) {
+            $this->assertSame((string) $params[$field], $xp->evaluate('string(.//input[@name="'.$field.'"]/@value)', $headerSearch));
+        }
+        $this->assertSame(0, $xp->query('.//input[@name="page"]', $headerSearch)->length);
         $this->assertSame(1, $xp->query('.//button[@data-stock-filter-open and @aria-controls="stock-filter-dialog"]', $header)->length);
         $dialog = $xp->query('//dialog[@id="stock-filter-dialog" and @aria-labelledby="stock-filter-title"]')->item(0);
         $this->assertNotNull($dialog);
