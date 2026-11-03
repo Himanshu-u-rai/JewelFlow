@@ -59,3 +59,7 @@ test('sticky stock headings are confined below filter menus instead of painting 
     assert.equal(value(scroll, 'z-index'), '0');
     assert.ok(Number(value('.inventory-items-page .items-register-header', 'z-index')) > Number(value(scroll, 'z-index')));
 });
+
+test('expanding one sell-trend disclosure does not stretch the closed neighbouring card', () => {
+    assert.equal(value('.inventory-items-page .items-sellers-tables-grid', 'align-items'), 'start');
+});

@@ -10725,6 +10725,7 @@ body.admin-shell {
 
 .inventory-items-page .items-sellers-tables-grid {
     gap: 14px !important;
+    align-items: start;
 }
 
 .inventory-items-page .items-sellers-register .items-seller-table-title::before {
@@ -31714,19 +31715,24 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-sales-summary .items-analysis-stats { gap: 16px 48px; }
 .inventory-items-page .items-sales-summary > p { margin: 0; color: var(--jf-text-muted); font-size: 12px; line-height: 1.6; }
 .inventory-items-page .items-sales-matrix-wrap { min-width: 0; }
-.inventory-items-page .items-sales-matrix { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+.inventory-items-page .items-sales-matrix { --revenue-value-width: 110px; width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
 .inventory-items-page .items-sales-matrix .items-sales-index { width: 48px; text-align: center; color: var(--jf-text-muted); }
+.inventory-items-page .items-sales-category-col { width: 20%; }
+.inventory-items-page .items-sales-units-col { width: 90px; }
+.inventory-items-page .items-sales-share-col { width: 120px; }
 .inventory-items-page .items-sales-matrix thead th { padding: 12px 20px; border-block: 1px solid var(--jf-border); background: var(--jf-surface-soft); color: var(--jf-text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
-.inventory-items-page .items-sales-matrix thead th:last-child { width: 120px; }
+.inventory-items-page .items-revenue-scale { display: flex; justify-content: space-between; gap: 8px; margin: 8px calc(var(--revenue-value-width) + 16px) 0 0; color: var(--jf-text-muted); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .inventory-items-page .items-sales-matrix tbody :is(th, td) { padding: 18px 20px; border-bottom: 1px solid var(--jf-border); color: var(--jf-text); font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .inventory-items-page .items-sales-matrix tbody tr:last-child > * { border-bottom: 0; }
 .inventory-items-page .items-sales-matrix tbody tr:hover { background: #f8fafc; }
 .inventory-items-page .items-sales-matrix tbody th { font-weight: 600; }
-.inventory-items-page .items-sales-measure { display: flex; align-items: center; gap: 20px; }
-.inventory-items-page .items-sales-measure strong { flex: none; min-width: 30px; margin-left: auto; font-size: 14px; font-weight: 600; }
-.inventory-items-page .items-sales-dot-track { position: relative; display: block; flex: 1; height: 2px; min-width: 32px; background: var(--jf-border); }
-.inventory-items-page .items-sales-dot-track i { position: absolute; top: 50%; left: clamp(4px, var(--dot-position), calc(100% - 4px)); width: 8px; height: 8px; border-radius: 50%; background: #64748b; transform: translate(-50%, -50%); }
-.inventory-items-page .is-revenue .items-sales-dot-track i { background: #b45309; }
+.inventory-items-page .items-sales-matrix :is(th, td).items-sales-index { padding-inline: 8px; }
+.inventory-items-page .items-sales-measure { display: flex; align-items: center; gap: 16px; }
+.inventory-items-page .items-sales-measure strong { flex: 0 0 var(--revenue-value-width); font-size: 14px; font-weight: 600; text-align: right; }
+.inventory-items-page .items-revenue-bar { position: relative; display: block; flex: 1; height: 10px; min-width: 0; border-radius: 3px; background: #fff7ed; }
+.inventory-items-page .items-revenue-bar::before { content: ''; position: absolute; left: clamp(0px, var(--bar-zero), calc(100% - 1px)); top: -2px; width: 1px; height: 14px; background: var(--jf-border-strong); }
+.inventory-items-page .items-revenue-bar i { position: absolute; left: var(--bar-start); width: var(--bar-width); height: 100%; border-radius: 3px; background: #b45309; }
+.inventory-items-page .items-revenue-bar.is-negative i { background: #be123c; }
 .inventory-items-page .items-sales-share { display: inline-block; min-width: 56px; padding: 4px 6px; border-radius: 6px; background: var(--jf-surface-soft); color: var(--jf-text); font-size: 12px; text-align: center; }
 .inventory-items-page .items-sales-empty { padding: 28px 24px !important; color: var(--jf-text-muted) !important; text-align: center; line-height: 1.6; }
 .inventory-items-page .items-analytics-details { min-width: 0; border: 1px solid var(--jf-border); border-radius: 14px; background: var(--jf-surface); }
@@ -31758,15 +31764,15 @@ a.notice-bell-item:focus-visible {
     .inventory-items-page .items-sell-period .ui-filter-select-trigger { font-size: 16px; }
     .inventory-items-page .items-sales-matrix,
     .inventory-items-page .items-sales-matrix tbody { display: block; }
+    .inventory-items-page .items-sales-matrix colgroup { display: none; }
     .inventory-items-page .items-sales-matrix thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     .inventory-items-page .items-sales-matrix tbody tr { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); padding: 16px; gap: 12px; border-top: 1px solid var(--jf-border); }
     .inventory-items-page .items-sales-matrix tbody :is(th, td) { width: auto; padding: 0; border: 0; font-size: 14px; }
     .inventory-items-page .items-sales-matrix tbody th { grid-column: 2 / -1; }
+    .inventory-items-page .items-sales-matrix td[data-field="Revenue"] { grid-column: 2 / -1; }
     .inventory-items-page .items-sales-matrix td[data-field="Units sold"] { grid-column: 2; }
-    .inventory-items-page .items-sales-matrix td[data-field="Share of units"] { grid-column: 2 / -1; }
+    .inventory-items-page .items-sales-matrix td[data-field="Share of units"] { grid-column: 3; }
     .inventory-items-page .items-sales-matrix td[data-field]::before { display: block; margin-bottom: 4px; color: var(--jf-text-muted); content: attr(data-field); font-size: 12px; }
-    .inventory-items-page .items-sales-dot-track { display: none; }
-    .inventory-items-page .items-sales-measure strong { margin-left: 0; }
     .inventory-items-page .items-sales-empty { grid-column: 1 / -1; }
 }
 

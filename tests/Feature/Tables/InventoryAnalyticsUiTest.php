@@ -61,16 +61,18 @@ class InventoryAnalyticsUiTest extends TestCase
     public static function salesComparisons(): array
     {
         return [
-            'no sales' => [[], []],
-            'equal values remain separate' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 2000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['50.0%', '50.0%']],
-            'zero value sales' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 0]], ['100.0%']],
-            'different units and revenue' => [[['category' => 'Rings', 'sold_count' => 4, 'total_revenue' => 1000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['66.7%', '33.3%']],
-            'screenshot equal units close revenues' => [[['category' => 'Ring', 'sold_count' => 8, 'total_revenue' => 240760], ['category' => 'Bangle', 'sold_count' => 8, 'total_revenue' => 346120], ['category' => 'Earring', 'sold_count' => 8, 'total_revenue' => 347320], ['category' => 'Necklace', 'sold_count' => 8, 'total_revenue' => 344920]], ['25.0%', '25.0%', '25.0%', '25.0%']],
+            'no sales' => [[], [], []],
+            'equal values remain separate' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 2000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['50.0%', '50.0%'], ['Rings', 'Chains']],
+            'zero value sales' => [[['category' => 'Rings', 'sold_count' => 2, 'total_revenue' => 0]], ['100.0%'], ['Rings']],
+            'different units and revenue' => [[['category' => 'Rings', 'sold_count' => 4, 'total_revenue' => 1000], ['category' => 'Chains', 'sold_count' => 2, 'total_revenue' => 2000]], ['66.7%', '33.3%'], ['Chains', 'Rings']],
+            'screenshot equal units close revenues' => [[['category' => 'Ring', 'sold_count' => 8, 'total_revenue' => 240760], ['category' => 'Bangle', 'sold_count' => 8, 'total_revenue' => 346120], ['category' => 'Earring', 'sold_count' => 8, 'total_revenue' => 347320], ['category' => 'Necklace', 'sold_count' => 8, 'total_revenue' => 344920]], ['25.0%', '25.0%', '25.0%', '25.0%'], ['Earring', 'Bangle', 'Necklace', 'Ring']],
+            'negative revenue is preserved' => [[['category' => 'Refund', 'sold_count' => 1, 'total_revenue' => -250], ['category' => 'Positive', 'sold_count' => 1, 'total_revenue' => 1000]], ['50.0%', '50.0%'], ['Positive', 'Refund']],
+            'fractional rupee scale' => [[['category' => 'Small', 'sold_count' => 1, 'total_revenue' => 0.5]], ['100.0%'], ['Small']],
         ];
     }
 
     #[DataProvider('salesComparisons')]
-    public function test_sell_comparison_keeps_equal_categories_in_separate_named_rows_with_exact_values_and_period_controls(array $rows, array $shares): void
+    public function test_sell_comparison_ranks_revenue_on_a_shared_scale_and_preserves_exact_values_and_period_controls(array $rows, array $shares, array $expectedOrder): void
     {
         $this->assertTrue(view()->exists('inventory.items.partials.sell-trend-overview'));
         $categories = collect($rows);
@@ -83,12 +85,29 @@ class InventoryAnalyticsUiTest extends TestCase
         $xp = $this->xpath($html);
         $rendered = $xp->query('//tr[@data-sales-category]');
         $this->assertSame(count($rows), $rendered->length);
-        foreach ($rows as $i => $row) {
+        foreach ($expectedOrder as $i => $category) {
+            $sourceIndex = array_search($category, array_column($rows, 'category'), true);
+            $row = $rows[$sourceIndex];
             $element = $rendered->item($i);
             $this->assertSame($row['category'], $element->getAttribute('data-sales-category'));
-            $this->assertStringContainsString('₹'.number_format($row['total_revenue'], 0), $element->textContent);
+            $this->assertStringContainsString('₹'.number_format($row['total_revenue'], 2), $element->textContent);
             $this->assertSame((string) $row['sold_count'], trim($xp->evaluate('string(.//*[@data-sales-count])', $element)));
-            $this->assertSame($shares[$i], trim($xp->evaluate('string(.//*[@data-sales-share])', $element)));
+            $this->assertSame($shares[$sourceIndex], trim($xp->evaluate('string(.//*[@data-sales-share])', $element)));
+            $this->assertSame(1, $xp->query('.//*[@data-revenue-bar]', $element)->length);
+        }
+        $this->assertSame($rows === [] ? 0 : 1, $xp->query('//*[@data-revenue-scale]')->length);
+        if ($expectedOrder === ['Chains', 'Rings']) {
+            $this->assertStringContainsString('--bar-width: 100%', $xp->evaluate('string(//tr[@data-sales-category="Chains"]//*[@data-revenue-bar]/@style)'));
+            $this->assertStringContainsString('--bar-width: 50%', $xp->evaluate('string(//tr[@data-sales-category="Rings"]//*[@data-revenue-bar]/@style)'));
+            $this->assertStringContainsString('₹2,000', $xp->evaluate('string(//*[@data-revenue-scale])'));
+        }
+        if ($expectedOrder === ['Small']) {
+            $this->assertStringContainsString('--bar-width: 100%', $xp->evaluate('string(//*[@data-revenue-bar]/@style)'));
+            $this->assertStringContainsString('₹0.50', $xp->evaluate('string(//*[@data-revenue-scale])'));
+        }
+        if ($expectedOrder === ['Positive', 'Refund']) {
+            $this->assertStringContainsString('--bar-start: 0%; --bar-width: 20%; --bar-zero: 20%', $xp->evaluate('string(//tr[@data-sales-category="Refund"]//*[@data-revenue-bar]/@style)'));
+            $this->assertStringContainsString('--bar-start: 20%; --bar-width: 80%', $xp->evaluate('string(//tr[@data-sales-category="Positive"]//*[@data-revenue-bar]/@style)'));
         }
         $this->assertStringNotContainsString('NAN', $html);
         $this->assertStringNotContainsString('INF', $html);

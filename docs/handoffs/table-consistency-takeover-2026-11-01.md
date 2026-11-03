@@ -2,7 +2,41 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Screenshot-driven analytics composition correction
+## Latest checkpoint — Ranked revenue bars and independent disclosure heights
+
+Started clean `ec209d8797691cdb6c4a318882cfafcde558aa6c`. Owner could not
+interpret dot tracks and approved a ranked revenue-bar comparison instead.
+Sell Trend now orders the SAME returned categories by revenue descending in
+the view only. Orange horizontal bars share an explicit rupee scale, with exact
+two-decimal amounts at the end; units and unit share remain compact numbers.
+Footer explains ranking and the common range, also visible on phones where
+table headers are visually hidden. Zero/negative/fractional revenue preserved;
+negative bars extend left of a marked zero, rather than silently clamping data.
+No backend/service/query/period/summary-total changes or new dependency/JS.
+Removed the dot styling; all data stays readable without colour or hovering.
+
+Lower cards were not toggling together: the two-column CSS grid's default
+stretch gave the closed native details the open neighbour's height, painting
+a blank white body. Set align-items:start on only this analytics grid. No
+shared-details script, accordion rewrite or height hack. Native independent
+keyboard toggling and all existing data remain. Main Stock Items/Aging untouched.
+
+Fresh test guard: testing/pgsql/127.0.0.1:5432/exact jewelflow_testing.
+PHP revenue cases RED5 before implementation; CSS stretch test RED1. A fractional
+rupee case additionally proved that using a minimum1-unit denominator distorts
+sub-rupee data; fixed to guard only an actually zero range. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/InventoryAnalyticsUiTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/InventoryItemsIndexRenderTest.php tests/Feature/Inventory/InventoryAccessTest.php tests/Feature/Inventory/StockPricingAlertPanelRevisitTest.php tests/Feature/Tables/ListWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php`
+passed69tests/642assertions. Tests hand-check revenue order,50%/100% lengths,
+negative zero baseline/start/width, fractional amounts and existing controls.
+Frontend139pass/22existing browser skips/0fail. Build79modules, Blade compile/
+390compiled PHP lints/clear, changedPHP lint/Pint/diff and Impeccable layout[]
+passed. Logs sales-revenue-bars-* in existing quick-bill-notes-dialog evidence.
+No preview data changes; local commit only/no push/deploy. Preview/private PG
+preserved. Browser policy prevents after-render/native interaction verification;
+the grid test is a CSS contract, NOT an interactive browser pass. Owner refresh
+Sell Trend and expand each lower card separately to confirm the painted result.
+
+## Earlier checkpoint — Screenshot-driven analytics composition correction
 
 Started clean `071dcb30138902a162bc1b1c58587c3e40eeffbd`. Owner rejected the
 previous design and supplied three current desktop screenshots. Concrete evidence:

@@ -24,27 +24,40 @@
         <p>Figures cover up to 10 shown categories,<br>not the whole shop's sales.</p>
     </div>
     @php
-        $maxCategoryUnits = max(1, (int) $sellerByCategory->max('sold_count'));
-        $maxCategoryRevenue = max(1, (float) $sellerByCategory->max('total_revenue'));
+        $categoriesByRevenue = $sellerByCategory->sortByDesc('total_revenue')->values();
+        $revenueScaleMin = min(0, (float) $sellerByCategory->min('total_revenue'));
+        $revenueScaleMax = max(0, (float) $sellerByCategory->max('total_revenue'));
+        $revenueScaleRange = $revenueScaleMax > $revenueScaleMin ? $revenueScaleMax - $revenueScaleMin : 1;
+        $revenueZero = -$revenueScaleMin / $revenueScaleRange * 100;
     @endphp
     <div class="items-sales-matrix-wrap">
         <table class="items-sales-matrix" role="table" aria-label="Category performance">
+            <colgroup><col class="items-sales-index"><col class="items-sales-category-col"><col><col class="items-sales-units-col"><col class="items-sales-share-col"></colgroup>
             <thead role="rowgroup"><tr role="row">
                 <th scope="col" class="items-sales-index">#</th><th scope="col">Category</th>
-                <th scope="col">Units sold</th><th scope="col">Revenue</th><th scope="col">Share of units</th>
+                <th scope="col">Revenue
+                    @if($sellerByCategory->isNotEmpty())
+                        <div class="items-revenue-scale" data-revenue-scale>
+                            @foreach([$revenueScaleMin, ($revenueScaleMax + $revenueScaleMin) / 2, $revenueScaleMax] as $tick)
+                                <span>₹{{ number_format($tick, floor($tick) == $tick ? 0 : 2) }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+                </th><th scope="col">Units sold</th><th scope="col">Share of units</th>
             </tr></thead>
             <tbody role="rowgroup">
-                @forelse($sellerByCategory as $row)
+                @forelse($categoriesByRevenue as $row)
                     @php
-                        $unitPosition = (int) $row['sold_count'] / $maxCategoryUnits * 100;
-                        $revenuePosition = max(0, (float) $row['total_revenue']) / $maxCategoryRevenue * 100;
+                        $revenue = (float) $row['total_revenue'];
+                        $barStart = (min(0, $revenue) - $revenueScaleMin) / $revenueScaleRange * 100;
+                        $barWidth = abs($revenue) / $revenueScaleRange * 100;
                         $unitShare = $sellerTotalSold > 0 ? (int) $row['sold_count'] / $sellerTotalSold * 100 : 0;
                     @endphp
                     <tr role="row" data-sales-category="{{ $row['category'] ?? '—' }}">
                         <td role="cell" class="items-sales-index">{{ $loop->iteration }}</td>
                         <th role="rowheader" scope="row">{{ $row['category'] ?? '—' }}</th>
-                        <td role="cell" data-field="Units sold"><div class="items-sales-measure"><span class="items-sales-dot-track" style="--dot-position: {{ $unitPosition }}%" aria-hidden="true"><i></i></span><strong data-sales-count>{{ number_format($row['sold_count']) }}</strong></div></td>
-                        <td role="cell" data-field="Revenue"><div class="items-sales-measure is-revenue"><span class="items-sales-dot-track" style="--dot-position: {{ $revenuePosition }}%" aria-hidden="true"><i></i></span><strong>₹{{ number_format($row['total_revenue'], 0) }}</strong></div></td>
+                        <td role="cell" data-field="Revenue"><div class="items-sales-measure"><span class="items-revenue-bar {{ $revenue < 0 ? 'is-negative' : '' }}" data-revenue-bar style="--bar-start: {{ $barStart }}%; --bar-width: {{ $barWidth }}%; --bar-zero: {{ $revenueZero }}%" aria-hidden="true"><i></i></span><strong>₹{{ number_format($row['total_revenue'], 2) }}</strong></div></td>
+                        <td role="cell" data-field="Units sold"><strong data-sales-count>{{ number_format($row['sold_count']) }}</strong></td>
                         <td role="cell" data-field="Share of units"><span class="items-sales-share" data-sales-share>{{ number_format($unitShare, 1) }}%</span></td>
                     </tr>
                 @empty
@@ -54,11 +67,10 @@
         </table>
     </div>
     <footer class="items-analysis-footer">
-        @if($sellerByCategory->count() > 1 && $sellerByCategory->min('sold_count') == $sellerByCategory->max('sold_count'))
-            All shown categories are tied at {{ number_format($sellerByCategory->first()['sold_count']) }} units each.
-        @else
-            Sorted by units sold. Equal counts are tied.
+        Sorted by revenue, highest first.
+        @if($sellerByCategory->isNotEmpty())
+            All bars use the same ₹{{ number_format($revenueScaleMin, floor($revenueScaleMin) == $revenueScaleMin ? 0 : 2) }}–₹{{ number_format($revenueScaleMax, floor($revenueScaleMax) == $revenueScaleMax ? 0 : 2) }} scale.
         @endif
-        Dots compare each metric within the shown categories · refreshed every 10 minutes
+        Refreshed every 10 minutes.
     </footer>
 </section>
