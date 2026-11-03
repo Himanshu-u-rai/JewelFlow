@@ -51,7 +51,7 @@ class StockToolsThemeTest extends TestCase
         $this->assertSame('viewport', $xp->evaluate('string(//form[@id="print-form"]/@data-enhance-selects-placement)'));
     }
 
-    public function test_reorder_uses_one_indexed_table_and_keeps_mutation_controls_permission_scoped(): void
+    public function test_reorder_keeps_one_indexed_rules_table_with_permission_scoped_mutation_controls(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         TenantContext::runFor($shop->id, function () {
@@ -67,6 +67,53 @@ class StockToolsThemeTest extends TestCase
         $response = $this->actingAs($owner)->get(route('reorder.index'))->assertOk();
         $response->assertDontSee('data-ajax-delete', false)->assertDontSee('href="'.route('reorder.create').'"', false);
         $this->assertSame(0, $this->xpath($response->getContent())->query('//a[contains(@href,"/reorder/") and contains(@href,"/edit")]')->length);
+    }
+
+    public function test_reorder_prioritizes_real_shortages_without_including_paused_or_stocked_rules(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            ReorderRule::create(['category' => 'Synthetic <Ring>', 'min_stock_threshold' => 5]);
+            ReorderRule::create(['category' => 'Synthetic stocked', 'min_stock_threshold' => 1]);
+            ReorderRule::create(['category' => 'Synthetic paused', 'min_stock_threshold' => 8, 'is_active' => false]);
+            $this->createItem($shop->id, null, ['category' => 'Synthetic <Ring>']);
+            $this->createItem($shop->id, null, ['category' => 'Synthetic <Ring>']);
+            $this->createItem($shop->id, null, ['category' => 'Synthetic stocked']);
+        });
+        $this->withoutVite();
+        $xp = $this->xpath($this->actingAs($owner)->get(route('reorder.index'))->assertOk()->getContent());
+        $this->assertSame(1, $xp->query('//*[@data-reorder-alerts]//tbody/tr')->length);
+        $this->assertStringContainsString('Synthetic <Ring>', $xp->evaluate('string(//*[@data-reorder-alerts]//tbody/tr/th)'));
+        $this->assertSame(['2', '5', '3'], array_map(fn ($node) => trim($node->textContent), iterator_to_array($xp->query('//*[@data-reorder-alerts]//tbody/tr/td[@class="text-right"]'))));
+        $this->assertSame(3, $xp->query('//*[@data-reorder-rules]//tbody/tr')->length);
+        $this->assertSame(1, $xp->query('//*[@data-reorder-alerts]/following-sibling::details[@data-reorder-rules and not(@open)]')->length);
+    }
+
+    public function test_reorder_distinguishes_no_rules_from_configured_stock_with_no_shortages(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $this->actingAs($owner)->get(route('reorder.index'))->assertOk()
+            ->assertSee('No reorder rules yet')->assertDontSee('Stock is within your minimums');
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            ReorderRule::create(['category' => 'Synthetic stocked', 'min_stock_threshold' => 1]);
+            $this->createItem($shop->id, null, ['category' => 'Synthetic stocked']);
+        });
+        $response = $this->actingAs($owner)->get(route('reorder.index'))->assertOk()
+            ->assertSee('Stock is within your minimums')->assertDontSee('No reorder rules yet');
+        $this->assertSame(1, $this->xpath($response->getContent())->query('//details[@data-reorder-rules and @open]')->length);
+    }
+
+    public function test_reorder_does_not_call_an_all_paused_configuration_all_clear(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        TenantContext::runFor($shop->id, fn () => ReorderRule::create([
+            'category' => 'Synthetic paused', 'min_stock_threshold' => 5, 'is_active' => false,
+        ]));
+        $this->withoutVite();
+        $this->actingAs($owner)->get(route('reorder.index'))->assertOk()
+            ->assertSee('All rules are paused')->assertDontSee('Stock is within your minimums');
     }
 
     private function xpath(string $html): \DOMXPath

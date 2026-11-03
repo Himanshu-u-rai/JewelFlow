@@ -2,7 +2,39 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Categories, Tags and Reorder theme integration
+## Latest checkpoint — Reorder attention queue, same visual theme
+
+Started clean `0c3cb2e39b50c0508cf0a5f038e27a70318456a2`, sole Local Codex
+writer. Owner asked for a task-appropriate Reorder structure rather than cloning
+Customers. Impeccable layout guidance: shortages lead; rule settings support.
+Reorder now has a compact indexed shortage table with group/subgroup, current
+stock, minimum, gap and preferred vendor. Copy makes clear that overlapping rules
+must not be summed into an order quantity. Native Alert rules disclosure follows,
+closed initially when shortages exist, open when there are none. Existing edit,
+delete, confirmation, permissions and global Add Rule controls are unchanged.
+No controller/model/service/query/cache/calculation changes. Removed list-fit
+attributes so this multi-section workflow uses normal page flow rather than
+stretching a sparse table. Mobile shortage rows reflow into labelled pairs;
+rules retain contained horizontal scrolling. Same theme tokens and row actions.
+No-rules, all-paused and healthy-active states now have distinct truthful copy.
+
+New three render/data regressions failed before implementation. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/ReorderAlertTriggerTest.php tests/Feature/HeaderNoticeBellTest.php`
+passed21tests/245assertions. Guard verified actual resolved configuration before
+RefreshDatabase. `node --test tests/Frontend/*.test.mjs`:151pass/22existing
+optional-browser skips/0fail. Vite build79modules, Blade compile/clear, PHP lint,
+Pint, diff-check and Impeccable layout scan[] passed. Interim unknown-icon render
+failures fixed by using registered `settings` and `circle-check` icons; no icon
+registry changes. Logs: `reorder-task-layout-*` in existing quick-bill-notes
+evidence directory. Source changes limited to Reorder Blade, scoped app.css,
+StockToolsThemeTest and this handoff. No preview fixtures changed. Existing AJAX
+delete still does not refresh alert/summary figures until reload; not rewritten.
+Browser-policy block persists: actual desktop/phone geometry, keyboard/touch,
+disclosure/Back-Forward and screenshots remain NOT RUN. Do not equate render
+tests with browser acceptance. Local preview8001 remains listening. No push or
+remote actions; owner refresh/visual review is next.
+
+## Earlier checkpoint — Categories, Tags and Reorder theme integration
 
 Second stage started clean `ad767569692128aa8d738bc8e0d71c4d0411b340`, same sole
 writer/branch. These three pages now reuse the register theme: one light-bordered

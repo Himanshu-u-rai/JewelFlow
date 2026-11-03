@@ -12,39 +12,68 @@
             </a>
         @endcan
     </x-stock-workspace-header>
-    <div class="content-inner reorder-index-page stock-tool-page" data-list-workspace>
+    <div class="content-inner reorder-index-page stock-tool-page">
         @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'reorder'])
-        <section class="stock-tool-board" data-list-frame aria-label="Reorder rules">
+        <section class="stock-tool-board" data-reorder-alerts aria-labelledby="reorder-alerts-title">
             <header class="stock-tool-header">
                 <div>
-                    <h2>Reorder rules</h2>
-                    <dl class="stock-tool-stats">
-                        <div><dt>Rules</dt><dd>{{ number_format($ruleCount) }}</dd></div>
-                        <div><dt>Active</dt><dd>{{ number_format($activeRuleCount) }}</dd></div>
-                        <div><dt>Alerts</dt><dd>{{ number_format($alertCount) }}</dd></div>
-                    </dl>
+                    <h2 id="reorder-alerts-title">Needs restocking <span class="stock-tool-status {{ $alertCount ? 'is-warning' : '' }}">{{ number_format($alertCount) }}</span></h2>
+                    <p class="stock-tool-muted">Active rules below their minimum stock. Review these before placing an order.</p>
                 </div>
-                <p class="stock-tool-muted">{{ $ruleCount - $activeRuleCount }} paused · thresholds apply to matching in-stock items</p>
             </header>
-            <details class="stock-tool-alerts" open>
-                <summary>Low stock watch <span class="stock-tool-status {{ $alertCount ? 'is-warning' : 'is-active' }}">{{ $alertCount ? $alertCount.' alerts' : 'All clear' }}</span><x-icon name="chevron-down" size="16" /></summary>
-                @if($alertCount > 0)
-                    <div class="stock-tool-alert-grid">
+            @if($alertCount > 0)
+                <div class="stock-tool-scroll" tabindex="0" role="region" aria-label="Stock shortages">
+                    <table class="jf-table stock-tool-table reorder-alert-table">
+                        <thead><tr>
+                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
+                            <th scope="col">Stock group</th>
+                            <th scope="col" class="text-right">In stock</th>
+                            <th scope="col" class="text-right">Minimum</th>
+                            <th scope="col" class="text-right">Gap to minimum</th>
+                            <th scope="col">Preferred vendor</th>
+                        </tr></thead>
+                        <tbody>
                         @foreach($alerts as $alert)
-                            <article class="stock-tool-alert-row">
-                                <div><h3>{{ $alert['category'] ?: 'All categories' }}</h3><p>{{ $alert['sub_category'] ?: 'All sub-categories' }} · {{ optional($alert['vendor'])->name ?: 'No preferred vendor linked' }}</p></div>
-                                <dl class="stock-tool-stats">
-                                    <div><dt>In stock</dt><dd>{{ $alert['current_stock'] }}</dd></div>
-                                    <div><dt>Threshold</dt><dd>{{ $alert['threshold'] }}</dd></div>
-                                    <div><dt>Short by</dt><dd>{{ max($alert['threshold'] - $alert['current_stock'], 0) }}</dd></div>
-                                </dl>
-                            </article>
+                            <tr>
+                                <td class="jf-table-index">{{ $loop->iteration }}</td>
+                                <th scope="row"><span class="reorder-alert-number" aria-hidden="true">{{ $loop->iteration }}.</span> {{ $alert['category'] ?: 'All categories' }}<span class="reorder-group-detail">{{ $alert['sub_category'] ?: 'All sub-categories' }}</span></th>
+                                <td class="text-right" data-label="In stock">{{ $alert['current_stock'] }}</td>
+                                <td class="text-right" data-label="Minimum">{{ $alert['threshold'] }}</td>
+                                <td class="text-right" data-label="Gap to minimum"><strong class="reorder-shortage">{{ max($alert['threshold'] - $alert['current_stock'], 0) }}</strong></td>
+                                <td data-label="Preferred vendor">{{ optional($alert['vendor'])->name ?: 'Not linked' }}</td>
+                            </tr>
                         @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <p class="stock-tool-notice">Each row represents one rule. Groups can overlap; do not add the gaps together as an order quantity.</p>
+            @else
+                <div class="reorder-state {{ $activeRuleCount ? 'is-clear' : '' }}">
+                    <x-icon name="{{ $activeRuleCount ? 'circle-check' : 'settings' }}" size="24" />
+                    <div>
+                        @if($ruleCount === 0)
+                            <h3>No reorder rules yet</h3>
+                            <p>Add a rule to choose which stock groups to monitor and their minimum quantities.</p>
+                        @elseif($activeRuleCount === 0)
+                            <h3>All rules are paused</h3>
+                            <p>Resume a rule below to monitor its stock level.</p>
+                        @else
+                            <h3>Stock is within your minimums</h3>
+                            <p>No active rule is below its minimum stock level.</p>
+                        @endif
                     </div>
-                @else
-                    <p class="stock-tool-notice">All current stock levels are within the configured thresholds.</p>
-                @endif
-            </details>
+                </div>
+            @endif
+        </section>
+        <details id="reorder-rules" class="stock-tool-board reorder-rules" data-reorder-rules @if($alertCount === 0) open @endif>
+            <summary class="stock-tool-header">
+                <div>
+                    <h2>Alert rules</h2>
+                    <p class="stock-tool-muted">{{ number_format($ruleCount) }} rules · {{ number_format($activeRuleCount) }} active · {{ number_format($ruleCount - $activeRuleCount) }} paused</p>
+                </div>
+                <span class="reorder-rules-hint">View and manage <x-icon name="chevron-down" size="16" /></span>
+            </summary>
+            <p class="stock-tool-notice">Set the minimum number of matching in-stock items. Edit a rule to change its group, vendor or active status.</p>
             @if($ruleCount > 0)
                 <div class="stock-tool-scroll" data-list-scroll tabindex="0" role="region" aria-label="Reorder rule records">
                     <table class="jf-table stock-tool-table">
@@ -82,12 +111,10 @@
                 </div>
             @else
                 <div class="stock-tool-empty">
-                    <x-icon name="package" size="28" />
-                    <h3>No reorder rules yet</h3>
-                    <p>Add your first rule to track stock thresholds by category or sub-category.</p>
+                    <p>A rule monitors stock; it does not create a purchase automatically.</p>
                     @can('inventory.edit')<a href="{{ route('reorder.create') }}" class="btn btn-primary">Add first rule</a>@endcan
                 </div>
             @endif
-        </section>
+        </details>
     </div>
 </x-app-layout>

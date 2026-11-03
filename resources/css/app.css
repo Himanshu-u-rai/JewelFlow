@@ -31787,15 +31787,36 @@ a.notice-bell-item:focus-visible {
 .stock-tool-page .stock-tool-status { display: inline-flex; padding: 4px 8px; border-radius: 6px; background: var(--jf-surface-soft); color: var(--jf-text-muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
 .stock-tool-page .stock-tool-status.is-active { background: #ecfdf5; color: #047857; }
 .stock-tool-page .stock-tool-status.is-warning { background: #fffbeb; color: #92400e; }
-.stock-tool-page .stock-tool-alerts { border-bottom: 1px solid var(--jf-border); }
-.stock-tool-page .stock-tool-alerts > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 12px 18px; font-size: 13px; font-weight: 600; cursor: pointer; list-style: none; }
-.stock-tool-page .stock-tool-alerts > summary::-webkit-details-marker { display: none; }
-.stock-tool-page .stock-tool-alerts > summary > svg { margin-left: auto; }
-.stock-tool-page .stock-tool-alerts[open] > summary > svg { transform: rotate(180deg); }
-.stock-tool-page .stock-tool-alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; padding: 0 18px 16px; }
-.stock-tool-page .stock-tool-alert-row { min-width: 0; padding-top: 12px; border-top: 1px solid var(--jf-border); }
-.stock-tool-page .stock-tool-alert-row h3 { margin: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.stock-tool-page .stock-tool-alert-row p { margin: 4px 0; color: var(--jf-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+/* Reorder is an attention queue followed by rule settings, not a full-height directory. */
+.reorder-index-page > .stock-tool-board + .stock-tool-board { margin-top: 20px; }
+.reorder-index-page .stock-tool-header h2 .stock-tool-status { margin-left: 8px; vertical-align: middle; }
+.reorder-index-page .reorder-group-detail { display: block; margin-top: 4px; color: var(--jf-text-muted); font-size: 12px; font-weight: 400; }
+.reorder-index-page .reorder-shortage { color: #92400e; font-weight: 700; }
+.reorder-index-page .reorder-alert-number { display: none; }
+.reorder-index-page .reorder-state { display: flex; align-items: flex-start; gap: 12px; padding: 24px 18px; }
+.reorder-index-page .reorder-state > svg { flex-shrink: 0; color: var(--jf-text-muted); }
+.reorder-index-page .reorder-state.is-clear > svg { color: #047857; }
+.reorder-index-page .reorder-state h3 { margin: 0; color: var(--jf-ink); font-size: 14px; font-weight: 600; }
+.reorder-index-page .reorder-state p { max-width: 65ch; margin: 6px 0 0; color: var(--jf-text-muted); font-size: 13px; line-height: 1.6; }
+.reorder-index-page .reorder-rules > summary { list-style: none; cursor: pointer; min-height: 64px; }
+.reorder-index-page .reorder-rules > summary::-webkit-details-marker { display: none; }
+.reorder-index-page .reorder-rules > summary:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+.reorder-index-page .reorder-rules:not([open]) > summary { border-bottom: 0; border-radius: 14px; }
+.reorder-index-page .reorder-rules-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--jf-text-muted); font-size: 12px; }
+.reorder-index-page .reorder-rules[open] .reorder-rules-hint > svg { transform: rotate(180deg); }
+.reorder-index-page .stock-tool-scroll:focus-visible { outline: 2px solid #b45309; outline-offset: -2px; }
+@media (max-width: 768px) {
+    .reorder-index-page .reorder-alert-table { min-width: 0; }
+    .reorder-index-page .reorder-alert-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .reorder-index-page .reorder-alert-table tbody { display: block; }
+    .reorder-index-page .reorder-alert-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 12px; border-bottom: 1px solid var(--jf-border); }
+    .reorder-index-page .reorder-alert-table tbody tr:last-child { border-bottom: 0; }
+    .reorder-index-page .reorder-alert-table tbody th { grid-column: 1 / -1; padding: 0; border: 0; }
+    .reorder-index-page .reorder-alert-table tbody td { min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+    .reorder-index-page .reorder-alert-table tbody td.jf-table-index { display: none; }
+    .reorder-index-page .reorder-alert-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--jf-text-muted); font-size: 12px; font-weight: 400; }
+    .reorder-index-page .reorder-alert-number { display: inline; color: var(--jf-text-muted); }
+}
 .stock-tool-page .stock-category-directory { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .stock-tool-page .categories-card { border: 0; border-bottom: 1px solid var(--jf-border); border-radius: 0; }
 .stock-tool-page .categories-card:last-child { border-bottom: 0; }
