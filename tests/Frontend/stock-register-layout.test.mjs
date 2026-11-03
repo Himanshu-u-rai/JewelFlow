@@ -74,8 +74,11 @@ test('stock status is a compact pill toggle with a clear selected side and usabl
     assert.equal(value('.inventory-items-page .items-register-status', 'border-radius'), '999px');
     assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height'), '28px');
     assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-width'), '56px');
-    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'background'), '#b45309');
-    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'color'), '#ffffff');
+    assert.equal(value('.inventory-items-page .items-register-status', 'background'), 'var(--jf-surface-muted)');
+    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'background'), 'var(--jf-surface)');
+    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'color'), 'var(--jf-ink)');
+    assert.equal(value('.inventory-items-page .items-register-status-btn.is-active', 'border-color'), 'var(--jf-border-strong)');
+    assert.equal(value('.inventory-items-page .items-register-status-btn:focus-visible', 'outline'), '2px solid #b45309');
     assert.equal(value('.inventory-items-page .items-register-status-btn', 'min-height', '(pointer: coarse)'), '44px');
 });
 

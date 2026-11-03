@@ -2,7 +2,24 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Stock status toggle
+## Latest checkpoint — Quieter Stock status selection
+
+Started clean `6dc4b6556c5f1abf0a9c526c698428df438a630e`. Owner approved
+replacing the heavy orange active segment with a white pill, dark ink and subtle
+border on a light grey track. Reused existing surface/ink/border tokens; CSS-only.
+Compact dimensions, 44px phone/coarse-pointer targets, native links, aria-current
+and visible orange keyboard-focus outline are unchanged. No KPI move or behavior
+change. Updated source regression failed before implementation, then
+`node --test tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs`
+passed 14/14. `npm run build` passed (79 modules); `git diff --check` passed.
+No PHP tests or database access for this paint-only change. Evidence logs:
+`stock-status-neutral-*` in the existing local evidence directory. Browser-policy
+restriction still prevents rendered verification; no after screenshot or actual
+keyboard/touch acceptance claimed. Next: owner refreshes Stock Items to review;
+four KPIs remain unmoved awaiting the next layout instruction. No push or remote
+changes.
+
+## Earlier checkpoint — Compact Stock status toggle
 
 Started clean `20da0b81771ae36c8feef1184cbe11dc270bcb54`. Owner requested smaller
 In Stock/Sold controls, more like a real toggle. CSS-only segmented pill: nowrap,
