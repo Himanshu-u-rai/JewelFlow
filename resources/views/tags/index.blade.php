@@ -80,9 +80,9 @@
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
             <div class="stock-tool-print-settings">
-                <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tag type</label>
-                    <div class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
+                <div class="flex items-center gap-2 tags-print-type">
+                    <span id="tags-type-label" class="tags-print-label">Tag type</span>
+                    <div role="group" aria-labelledby="tags-type-label" class="tags-print-type-switch inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
                         <button type="button"
                                 @click="printFormat = 'standard'"
                                 :aria-pressed="printFormat === 'standard'"
@@ -107,9 +107,9 @@
                 @php($selectClass = 'border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500')
                 @php($numClass = 'w-20 border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500')
 
-                <div class="flex items-center gap-2" x-show="printFormat === 'standard'">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
-                    <select x-model="flatSize" aria-label="Flat label size" class="{{ $selectClass }}">
+                <div class="flex items-center gap-2 tags-print-size" x-show="printFormat === 'standard'">
+                    <label for="tags-flat-size" class="tags-print-label">Size</label>
+                    <select id="tags-flat-size" x-model="flatSize" aria-label="Flat label size" class="{{ $selectClass }}">
                         @foreach(\App\Http\Controllers\TagPrintController::FLAT_SIZES as $key => $s)
                             <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm</option>
                         @endforeach
@@ -117,9 +117,9 @@
                     </select>
                 </div>
 
-                <div class="flex items-center gap-2" x-show="printFormat === 'folded'">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Size</label>
-                    <select x-model="foldedSize" aria-label="Folded tag size" class="{{ $selectClass }}">
+                <div class="flex items-center gap-2 tags-print-size" x-show="printFormat === 'folded'">
+                    <label for="tags-folded-size" class="tags-print-label">Size</label>
+                    <select id="tags-folded-size" x-model="foldedSize" aria-label="Folded tag size" class="{{ $selectClass }}">
                         @foreach(\App\Http\Controllers\TagPrintController::FOLDED_SIZES as $key => $s)
                             <option value="{{ $key }}">{{ $s['length'] }} × {{ $s['height'] }} mm (ends {{ $s['end'] }} mm)</option>
                         @endforeach
@@ -142,9 +142,9 @@
                     </label>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codes</label>
-                    <select x-model="codes" aria-label="Printed codes" class="{{ $selectClass }}">
+                <div class="flex items-center gap-2 tags-print-codes">
+                    <label for="tags-codes" class="tags-print-label">Codes</label>
+                    <select id="tags-codes" x-model="codes" aria-label="Printed codes" class="{{ $selectClass }}">
                         <option value="both">QR + barcode (recommended)</option>
                         <option value="qr">QR only</option>
                         <option value="barcode">Barcode only</option>

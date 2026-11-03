@@ -2,7 +2,33 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Reorder attention queue, same visual theme
+## Latest checkpoint — Compact Tag Printing toolbar
+
+Started clean `6f80a373383c93d2467530d4fa1209ac4574f658`, sole Local Codex
+writer. Owner requested smaller Tag type/Size/Codes/Print/Select All/Clear and a
+less squeezed Codes list. Root: scoped register/toolbar44px minima overrode the
+compact variant; auto-width Codes host narrowed its viewport-placed menu to the
+current short label. Tags-only styles now use36px desktop controls, tighter
+padding/gaps,216pxSize/220pxCodes hosts and normally wrapping40px menu options.
+Phone/coarse-pointer controls/options remain44px; phone select text16px. Existing
+viewport placement continues measuring the actual trigger width, avoiding a
+separate oversized menu that would escape its viewport clamp. Labels associated
+with native selects; Tag type buttons given a labelled group. All values, options,
+form names, bindings, hidden fields and print/selection JavaScript unchanged;
+script equality checked against starting HEAD. No shared JS/controller changes.
+
+New frontend size/width/touch contract RED before edits; final focused frontend
+5pass0skip0fail (`node --test tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/stock-tools-interaction.test.mjs`).
+Guard verified testing/pgsql/127.0.0.1:5432/exact jewelflow_testing before PHPUnit.
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/TagPrintSizesTest.php`
+passed13tests/64assertions. Build79modules, Bladecompile/clear, diffcheck and
+Impeccable layout[] passed. Logs `tag-toolbar-*` in existing quick-bill-notes
+evidence. No full-suite rerun for this presentation-only change. Browser policy
+still blocks painted geometry/dropdown/native keyboard/physical printer checks;
+the CSS source contract is not a browser test. No preview-data/remote writes.
+Next: owner refresh Tag Printing and review desktop/phone menu sizing.
+
+## Earlier checkpoint — Reorder attention queue, same visual theme
 
 Started clean `0c3cb2e39b50c0508cf0a5f038e27a70318456a2`, sole Local Codex
 writer. Owner asked for a task-appropriate Reorder structure rather than cloning

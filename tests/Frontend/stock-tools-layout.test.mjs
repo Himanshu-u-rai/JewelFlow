@@ -30,3 +30,12 @@ test('tag form nesting can shrink inside an enhanced list workspace and reorder 
     const reorder = readFileSync(new URL('../../resources/views/reorder/index.blade.php', import.meta.url), 'utf8');
     assert.doesNotMatch(reorder, /<style|reorder-mobile-list/);
 });
+
+test('tag print toolbar is compact on desktop without squeezing code options or touch targets', () => {
+    assert.equal(value('.tags-index-page .stock-tool-print-settings', 'padding'), '10px 12px');
+    assert.equal(value('.tags-index-page .stock-tool-print-settings button:not(.ui-filter-select-option)', 'min-height'), '36px');
+    assert.equal(value('.tags-index-page .tags-print-codes .ui-filter-select-host', 'width'), '220px');
+    assert.equal(value('.tags-index-page .stock-tool-print-settings .ui-filter-select-option', 'white-space'), 'normal');
+    assert.equal(value('.tags-index-page .stock-tool-print-settings .ui-filter-select-option', 'min-height'), '40px');
+    assert.equal(value('.tags-index-page .stock-tool-print-settings button:not(.ui-filter-select-option)', 'min-height', '(max-width: 768px), (pointer: coarse)'), '44px');
+});
