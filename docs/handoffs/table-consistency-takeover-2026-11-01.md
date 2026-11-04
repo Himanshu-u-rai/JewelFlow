@@ -2,7 +2,71 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Desktop Tag Printing toolbar regression correction
+## Latest checkpoint — Vault workspace and growing purity balances
+
+Started clean `74fc0a66ea28913f271e0d5cc4df83c2e30ba97c`, same worktree/branch,
+sole Local Codex writer. Owner approved the proposed compact Vault layout and
+requested a visible Other materials section that handles additional purities.
+Follow-up removes the page subtitle; header now says only Bullion Vault.
+
+UI-only replacement of the 1713-line inline-style/three-breakpoint-copy index:
+four compact summary figures; one shared purity-table partial for primary and
+other materials; Other materials native disclosure open by default; no empty
+primary placeholder when only other materials exist. Each dataset renders once.
+One records workspace switches Lots/Open Jobs/Recent Movements using ordinary
+keyboard-operable buttons with pressed states and associated panel IDs, rather
+than an incomplete ARIA tablist. Indexed rows use shared jf-table styling.
+Phone rows become labelled two-column grids with explicit table semantics;
+desktop/tablet retain contained horizontal scrolling. Only tall desktop screens
+bound balance lists to min(32dvh,26rem) and records to min(48dvh,38rem), with sticky
+headings. Short/zoomed/phone layouts retain normal page scrolling. Corners follow
+the scrolling layer without clipping the entire surface. Scoped Vite CSS; no new
+dependency or JavaScript module. Impeccable guided restrained existing-theme reuse.
+
+Add Bullion and Issue actions respect existing independent vault.manage and
+job_order.manage permissions; job-detail/all-jobs links respect job_order.view.
+Full Ledger and lot links remain available to Vault viewers. No financial controller,
+model, service, query, route, migration or calculation changes. Preserved sums,
+lot issued/percentage/depleted arithmetic, job outstanding accessor, movement
+fields, links and existing latest10/latest25 query limits; counts explicitly say
+shown, not all-shop totals. Gold purity retains K; silver/unknown is not labelled K.
+Removed duplicate tablet/phone lists, floating action menu and nested purity cards.
+Open lot/job via its native identifier link; rows no longer have inline onclick.
+
+Guard confirmed testing / pgsql /127.0.0.1:5432 / exact jewelflow_testing before
+RefreshDatabase. Initial4 PHP and3 frontend checks RED. Fixtures cover42 purity
+rows (22primary/20other), unknown/other-only/empty groups, escaped material names,
+summary values,24 indexed lots, populated jobs/movements and scoped links.
+An initial test-context error and XPath that included sidebar links were corrected;
+one older isolation test hit a missing Vite manifest during concurrent build.
+After build completed, sequential PHP rerun passed, with no backend change.
+
+Exact final commands:
+
+```sh
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/VaultWorkspaceUiTest.php tests/Feature/Vault/VaultAccessAndIsolationTest.php tests/Feature/VaultAdjustmentTest.php tests/Feature/Material/VaultReportsVisibilityTest.php
+node --test tests/Frontend/vault-workspace.test.mjs tests/Frontend/tags-mobile-toolbar.test.mjs tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs
+npm run build
+php8.2 -l resources/views/vault/index.blade.php
+php8.2 -l resources/views/vault/partials/balance-table.blade.php
+php8.2 -l tests/Feature/Tables/VaultWorkspaceUiTest.php
+vendor/bin/pint --test tests/Feature/Tables/VaultWorkspaceUiTest.php
+php8.2 /home/himanshu/jf-table-evidence/local-preview-20261101.U5Egtv/preview.php view:cache
+php8.2 /home/himanshu/jf-table-evidence/local-preview-20261101.U5Egtv/preview.php view:clear
+git diff --check
+```
+
+23 PHP passed/81assertions;23 frontend passed/0skipped;build80modules.
+Lint/Pint/guarded Bladecompile-clear/diff check and Impeccable layout[] passed.
+Logs vault-workspace-* in existing external evidence directory. Read every new/
+changed source/test. CSS tests are declaration contracts and PHP tests render
+Blade/HTTP; these are NOT pixel, mouse, keyboard, phone or Turbo acceptance.
+Browser access remains policy-blocked, no workaround attempted, no Vault screenshots.
+Owner must refresh /vault and review desktop/mobile, many-purity scrolling,
+Other materials disclosure, link focus and record switching. No preview data,
+process, other-worktree or remote changes. No push/deploy. Local review checkpoint.
+
+## Earlier checkpoint — Desktop Tag Printing toolbar regression correction
 
 Started clean `8370af5371f4fb665f2e2b96b007a05806975b27`. Owner's desktop
 screenshot disproved the previous checkpoint's desktop-preservation assumption:

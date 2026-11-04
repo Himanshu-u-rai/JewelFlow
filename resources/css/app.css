@@ -6,6 +6,7 @@
 @import "./stock-mobile.css";
 @import "./tags-toolbar.css";
 @import "./reorder-editor.css";
+@import "./vault-workspace.css";
 
 @tailwind base;
 @tailwind components;
