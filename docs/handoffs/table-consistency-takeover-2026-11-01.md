@@ -2,7 +2,26 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Vault workspace and growing purity balances
+## Latest checkpoint — Single-strip Current position
+
+Started clean `6596a84c7b5ab6c60faff68fb0f2ad8b021e0b3b`, same branch/worktree,
+sole writer. Owner requested summary values alongside labels rather than beneath.
+Moved the unchanged summary dl between the title and actions in the same wrapping
+header; scoped strip rules use inline label/value pairs,16px figures and right-
+aligned actions. Wide desktop uses one strip; narrower windows wrap naturally.
+Phone has a title, two-column inline metric pairs and wrapping44px actions.
+No calculations, data, permissions, links or other sections changed.
+
+Regression RED then17 frontend checks passed/0skipped:
+`node --test tests/Frontend/vault-workspace.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs`.
+`npm run build` passed80modules; PHP lint of Vault Blade, guarded preview
+`view:cache`/`view:clear`, diff check passed. No PHPUnit/destructive DB test
+for this markup/CSS-only refinement. Logs vault-position-strip-* in existing
+external evidence directory. Source/diff read. Browser visual/phone/zoom check
+still NOT RUN (policy block); source contracts are not pixel proof. Owner refresh
+/vault. Preview process/data preserved; no push/remote work.
+
+## Earlier checkpoint — Vault workspace and growing purity balances
 
 Started clean `74fc0a66ea28913f271e0d5cc4df83c2e30ba97c`, same worktree/branch,
 sole Local Codex writer. Owner approved the proposed compact Vault layout and

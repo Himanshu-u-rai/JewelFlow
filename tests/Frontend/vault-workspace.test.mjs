@@ -45,3 +45,14 @@ test('phone records retain all cells and headers with readable wrapping and touc
     assert.match(view, /aria-pressed=/);
     assert.doesNotMatch(view, /role="tablist"|onclick=/);
 });
+
+test('current position keeps heading, inline metrics and actions in one wrapping strip', () => {
+    const strip = view.match(/<section class="vault-surface vault-position-strip"[\s\S]*?<\/section>/)?.[0] || '';
+    assert.match(strip, /<header[\s\S]*?<h2[\s\S]*?<dl[\s\S]*?<\/dl>[\s\S]*?class="vault-actions"[\s\S]*?<\/header>/);
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary', 'padding'), '0');
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary div', 'display'), 'flex');
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary div', 'align-items'), 'baseline');
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary dd', 'margin'), '0');
+    assert.equal(value('.vault-page .vault-position-strip .vault-actions', 'margin-inline-start'), 'auto');
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary', 'grid-template-columns', 'screen and (max-width: 768px)'), 'repeat(2, minmax(0, 1fr))');
+});

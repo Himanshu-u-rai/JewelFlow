@@ -14,9 +14,15 @@
             @include('partials.view-only-banner', ['permission' => 'vault.manage', 'message' => 'vault management'])
         @endunless
 
-        <section class="vault-surface" aria-labelledby="vault-position-title">
+        <section class="vault-surface vault-position-strip" aria-labelledby="vault-position-title">
             <header class="vault-heading">
                 <h2 id="vault-position-title">Current position</h2>
+                <dl class="vault-summary" aria-label="Vault summary">
+                    <div><dt>In Vault</dt><dd data-vault-summary="in-vault">{{ number_format($vaultFine, 3) }} g</dd></div>
+                    <div><dt>With Karigar</dt><dd data-vault-summary="karigar">{{ number_format($karigarFine, 3) }} g</dd></div>
+                    <div><dt>Total Fine</dt><dd data-vault-summary="total">{{ number_format($totalFine, 3) }} g</dd></div>
+                    <div><dt>Active Lots</dt><dd>{{ $activeLots }}</dd></div>
+                </dl>
                 <div class="vault-actions">
                     <a href="{{ route('vault.ledger') }}" class="btn btn-secondary btn-sm">
                         <x-icon name="chart-no-axes-column-increasing" size="16" /> Full Ledger
@@ -33,12 +39,6 @@
                     @endcan
                 </div>
             </header>
-            <dl class="vault-summary" aria-label="Vault summary">
-                <div><dt>In Vault</dt><dd data-vault-summary="in-vault">{{ number_format($vaultFine, 3) }} g</dd></div>
-                <div><dt>With Karigar</dt><dd data-vault-summary="karigar">{{ number_format($karigarFine, 3) }} g</dd></div>
-                <div><dt>Total Fine</dt><dd data-vault-summary="total">{{ number_format($totalFine, 3) }} g</dd></div>
-                <div><dt>Active Lots</dt><dd>{{ $activeLots }}</dd></div>
-            </dl>
         </section>
 
         <section class="vault-surface" aria-labelledby="vault-purity-title">
