@@ -9,6 +9,7 @@ import { showFlashes, toastSettings } from './toast';
 import { initializeChallanShare } from './repair-challan-share';
 import { initializeRowActionLabels } from './table-row-actions';
 import { initializeListWorkspaces } from './list-workspace';
+import { createReorderEditor } from './reorder-editor';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -189,6 +190,7 @@ window.Alpine = Alpine;
 window.Turbo = Turbo;
 
 registerHistoricalManual(Alpine);
+Alpine.data('reorderRuleEditor', createReorderEditor);
 Alpine.start();
 
 function showFlashToasts() {

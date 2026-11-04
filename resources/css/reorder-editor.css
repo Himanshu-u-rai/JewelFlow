@@ -1,0 +1,27 @@
+@media screen {
+    body.app-shell .reorder-rule-dialog { width: min(620px, calc(100% - 24px)); max-width: none; max-height: calc(100dvh - 32px); inset: 0; margin: auto; padding: 0; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); color: var(--jf-ink); overflow-y: auto; overscroll-behavior: contain; }
+    body.app-shell .reorder-rule-dialog::backdrop { background: rgba(16, 24, 40, .4); }
+    body.app-shell .reorder-editor-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--jf-border); background: var(--jf-surface); }
+    body.app-shell .reorder-editor-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+    body.app-shell .reorder-editor-head button { width: 44px; height: 44px; padding: 0; flex: none; }
+    body.app-shell .reorder-rule-dialog form { padding: 20px; }
+    body.app-shell .reorder-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+    body.app-shell .reorder-editor-grid > div { min-width: 0; }
+    body.app-shell .reorder-editor-grid label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    body.app-shell .reorder-editor-grid :is(select, input) { width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); color: var(--jf-ink); font-size: 14px; }
+    body.app-shell .reorder-editor-grid input[type="number"] { max-width: 140px; }
+    body.app-shell .reorder-rule-dialog :is(input, select, button):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+    body.app-shell .reorder-editor-grid [aria-invalid="true"] { border-color: #be123c; }
+    body.app-shell .reorder-editor-active { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 14px; }
+    body.app-shell .reorder-editor-hint { margin: 16px 0; color: var(--jf-text-muted); font-size: 13px; line-height: 1.5; }
+    body.app-shell .reorder-editor-errors { margin-bottom: 18px; padding: 12px; border-radius: 10px; background: #fff1f2; color: #9f1239; font-size: 14px; }
+    body.app-shell .reorder-editor-errors p { margin: 0 0 6px; font-weight: 600; }
+    body.app-shell .reorder-editor-errors ul { margin: 0; padding-left: 20px; }
+    body.app-shell .reorder-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--jf-border); padding-top: 16px; }
+    body.app-shell .reorder-editor-actions button { min-height: 44px; }
+}
+@media screen and (max-width: 768px) {
+    body.app-shell .reorder-rule-dialog { inset: auto 0 0; width: 100%; margin: 0; max-height: calc(100dvh - 16px); padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 16px 16px 0 0; }
+    body.app-shell .reorder-editor-grid { grid-template-columns: minmax(0, 1fr); }
+    body.app-shell .reorder-editor-grid :is(select, input) { font-size: 16px; }
+}

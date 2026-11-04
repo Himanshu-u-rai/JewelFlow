@@ -2,7 +2,58 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact shared mobile Stock header/navigation
+## Latest checkpoint — Reorder Add/Edit on-page dialog
+
+Started clean `2854853c11ddd7d0ad70c5095d5f9ddac9831503`, sole Local Codex
+writer, same branch/worktree. Owner requested Add/Edit as an on-page card rather
+than navigating away. Header Add, empty-state Add and row Edit now open one native
+dialog with category/sub-category, minimum, vendor and edit-only active toggle.
+Desktop centered / phone bottom sheet, viewport-bounded scrolling, 44px actions,
+16px phone inputs, native Escape/focus containment/restoration, explicit dialog
+names. Existing real hrefs remain for no-JS/unsupported browser/modified clicks.
+
+One small Alpine provider registered in existing Vite entry; no new dependency or
+AJAX endpoint. Index reuses existing formData() only with inventory.edit; view-only
+users get no modal or vendor/category form data. Existing store/update validation,
+policy, routes, cache clearing, redirects and success flashes unchanged. Cancel
+does not send anything; successful native form submission refreshes the same list.
+No business records or live preview fixtures modified. Direct standalone forms
+remain unchanged as fallback (not migrated into this new dialog partial).
+
+Invalid submission redirects back to index and reopens the correct create/edit
+with old values/errors and action target. Hidden editor marker limits reopening
+to this form. Unavailable saved choices remain explicit instead of silently
+becoming All/None; authoritative server validation still applies. Pending Save
+disables controls/prevents Escape; submit-end releases state. Turbo cache/render
+cleanup closes the dialog and suppresses cached error auto-reopen. Normal opens
+clear old errors and copy rule state rather than modifying row objects.
+
+Initial test harness mistakes (PostgreSQL boolean comparison and console tenant
+binding context) corrected before implementation. Meaningful RED: 3 PHP / 4 Node
+failures before implementation, then separate unavailable-choice and modified-link
+RED before fixes. Guard confirmed testing/pgsql/127.0.0.1:5432/exact jewelflow_testing.
+Final commands/results:
+
+```sh
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/ReorderDialogTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/InventoryStockPagesTest.php tests/Feature/ReorderAlertTriggerTest.php tests/Feature/Inventory/InventoryAccessTest.php
+node --test tests/Frontend/reorder-editor.test.mjs tests/Frontend/stock-mobile-layout.test.mjs tests/Frontend/stock-header-metrics.test.mjs tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/stock-tools-interaction.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs
+npm run build
+```
+
+50 PHP passed / 515 assertions; 55 frontend passed / 0 skipped; build80 modules.
+PHP lint controller/two Blade files/new PHP test, Pint(new test), guarded preview
+Blade compile/clear, diff check and Impeccable source layout[] passed. Logs
+reorder-dialog-* in existing external evidence folder. Bound-route PHP tests use
+explicit TenantContext for console binding, not bypassed policies/middleware.
+JS state/handler checks use stubs, not actual DOM gestures or form controls.
+
+Source reviewed. Browser/pixel, native select, Escape/focus-return, actual Turbo
+validation lifecycle/Back-Forward and physical-phone acceptance NOT RUN (policy
+block). No workaround. Owner refresh/review needed for Add, edit (including paused
+and unavailable choices), Cancel, Save and validation. Local only; no push, remote,
+preview-data or other worktree/process changes.
+
+## Earlier checkpoint — Compact shared mobile Stock header/navigation
 
 Started clean `be79ddf9067e8d14abe9b5aa7cf7a076a4cb3009`; sole Local Codex
 writer, same branch/worktree. Owner's 427px screenshot confirms the oversized

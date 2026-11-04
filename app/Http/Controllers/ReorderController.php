@@ -28,7 +28,10 @@ class ReorderController extends Controller
 
         $alerts = $this->reorderService->getAlerts($shopId);
 
-        return view('reorder.index', compact('rules', 'alerts'));
+        return view('reorder.index', array_merge(
+            compact('rules', 'alerts'),
+            auth()->user()->can('inventory.edit') ? $this->formData() : [],
+        ));
     }
 
     public function create()

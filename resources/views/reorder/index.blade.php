@@ -6,7 +6,8 @@
 <x-app-layout>
     <x-stock-workspace-header active="reorder">
         @can('inventory.edit')
-            <a href="{{ route('reorder.create') }}" class="btn btn-primary btn-sm reorder-index-add" aria-label="Add reorder rule">
+            <a href="{{ route('reorder.create') }}" class="btn btn-primary btn-sm reorder-index-add" aria-label="Add reorder rule" aria-haspopup="dialog" aria-controls="reorder-rule-dialog"
+               x-data data-reorder-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('reorder-rule-open'); }">
                 <x-icon name="plus" size="15" />
                 <span class="reorder-index-add-full stock-header-action-label">Add Rule</span><span class="reorder-index-add-short stock-header-action-label">Add</span>
             </a>
@@ -93,7 +94,9 @@
                                     <td data-label="Status"><span class="stock-tool-status {{ $rule->is_active ? 'is-active' : '' }}">{{ $rule->is_active ? 'Active' : 'Paused' }}</span></td>
                                     <td data-label="Actions"><div class="jf-table-actions">
                                         @can('inventory.edit')
-                                            <a href="{{ route('reorder.edit', $rule) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit rule"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit rule for {{ $rule->category ?: 'all categories' }}</span></a>
+                                            <a href="{{ route('reorder.edit', $rule) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit rule"
+                                               aria-haspopup="dialog" aria-controls="reorder-rule-dialog"
+                                               x-data data-reorder-edit @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('reorder-rule-open', {{ \Illuminate\Support\Js::from(['id' => $rule->id, 'action' => route('reorder.update', $rule), 'category' => $rule->category ?? '', 'sub_category' => $rule->sub_category ?? '', 'min_stock_threshold' => $rule->min_stock_threshold, 'vendor_id' => $rule->vendor_id ?? '', 'is_active' => $rule->is_active]) }}); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit rule for {{ $rule->category ?: 'all categories' }}</span></a>
                                             <form method="POST" action="{{ route('reorder.destroy', $rule) }}" data-confirm-message="Delete this reorder rule?" data-ajax-delete>
                                                 @csrf
                                                 @method('DELETE')
@@ -111,9 +114,13 @@
             @else
                 <div class="stock-tool-empty">
                     <p>A rule monitors stock; it does not create a purchase automatically.</p>
-                    @can('inventory.edit')<a href="{{ route('reorder.create') }}" class="btn btn-primary">Add first rule</a>@endcan
+                    @can('inventory.edit')<a href="{{ route('reorder.create') }}" class="btn btn-primary" aria-haspopup="dialog" aria-controls="reorder-rule-dialog" x-data data-reorder-open
+                        @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('reorder-rule-open'); }">Add first rule</a>@endcan
                 </div>
             @endif
         </section>
     </div>
+    @can('inventory.edit')
+        @include('reorder.partials.rule-dialog')
+    @endcan
 </x-app-layout>
