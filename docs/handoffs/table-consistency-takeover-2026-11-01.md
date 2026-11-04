@@ -2,7 +2,46 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Six-page Stock mobile pass / bottom-sheet filters
+## Latest checkpoint — Compact shared mobile Stock header/navigation
+
+Started clean `be79ddf9067e8d14abe9b5aa7cf7a076a4cb3009`; sole Local Codex
+writer, same branch/worktree. Owner's 427px screenshot confirms the oversized
+two-column/three-row body navigation and separate Add row. Approved direction:
+menu/title/compact actions/bell in one top row, a single horizontally scrollable
+header strip below, across all six Stock routes. No other redesign.
+
+Extended screen/max-width768 scoped stock-mobile.css. Header uses a shrinkable
+title and 44px controls; the notices bell is in flow rather than absolutely
+positioned. Removed the legacy reserved right padding with one scoped important
+override. Empty action slots collapse, not a blank row. Add/Create actions become
+icons with explicit accessible names and clipped label spans; desktop labels stay.
+Header stays in normal phone page flow, avoiding a tall sticky obstruction in short
+windows. Body navigation hidden only on phones; tablet/desktop behavior retained.
+
+The existing header navigation links become a nowrap native horizontal scroller
+with hidden scrollbar and padded focus space. No custom dragging, click handlers,
+history or new dependency. Header-only Alpine nextTick reveals the active link by
+changing only its scrollLeft, never document scroll/focus; desktop does nothing.
+Current-page semantics, real routes, reorder badge, manufacturer destinations,
+mutation permissions and handlers retained. Existing Stock bottom sheet unchanged.
+
+RED: 3 frontend failures and 1 PHP failure before implementation; ID-specific
+pricing-bell sizing regression also RED before adding its44px override. Exact
+same eight-file Node command and four-file PHP command recorded in next checkpoint
+rerun for this candidate: 49 frontend passed / 0 skipped; 27 PHP / 418 assertions.
+Guard confirmed testing/pgsql/127.0.0.1:5432/exact jewelflow_testing first. Tests
+cover six actual route responses, empty slots, action names and navigation hooks;
+horizontal-reveal handler executed against stubs (NOT actual gestures). Build79
+modules, five Blade/PHP-test lint, Pint, guarded Blade compile/clear, diff check
+and Impeccable source layout scan[] passed. Logs stock-mobile-header-* in the same
+external evidence directory. Source/cascade reviewed; no browser workaround used.
+
+Browser/phone pixel layout, real swiping, keyboard traversal, resize/rotation and
+Turbo Back/Forward remain NOT RUN due policy restriction. Owner refresh/review
+needed, including a last-tab destination and 320px width with both Stock bells.
+No push, remote, preview data or server process changes.
+
+## Earlier checkpoint — Six-page Stock mobile pass / bottom-sheet filters
 
 Started clean `5fd2503ed085553efab338cef5145357789090fe`, same branch/worktree;
 sole Local Codex writer, preview process retained. Used Impeccable Adapt/craft

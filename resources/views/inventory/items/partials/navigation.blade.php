@@ -3,7 +3,11 @@
     $active = $active ?? 'items';
     $reorderAlertCount = $reorderAlertCount ?? ($isRetailer ? app(\App\Services\ReorderAlertService::class)->alertCount(auth()->user()->shop_id) : 0);
 @endphp
-<nav class="items-page-nav items-{{ $placement }}-nav stock-workspace-nav" aria-label="Stock navigation">
+<nav class="items-page-nav items-{{ $placement }}-nav stock-workspace-nav" aria-label="Stock navigation"
+     @if($placement === 'header')
+         x-data
+         x-init="$nextTick(() => { if (window.matchMedia('(max-width: 768px)').matches) { const current = $el.querySelector('[aria-current=page]'); if (current) $el.scrollLeft += current.getBoundingClientRect().left - $el.getBoundingClientRect().left - 4; } })"
+     @endif>
     <div class="ui-toggle-strip items-view-toggle">
         <div class="items-primary-views">
             @foreach(['items' => ['Stock Items', 'package', 'inventory.items.index'], 'aging' => ['Stock Aging', 'clock', 'inventory.stock-aging'], 'sellers' => ['Sell Trend', 'trending-up', 'inventory.sell-trend']] as $key => [$label, $icon, $route])

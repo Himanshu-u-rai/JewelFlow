@@ -17,6 +17,6 @@
     </div>
     <div class="page-actions">
         @include('inventory.items.partials.navigation', ['placement' => 'header', 'active' => $active])
-        <div class="stock-header-actions">{{ $slot }}</div>
+        <div class="stock-header-actions" @if($slot->isEmpty()) data-empty @endif>{{ $slot }}</div>
     </div>
 </x-page-header>

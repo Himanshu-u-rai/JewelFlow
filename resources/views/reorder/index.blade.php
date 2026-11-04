@@ -6,9 +6,9 @@
 <x-app-layout>
     <x-stock-workspace-header active="reorder">
         @can('inventory.edit')
-            <a href="{{ route('reorder.create') }}" class="btn btn-primary btn-sm reorder-index-add">
+            <a href="{{ route('reorder.create') }}" class="btn btn-primary btn-sm reorder-index-add" aria-label="Add reorder rule">
                 <x-icon name="plus" size="15" />
-                <span class="reorder-index-add-full">Add Rule</span><span class="reorder-index-add-short">Add</span>
+                <span class="reorder-index-add-full stock-header-action-label">Add Rule</span><span class="reorder-index-add-short stock-header-action-label">Add</span>
             </a>
         @endcan
     </x-stock-workspace-header>

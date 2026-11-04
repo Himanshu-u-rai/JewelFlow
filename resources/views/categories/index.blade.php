@@ -4,8 +4,8 @@
         <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
             class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
             <x-icon name="plus" class="w-4 h-4 mr-2" />
-            <span class="categories-add-label-full">{{ __('Add Category') }}</span>
-            <span class="categories-add-label-short">{{ __('Add') }}</span>
+            <span class="categories-add-label-full stock-header-action-label">{{ __('Add Category') }}</span>
+            <span class="categories-add-label-short stock-header-action-label">{{ __('Add') }}</span>
         </button>
         @endcan
     </x-stock-workspace-header>

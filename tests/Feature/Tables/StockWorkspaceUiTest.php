@@ -86,6 +86,11 @@ class StockWorkspaceUiTest extends TestCase
             $this->assertSame('', $xp->evaluate('string(.//h1/@x-text)', $header));
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/nav[contains(@class,"items-header-nav")]', $header)->length);
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/div[@class="stock-header-actions"]', $header)->length);
+            $this->assertSame(in_array($title, ['Stock Aging', 'Sell Trend', 'Tag Printing']) ? 1 : 0, $xp->query('.//*[@class="stock-header-actions" and @data-empty]', $header)->length);
+            $this->assertSame(1, $xp->query('.//nav[contains(@class,"items-header-nav") and @x-init]', $header)->length);
+            foreach ($xp->query('.//*[@class="stock-header-actions"]/*[self::a or self::button]', $header) as $action) {
+                $this->assertNotSame('', trim($action->getAttribute('aria-label')), 'Icon-only phone actions retain an accessible name.');
+            }
             $this->assertSame(0, $xp->query('.//nav//a[contains(@href,"/create")] | .//nav//button[@id="pricing-alert-bell"]', $header)->length);
             $this->assertSame(1, $xp->query('.//*[@data-notice-bell]', $header)->length);
         }

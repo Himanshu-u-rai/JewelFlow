@@ -16,9 +16,9 @@
             @endif
             @can('inventory.create')
                 <a href="{{ route('inventory.items.create') }}"
-                    class="btn btn-success btn-sm inventory-items-create-btn">
+                    class="btn btn-success btn-sm inventory-items-create-btn" aria-label="Create Item">
                 <x-icon name="plus" class="w-4 h-4 mr-2" />
-                Create Item
+                <span class="stock-header-action-label">Create Item</span>
             </a>
             @endcan
     </x-stock-workspace-header>

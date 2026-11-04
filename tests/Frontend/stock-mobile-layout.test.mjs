@@ -95,3 +95,48 @@ test('Reorder rules become labelled phone rows with visible full-width actions',
     assert.equal(value('.reorder-index-page .reorder-rules-table td[data-label="Actions"]', 'grid-column'), '1 / -1');
     assert.equal(value('.reorder-index-page .reorder-rules-table .jf-row-action', 'min-height'), '44px');
 });
+
+test('phone Stock headers keep menu, title, actions and notices together instead of an extra action row', () => {
+    const header = '.content-header.inventory-items-header';
+    assert.equal(value(header, 'grid-template-columns'), '44px minmax(0, 1fr) auto 44px');
+    assert.equal(value('.inventory-items-header .page-actions', 'display'), 'contents');
+    assert.equal(value('.inventory-items-header .stock-header-actions', 'grid-row'), '1');
+    assert.equal(value('.inventory-items-header > .notice-bell', 'position'), 'relative');
+    assert.equal(value('.inventory-items-header > .notice-bell', 'grid-column'), '4');
+    assert.equal(value('.inventory-items-header .stock-header-title', 'min-height'), '44px');
+    assert.equal(value('.inventory-items-header .stock-header-actions > :is(a, button)', 'width'), '44px');
+    assert.equal(value('.inventory-items-header .stock-header-actions > #pricing-alert-bell', 'width'), '44px', 'Override the older ID-specific bell sizing.');
+    assert.equal(value('.inventory-items-header .stock-header-action-label', 'position'), 'absolute');
+    assert.equal(value('.inventory-items-header .stock-header-actions[data-empty]', 'display'), 'none');
+});
+
+test('phone Stock navigation is one contained swipeable header strip, not a duplicate three-row box', () => {
+    const nav = '.inventory-items-header .items-header-nav';
+    assert.equal(value(nav, 'display'), 'block');
+    assert.equal(value(nav, 'grid-column'), '1 / -1');
+    assert.equal(value(nav, 'grid-row'), '2');
+    assert.equal(value(nav, 'overflow-x'), 'auto');
+    assert.equal(value(nav, 'scrollbar-width'), 'none');
+    assert.equal(value('.stock-workspace-nav.items-body-nav', 'display'), 'none');
+    assert.equal(value(nav + ' .items-view-toggle', 'display'), 'flex');
+    assert.equal(value(nav + ' .items-view-toggle', 'flex-wrap'), 'nowrap');
+    assert.equal(value(nav + ' .items-view-toggle', 'width'), 'max-content');
+    assert.equal(value(nav + ' :is(.items-view-tab, .items-page-link)', 'white-space'), 'nowrap');
+    assert.equal(value(nav + ' :is(.items-view-tab, .items-page-link)', 'min-height'), '44px');
+});
+
+test('phone header reveals the selected Stock destination horizontally without scrolling the document', () => {
+    const source = readFileSync(new URL('../../resources/views/inventory/items/partials/navigation.blade.php', import.meta.url), 'utf8');
+    const handler = source.match(/x-init="([^"]+)"/)?.[1];
+    assert.ok(handler);
+    const nav = { scrollLeft: 0, getBoundingClientRect: () => ({ left: 12 }), querySelector: () => ({ getBoundingClientRect: () => ({ left: 480 }) }) };
+    const init = new Function('$el', '$nextTick', 'window', handler);
+    init(nav, fn => fn(), { matchMedia: () => ({ matches: false }) });
+    assert.equal(nav.scrollLeft, 0, 'Desktop does not move.');
+    init(nav, fn => fn(), { matchMedia: () => ({ matches: true }) });
+    assert.equal(nav.scrollLeft, 464);
+    nav.querySelector = () => null;
+    init(nav, fn => fn(), { matchMedia: () => ({ matches: true }) });
+    assert.equal(nav.scrollLeft, 464, 'A missing active destination is safe.');
+    assert.doesNotMatch(handler, /scrollIntoView|scrollTo|focus\(/);
+});
