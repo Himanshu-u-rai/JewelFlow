@@ -4,6 +4,7 @@
 @import "./workspace-surfaces.css";
 @import "./workspace-corners.css";
 @import "./stock-mobile.css";
+@import "./tags-toolbar.css";
 @import "./reorder-editor.css";
 
 @tailwind base;

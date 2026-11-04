@@ -7,6 +7,7 @@
         {{-- ── Filter bar ─────────────────────────────────────────────────── --}}
         <header class="stock-tool-header">
             <div><h2>Print queue</h2><p class="stock-tool-muted">{{ number_format($items->total()) }} matching in-stock items · select items, then print</p></div>
+            <x-responsive-filter-panel id="tags-filter-panel" label="Tag filters">
             <form method="GET" action="{{ route('tags.index') }}" class="stock-tool-filters" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
                 <div class="stock-tool-search">
                     <label for="tags-search" class="stock-tool-label">Search</label>
@@ -33,6 +34,7 @@
                     </a>
                 @endif
             </form>
+            </x-responsive-filter-panel>
         </header>
 
         {{-- ── Print form ──────────────────────────────────────────────────── --}}
@@ -80,6 +82,17 @@
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
             <div class="stock-tool-print-settings">
+                <details class="tags-print-options" data-tag-print-options open
+                         x-init="$el.open = window.innerWidth > 768"
+                         @resize.window="if (window.innerWidth > 768) $el.open = true"
+                         @invalid.capture="$el.open = true">
+                    <summary>
+                        <x-icon name="settings" size="16" />
+                        <span>Print settings</span>
+                        <span class="tags-print-options-value" x-text="printFormat === 'folded' ? 'Jewellery tag' : 'Label'"></span>
+                        <x-icon name="chevron-down" size="16" />
+                    </summary>
+                    <div class="tags-print-options-body">
                 <div class="flex items-center gap-2 tags-print-type">
                     <span id="tags-type-label" class="tags-print-label">Tag type</span>
                     <div role="group" aria-labelledby="tags-type-label" class="tags-print-type-switch inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
@@ -151,7 +164,10 @@
                         <option value="none">Text only</option>
                     </select>
                 </div>
+                    </div>
+                </details>
 
+                <div class="tags-print-actions">
                 <button type="submit"
                     class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="selected.length === 0">
@@ -183,6 +199,7 @@
                       class="text-xs text-amber-600 font-medium">
                     All {{ count($allMatchingIds) }} items selected
                 </span>
+                </div>
             </div>
 
             {{-- ── Item table ───────────────────────────────────────────── --}}

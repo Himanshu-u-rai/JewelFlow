@@ -2,7 +2,50 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Reorder Add/Edit on-page dialog
+## Latest checkpoint — Compact mobile Tag Printing controls
+
+Started clean `7601147401416a54a79b3a6c7c773095e6b8f696`, sole Local Codex
+writer, same branch/worktree. Owner's 427px screenshot shows search/category and
+printer controls pushing records down. Reused the existing responsive-filter-panel
+component (unchanged): phone queue title + Filters button; search/category/Apply/
+Clear in its native bottom sheet. Same single GET form, field IDs/values, custom
+selects and desktop inline filters. Scoped desktop panel flex basis retains the
+original560px form space. No duplicated filter form or new modal implementation.
+
+Tag type, sizes, custom dimensions and codes are wrapped in one native details
+inside the existing print form. Closed initially on phones, summary shows current
+tag type; open/flattened wrappers on desktop. Resizing wide expands it; phone/
+keyboard resize preserves user choice. Invalid custom dimensions expand settings
+so the native validation control is reachable. Print/Select All/Clear and selection
+feedback remain outside the disclosure and visible. All options/hidden IDs still
+belong to the same GET/new-tab print form. No new JavaScript module, backend,
+selection/printer-preference script or print-document CSS change. Same44px touch
+targets; this reduces exposed controls rather than making inputs hard to use.
+
+RED3frontend/1PHP before implementation; desktop-flex/closed-disclosure checks RED
+before adding those rules. Test-parser issue and unregistered icon name caught
+and corrected during verification (used existing settings icon). Guard confirmed
+testing/pgsql/127.0.0.1:5432/exact jewelflow_testing. Final commands/results:
+
+```sh
+APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/StockToolsThemeTest.php tests/Feature/Tables/StockRegisterUiTest.php tests/Feature/Tables/StockWorkspaceUiTest.php tests/Feature/Tables/InventoryStockPagesTest.php tests/Feature/TagPrintSizesTest.php
+node --test tests/Frontend/tags-mobile-toolbar.test.mjs tests/Frontend/stock-tools-interaction.test.mjs tests/Frontend/stock-tools-layout.test.mjs tests/Frontend/stock-mobile-layout.test.mjs tests/Frontend/stock-header-metrics.test.mjs tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-filter-action.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs
+npm run build
+```
+
+34 PHP passed /447 assertions;52 frontend passed/0 skipped;build80modules. Blade/
+PHP-test lint, Pint(test), guarded Blade compile/clear, diff check and Impeccable
+source layout[] passed. Tag script blocks compared byte-identical to starting HEAD.
+Logs tags-toolbar-* in existing external evidence directory. Checks are rendered
+HTML, state/handler stubs and CSS contracts, NOT browser gestures or pixel proofs.
+
+Source reviewed. Browser phone/desktop layout, native disclosure keyboard/invalid
+focus, category dropdown inside sheet and actual print-output acceptance remain
+NOT RUN (browser policy block); no workaround attempted. Owner refresh/review
+needed. Shared filter component and other pages untouched; no push, remote, local
+preview data or process changes. No CSS changes to print-media documents.
+
+## Earlier checkpoint — Reorder Add/Edit on-page dialog
 
 Started clean `2854853c11ddd7d0ad70c5095d5f9ddac9831503`, sole Local Codex
 writer, same branch/worktree. Owner requested Add/Edit as an on-page card rather

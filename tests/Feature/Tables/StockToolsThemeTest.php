@@ -50,6 +50,10 @@ class StockToolsThemeTest extends TestCase
         $this->assertSame(route('tags.print'), $xp->evaluate('string(//form[@id="print-form"]/@action)'));
         $this->assertSame('viewport', $xp->evaluate('string(//form[@id="print-form"]/@data-enhance-selects-placement)'));
         $this->assertSame(3, $xp->query('//form[@id="print-form"]//*[contains(@class,"tags-print-custom")]//input[@type="number"]')->length);
+        $this->assertSame(1, $xp->query('//dialog[@id="tags-filter-panel"]//form[@action="'.route('tags.index').'"]')->length);
+        $this->assertSame(1, $xp->query('//form[@id="print-form"]//details[@data-tag-print-options]')->length);
+        $this->assertSame(3, $xp->query('//details[@data-tag-print-options]//select')->length);
+        $this->assertSame(1, $xp->query('//form[@id="print-form"]//*[contains(@class,"tags-print-actions")]//button[@type="submit" and not(ancestor::details)]')->length);
     }
 
     public function test_reorder_keeps_one_indexed_rules_table_with_permission_scoped_mutation_controls(): void

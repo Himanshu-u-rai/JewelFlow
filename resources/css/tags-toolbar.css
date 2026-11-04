@@ -1,0 +1,31 @@
+@media screen {
+    /* Flatten only the new wrappers on desktop, keeping the existing print toolbar. */
+    body.app-shell .tags-index-page .tags-print-options,
+    body.app-shell .tags-index-page .tags-print-options-body,
+    body.app-shell .tags-index-page .tags-print-actions { display: contents; }
+    body.app-shell .tags-index-page .tags-print-options > summary { display: none; }
+}
+@media screen and (min-width: 769px) {
+    body.app-shell .tags-index-page .stock-tool-header .jf-filter-panel { flex: 0 1 560px; }
+}
+@media screen and (max-width: 768px) {
+    body.app-shell .tags-index-page .stock-tool-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+    body.app-shell .tags-index-page .stock-tool-header > div:first-child { min-width: 0; }
+    body.app-shell .tags-index-page .jf-filter-toggle { min-height: 44px; }
+    body.app-shell .tags-index-page .jf-filter-panel { color: var(--jf-ink); border-color: var(--jf-border); }
+    body.app-shell .tags-index-page .jf-filter-panel .stock-tool-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; }
+    body.app-shell .tags-index-page .jf-filter-panel .stock-tool-filters > div { min-width: 0; }
+    body.app-shell .tags-index-page .stock-tool-print-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px 12px; }
+    body.app-shell .tags-index-page .tags-print-options { display: block; min-width: 0; }
+    body.app-shell .tags-index-page .tags-print-options > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-size: 14px; list-style: none; }
+    body.app-shell .tags-index-page .tags-print-options > summary::-webkit-details-marker { display: none; }
+    body.app-shell .tags-index-page .tags-print-options > summary > svg { flex: none; }
+    body.app-shell .tags-index-page .tags-print-options-value { margin-left: auto; color: var(--jf-text-muted); font-size: 12px; text-align: right; }
+    body.app-shell .tags-index-page .tags-print-options[open] > summary > svg:last-child { transform: rotate(180deg); }
+    body.app-shell .tags-index-page .tags-print-options-body { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0 12px; }
+    body.app-shell .tags-index-page .tags-print-options:not([open]) .tags-print-options-body { display: none; }
+    body.app-shell .tags-index-page .tags-print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    body.app-shell .tags-index-page .tags-print-actions > button { padding-inline: 10px; font-size: 13px; }
+    body.app-shell .tags-index-page .tags-print-actions > span { flex-basis: 100%; }
+    body.app-shell .tags-index-page .tags-print-options > summary:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; border-radius: 6px; }
+}
