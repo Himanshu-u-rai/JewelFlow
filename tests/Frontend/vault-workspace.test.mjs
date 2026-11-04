@@ -56,3 +56,21 @@ test('current position keeps heading, inline metrics and actions in one wrapping
     assert.equal(value('.vault-page .vault-position-strip .vault-actions', 'margin-inline-start'), 'auto');
     assert.equal(value('.vault-page .vault-position-strip .vault-summary', 'grid-template-columns', 'screen and (max-width: 768px)'), 'repeat(2, minmax(0, 1fr))');
 });
+
+test('summary metric tiles grow with their content without fixed widths or clipped values', () => {
+    const tile = '.vault-page .vault-position-strip .vault-summary div';
+    assert.equal(value(tile, 'border'), '1px solid var(--jf-border)');
+    assert.equal(value(tile, 'border-radius'), '8px');
+    assert.equal(value(tile, 'padding'), '6px 10px');
+    assert.equal(value(tile, 'background'), 'var(--jf-surface-soft)');
+    assert.equal(value(tile, 'flex'), '0 1 auto');
+    assert.equal(value(tile, 'max-inline-size'), '100%');
+    assert.equal(value(tile, 'min-width'), '0');
+    assert.equal(value(tile, 'width'), undefined);
+    assert.equal(value(tile, 'height'), undefined);
+    assert.equal(value(tile, 'flex-wrap'), 'wrap');
+    const metric = '.vault-page .vault-position-strip .vault-summary dd';
+    assert.equal(value(metric, 'overflow-wrap'), 'anywhere');
+    assert.equal(value(metric, 'min-width'), '0');
+    assert.equal(value('.vault-page .vault-position-strip .vault-summary dt', 'overflow-wrap'), 'anywhere');
+});

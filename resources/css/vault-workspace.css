@@ -58,9 +58,23 @@
 }
 .vault-page .vault-position-strip .vault-heading { justify-content: flex-start; gap: 12px 20px; padding: 12px 18px; }
 .vault-page .vault-position-strip h2 { font-size: 14px; }
-.vault-page .vault-position-strip .vault-summary { gap: 10px 20px; padding: 0; }
-.vault-page .vault-position-strip .vault-summary div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
-.vault-page .vault-position-strip .vault-summary dd { margin: 0; font-size: 16px; }
+.vault-page .vault-position-strip .vault-summary { gap: 8px; padding: 0; min-width: 0; max-inline-size: 100%; }
+.vault-page .vault-position-strip .vault-summary div {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    min-width: 0;
+    max-inline-size: 100%;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid var(--jf-border);
+    border-radius: 8px;
+    background: var(--jf-surface-soft);
+}
+.vault-page .vault-position-strip .vault-summary dt { min-width: 0; overflow-wrap: anywhere; }
+.vault-page .vault-position-strip .vault-summary dd { margin: 0; font-size: 16px; min-width: 0; overflow-wrap: anywhere; }
 .vault-page .vault-position-strip .vault-actions { margin-inline-start: auto; }
 .vault-page .vault-count {
     display: inline-block;
@@ -155,7 +169,7 @@
     .vault-page .vault-summary dd { font-size: 17px; }
     .vault-page .vault-position-strip .vault-heading { padding: 12px; }
     .vault-page .vault-position-strip h2 { flex-basis: 100%; }
-    .vault-page .vault-position-strip .vault-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 10px 16px; }
+    .vault-page .vault-position-strip .vault-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; }
     .vault-page .vault-actions { width: 100%; }
     .vault-page .vault-actions .btn { flex: 1 1 auto; }
     .vault-page .vault-switch { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }

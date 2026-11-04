@@ -2,7 +2,25 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Single-strip Current position
+## Latest checkpoint — Content-sized Current position metric tiles
+
+Started clean `1214b08efa05f027d5b7ee4c441780226f7983ae`, same branch/worktree,
+sole writer. Owner requested small cards/pills for the summary that grow with
+data. Scoped CSS now gives each existing dl item a subtle neutral background,
+1px token border,8px radius and6px/10px padding. Intrinsic flex sizing, no fixed
+width/height, max-inline-size100%, min-width0, wrapping labels/figures and an8px
+strip gap. Phone retains two flexible columns with tighter8px gaps. No value,
+markup, action, permission or calculation changes; no new UI dependencies.
+
+Regression RED then18 frontend checks passed/0skipped:
+`node --test tests/Frontend/vault-workspace.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs`.
+`npm run build` passed80modules; diff check passed. No PHP/DB tests for CSS-only
+change. Source/diff reviewed. Logs vault-metric-tiles-* in existing external
+evidence directory. These are source contracts, not rendered long-value/zoom/
+phone acceptance; browser verification remains NOT RUN (policy block).
+Owner refresh /vault for visual review. No data/process/remote changes or push.
+
+## Earlier checkpoint — Single-strip Current position
 
 Started clean `6596a84c7b5ab6c60faff68fb0f2ad8b021e0b3b`, same branch/worktree,
 sole writer. Owner requested summary values alongside labels rather than beneath.
