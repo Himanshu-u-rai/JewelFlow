@@ -74,3 +74,14 @@ test('summary metric tiles grow with their content without fixed widths or clipp
     assert.equal(value(metric, 'min-width'), '0');
     assert.equal(value('.vault-page .vault-position-strip .vault-summary dt', 'overflow-wrap'), 'anywhere');
 });
+
+test('vault grid cannot grow its page column to the intrinsic width of record controls', () => {
+    assert.equal(value('.content-inner.vault-page', 'grid-template-columns'), 'minmax(0, 1fr)');
+    for (const selector of ['.vault-page .vault-heading', '.vault-page .vault-actions', '.vault-page .vault-switch']) {
+        assert.equal(value(selector, 'min-width'), '0', selector);
+    }
+    assert.equal(value('.vault-page .vault-switch', 'overflow-x', 'screen and (max-width: 768px)'), 'auto');
+    assert.equal(value('.vault-page .vault-switch', 'max-width', 'screen and (max-width: 768px)'), '100%');
+    assert.equal(value('.content-inner.vault-page', 'overflow'), undefined);
+    assert.equal(value('.content-inner.vault-page', 'overflow-x'), undefined);
+});

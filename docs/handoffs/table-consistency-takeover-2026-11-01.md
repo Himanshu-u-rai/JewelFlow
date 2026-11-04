@@ -2,7 +2,27 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Content-sized Current position metric tiles
+## Latest checkpoint — Vault mobile width containment
+
+Started clean `d341b92d93e3841676b65342b5da4a568a8e2b3f`, same worktree/branch,
+sole writer. Owner's427px emulated screenshot shows all Vault surfaces extending
+beyond the right edge, including summary actions. Source investigation found the
+new page grid used implicit auto column sizing alongside nowrap record controls.
+Constrained the page to an explicit minmax(0,1fr) column and allowed headings,
+actions and the record switcher to shrink with min-width0. The existing switcher
+retains its own phone horizontal scroll/max-width100%; no overflow:hidden mask,
+body sizing change, dropped data or new fixed widths. CSS-only correction.
+
+Regression RED then19 frontend checks passed/0skipped:
+`node --test tests/Frontend/vault-workspace.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs`.
+`npm run build` passed80modules; diff check passed. No PHP/DB tests needed.
+Changed source/test/diff read. Logs vault-mobile-width-* in existing external
+evidence directory. The screenshot is the observed failure; automated checks are
+CSS contracts, not proof of corrected rendering. Browser access remains policy-
+blocked. Owner must refresh427px view and check right edges, actions, long values,
+switcher scroll and bottom rows. No preview-data/process/remote changes or push.
+
+## Earlier checkpoint — Content-sized Current position metric tiles
 
 Started clean `1214b08efa05f027d5b7ee4c441780226f7983ae`, same branch/worktree,
 sole writer. Owner requested small cards/pills for the summary that grow with

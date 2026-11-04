@@ -2,6 +2,8 @@
    One table per collection; phone cards retain the same cells and semantics. */
 .content-inner.vault-page {
     display: grid;
+    /* An implicit auto column can expand to a nowrap descendant's min-content width. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
     min-width: 0;
     max-width: none;
@@ -23,7 +25,7 @@
     gap: 12px 20px;
     padding: 16px 18px;
 }
-.vault-page .vault-heading { border-radius: 16px 16px 0 0; }
+.vault-page .vault-heading { min-width: 0; border-radius: 16px 16px 0 0; }
 .vault-page .vault-heading h2 {
     margin: 0;
     font-size: 16px;
@@ -38,7 +40,7 @@
     font-size: 12px;
     line-height: 1.5;
 }
-.vault-page .vault-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vault-page .vault-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .vault-page .vault-actions .btn { min-height: 44px; gap: 6px; }
 .vault-page .vault-summary {
     display: flex;
@@ -88,6 +90,7 @@
 }
 .vault-page .vault-switch {
     display: flex;
+    min-width: 0;
     flex-wrap: wrap;
     gap: 4px;
 }
