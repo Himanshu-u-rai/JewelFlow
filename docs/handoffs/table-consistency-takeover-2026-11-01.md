@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact mobile Tag Printing controls
+## Latest checkpoint — Desktop Tag Printing toolbar regression correction
+
+Started clean `8370af5371f4fb665f2e2b96b007a05806975b27`. Owner's desktop
+screenshot disproved the previous checkpoint's desktop-preservation assumption:
+Tag type/Size/Codes were stacked beside the actions. Native details retains an
+internal content box; relying on display:contents across wrappers did not give
+the option groups the parent toolbar's flex layout. Previous source checks tested
+the intended declaration rather than rendered behavior; no pixel pass was done.
+
+Small correction in tags-toolbar.css: details uses a normal block box, and both
+its actual options-body and action group explicitly use wrapping horizontal flex,
+center alignment and8px/12px gaps. Existing outer toolbar arranges those two groups;
+narrow desktop windows may wrap naturally. No HTML, JavaScript, fields, printing,
+filters or phone-collapse behavior changed. Regression expectation RED before
+CSS correction, then same nine-file focused Node command from next checkpoint:
+52 passed/0 skipped. Build80modules and diff check passed. Logs
+tags-desktop-toolbar-*. No PHP/database access for this CSS/test-only correction.
+Both changed source/test files reviewed. Browser/pixel acceptance still NOT RUN
+(policy block); owner refresh/review needed on desktop and phone. No workaround,
+push, remote, preview-data or process changes. Sole writer remains Local Codex.
+
+## Earlier checkpoint — Compact mobile Tag Printing controls
 
 Started clean `7601147401416a54a79b3a6c7c773095e6b8f696`, sole Local Codex
 writer, same branch/worktree. Owner's 427px screenshot shows search/category and

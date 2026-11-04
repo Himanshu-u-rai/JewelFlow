@@ -1,8 +1,8 @@
 @media screen {
-    /* Flatten only the new wrappers on desktop, keeping the existing print toolbar. */
-    body.app-shell .tags-index-page .tags-print-options,
+    /* Native details keeps an internal content box: lay out that box explicitly. */
+    body.app-shell .tags-index-page .tags-print-options { display: block; min-width: 0; max-width: 100%; }
     body.app-shell .tags-index-page .tags-print-options-body,
-    body.app-shell .tags-index-page .tags-print-actions { display: contents; }
+    body.app-shell .tags-index-page .tags-print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
     body.app-shell .tags-index-page .tags-print-options > summary { display: none; }
 }
 @media screen and (min-width: 769px) {

@@ -44,7 +44,13 @@ test('print settings start collapsed on phones, expanded on desktop, and reveal 
 });
 
 test('compact toolbar keeps desktop layout and readable phone targets rather than shrinking fields', () => {
-    assert.equal(value('.tags-index-page .tags-print-options', 'display', 'screen'), 'contents');
+    assert.equal(value('.tags-index-page .tags-print-options', 'display', 'screen'), 'block');
+    for (const selector of ['.tags-index-page .tags-print-options-body', '.tags-index-page .tags-print-actions']) {
+        assert.equal(value(selector, 'display', 'screen'), 'flex', 'The real contents container must lay out controls, not rely on flattening native details.');
+        assert.equal(value(selector, 'flex-wrap', 'screen'), 'wrap');
+        assert.equal(value(selector, 'align-items', 'screen'), 'center');
+        assert.equal(value(selector, 'gap', 'screen'), '8px 12px');
+    }
     assert.equal(value('.tags-index-page .tags-print-options > summary', 'display', 'screen'), 'none');
     assert.equal(value('.tags-index-page .stock-tool-header .jf-filter-panel', 'flex', 'screen and (min-width: 769px)'), '0 1 560px');
     assert.equal(value('.tags-index-page .tags-print-options > summary', 'display'), 'flex');
