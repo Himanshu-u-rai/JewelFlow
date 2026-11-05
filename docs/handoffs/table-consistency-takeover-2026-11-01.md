@@ -2,7 +2,58 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Mobile Karigars header alignment
+## Latest checkpoint — Issue Bullion form and right-hand Challan Summary
+
+Clean start `c3204e25bd8a274114fb28741c1048615199b406`, same sole-writer branch
+and worktree. Owner requested Job Orders/create treatment consistent with recent
+forms, keeping Challan Summary floating on the right. Replaced597lines of inline
+CSS with scoped Vite stylesheet job-order-create.css; existing palettes, white
+surfaces/soft borders/shadows, readable fields, rounded painted edges and visible
+keyboard outlines. Back-to-register action has a named44px mobile icon and a
+center-aligned title/menu/bell row. Existing themed date picker remains.
+
+Desktop (>=1200CSSpx wide, >=700CSSpx tall): shrinkable form +300px summary,
+sticky100px below the page top, bounded to viewport with themed accessible scroll.
+Narrow/short/zoomed layouts use normal page flow; summary precedes submit in DOM
+and visual order. No fixed overlay over data, global scroll lock or reverse order.
+Compact schedule fields, narrower Metal/Purity beside expandable Notes, two-column
+source choices, wrap-safe lot controls (two rows until wide desktop),44px remove
+icon, semantic pressed source state, field+value names on existing picker buttons.
+Long values/options wrap; menus remain outside clipping surfaces, mobile fixed
+menus preserve prior behavior with safe-area bounds. Removed decorative held-chip
+entrances. Summary labels/values use separators and tabular numerals. Submit and
+Cancel use existing shared buttons after summary rather than before it on mobile.
+
+Original jobOrderForm JavaScript verified byte-for-byte identical to starting
+commit. No input names, source required/disabled expressions, numeric limits,
+routes/controllers/services/models, financial rules or submit destination changed.
+No preview business actions or sample data seeded.
+
+Verification actually run:
+
+- Layout regression RED then GREEN. `node --test tests/Frontend/*.test.mjs`:
+  234passed,22 existing photo-browser skips,0failed. Includes actual form JS gold/
+  silver fine-to-gross, multiple lines/removal, held/customer/labour-only totals,
+  remaining balance, source switching without value loss, Escape/Turbo cleanup.
+  Log job-order-create-frontend.log in existing external evidence directory.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/JobOrderCreateUiTest.php tests/Feature/Manufacture/JobOrderAccessAndIsolationTest.php tests/Feature/Material/JobOrderControllerSourceTest.php tests/Feature/Material/JobOrderReviewFixesTest.php`:
+  23tests/83assertions passed under existing pre-destructive database guard.
+  New rendered checks cover one form, summary/submit order, named picker IDs,
+  source controls, unchanged constraints, foreign tenant exclusion and viewer403.
+- `npm run build`:83modules. PHP lint view/new test, guarded preview `view:cache`
+  and `view:clear`, `git diff --check` passed. Impeccable layout detector returned
+  [] before/after; this source scan is not rendered layout evidence.
+
+Live browser sticky/overflow geometry, actual dropdown/calendar keyboard traversal,
+Back/Forward, zoom, screenshots and physical-phone acceptance NOT RUN under the
+earlier browser-policy denial. Static/CSS/expression/rendered-HTML evidence does
+not replace those checks; owner visual review remains needed. Full PHP suite and
+performance benchmarking not run. No process restart, push, staging/production
+deployment, other worktree, OTP, SMTP or mobile-app changes. Impeccable guided
+incumbent Operate-mode density; Ponytail kept existing workflows and avoided new
+JavaScript frameworks/dependencies.
+
+## Earlier checkpoint — Mobile Karigars header alignment
 
 Clean start `c64be5f61c801a1cf8c12df1b5d84a1d87d73440`. Follow-up interpreted
 as the mobile page/nav title shown above the card in the owner's screenshot.
