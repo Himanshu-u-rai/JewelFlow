@@ -2,7 +2,19 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigar fills remaining schedule width
+## Latest checkpoint — Wastage label stays on one desktop line
+
+Clean start `136033a56a5bb4d618119465b50314ca539820f5`. Fixed132px label slot
+could wrap Allowed Wastage % *. Replaced its shrinking flex basis with intrinsic,
+nonshrinking auto width and nowrap label, while keeping input96px and Karigar as
+the remaining-space consumer. Mobile retains normal label wrapping to prevent
+overflow in narrow grid cells. No markup/calculation/calendar changes.
+Regression RED then `node --test tests/Frontend/*.test.mjs`:235passed/22existing
+skips/0failed; `npm run build`:83modules; diff passed. CSS-only: PHP not rerun.
+Log job-order-wastage-label-frontend.log retained. Live browser/mobile confirmation
+NOT RUN under existing policy denial. No data/process/remote/push/deploy/OTP work.
+
+## Earlier checkpoint — Karigar fills remaining schedule width
 
 Clean start `0b348b2fd599f4810e9971a5ccb82d98cbc1ce3d`. Owner requested full
 row width: removed Karigar280px cap, retaining flex-grow:1 so it takes all leftover

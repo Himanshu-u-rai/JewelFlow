@@ -31,6 +31,8 @@ test('schedule shares one compact row when space allows, with wrapping instead o
     assert.equal(value('.job-create-shell .job-schedule-karigar', 'flex'), '1 1 180px');
     assert.equal(value('.job-create-shell .job-schedule-karigar', 'max-width'), 'none', 'Karigar absorbs remaining row space');
     assert.equal(value('.job-create-shell .job-schedule-wastage .job-control', 'width'), '96px');
+    assert.equal(value('.job-create-shell .job-schedule-wastage', 'flex'), '0 0 auto', 'label width must not be squeezed into a fixed slot');
+    assert.equal(value('.job-create-shell .job-schedule-wastage .job-label', 'white-space'), 'nowrap');
     assert.equal(value('.job-create-shell .job-schedule-grid', 'display', 'screen and (max-width: 768px)'), 'grid');
 });
 
