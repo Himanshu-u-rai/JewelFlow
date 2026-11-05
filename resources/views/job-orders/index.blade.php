@@ -35,7 +35,7 @@
                         <dl class="jo-metric" data-job-metric="{{ $key }}"><dt>{{ $label }}</dt><dd>{{ number_format($count) }}</dd></dl>
                     @endforeach
                 </div>
-                <x-responsive-filter-panel id="job-orders-filter-panel" label="Job order filters">
+                <x-responsive-filter-panel id="job-orders-filter-panel" label="Job order filters" :desktop-popup="true">
                     <form method="GET" action="{{ route('job-orders.index') }}" class="jo-filters"
                           data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
                           x-data="{ dirty: false, hasFilters: @js($hasFilters) }" @input="dirty = true" @change="dirty = true">

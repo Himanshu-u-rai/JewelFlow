@@ -52,6 +52,8 @@ class JobOrderDirectoryUiTest extends TestCase
             $xp = $this->xpath($response->getContent());
             $this->assertSame(4, $xp->query('//*[@data-job-register-head]//dl[@data-job-metric]')->length);
             $this->assertSame(1, $xp->query('//dialog[@id="job-orders-filter-panel"]//form[@method="GET"]')->length);
+            $this->assertSame('true', $xp->evaluate('string(//dialog[@id="job-orders-filter-panel"]/@data-desktop-popup)'));
+            $this->assertSame(1, $xp->query('//button[@data-filter-toggle and @aria-controls="job-orders-filter-panel"]')->length);
             $this->assertSame(1, $xp->query('//select[@name="status"]')->length);
             $this->assertSame(1, $xp->query('//select[@name="karigar_id"]')->length);
             $expected = array_map('strval', $indices);

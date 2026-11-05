@@ -1,4 +1,4 @@
-@props(['id', 'label'])
+@props(['id', 'label', 'desktopPopup' => false])
 
 <div class="jf-filter-shell" x-data="{}">
     <button type="button" class="btn btn-secondary btn-sm jf-filter-toggle" x-cloak
@@ -8,8 +8,9 @@
         Filters
     </button>
     <dialog open id="{{ $id }}" x-ref="filters" class="jf-filter-panel" aria-label="{{ $label }}"
-            x-init="$el.dataset.ready = 'true'; $el.open = window.innerWidth > 768"
-            @resize.window="if (window.innerWidth > 768) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) $el.close()"
+            data-desktop-popup="{{ $desktopPopup ? 'true' : 'false' }}"
+            x-init="$el.dataset.ready = 'true'; $el.open = $el.dataset.desktopPopup !== 'true' && window.innerWidth > 768"
+            @resize.window="if ($el.dataset.desktopPopup !== 'true') { if (window.innerWidth > 768) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) $el.close(); }"
             @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()"
             @click="if ($event.target === $el && $event.clientY < $el.getBoundingClientRect().top) $el.close()">
         <div class="jf-filter-panel-head">

@@ -8,7 +8,7 @@
 .job-orders-index-page .jo-metric dt { color: var(--jf-text-muted); font-size: 12px; overflow-wrap: anywhere; }
 .job-orders-index-page .jo-metric dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .job-orders-index-page .jf-filter-panel { width: min(100%, 690px); margin-left: auto; color: var(--jf-text); }
-.job-orders-index-page .jf-filter-toggle { margin-left: auto; }
+.job-orders-index-page .jf-filter-toggle { display: inline-flex; margin-left: auto; min-height: 44px; }
 .job-orders-index-page .jo-filters { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 165px) repeat(2, minmax(0, 145px)) auto; align-items: end; gap: 8px; min-width: 0; }
 .job-orders-index-page .jo-filter-field { min-width: 0; }
 .job-orders-index-page .jo-filter-field label { display: block; margin-bottom: 5px; font-size: 12px; }
@@ -33,6 +33,17 @@
 .job-orders-index-page .jo-pagination { padding: 12px 18px; border-top: 1px solid var(--jf-border); border-radius: 0 0 16px 16px; background: var(--jf-surface); }
 .job-orders-index-page .jo-empty { display: grid; justify-items: center; gap: 14px; padding: 32px 18px; color: var(--jf-text-muted); text-align: center; }
 .job-orders-index-page .jo-empty p { margin: 0; }
+
+@media screen and (min-width: 769px) {
+    .job-orders-index-page .jf-filter-panel[data-ready] { position: fixed; inset: 0; width: min(640px, calc(100vw - 32px)); height: fit-content; max-height: calc(100dvh - 32px); margin: auto; padding: 18px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); box-shadow: 0 20px 48px -24px rgba(15, 23, 42, .5); }
+    .job-orders-index-page .jf-filter-panel[data-ready]:not(:modal) { display: none; }
+    .job-orders-index-page .jf-filter-panel[data-ready]:modal { display: block; }
+    .job-orders-index-page .jf-filter-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .job-orders-index-page .jf-filter-panel-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .job-orders-index-page .jf-filter-panel-head button { min-width: 44px; min-height: 44px; }
+    .job-orders-index-page .jf-filter-panel[data-ready] .jo-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .job-orders-index-page .jo-filter-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
 
 @media screen and (max-width: 1023px) {
     .job-orders-index-page .jo-records { display: none; }

@@ -2,7 +2,35 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Job Orders register consistency
+## Latest checkpoint — Desktop Job Orders filter popup
+
+Clean start `65068228dbe3f356afdcc183d2bb77406f418f83`, same branch/worktree.
+Owner requested desktop filters behind a Filters button too. Job Orders alone
+opts into the existing responsive-filter-panel's desktopPopup flag (default false,
+other lists unchanged). Native modal starts closed at all widths, remains modal
+across resize, and closes before Turbo caching/rendering. Desktop scoped CSS
+centers a viewport-bounded popup with two-column fields and visible close control;
+phone retains the existing bottom sheet. One GET form, themed dates/selects and
+Apply/Clear semantics retained. No business logic or data changes.
+
+Verification actually run (regression initially RED, then GREEN):
+
+- `node --test tests/Frontend/job-orders-directory.test.mjs tests/Frontend/customer-directory-search.test.mjs`:25 passed.
+- `node --test tests/Frontend/*.test.mjs`:230 passed,22 existing photo-browser
+  skips,0failed. Log: job-orders-filter-popup-frontend.log in existing evidence folder.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/JobOrderDirectoryUiTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`:
+  34 passed/278assertions, with pre-destructive test DB guard. Rendered HTML checks
+  verify the opt-in and named trigger alongside existing pagination/filter coverage.
+- `npm run build`:83modules. PHP lint shared panel/view/test, guarded preview
+  `view:cache`, `view:clear`, and `git diff --check` passed.
+
+Live browser popup geometry, keyboard/date/select interaction and physical-phone
+acceptance remain NOT RUN under the earlier browser-policy denial. Automated
+expression/CSS and server-rendered HTML checks are not browser acceptance. No full
+PHP suite, process changes, push, remote deployment, staging, production or OTP work.
+Impeccable/Ponytail guided reuse and scoped styling without a new dialog framework.
+
+## Earlier checkpoint — Job Orders register consistency
 
 Clean start `924802141a3b3fefcd1e91dd5a31bab24252065a`, same branch/worktree,
 sole writer. Owner approved list-only treatment; Issue Bullion, Receive, detail,
