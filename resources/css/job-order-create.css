@@ -18,6 +18,11 @@
 .job-create-shell textarea.job-control { min-height: 64px; resize: vertical; }
 .job-create-shell .job-profile-grid { grid-template-columns: minmax(0, 130px) minmax(0, 110px) minmax(0, 1fr); }
 .job-create-shell .job-profile-grid .job-field-full { grid-column: auto; }
+.job-create-shell .job-schedule-grid { display: flex; flex-wrap: wrap; align-items: end; }
+.job-create-shell .job-schedule-karigar { flex: 1 1 180px; max-width: 280px; }
+.job-create-shell .job-schedule-wastage { flex: 0 1 132px; }
+.job-create-shell .job-schedule-wastage .job-control { width: 96px; }
+.job-create-shell .job-schedule-date { flex: 0 1 156px; }
 .job-create-shell .job-source-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .job-create-shell .job-source-option { min-width: 0; min-height: 44px; padding: 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); text-align: left; }
 .job-create-shell .job-source-option[aria-pressed="true"] { border-color: #b45309; background: #fff7ed; }
@@ -79,6 +84,9 @@
     .job-create-shell .job-create-grid { gap: 14px; }
     .job-create-shell .job-section { padding: 14px; }
     .job-create-shell .job-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+    .job-create-shell .job-schedule-grid { display: grid; align-items: end; }
+    .job-create-shell .job-schedule-karigar { max-width: none; }
+    .job-create-shell .job-schedule-wastage .job-control { width: 100%; }
     .job-create-shell .job-field-grid > .job-field-full { grid-column: 1 / -1; }
     .job-create-shell .job-control { font-size: 16px; }
     .job-create-shell .job-combobox-trigger { font-size: 16px; }

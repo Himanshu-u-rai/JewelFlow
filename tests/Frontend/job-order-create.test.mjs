@@ -23,6 +23,17 @@ function form() {
     return runInNewContext(`${script}; jobOrderForm()`, {});
 }
 
+test('schedule shares one compact row when space allows, with wrapping instead of clipped fields', () => {
+    assert.match(view, /class="job-field-grid job-schedule-grid"/);
+    assert.equal(value('.job-create-shell .job-schedule-grid', 'display'), 'flex');
+    assert.equal(value('.job-create-shell .job-schedule-grid', 'flex-wrap'), 'wrap');
+    assert.equal(value('.job-create-shell .job-schedule-grid', 'align-items'), 'end');
+    assert.equal(value('.job-create-shell .job-schedule-karigar', 'flex'), '1 1 180px');
+    assert.equal(value('.job-create-shell .job-schedule-karigar', 'max-width'), '280px');
+    assert.equal(value('.job-create-shell .job-schedule-wastage .job-control', 'width'), '96px');
+    assert.equal(value('.job-create-shell .job-schedule-grid', 'display', 'screen and (max-width: 768px)'), 'grid');
+});
+
 test('summary sticks beside a shrinkable form only on tall desktops, never over phone or short-window controls', () => {
     assert.doesNotMatch(view, /<style\b/);
     assert.equal(value('.job-create-shell .job-create-grid', 'grid-template-columns'), 'minmax(0, 1fr)');

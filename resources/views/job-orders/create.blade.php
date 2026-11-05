@@ -30,8 +30,8 @@
                             </div>
                         </div>
 
-                        <div class="job-field-grid">
-                            <div class="job-field-full job-combobox" @click.outside="karigarOpen = false">
+                        <div class="job-field-grid job-schedule-grid">
+                            <div class="job-combobox job-schedule-karigar" @click.outside="karigarOpen = false">
                                 <span class="job-label" id="job-karigar-label">Karigar *</span>
                                 <input type="hidden" name="karigar_id" x-model="karigarId">
                                 <button type="button" class="job-combobox-trigger" aria-labelledby="job-karigar-label job-karigar-value" @click="karigarOpen = ! karigarOpen" :aria-expanded="karigarOpen.toString()">
@@ -61,17 +61,17 @@
                                 </div>
                             </div>
 
-                            <label>
+                            <label class="job-schedule-wastage">
                                 <span class="job-label">Allowed Wastage % *</span>
                                 <input type="number" step="0.01" name="allowed_wastage_percent" required min="0" max="25" class="job-control" x-model="allowedWastage">
                             </label>
 
-                            <label>
+                            <label class="job-schedule-date">
                                 <span class="job-label">Issue Date *</span>
                                 <input type="date" name="issue_date" required value="{{ now()->toDateString() }}" class="job-control">
                             </label>
 
-                            <label>
+                            <label class="job-schedule-date">
                                 <span class="job-label">Expected Return Date</span>
                                 <input type="date" name="expected_return_date" class="job-control">
                             </label>

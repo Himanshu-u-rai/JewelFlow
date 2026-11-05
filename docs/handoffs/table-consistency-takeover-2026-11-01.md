@@ -2,7 +2,25 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Issue Bullion form and right-hand Challan Summary
+## Latest checkpoint — Compact Karigar and schedule row
+
+Clean start `710ba42842fca34ebf45271a4ded6c35610a9da2`. Owner requested Karigar,
+Allowed Wastage, Issue Date and Expected Return Date in one compact desktop row.
+Scoped flex row: Karigar180px basis/280px cap, wastage96px input in132px label
+slot, dates156px each. Wraps naturally if the form column cannot fit all four;
+mobile keeps two-column grid (one at <=380px). Bottom-aligned controls avoid
+wrapped-label offsets. No date/calendar, validation, calculation or submit changes;
+sticky right-hand summary preserved. Only schedule wrapper/field classes changed.
+
+Regression RED then `node --test tests/Frontend/*.test.mjs`:235passed/22existing
+skips/0failed. `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/JobOrderCreateUiTest.php`:
+2tests/37assertions passed under disposable DB guard. `npm run build`:83modules;
+PHP lint view, guarded preview Blade cache/clear and diff check passed. Log:
+job-order-schedule-frontend.log in existing external evidence folder. Actual browser
+geometry/calendar/mobile acceptance remains NOT RUN under earlier policy denial.
+No process/data/remote/push/deploy/OTP changes.
+
+## Earlier checkpoint — Issue Bullion form and right-hand Challan Summary
 
 Clean start `c3204e25bd8a274114fb28741c1048615199b406`, same sole-writer branch
 and worktree. Owner requested Job Orders/create treatment consistent with recent
