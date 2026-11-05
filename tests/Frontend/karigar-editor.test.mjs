@@ -156,6 +156,14 @@ test('billing defaults pack into a wrapping row with compact controls and unchan
     assert.equal(value('.kf-shell .kf-field--wastage .kf-input', 'width'), '100px');
 });
 
+test('shared form omits the introductory heading and labels the address once', () => {
+    const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
+    assert.doesNotMatch(form, /Who is the karigar\?/);
+    assert.equal((form.match(/Workshop Address/g) ?? []).length, 1);
+    assert.match(form, /<p id="kf-address-heading" class="kf-group">Workshop Address<\/p>/);
+    assert.match(form, /<input[^>]*name="address"[^>]*aria-labelledby="kf-address-heading"/);
+});
+
 test('profile helper text stays behind keyboard/touch information buttons, not always-visible copy', () => {
     const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
     for (const [field, text] of [['name', 'The karigar — the person who owns the workshop.'], ['shop_name', 'The workshop or firm they run.'], ['contact_person', 'Who you usually deal with, if not the owner']]) {

@@ -46,12 +46,6 @@
         font-weight: 600;
     }
 
-    .kf-group--first {
-        margin-top: 0;
-        padding-top: 0;
-        border-top: 0;
-    }
-
     .kf-field { display: block; min-width: 0; }
     .kf-field--full { grid-column: 1 / -1; }
     .kf-field--wide { grid-column: span 2; }
@@ -161,8 +155,6 @@
 </style>
 
 <div class="kf-fields">
-    <p class="kf-group kf-group--first">Who is the karigar?</p>
-
     <div class="kf-field" x-data="karigarFieldHelp" @scroll.window.capture="if (help) place()" @resize.window="if (help) place()" @turbo:before-cache.document="close()" @turbo:before-render.document="close()">
         <div class="kf-help-heading">
             <label for="kf-name" class="kf-label">Owner Name *</label>
@@ -210,12 +202,11 @@
         <input type="text" name="pan_number" value="{{ old('pan_number', $k?->pan_number) }}" class="kf-input kf-mono">
     </label>
 
-    <p class="kf-group">Workshop Address</p>
+    <p id="kf-address-heading" class="kf-group">Workshop Address</p>
 
-    <label class="kf-field kf-field--full">
-        <span class="kf-label">Workshop Address</span>
-        <input type="text" name="address" value="{{ old('address', $k?->address) }}" class="kf-input">
-    </label>
+    <div class="kf-field kf-field--full">
+        <input type="text" name="address" aria-labelledby="kf-address-heading" value="{{ old('address', $k?->address) }}" class="kf-input">
+    </div>
 
     <label class="kf-field">
         <span class="kf-label">City</span>

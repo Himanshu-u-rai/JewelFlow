@@ -2,7 +2,24 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Floating Karigar information bubbles
+## Latest checkpoint — Karigar form heading cleanup
+
+Clean start `c81177bc1c88c7f57cb7feb2cf9f407422856123`, same branch/worktree.
+Removed the requested "Who is the karigar?" introduction and its unused CSS.
+Retained one Workshop Address section heading; removed the repeated lower field
+caption and linked the unchanged address input to the heading with aria-labelledby.
+Shared partial covers popup and standalone Add/Edit. No fields, values, validation
+or helper bubbles changed. No data, processes, remote or OTP changes.
+
+Regression RED first, then `node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs`
+passed 15 tests, zero skipped. PHP lint of _form and guarded preview view:cache /
+view:clear passed; git diff --check passed. Impeccable source detector reported
+no findings but warned PHP scanning is regex-only, not rendered acceptance.
+No build or PHP/DB suite rerun for static Blade copy/label and unused inline CSS
+removal. Live visual verification remains pending under the earlier browser-policy
+denial. Refresh and reopen Add/Edit to review.
+
+## Earlier checkpoint — Floating Karigar information bubbles
 
 Clean start `437b14896c8a27ea4ae6c752dfdf9ff9c5a7ad1e`, same branch/worktree,
 sole writer. Owner clarified that inline disclosure text was not the requested
