@@ -4,7 +4,7 @@ import test from 'node:test';
 import postcss from 'postcss';
 
 const path = new URL('../../resources/js/karigar-editor.js', import.meta.url);
-const { createKarigarEditor } = existsSync(path) ? await import(path) : {};
+const { createKarigarEditor, createKarigarFieldHelp } = existsSync(path) ? await import(path) : {};
 function fixture(config = {}) {
     assert.equal(typeof createKarigarEditor, 'function');
     const state = createKarigarEditor(config);
@@ -160,12 +160,38 @@ test('profile helper text stays behind keyboard/touch information buttons, not a
     const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
     for (const [field, text] of [['name', 'The karigar — the person who owns the workshop.'], ['shop_name', 'The workshop or firm they run.'], ['contact_person', 'Who you usually deal with, if not the owner']]) {
         assert.ok(form.includes(text));
-        assert.match(form, new RegExp(`<button[^>]*type="button"[^>]*aria-controls="kf-${field}-help"[^>]*:aria-expanded="help"[^>]*@click="help = !help"`));
-        assert.match(form, new RegExp(`<p id="kf-${field}-help"[^>]*x-show="help" x-cloak>`));
+        assert.match(form, new RegExp(`<button[^>]*type="button"[^>]*popovertarget="kf-${field}-help"[^>]*:aria-expanded="help"`));
+        assert.match(form, new RegExp(`<p id="kf-${field}-help"[^>]*popover="auto"`));
         assert.match(form, new RegExp(`<label for="kf-${field}"`));
         assert.match(form, new RegExp(`<input id="kf-${field}"`));
     }
     for (const label of ['Owner Name *', 'Workshop / Shop Name', 'Day-to-day Contact', 'Positive = we owe the karigar.']) assert.ok(form.includes(label));
+});
+
+test('help bubbles float above the form, clamp at screen edges and flip below top-edge controls', () => {
+    assert.equal(typeof createKarigarFieldHelp, 'function');
+    const help = createKarigarFieldHelp();
+    let hidden = 0;
+    const bubble = { style: {}, matches: () => true, getBoundingClientRect: () => ({ width: 280, height: 80 }), hidePopover() { hidden++; } };
+    const button = { getBoundingClientRect: () => ({ left: 300, top: 10, bottom: 34, width: 24 }) };
+    help.$refs = { bubble, helpButton: button };
+    help.place({ innerWidth: 320, innerHeight: 240 });
+    assert.equal(bubble.style.left, '32px');
+    assert.equal(bubble.style.top, '40px');
+    assert.equal(bubble.style.visibility, 'visible');
+    button.getBoundingClientRect = () => ({ left: 0, top: 180, bottom: 204, width: 24 });
+    help.place({ innerWidth: 320, innerHeight: 240 });
+    assert.equal(bubble.style.left, '8px');
+    assert.equal(bubble.style.top, '94px');
+    help.help = true;
+    help.close();
+    assert.equal(hidden, 1);
+    const css = postcss.parse(readFileSync(new URL('../../resources/css/karigars-directory.css', import.meta.url), 'utf8'));
+    let fixed = false;
+    css.walkRules(rule => {
+        if (rule.selector === '.kf-shell .kf-help-bubble') rule.walkDecls('position', decl => { fixed = decl.value === 'fixed'; });
+    });
+    assert.equal(fixed, true, 'help must not occupy a grid row or shift any input');
 });
 
 test('popup opts into the same scrollbar paint as tables, not list sizing behavior', () => {

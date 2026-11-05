@@ -2,7 +2,35 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigar information buttons and popup scrollbar
+## Latest checkpoint — Floating Karigar information bubbles
+
+Clean start `437b14896c8a27ea4ae6c752dfdf9ff9c5a7ad1e`, same branch/worktree,
+sole writer. Owner clarified that inline disclosure text was not the requested
+bubble. Replaced all three inline x-show panels with native popover=auto tooltip
+bodies and popovertarget Info buttons. Same exact text/labels/24px targets remain;
+aria-controls/describedby/expanded relate each named button to its body. Native
+activation supports click/touch/Enter/Space, second click/outside/Escape dismissal
+and one automatic popover at a time. Fixed/top-layer bodies do not occupy form
+grid space or get clipped by the scrolling dialog.20-line Alpine helper reuses
+the shared row-label positioning approach: center above, flip below when needed,
+clamp8px viewport margins, reposition on scroll/resize, close for Turbo caching/
+navigation. Width280px bounded to viewport; long help scrolls within viewport.
+No new dependency, mutation/controller/field/value or scrollbar changes.
+
+Two source/position regressions RED then35frontend passed/0skipped:
+`node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs tests/Frontend/table-row-actions.test.mjs tests/Frontend/list-workspace.test.mjs`.
+Unit fixtures cover viewport clamping, top-edge flip and native hide call; source
+contracts require popover bodies/fixed positioning, retained text and labels.
+Build81modules, _form PHP lint, guarded preview view:cache/view:clear and diff
+check passed; Impeccable source layout detector[]. Source/diff read. Logs
+karigar-help-bubbles-* existing external directory. No PHP/DB rerun for client
+help-only refinement. Actual popup layering/keyboard/light-dismiss/phone acceptance
+NOT RUN under existing browser-policy denial; these are not real-browser results.
+Requires native Popover API in target browser, as shared row-label popovers do;
+no legacy-browser polyfill added. Owner refresh Karigars and review bubbles.
+No preview-data/process/remote/push/OTP changes.
+
+## Earlier checkpoint — Karigar information buttons and popup scrollbar
 
 Clean start `c015f7a883b17bbd42747b5a57643f3022b5c869`, same branch/worktree,
 sole writer. Owner first asked to remove three profile explanations, then steered

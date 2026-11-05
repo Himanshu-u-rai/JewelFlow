@@ -163,31 +163,31 @@
 <div class="kf-fields">
     <p class="kf-group kf-group--first">Who is the karigar?</p>
 
-    <div class="kf-field" x-data="{ help: false }">
+    <div class="kf-field" x-data="karigarFieldHelp" @scroll.window.capture="if (help) place()" @resize.window="if (help) place()" @turbo:before-cache.document="close()" @turbo:before-render.document="close()">
         <div class="kf-help-heading">
             <label for="kf-name" class="kf-label">Owner Name *</label>
-            <button type="button" class="kf-help-toggle" aria-label="About owner name" aria-controls="kf-name-help" aria-expanded="false" :aria-expanded="help" @click="help = !help"><x-icon name="info" size="16" /></button>
+            <button type="button" class="kf-help-toggle" x-ref="helpButton" popovertarget="kf-name-help" aria-label="About owner name" aria-controls="kf-name-help" aria-describedby="kf-name-help" aria-expanded="false" :aria-expanded="help"><x-icon name="info" size="16" /></button>
         </div>
         <input id="kf-name" type="text" name="name" value="{{ old('name', $k?->name) }}" required class="kf-input" placeholder="e.g. Ramesh">
-        <p id="kf-name-help" class="kf-hint" x-show="help" x-cloak>The karigar — the person who owns the workshop. This is the name used across the app.</p>
+        <p id="kf-name-help" class="kf-help-bubble" popover="auto" role="tooltip" x-ref="bubble" @toggle="help = $event.newState === 'open'; if (help) place(); else $el.style.visibility = 'hidden'">The karigar — the person who owns the workshop. This is the name used across the app.</p>
     </div>
 
-    <div class="kf-field" x-data="{ help: false }">
+    <div class="kf-field" x-data="karigarFieldHelp" @scroll.window.capture="if (help) place()" @resize.window="if (help) place()" @turbo:before-cache.document="close()" @turbo:before-render.document="close()">
         <div class="kf-help-heading">
             <label for="kf-shop_name" class="kf-label">Workshop / Shop Name</label>
-            <button type="button" class="kf-help-toggle" aria-label="About workshop name" aria-controls="kf-shop_name-help" aria-expanded="false" :aria-expanded="help" @click="help = !help"><x-icon name="info" size="16" /></button>
+            <button type="button" class="kf-help-toggle" x-ref="helpButton" popovertarget="kf-shop_name-help" aria-label="About workshop name" aria-controls="kf-shop_name-help" aria-describedby="kf-shop_name-help" aria-expanded="false" :aria-expanded="help"><x-icon name="info" size="16" /></button>
         </div>
         <input id="kf-shop_name" type="text" name="shop_name" value="{{ old('shop_name', $k?->shop_name) }}" placeholder="e.g. Ramesh Jewellery Works" class="kf-input">
-        <p id="kf-shop_name-help" class="kf-hint" x-show="help" x-cloak>The workshop or firm they run. Leave blank if it has no separate name.</p>
+        <p id="kf-shop_name-help" class="kf-help-bubble" popover="auto" role="tooltip" x-ref="bubble" @toggle="help = $event.newState === 'open'; if (help) place(); else $el.style.visibility = 'hidden'">The workshop or firm they run. Leave blank if it has no separate name.</p>
     </div>
 
-    <div class="kf-field" x-data="{ help: false }">
+    <div class="kf-field" x-data="karigarFieldHelp" @scroll.window.capture="if (help) place()" @resize.window="if (help) place()" @turbo:before-cache.document="close()" @turbo:before-render.document="close()">
         <div class="kf-help-heading">
             <label for="kf-contact_person" class="kf-label">Day-to-day Contact</label>
-            <button type="button" class="kf-help-toggle" aria-label="About day-to-day contact" aria-controls="kf-contact_person-help" aria-expanded="false" :aria-expanded="help" @click="help = !help"><x-icon name="info" size="16" /></button>
+            <button type="button" class="kf-help-toggle" x-ref="helpButton" popovertarget="kf-contact_person-help" aria-label="About day-to-day contact" aria-controls="kf-contact_person-help" aria-describedby="kf-contact_person-help" aria-expanded="false" :aria-expanded="help"><x-icon name="info" size="16" /></button>
         </div>
         <input id="kf-contact_person" type="text" name="contact_person" value="{{ old('contact_person', $k?->contact_person) }}" class="kf-input" placeholder="e.g. Suresh (manager)">
-        <p id="kf-contact_person-help" class="kf-hint" x-show="help" x-cloak>Who you usually deal with, if not the owner (e.g. a manager). Leave blank if it's the owner.</p>
+        <p id="kf-contact_person-help" class="kf-help-bubble" popover="auto" role="tooltip" x-ref="bubble" @toggle="help = $event.newState === 'open'; if (help) place(); else $el.style.visibility = 'hidden'">Who you usually deal with, if not the owner (e.g. a manager). Leave blank if it's the owner.</p>
     </div>
 
     <label class="kf-field">

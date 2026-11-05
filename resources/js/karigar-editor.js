@@ -58,3 +58,21 @@ export function createKarigarEditor(config = {}) {
         },
     };
 }
+
+export function createKarigarFieldHelp() {
+    return {
+        help: false,
+        place(win = window) {
+            const bubble = this.$refs.bubble;
+            const box = this.$refs.helpButton.getBoundingClientRect();
+            const size = bubble.getBoundingClientRect();
+            const above = box.top - size.height - 6;
+            bubble.style.left = `${Math.max(8, Math.min(box.left + box.width / 2 - size.width / 2, win.innerWidth - size.width - 8))}px`;
+            bubble.style.top = `${Math.max(8, Math.min(above >= 8 ? above : box.bottom + 6, win.innerHeight - size.height - 8))}px`;
+            bubble.style.visibility = 'visible';
+        },
+        close() {
+            if (this.$refs.bubble.matches(':popover-open')) this.$refs.bubble.hidePopover();
+        },
+    };
+}
