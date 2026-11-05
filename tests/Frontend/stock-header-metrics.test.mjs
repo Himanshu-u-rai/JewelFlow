@@ -15,12 +15,12 @@ const value = (selector, prop, media) => {
     return result;
 };
 
-test('header metrics keep holdings beside compact counts rather than wrapping the group underneath', () => {
+test('header metrics wrap content-sized counts without reserving a full row', () => {
     assert.equal(value('.inventory-items-page .items-register-metrics', 'flex'), '0 1 auto');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'display'), 'flex');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex-wrap'), 'nowrap');
-    assert.equal(value('.inventory-items-page .items-register-metrics', 'gap'), '12px 16px');
-    assert.equal(value('.inventory-items-page .items-register-metric dd', 'font-size'), '18px');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'flex-wrap'), 'wrap');
+    assert.equal(value('.inventory-items-page .items-register-metrics', 'gap'), '8px');
+    assert.equal(value('.inventory-items-page .items-register-metric dd', 'font-size'), '16px');
     assert.equal(value('.inventory-items-page .items-register-holdings', 'flex'), '0 1 240px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'padding-top'), '12px');
     assert.equal(value('.inventory-items-page .items-register-metrics', 'border-top'), '1px solid var(--jf-border)');
@@ -28,6 +28,26 @@ test('header metrics keep holdings beside compact counts rather than wrapping th
     assert.equal(value('.inventory-items-page .items-register-metrics', 'height'), undefined);
     assert.doesNotMatch(source, /Metal Holdings|Net weight in stock|items-register-metal-list/);
     assert.equal(value('.inventory-items-page .items-register-metric dd', 'overflow-wrap'), 'anywhere');
+});
+
+test('Stock count tiles match Vault with intrinsic sizing and untruncated values', () => {
+    const vaultCss = postcss.parse(readFileSync(new URL('../../resources/css/vault-workspace.css', import.meta.url), 'utf8'));
+    const tile = '.inventory-items-page .items-register-metric';
+    for (const prop of ['display', 'flex', 'flex-wrap', 'align-items', 'gap', 'min-width', 'max-inline-size', 'padding', 'border', 'border-radius', 'background']) {
+        let expected;
+        vaultCss.walkRules(rule => {
+            if (rule.selector === '.vault-page .vault-position-strip .vault-summary div') {
+                rule.walkDecls(prop, decl => { expected = decl.value; });
+            }
+        });
+        assert.notEqual(expected, undefined, prop);
+        assert.equal(value(tile, prop), expected, prop);
+    }
+    assert.equal(value(tile, 'width'), undefined);
+    assert.equal(value(tile, 'height'), undefined);
+    assert.equal(value('.inventory-items-page .items-register-metric dd', 'margin'), '0');
+    assert.equal(value('.inventory-items-page .items-register-metric dd', 'min-width'), '0');
+    assert.equal(value('.inventory-items-page .items-register-metric dt', 'overflow-wrap'), 'anywhere');
 });
 
 test('header search and filter tools stay grouped on the right, with usable phone input sizing', () => {

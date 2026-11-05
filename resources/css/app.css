@@ -31507,10 +31507,10 @@ a.notice-bell-item:focus-visible {
 .inventory-items-page .items-register-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .inventory-items-page .items-register-actions .btn { min-height: 44px; }
 /* Stock totals belong to the fixed register header, not separate tall cards. */
-.inventory-items-page .items-register-metrics { display: flex; flex-wrap: nowrap; flex: 0 1 auto; align-items: center; gap: 12px 16px; min-width: 0; padding-top: 12px; border-top: 1px solid var(--jf-border); }
-.inventory-items-page .items-register-metric { min-width: 0; margin: 0; }
-.inventory-items-page .items-register-metric dt { color: var(--jf-text-muted); font-size: 12px; line-height: 1.5; }
-.inventory-items-page .items-register-metric dd { margin: 2px 0 0; color: var(--jf-ink); font-size: 18px; line-height: 1.4; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.inventory-items-page .items-register-metrics { display: flex; flex-wrap: wrap; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; padding-top: 12px; border-top: 1px solid var(--jf-border); }
+.inventory-items-page .items-register-metric { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-inline-size: 100%; margin: 0; box-sizing: border-box; padding: 6px 10px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface-soft); }
+.inventory-items-page .items-register-metric dt { min-width: 0; color: var(--jf-erp-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.inventory-items-page .items-register-metric dd { min-width: 0; margin: 0; color: var(--jf-ink); font-size: 16px; line-height: 1.4; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .inventory-items-page .items-register-holdings { display: grid; grid-template-columns: minmax(0, 1fr) 44px; flex: 0 1 240px; align-items: center; column-gap: 8px; min-width: 0; }
 .inventory-items-page .items-register-holdings-head { display: contents; }
 .inventory-items-page .items-register-holdings-head > span { grid-column: 1; grid-row: 1; color: var(--jf-text); font-size: 12px; font-weight: 600; line-height: 1.5; }
@@ -31531,7 +31531,7 @@ a.notice-bell-item:focus-visible {
 }
 @media (max-width: 768px) {
     .inventory-items-page .items-register-header { padding: 13px 12px; }
-    .inventory-items-page .items-register-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .inventory-items-page .items-register-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .inventory-items-page .items-register-tools { width: 100%; }
     .inventory-items-page .items-register-holdings { grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid var(--jf-border); }
     .inventory-items-page .items-register-filters { grid-template-columns: minmax(0, 1fr); padding: 16px; }

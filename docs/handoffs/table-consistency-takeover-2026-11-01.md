@@ -2,7 +2,34 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Vault mobile width containment
+## Latest checkpoint — Stock count tiles match Vault
+
+Started clean `523774ee1d3db220e9c1332069c44285ac2b0ea9`, same worktree/branch,
+sole Local Codex writer. Owner requested Vault-style Total Items/In Stock/Sold
+metrics on Stock Items. CSS-only change in existing scoped register rules:
+same neutral token background,1px border,8px radius,6px/10px padding, inline
+label/value and16px numerals. Intrinsic flex sizing, wrapping, min-width0 and
+max-inline-size100%; no fixed tile width/height or value truncation. Counts can
+grow, group can wrap, existing phone three-column grid retained with8px gaps.
+No Blade/JS/data/calculation/query/filter/action or manufacturer fine-gold
+privacy-control change.
+
+Two regression checks RED first, then49frontend passed/0skipped:
+`node --test tests/Frontend/stock-header-metrics.test.mjs tests/Frontend/stock-register-layout.test.mjs tests/Frontend/stock-mobile-layout.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs tests/Frontend/vault-workspace.test.mjs`.
+Parity contract compares Stock tile declarations against Vault, plus existing
+manufacturer reveal/three-second-hide behavior. `npm run build` passed80modules;
+diff check passed. No PHP/DB tests for CSS-only refinement. Source/diff read.
+Logs stock-metric-tiles-* in existing external evidence directory. Browser/pixel/
+real-phone verification NOT RUN; current IAB URL-policy denial was respected.
+Owner refresh Stock Items for visual review. No process/data/remote changes/push.
+
+Earlier Vault clipping is NOT closed by its old source-only checkpoint below.
+Nov4 IAB427px measured visiblecardsfit butdocument652px from hidden table headings;
+no confirmed hidden-header fix yet. Chrome integration errored; laterNov5 IAB
+reload explicitly denied by URLpolicy. No circumvention. That issue remains
+separate from this requested Stock styling and is documented in external ledger.
+
+## Earlier checkpoint — Vault mobile width containment (visual issue still open)
 
 Started clean `d341b92d93e3841676b65342b5da4a568a8e2b3f`, same worktree/branch,
 sole writer. Owner's427px emulated screenshot shows all Vault surfaces extending
