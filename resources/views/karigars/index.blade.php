@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-page-header title="Karigars" subtitle="Job-work artisans linked to this shop">
+    <x-page-header title="Karigars" subtitle="Job-work artisans linked to this shop" class="karigars-page-header">
         <x-slot:actions>
             @can('karigar.manage')
-            <a href="{{ route('karigars.create') }}" class="btn btn-primary btn-sm">
-                <x-icon name="plus" size="14" class="mr-1" />
-                Add Karigar
+            <a href="{{ route('karigars.create') }}" class="btn btn-primary btn-sm karigars-add" aria-label="Add Karigar" title="Add Karigar">
+                <x-icon name="plus" size="16" />
+                <span class="karigars-add-label">Add Karigar</span>
             </a>
             @endcan
         </x-slot:actions>
@@ -18,7 +18,7 @@
 
         @php
             // Counts come from the full dataset (see controller $counts), not the
-            // filtered page, so the KPI cards and filter tabs stay honest.
+            // filtered list. Activity totals relate to the listed karigars.
             $allKarigars = (int) ($counts->all_count ?? $karigars->count());
             $activeKarigars = (int) ($counts->active_count ?? $karigars->where('is_active', true)->count());
             $inactiveKarigars = (int) ($counts->archived_count ?? ($allKarigars - $activeKarigars));
@@ -27,74 +27,48 @@
             $status = $status ?? 'active';
         @endphp
 
-        <div class="karigars-kpi-grid jobwork-kpi-grid">
-            <section class="karigars-kpi-card jobwork-kpi-card">
-                <span class="jobwork-kpi-icon jobwork-kpi-icon--gold" aria-hidden="true">
-                    <x-icon name="users" />
-                </span>
-                <div>
-                    <span class="karigars-kpi-label">Karigars</span>
-                    <strong>{{ $allKarigars }}</strong>
+        <section class="karigars-register" data-list-frame aria-labelledby="karigars-directory-title">
+            <header class="karigars-register-head" data-karigar-register-head>
+                <div class="karigars-register-title">
+                    <h2 id="karigars-directory-title">Karigar Directory</h2>
+                    <p>{{ $karigars->count() }} {{ $search !== '' ? 'matching' : 'listed' }} · {{ $status === 'archived' ? 'Disabled' : ucfirst($status) }}</p>
                 </div>
-            </section>
-            <section class="karigars-kpi-card jobwork-kpi-card">
-                <span class="jobwork-kpi-icon jobwork-kpi-icon--green" aria-hidden="true">
-                    <x-icon name="check" />
-                </span>
-                <div>
-                    <span class="karigars-kpi-label">Active</span>
-                    <strong>{{ $activeKarigars }}</strong>
+                <div class="karigars-summary" aria-label="Directory summary">
+                    <dl class="karigars-metric"><dt>Total Karigars</dt><dd>{{ $allKarigars }}</dd></dl>
+                    <dl class="karigars-metric"><dt>Active</dt><dd>{{ $activeKarigars }}</dd></dl>
+                    <dl class="karigars-metric"><dt>Listed · Jobs</dt><dd>{{ $totalJobOrders }}</dd></dl>
+                    <dl class="karigars-metric"><dt>Listed · Invoices</dt><dd>{{ $totalInvoices }}</dd></dl>
                 </div>
-            </section>
-            <section class="karigars-kpi-card jobwork-kpi-card">
-                <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
-                    <x-icon name="clipboard-list" />
-                </span>
-                <div>
-                    <span class="karigars-kpi-label">Job Orders</span>
-                    <strong>{{ $totalJobOrders }}</strong>
-                </div>
-            </section>
-            <section class="karigars-kpi-card jobwork-kpi-card">
-                <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
-                    <x-icon name="file-text" />
-                </span>
-                <div>
-                    <span class="karigars-kpi-label">Invoices</span>
-                    <strong>{{ $totalInvoices }}</strong>
-                </div>
-            </section>
-        </div>
-
-        <nav class="karigars-filter-tabs" aria-label="Filter karigars by status">
-            @php
-                $tabs = [
-                    'active'   => ['Active', $activeKarigars],
-                    'archived' => ['Disabled', $inactiveKarigars],
-                    'all'      => ['All', $allKarigars],
-                ];
-            @endphp
-            @foreach($tabs as $key => [$label, $count])
-                <a href="{{ route('karigars.index', $key === 'active' ? [] : ['status' => $key]) }}"
-                   class="karigars-filter-tab{{ $status === $key ? ' karigars-filter-tab--active' : '' }}"
-                   @if($status === $key) aria-current="page" @endif>
-                    {{ $label }} <span class="karigars-filter-tab-count">{{ $count }}</span>
-                </a>
-            @endforeach
-        </nav>
-
-        <div class="karigars-surface-card jobwork-register-card" data-list-frame>
-            <div class="karigars-surface-head jobwork-register-head">
-                <div class="jobwork-register-titleblock">
-                    <h2>Karigar Directory</h2>
-                    <p>Manage artisan profiles, their activity, and status from one list.</p>
-                </div>
-                <span>{{ $karigars->count() }} record{{ $karigars->count() === 1 ? '' : 's' }}</span>
-            </div>
+                <x-responsive-filter-panel id="karigars-filter-panel" label="Karigar filters">
+                    <form method="GET" action="{{ route('karigars.index') }}" class="karigars-filters" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                        <div class="karigars-search-field">
+                            <label for="karigars-search">Search</label>
+                            <input id="karigars-search" class="karigars-filter-input" type="search" name="search" value="{{ $search }}" maxlength="120" placeholder="Name, mobile, city…" />
+                        </div>
+                        <div class="karigars-status-field">
+                            <label for="karigars-status">Status</label>
+                            <select id="karigars-status" class="karigars-filter-input" name="status">
+                                <option value="active" @selected($status === 'active')>Active ({{ $activeKarigars }})</option>
+                                <option value="archived" @selected($status === 'archived')>Disabled ({{ $inactiveKarigars }})</option>
+                                <option value="all" @selected($status === 'all')>All ({{ $allKarigars }})</option>
+                            </select>
+                        </div>
+                        <div class="karigars-filter-actions">
+                            <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                            @if($search !== '' || $status !== 'active')
+                                <a class="btn btn-secondary btn-sm" href="{{ route('karigars.index') }}">Clear</a>
+                            @endif
+                        </div>
+                    </form>
+                </x-responsive-filter-panel>
+            </header>
 
             @if($karigars->isEmpty())
                 <div class="karigars-empty-state">
-                    @if($status === 'archived')
+                    @if($search !== '')
+                        <p>No karigars match your search.</p>
+                        <a href="{{ route('karigars.index', ['status' => $status]) }}" class="karigars-empty-link">Clear search</a>
+                    @elseif($status === 'archived')
                         <p>No disabled karigars.</p>
                     @elseif($status === 'active')
                         <p>No active karigars.</p>
@@ -113,20 +87,22 @@
                     <table class="karigars-table jf-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Mobile</th>
-                                <th>GST</th>
-                                <th>City</th>
-                                <th class="text-right">Job Orders</th>
-                                <th class="text-right">Invoices</th>
-                                <th class="text-right">Gold Held</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-right"></th>
+                                <th scope="col" class="jf-table-index">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Mobile</th>
+                                <th scope="col">GST</th>
+                                <th scope="col">City</th>
+                                <th scope="col" class="text-right">Job Orders</th>
+                                <th scope="col" class="text-right">Invoices</th>
+                                <th scope="col" class="text-right">Gold Held</th>
+                                <th scope="col" class="text-center">Status</th>
+                                <th scope="col" class="text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($karigars as $k)
                                 <tr class="karigars-table-row" onclick="window.location='{{ route('karigars.show', $k) }}'">
+                                    <td class="jf-table-index">{{ $loop->iteration }}</td>
                                     <td>
                                         <div class="karigars-name-cell">
                                             <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
@@ -150,8 +126,9 @@
                                         @endif
                                     </td>
                                     <td class="text-right" onclick="event.stopPropagation()">
-                                        @can('karigar.manage')
                                         <div class="karigars-row-actions">
+                                            <a href="{{ route('karigars.show', $k) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View {{ $k->name }}</span></a>
+                                            @can('karigar.manage')
                                             @if($k->is_active)
                                                 <form method="POST" action="{{ route('karigars.archive', $k) }}" class="inline" onsubmit="return confirm('Disable {{ addslashes($k->name) }}? They keep all history but can\'t take new work until re-enabled.');">
                                                     @csrf
@@ -165,9 +142,9 @@
                                                     <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
                                                 </form>
                                             @endif
-                                            <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                            <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
+                                            @endcan
                                         </div>
-                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach
@@ -180,6 +157,7 @@
                         <article class="karigars-mobile-card" onclick="window.location='{{ route('karigars.show', $k) }}'">
                             <div class="karigars-mobile-head">
                                 <div>
+                                    <span class="karigars-mobile-index">#<span data-karigar-mobile-index>{{ $loop->iteration }}</span></span>
                                     <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
                                     @if($k->shop_name)
                                         <p>{{ $k->shop_name }}</p>
@@ -220,8 +198,9 @@
                                 </div>
                             </dl>
 
-                            @can('karigar.manage')
                             <div class="karigars-mobile-actions" onclick="event.stopPropagation()">
+                                <a href="{{ route('karigars.show', $k) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View {{ $k->name }}</span></a>
+                                @can('karigar.manage')
                                 @if($k->is_active)
                                     <form method="POST" action="{{ route('karigars.archive', $k) }}" onsubmit="return confirm('Disable {{ addslashes($k->name) }}? They keep all history but can\'t take new work until re-enabled.');">
                                         @csrf
@@ -235,13 +214,13 @@
                                         <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
                                     </form>
                                 @endif
-                                <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
+                                <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
+                                @endcan
                             </div>
-                            @endcan
                         </article>
                     @endforeach
                 </div>
             @endif
-        </div>
+        </section>
     </div>
 </x-app-layout>

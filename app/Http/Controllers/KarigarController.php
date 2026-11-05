@@ -14,6 +14,9 @@ class KarigarController extends Controller
 
     public function index(Request $request)
     {
+        $validated = $request->validate(['search' => 'nullable|string|max:120']);
+        $search = trim($validated['search'] ?? '');
+
         // MASTERS PART 6: Active is the default view. Disabled karigars are
         // retained (no global scope) and reachable via the status filter, so
         // history and settlement paths are never hidden. 'inactive' aliases
@@ -27,6 +30,13 @@ class KarigarController extends Controller
         $karigars = Karigar::query()
             ->when($status === 'active', fn ($q) => $q->active())
             ->when($status === 'archived', fn ($q) => $q->archived())
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
+                $query->where('name', 'ilike', '%'.$search.'%')
+                    ->orWhere('shop_name', 'ilike', '%'.$search.'%')
+                    ->orWhere('mobile', 'ilike', '%'.$search.'%')
+                    ->orWhere('gst_number', 'ilike', '%'.$search.'%')
+                    ->orWhere('city', 'ilike', '%'.$search.'%');
+            }))
             ->orderByRaw('is_active DESC')
             ->orderBy('name')
             ->withCount(['jobOrders', 'invoices'])
@@ -41,12 +51,12 @@ class KarigarController extends Controller
             $k->id => (float) $vault->karigarHeldBreakdown($shopId, (int) $k->id)->sum('total'),
         ]);
 
-        // Filter-tab counts over the full dataset, not the filtered page.
+        // Directory counts over the full dataset, not the filtered list.
         $counts = Karigar::query()
             ->selectRaw('count(*) as all_count, count(*) filter (where is_active IS TRUE) as active_count, count(*) filter (where is_active IS FALSE) as archived_count')
             ->first();
 
-        return view('karigars.index', compact('karigars', 'goldHeldByKarigar', 'status', 'counts'));
+        return view('karigars.index', compact('karigars', 'goldHeldByKarigar', 'status', 'counts', 'search'));
     }
 
     public function create()

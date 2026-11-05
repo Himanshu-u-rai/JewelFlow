@@ -2,7 +2,55 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stock count tiles match Vault
+## Latest checkpoint — Karigars directory refinement
+
+Started clean `db6b031a8a367debcf12efd8b146cb705564e719`, same worktree and
+`feature/table-consistency`; sole Local Codex writer. Owner requested Impeccable,
+Ponytail and Caveman. Scoped refinement only: four content-sized Vault/Stock-style
+metric tiles inside the directory header; shared neutral surface/shadow/radius;
+compact desktop search/status/Apply/Clear; shared responsive-filter-panel becomes
+the phone bottom sheet. One GET form, standard viewport-placed enhanced dropdown.
+Numbered ten-column shared table, named View/Edit icons with existing floating
+focus labels, explicit text Disable/Enable retained at44px. Mobile cards retain
+all fields, matching indices, wrapping long values and44px actions; Add becomes
+a named icon beside the bell. Desktop remaining-height scrolling reuses the
+existing measured workspace behavior; short/narrow windows retain page scrolling.
+
+Controller index adds validated max120-character, bound/grouped case-insensitive
+search across name, workshop, mobile, GST and city. Tenant/status scopes and
+inactive alias retained. Total/Active counts remain full-shop; Jobs/Invoices
+explicitly labelled Listed because their existing sums reflect filtered rows.
+Gold-held service/math, lifecycle confirmations, mutation permissions, history,
+creation/edit flows and financial records unchanged. Existing all-matching-rows
+collection retained; no pagination or seeded preview data added in this batch.
+
+RED first: four PHP/three frontend checks failed before implementation. Final:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/KarigarDirectoryUiTest.php tests/Feature/Masters/KarigarLifecycleTest.php tests/Feature/Material/KarigarHeldBreakdownTest.php`
+passed39tests/156assertions/0skipped. TestDatabaseGuard explicitly passed before
+RefreshDatabase; no destructive tests against preview or any remote database.
+Coverage includes24 synthetic indexed rows in both representations, search all
+five fields, retained form values, tenant isolation, combined status/inactive
+filter, honest counts, view-only actions, no-match state, invalid/oversized search,
+existing lifecycle/read-only/permission and held-balance tests.
+
+`node --test tests/Frontend/karigars-directory.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/table-row-actions.test.mjs tests/Frontend/workspace-corners.test.mjs tests/Frontend/workspace-surfaces.test.mjs tests/Frontend/stock-header-metrics.test.mjs`
+passed36/0skipped (source contracts and shared JS unit fixtures, not real browser).
+`npm run build` passed80modules; PHP lint of controller/Blade/new test passed;
+guarded local-preview `view:cache` and `view:clear` passed; diff check passed.
+Pint new test passed. Full controller Pint check reports pre-existing style only
+(`new IndianMobileRule()` parentheses/unary spacing); baseline Git object confirms
+those lines predate this patch. No unrelated formatting applied.
+Impeccable layout source detector returned[]; this is not visual acceptance.
+Read changed source/diff. Evidence: karigars-ui-* logs in existing external
+quick-bill-notes-dialog-20261102.e6KYil directory.
+
+Live keyboard/dropdown/scroll/desktop/phone/zoom/Turbo acceptance NOT RUN: current
+in-app-browser URL-policy denial respected; no alternate browser/HTTP workaround.
+Owner refresh /karigars and review before visual acceptance. No new screenshots
+claimed. Local preview PHP10942/PG10883 preserved,8001/55432 listening; no data,
+remote, OTP, process restart or push. Earlier Vault clipping remains separate.
+
+## Earlier checkpoint — Stock count tiles match Vault
 
 Started clean `523774ee1d3db220e9c1332069c44285ac2b0ea9`, same worktree/branch,
 sole Local Codex writer. Owner requested Vault-style Total Items/In Stock/Sold
