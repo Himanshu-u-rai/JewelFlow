@@ -79,6 +79,33 @@ test('normal clicks open a native popup; modified clicks and unsupported browser
     assert.equal(prevented, 1);
 });
 
+test('hovering popup links cannot replace a frame GET with a prefetched full-page response', () => {
+    const source = readFileSync(new URL('../../resources/views/karigars/index.blade.php', import.meta.url), 'utf8');
+    const turbo = readFileSync(new URL('../../node_modules/@hotwired/turbo/dist/turbo.es2017-esm.js', import.meta.url), 'utf8');
+    const observerSource = turbo.slice(turbo.indexOf('class LinkPrefetchObserver {'), turbo.indexOf('\nconst unfetchableLink ='));
+    const optsOutSource = turbo.match(/const linkOptsOut = ([\s\S]*?);\n\nconst nonSafeLink/)[1];
+    const optsOut = new Function('findClosestRecursively', `return (${optsOutSource});`)(() => null);
+    const links = source.match(/<a\b[^>]*data-karigar-open[^>]*>/g);
+    assert.equal(links.length, 5, 'header, both empty states and desktop/mobile Edit');
+    for (const tag of links) {
+        const listeners = new Map();
+        let cached;
+        const cache = { putLater(url, request) { cached = request; }, get() { return cached; }, clear() { cached = undefined; } };
+        const Observer = new Function('getMetaContent', 'getLocationForLink', 'FetchRequest', 'FetchMethod', 'prefetchCache', 'unfetchableLink', 'linkToTheSamePage', 'linkOptsOut', 'nonSafeLink', 'eventPrevented', 'cacheTtl', `return (${observerSource});`)(
+            () => null, () => '/karigars/create', class { constructor() { this.fetchOptions = {}; } }, { get: 'GET' }, cache,
+            () => false, () => false, optsOut, () => false, () => false, 10000,
+        );
+        const document = { readyState: 'complete', addEventListener(name, handler) { listeners.set(name, handler); } };
+        const observer = new Observer({ canPrefetchRequestToLocation: () => true }, document);
+        observer.start();
+        const link = { matches: () => true, getAttribute(name) { return name === 'href' ? '/karigars/create' : tag.match(new RegExp(`${name}="([^"]+)"`))?.[1] ?? null; } };
+        listeners.get('mouseenter')({ target: link });
+        const request = { target: { tagName: 'TURBO-FRAME' }, detail: { url: '/karigars/create', fetchOptions: { method: 'GET' } } };
+        listeners.get('turbo:before-fetch-request')(request);
+        assert.equal(request.detail.fetchRequest, undefined, 'a popup must fetch its own authorized frame response, not cached full-page HTML');
+    }
+});
+
 test('popup retains native form submission and navigation cleanup, with a scrollable phone sheet', () => {
     const source = readFileSync(new URL('../../resources/views/karigars/_editor.blade.php', import.meta.url), 'utf8');
     const form = readFileSync(new URL('../../resources/views/karigars/_editor-form.blade.php', import.meta.url), 'utf8');

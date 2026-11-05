@@ -3,7 +3,7 @@
         <x-slot:actions>
             @can('karigar.manage')
             <a href="{{ route('karigars.create') }}" class="btn btn-primary btn-sm karigars-add" aria-label="Add Karigar" title="Add Karigar"
-               aria-haspopup="dialog" aria-controls="karigar-editor" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">
+               aria-haspopup="dialog" aria-controls="karigar-editor" data-turbo-prefetch="false" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">
                 <x-icon name="plus" size="16" />
                 <span class="karigars-add-label">Add Karigar</span>
             </a>
@@ -77,12 +77,12 @@
                     @elseif($status === 'active')
                         <p>No active karigars.</p>
                         @can('karigar.manage')
-                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link" aria-haspopup="dialog" aria-controls="karigar-editor" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">Add your first karigar</a>
+                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link" aria-haspopup="dialog" aria-controls="karigar-editor" data-turbo-prefetch="false" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">Add your first karigar</a>
                         @endcan
                     @else
                         <p>No karigars yet.</p>
                         @can('karigar.manage')
-                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link" aria-haspopup="dialog" aria-controls="karigar-editor" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">Add your first karigar</a>
+                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link" aria-haspopup="dialog" aria-controls="karigar-editor" data-turbo-prefetch="false" x-data data-editor-title="Add Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">Add your first karigar</a>
                         @endcan
                     @endif
                 </div>
@@ -146,7 +146,7 @@
                                                     <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
                                                 </form>
                                             @endif
-                                            <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-haspopup="dialog" aria-controls="karigar-editor" x-data data-editor-title="Edit Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
+                                            <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-haspopup="dialog" aria-controls="karigar-editor" data-turbo-prefetch="false" x-data data-editor-title="Edit Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
                                             @endcan
                                         </div>
                                     </td>
@@ -218,7 +218,7 @@
                                         <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
                                     </form>
                                 @endif
-                                <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-haspopup="dialog" aria-controls="karigar-editor" x-data data-editor-title="Edit Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
+                                <a href="{{ route('karigars.edit', $k) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-haspopup="dialog" aria-controls="karigar-editor" data-turbo-prefetch="false" x-data data-editor-title="Edit Karigar" data-karigar-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('karigar-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit {{ $k->name }}</span></a>
                                 @endcan
                             </div>
                         </article>

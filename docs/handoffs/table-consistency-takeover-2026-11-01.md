@@ -2,7 +2,40 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigars directory Add/Edit popups
+## Latest checkpoint — Popup form prefetch collision
+
+Clean start `b7caa848b1fc8c059b705c9572f3bb2392db7007`, same branch/worktree,
+sole writer. Owner screenshot shows native dialog opening but missing-form error
+instead of fields. Previous popup acceptance was source/unit only and missed
+hover behavior. Installed Turbo LinkPrefetchObserver caches link GETs by URL and
+can substitute that cached request for a later frame GET without checking the
+frame header. Our Add/Edit links were outside a frame: hovering prefetched the
+standalone full page (which intentionally contains no editor frame), then popup
+loading could consume that cached response and dispatch frame-missing.
+
+Reproduced this collision with the actual installed observer/linkOptsOut code in
+a Node event/cache-boundary fixture: RED returned the prefetched request instead
+of leaving the frame request alone. Fixed only five directory popup triggers
+(header Add, both empty states, desktop/mobile Edit) with data-turbo-prefetch=false.
+Same regression now passes for all five. No global Turbo change, library patch,
+form redesign, permission bypass or forced full-page navigation. Genuine load
+failures retain their existing recovery link; normal clicks still request the
+authorized server-rendered popup fields. No production fetch/eval code added.
+
+`node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs tests/Frontend/list-workspace.test.mjs`
+passed20/0skipped. Explicit disposable database guard passed, then
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/KarigarEditorTest.php tests/Feature/Tables/KarigarDirectoryUiTest.php`
+passed10tests/95assertions/0skipped. Blade lint, guarded preview view:cache and
+view:clear, diff check passed. Impeccable source detector[]; source/diff read.
+No asset rebuild needed (only Blade data attributes/test changed); existing built
+JS/CSS preserved. Logs karigar-popup-prefetch-* in existing external directory.
+User screenshot is live failure evidence; observer fixture is not a browser.
+No successful live retry/Network capture or phone acceptance claimed under prior
+browser-policy denial; no bypass attempted. Owner reload /karigars once to clear
+old in-memory prefetch entries, then test Add and Edit. No preview-data/process/
+remote/push/OTP changes.
+
+## Earlier checkpoint — Karigars directory Add/Edit popups
 
 Clean start `e7e2bc25036603f794c315c0a15526a60e9b3950`, same branch/worktree,
 sole writer. Directory header/empty-state Add and desktop/mobile Edit now open
