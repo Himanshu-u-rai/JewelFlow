@@ -27,6 +27,7 @@ class KarigarEditorTest extends TestCase
             $this->assertSame(1, $xpath->query('//input[@name="state" and @list="kf-states"]')->length);
             $this->assertSame(1, $xpath->query('//*[@id="kf-state-menu" and @popover="auto" and @role="listbox"]')->length);
             $this->assertSame(1, $xpath->query('//input[@name="pincode" and @inputmode="numeric"]')->length);
+            $this->assertSame(1, $xpath->query('//input[@name="opening_balance_at" and @type="date" and @data-native-date and not(@readonly) and not(@disabled)]')->length);
             if ($url === route('karigars.edit', $karigar)) {
                 $response->assertSee('value="My locality"', false)->assertSee('value="Legacy state spelling"', false)->assertSee('value="411001"', false);
             }
@@ -102,11 +103,12 @@ class KarigarEditorTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
         $karigar = TenantContext::runFor($shop->id, fn () => Karigar::forceCreate(['shop_id' => $shop->id, 'name' => 'Synthetic artisan']));
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->post(route('karigars.store'), ['_karigar_editor' => '1', 'name' => 'Synthetic new artisan']))->assertRedirect(route('karigars.index'));
-        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->put(route('karigars.update', $karigar), ['_karigar_editor' => '1', 'name' => 'Synthetic edited', 'city' => 'My locality', 'state' => 'Maharashtra', 'pincode' => '411001']))->assertRedirect(route('karigars.index'));
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->put(route('karigars.update', $karigar), ['_karigar_editor' => '1', 'name' => 'Synthetic edited', 'city' => 'My locality', 'state' => 'Maharashtra', 'pincode' => '411001', 'opening_balance_at' => '2026-11-05']))->assertRedirect(route('karigars.index'));
         $this->assertSame('Synthetic edited', $karigar->fresh()->name);
         $this->assertSame('My locality', $karigar->fresh()->city);
         $this->assertSame('Maharashtra', $karigar->fresh()->state);
         $this->assertSame('411001', $karigar->fresh()->pincode);
+        $this->assertSame('2026-11-05', $karigar->fresh()->opening_balance_at->toDateString());
         TenantContext::runFor($shop->id, fn () => $this->put(route('karigars.update', $karigar), ['name' => 'Synthetic direct edit']))->assertRedirect(route('karigars.show', $karigar));
     }
 

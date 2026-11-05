@@ -156,6 +156,16 @@ test('billing defaults pack into a wrapping row with compact controls and unchan
     assert.equal(value('.kf-shell .kf-field--wastage .kf-input', 'width'), '100px');
 });
 
+test('Opening Balance Date remains a native editable date control instead of a body-mounted calendar', () => {
+    const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
+    const input = form.match(/<input[^>]*name="opening_balance_at"[^>]*>/)[0];
+    assert.match(input, /type="date"/);
+    assert.match(input, /data-native-date/);
+    assert.doesNotMatch(input, /\b(?:readonly|disabled)\b/);
+    const app = readFileSync(new URL('../../resources/js/app.js', import.meta.url), 'utf8');
+    assert.match(app, /const DATE_PICKER_SELECTOR = 'input\[type="date"\]:not\(\[data-native-date\]\)'/);
+});
+
 test('shared form omits the introductory heading and labels the address once', () => {
     const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
     assert.doesNotMatch(form, /Who is the karigar\?/);

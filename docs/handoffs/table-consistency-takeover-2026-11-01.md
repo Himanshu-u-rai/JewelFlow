@@ -2,7 +2,32 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact State picker and honest PIN failure handling
+## Latest checkpoint — Opening Balance Date in Karigar dialog
+
+Clean start `3b7c31bb7f3fabfc0a4f8c5c12e612e7a3819379`, same branch/worktree.
+Owner reported no calendar or manual input. Source trace: global enhancer replaces
+date fields with read-only altInput (allowInput:false), while installed Flatpickr
+appends its calendar to document.body by default, outside the native modal dialog's
+top layer/inert boundary. Added the existing data-native-date opt-out to this
+shared Karigar field only. Browser date control stays inside the form, supports
+native picker/segmented keyboard entry and submits the same ISO date. No global
+date overhaul, CSS/JS/validation/amount changes or custom date parser. Applies to
+both popup and standalone Add/Edit; existing/old values and180px sizing unchanged.
+
+New opt-out regression RED then GREEN. Full frontend command
+`node --test tests/Frontend/*.test.mjs`:220 passed,22 existing photo-browser skips,
+0failed. Scoped three-file run26 passed. Guarded disposable test command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/KarigarEditorTest.php`:
+9 passed/80assertions, including native non-readonly field rendered in Add/Edit
+and ISO date persistence through ordinary update. PHP lint, guarded preview
+view:cache/view:clear, diff check passed. Source detector regex-only, not rendered
+acceptance. No asset rebuild needed for this attribute-only shared Blade change;
+no full PHP suite. Live picker opening/manual keyboard/phone acceptance NOT RUN
+under existing browser-policy denial. Refresh/reopen the form to remove an old
+already-enhanced read-only input. No process/data/remote/push/deploy/OTP changes.
+Frontend log karigar-native-date-frontend.log in existing external evidence folder.
+
+## Earlier checkpoint — Compact State picker and honest PIN failure handling
 
 Clean start `6e2ec6c3c99aa04a4b2acf959b9ccbc1f6b21741`, same worktree/branch.
 Owner screenshot demonstrates Chrome's unbounded native datalist and a failed

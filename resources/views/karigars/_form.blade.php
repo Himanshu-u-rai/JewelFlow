@@ -232,7 +232,8 @@
 
         <label class="kf-field">
             <span class="kf-label">Opening Balance Date</span>
-            <input type="date" name="opening_balance_at" value="{{ old('opening_balance_at', $k?->opening_balance_at?->toDateString()) }}" class="kf-input">
+            {{-- The shared body-mounted, read-only date enhancer cannot operate inside this dialog. --}}
+            <input type="date" data-native-date name="opening_balance_at" value="{{ old('opening_balance_at', $k?->opening_balance_at?->toDateString()) }}" class="kf-input">
         </label>
     </div>
 
