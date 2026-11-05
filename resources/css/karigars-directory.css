@@ -69,6 +69,18 @@
 .karigars-index-page .karigars-mobile-actions .jf-row-action { flex: 0 0 44px; }
 .karigars-index-page .karigars-mobile-list { border-radius: 0 0 16px 16px; }
 
+body.app-shell .karigar-editor.kf-shell { width: min(1040px, calc(100% - 24px)); max-width: none; max-height: calc(100dvh - 32px); inset: 0; margin: auto; padding: 0; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); color: var(--jf-ink); overflow-y: auto; overscroll-behavior: contain; }
+body.app-shell .karigar-editor::backdrop { background: rgba(16, 24, 40, .4); }
+body.app-shell .karigar-editor-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--jf-border); background: var(--jf-surface); }
+body.app-shell .karigar-editor-head h2 { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+body.app-shell .karigar-editor-head button { width: 44px; height: 44px; padding: 0; flex: none; }
+body.app-shell .karigar-editor-message { margin: 0; padding: 20px; }
+body.app-shell .karigar-editor-message p { margin-bottom: 12px; }
+body.app-shell .karigar-editor-errors { margin-bottom: 20px; padding: 12px; border: 1px solid #fecdd3; border-radius: 10px; background: #fff1f2; color: #9f1239; font-size: 14px; }
+body.app-shell .karigar-editor-errors ul { padding-left: 20px; list-style: disc; }
+body.app-shell .karigar-editor :is(button, a):focus-visible { outline: 2px solid var(--jf-gold-deep); outline-offset: 2px; }
+body.app-shell .karigar-editor .kf-actions { justify-content: flex-end; }
+
 @media screen and (max-width: 768px) {
     .karigars-index-page .karigars-register-head { padding: 12px; gap: 12px; }
     .karigars-index-page .karigars-register-title { flex: 1; }
@@ -87,4 +99,6 @@
     body.app-shell .karigars-page-header :is(.mobile-menu-btn, .karigars-add, .notice-bell-toggle) { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; }
     body.app-shell .karigars-page-header .karigars-add-label { display: none; }
     body.app-shell .karigars-page-header > .notice-bell { position: relative; grid-column: 4; grid-row: 1; top: auto; right: auto; }
+    body.app-shell .karigar-editor.kf-shell { inset: auto 0 0; width: 100%; max-height: calc(100dvh - 16px); margin: 0; padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 16px 16px 0 0; }
+    body.app-shell .karigar-editor .kf-input { font-size: 16px; }
 }

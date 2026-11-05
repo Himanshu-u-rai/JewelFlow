@@ -7,6 +7,7 @@ use App\Http\Concerns\RespondsDynamically;
 use App\Models\Karigar;
 use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class KarigarController extends Controller
 {
@@ -56,11 +57,23 @@ class KarigarController extends Controller
             ->selectRaw('count(*) as all_count, count(*) filter (where is_active IS TRUE) as active_count, count(*) filter (where is_active IS FALSE) as archived_count')
             ->first();
 
-        return view('karigars.index', compact('karigars', 'goldHeldByKarigar', 'status', 'counts', 'search'));
+        $restoreEditor = auth()->user()->can('karigar.manage')
+            && $request->session()->get('errors')?->any()
+            && old('_karigar_editor') === '1';
+        $editorKarigar = null;
+        if ($restoreEditor && ($editorId = filter_var($request->query('editor'), FILTER_VALIDATE_INT))) {
+            $editorKarigar = Karigar::findOrFail($editorId);
+        }
+
+        return view('karigars.index', compact('karigars', 'goldHeldByKarigar', 'status', 'counts', 'search', 'restoreEditor', 'editorKarigar'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        if ($request->header('Turbo-Frame') === 'karigar-editor-frame') {
+            return view('karigars._editor-form');
+        }
+
         return view('karigars.create');
     }
 
@@ -94,9 +107,13 @@ class KarigarController extends Controller
         return view('karigars.show', compact('karigar', 'goldHeld'));
     }
 
-    public function edit(Karigar $karigar)
+    public function edit(Request $request, Karigar $karigar)
     {
         $this->authorizeShop($karigar);
+
+        if ($request->header('Turbo-Frame') === 'karigar-editor-frame') {
+            return view('karigars._editor-form', compact('karigar'));
+        }
 
         return view('karigars.edit', compact('karigar'));
     }
@@ -105,9 +122,13 @@ class KarigarController extends Controller
     {
         $this->authorizeShop($karigar);
 
-        $validated = $this->validateKarigar($request);
+        $validated = $this->validateKarigar($request, $karigar);
 
         $karigar->update($validated);
+
+        if ($request->boolean('_karigar_editor')) {
+            return redirect()->route('karigars.index')->with('success', "Karigar \"{$karigar->name}\" updated.");
+        }
 
         return redirect()->route('karigars.show', $karigar)
             ->with('success', "Karigar \"{$karigar->name}\" updated.");
@@ -175,26 +196,34 @@ class KarigarController extends Controller
         return back()->with('success', "\"{$karigar->name}\" {$state}.");
     }
 
-    private function validateKarigar(Request $request): array
+    private function validateKarigar(Request $request, ?Karigar $karigar = null): array
     {
-        return $request->validate([
-            'name' => 'required|string|max:150',
-            'shop_name' => 'nullable|string|max:150',
-            'contact_person' => 'nullable|string|max:150',
-            'mobile' => ['nullable', 'string', new IndianMobileRule()],
-            'email' => 'nullable|email|max:150',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'pincode' => 'nullable|string|max:12',
-            'gst_number' => 'nullable|string|max:20',
-            'pan_number' => 'nullable|string|max:20',
-            'default_wastage_percent' => 'nullable|numeric|min:0|max:50',
-            'default_making_per_gram' => 'nullable|numeric|min:0',
-            'opening_balance' => 'nullable|numeric',
-            'opening_balance_at' => 'nullable|date',
-            'notes' => 'nullable|string',
-        ]);
+        try {
+            return $request->validate([
+                'name' => 'required|string|max:150',
+                'shop_name' => 'nullable|string|max:150',
+                'contact_person' => 'nullable|string|max:150',
+                'mobile' => ['nullable', 'string', new IndianMobileRule()],
+                'email' => 'nullable|email|max:150',
+                'address' => 'nullable|string|max:255',
+                'city' => 'nullable|string|max:100',
+                'state' => 'nullable|string|max:100',
+                'pincode' => 'nullable|string|max:12',
+                'gst_number' => 'nullable|string|max:20',
+                'pan_number' => 'nullable|string|max:20',
+                'default_wastage_percent' => 'nullable|numeric|min:0|max:50',
+                'default_making_per_gram' => 'nullable|numeric|min:0',
+                'opening_balance' => 'nullable|numeric',
+                'opening_balance_at' => 'nullable|date',
+                'notes' => 'nullable|string',
+            ]);
+        } catch (ValidationException $exception) {
+            if ($request->boolean('_karigar_editor')) {
+                $exception->redirectTo(route('karigars.index', ['editor' => $karigar?->id ?? 'create']));
+            }
+
+            throw $exception;
+        }
     }
 
     private function authorizeShop(Karigar $karigar): void

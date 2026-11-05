@@ -2,7 +2,60 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigars single visible Apply/Clear action
+## Latest checkpoint — Karigars directory Add/Edit popups
+
+Clean start `e7e2bc25036603f794c315c0a15526a60e9b3950`, same branch/worktree,
+sole writer. Directory header/empty-state Add and desktop/mobile Edit now open
+one native dialog, preserving real hrefs for modified clicks, unsupported browsers
+and no-JS fallback. The dialog loads an authorized Turbo-frame GET from existing
+create/edit routes, reusing the unchanged karigars._form fields and styling;
+does not serialize full private profiles/notes into directory rows or duplicate
+input definitions. Existing direct create/edit pages, including Edit reached
+from the profile, remain available as full-page fallbacks. No general profile
+page redesign or popup conversion there in this directory-focused batch.
+
+Desktop centered, bounded1040px dialog has scrollable viewport-relative height,
+sticky title/44px close action; phone full-width bottom sheet with16px fields.
+Cancel/Escape closes, clears loaded form, removes src to cancel pending Turbo
+GET and returns focus to opener. Pending submit cannot close/switch accidentally.
+Turbo before-cache/before-render closes/clears and prevents cached error reopen.
+GET/network/missing-frame errors offer a full-page fallback; no AJAX mutation,
+automatic save or retry. Same native CSRF/PUT forms target _top. Save returns to
+directory; validation redirects to a trusted route-derived editor ID/create,
+reopens with attempted values/error summary, and focuses errors. Restored edit
+record is tenant-scoped and manage-only. Full-page edit still redirects to its
+profile. Successful popup save/validation uses the default directory URL (does
+not retain directory search/status); Cancel leaves current filters/rows intact.
+
+No routes, middleware, permissions, validation rules, model/service/migration,
+balance calculation, lifecycle or financial writes changed beyond existing
+normal create/update form operations. Existing shared input partial retained,
+including its inherited inline style block; new dialog layout is Vite CSS.
+
+Four frontend and three PHP regression failures observed before implementation
+(permission case already passed). Explicit guard passed before RefreshDatabase:
+testing/pgsql/127.0.0.1:5432/jewelflow_testing only. Final command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/KarigarEditorTest.php tests/Feature/Tables/KarigarDirectoryUiTest.php tests/Feature/Masters/KarigarLifecycleTest.php tests/Feature/Material/KarigarHeldBreakdownTest.php`
+passed44tests/205assertions/0skipped. New cases cover both frame forms/standalone
+fallback, private notes absent from directory, invalid create/edit preserving
+input with no write, successful save redirects, view-only denial and cross-shop
+404. Existing lifecycle/subscription/read-only/held-balance coverage also passed.
+
+`node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs tests/Frontend/reorder-editor.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/table-row-actions.test.mjs`
+passed36/0skipped; state/DOM-boundary fixtures and source contracts, not browser
+acceptance. Build81modules; PHP lint controller/index/new partials/new PHP test,
+new-test Pint, guarded preview view:cache/view:clear and diff check passed.
+Unrelated inherited controller Pint formatting not rewritten. Impeccable layout
+source detector[]; read changed source/diff. Logs karigar-editor-* in existing
+external evidence directory. No new dependencies or manual preview data changes.
+Local preview PHP10942/PG10883 still listening8001/55432, untouched.
+
+Live desktop/phone sizing, keyboard, Escape, popup loading and repeated Back/
+Forward have NOT RUN under existing explicit browser-policy denial. No workaround
+or screenshot/physical-phone claim. Owner refresh /karigars and review Add/Edit.
+No remote/push/deployment/OTP work. Earlier Vault issue remains separate.
+
+## Earlier checkpoint — Karigars single visible Apply/Clear action
 
 Clean start `73786e2ab540f4ddd3b11ea3efb1b7f789ac5c27`, same branch/worktree,
 sole writer. Owner caught two simultaneous Apply/Clear actions and a wrapping

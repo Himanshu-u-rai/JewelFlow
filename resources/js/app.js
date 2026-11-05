@@ -10,6 +10,7 @@ import { initializeChallanShare } from './repair-challan-share';
 import { initializeRowActionLabels } from './table-row-actions';
 import { initializeListWorkspaces } from './list-workspace';
 import { createReorderEditor } from './reorder-editor';
+import { createKarigarEditor } from './karigar-editor';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -191,6 +192,7 @@ window.Turbo = Turbo;
 
 registerHistoricalManual(Alpine);
 Alpine.data('reorderRuleEditor', createReorderEditor);
+Alpine.data('karigarEditor', createKarigarEditor);
 Alpine.start();
 
 function showFlashToasts() {
