@@ -85,6 +85,11 @@ body.app-shell .karigar-editor .kf-actions { justify-content: flex-end; }
 .kf-shell .kf-billing-fields > .kf-field { flex: 0 1 180px; max-width: 100%; }
 .kf-shell .kf-billing-fields > .kf-field--wastage { flex-basis: 140px; }
 .kf-shell .kf-field--wastage .kf-input { width: 100px; max-width: 100%; }
+.kf-shell .kf-help-heading { display: flex; align-items: center; gap: 4px; margin-bottom: 7px; }
+.kf-shell .kf-help-heading .kf-label { margin: 0; }
+.kf-shell .kf-help-toggle { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 24px; height: 24px; margin-block: -3px; padding: 4px; border: 0; border-radius: 50%; background: transparent; color: var(--jf-text-muted); cursor: pointer; }
+.kf-shell .kf-help-toggle:hover { background: var(--jf-surface-muted); color: var(--jf-gold-deep); }
+.kf-shell .kf-help-toggle:focus-visible { outline: 2px solid var(--jf-gold-deep); outline-offset: 2px; }
 
 @media screen and (max-width: 768px) {
     .karigars-index-page .karigars-register-head { padding: 12px; gap: 12px; }

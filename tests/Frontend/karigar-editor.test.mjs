@@ -155,3 +155,41 @@ test('billing defaults pack into a wrapping row with compact controls and unchan
     assert.equal(value('.kf-shell .kf-billing-fields > .kf-field--wastage', 'flex-basis'), '140px');
     assert.equal(value('.kf-shell .kf-field--wastage .kf-input', 'width'), '100px');
 });
+
+test('profile helper text stays behind keyboard/touch information buttons, not always-visible copy', () => {
+    const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
+    for (const [field, text] of [['name', 'The karigar — the person who owns the workshop.'], ['shop_name', 'The workshop or firm they run.'], ['contact_person', 'Who you usually deal with, if not the owner']]) {
+        assert.ok(form.includes(text));
+        assert.match(form, new RegExp(`<button[^>]*type="button"[^>]*aria-controls="kf-${field}-help"[^>]*:aria-expanded="help"[^>]*@click="help = !help"`));
+        assert.match(form, new RegExp(`<p id="kf-${field}-help"[^>]*x-show="help" x-cloak>`));
+        assert.match(form, new RegExp(`<label for="kf-${field}"`));
+        assert.match(form, new RegExp(`<input id="kf-${field}"`));
+    }
+    for (const label of ['Owner Name *', 'Workshop / Shop Name', 'Day-to-day Contact', 'Positive = we owe the karigar.']) assert.ok(form.includes(label));
+});
+
+test('popup opts into the same scrollbar paint as tables, not list sizing behavior', () => {
+    const dialog = readFileSync(new URL('../../resources/views/karigars/_editor.blade.php', import.meta.url), 'utf8');
+    assert.match(dialog, /class="[^"]*\bjf-scrollbar\b/);
+    assert.doesNotMatch(dialog, /data-list-scroll/);
+    const css = postcss.parse(readFileSync(new URL('../../resources/css/tables.css', import.meta.url), 'utf8'));
+    for (const suffix of ['', '::-webkit-scrollbar', '::-webkit-scrollbar-track', '::-webkit-scrollbar-thumb', '::-webkit-scrollbar-corner']) {
+        let paired = false;
+        css.walkRules(rule => {
+            if (rule.selectors.includes(`.jf-scrollbar${suffix}`) && rule.selectors.includes(`[data-list-scroll]${suffix}`)) paired = true;
+        });
+        assert.equal(paired, true, `one shared declaration must style both scrollbars: ${suffix}`);
+    }
+    let firefox = false, forced = false;
+    css.walkAtRules(rule => {
+        rule.walkRules(child => {
+            if (!child.selectors.includes('.jf-scrollbar')) return;
+            child.walkDecls('scrollbar-color', decl => {
+                if (rule.params === 'not selector(::-webkit-scrollbar)') firefox = decl.value.includes('--sb-thumb-color');
+                if (rule.params === '(forced-colors: active)') forced = decl.value === 'auto';
+            });
+        });
+    });
+    assert.equal(firefox, true);
+    assert.equal(forced, true);
+});

@@ -2,7 +2,38 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Karigar billing defaults
+## Latest checkpoint — Karigar information buttons and popup scrollbar
+
+Clean start `c015f7a883b17bbd42747b5a57643f3022b5c869`, same branch/worktree,
+sole writer. Owner first asked to remove three profile explanations, then steered
+mid-edit to retain them behind i buttons. Final implementation preserves the
+exact Owner/Workshop/Day-to-day Contact explanations in collapsed disclosures;
+three named type=button Info controls toggle via click/Enter/Space, aria-controls
+and bound aria-expanded, no hover-only dependency. Labels now explicitly target
+their inputs. Existing financial hint retained; no field/value/validation changes.
+24px hit targets with16px shared Info icons keep label rows compact. Help opens
+in normal flow beneath its field, so no clipped tooltip/overlay positioning.
+
+Popup scrollbar mismatch cause: theme selected data-list-scroll only, while form
+dialog is not a list. Added explicit jf-scrollbar paint-only opt-in to the same
+shared declarations, including unchanged14px amber/slate Retail palette,3px
+corners, Firefox fallback and forced-colors auto. Only Karigar dialog opts in;
+existing list styles/palettes unchanged. No misleading data-list-scroll on form,
+so viewport/list JS does not start sizing the dialog as a directory.
+
+Removal test RED first, then revised to the latest requested disclosure behavior
+and RED again; final26frontend tests passed/0skipped:
+`node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/workspace-corners.test.mjs`.
+Shared-paint rules and Firefox/high-contrast fallbacks asserted for both selectors;
+three help bodies, labels, controls and collapsed state asserted. Build81modules,
+_form/_editor PHP lint, guarded preview view:cache/view:clear and diff check passed.
+Impeccable layout source detector[]; read changed source/diff. No PHP/DB test
+rerun for this copy/Alpine-disclosure/CSS change; no controller/data/process/remote
+or OTP changes. Logs karigar-help-* and karigar-copy-scrollbar-* in existing
+external evidence directory. Live keyboard/touch/scrollbar rendering remains
+NOT RUN under existing browser-policy denial. Owner refresh Karigars for review.
+
+## Earlier checkpoint — Compact Karigar billing defaults
 
 Clean start `b794783df83773b1b902d0bcbe4cf84df5ad9cd5`, same branch/worktree,
 sole writer. Owner requested smaller Wastage, Making/g, Opening Balance and date

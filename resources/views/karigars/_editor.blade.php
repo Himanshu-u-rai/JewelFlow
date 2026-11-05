@@ -1,4 +1,4 @@
-<dialog id="karigar-editor" class="karigar-editor kf-shell" x-ref="editor" aria-labelledby="karigar-editor-title"
+<dialog id="karigar-editor" class="karigar-editor kf-shell jf-scrollbar" x-ref="editor" aria-labelledby="karigar-editor-title"
         data-restore="{{ $restoreEditor ? 'true' : 'false' }}"
         x-data="karigarEditor({{ \Illuminate\Support\Js::from(['restore' => (bool) $restoreEditor, 'title' => $editorKarigar ? 'Edit Karigar' : 'Add Karigar']) }})"
         @karigar-editor-open.window="open($event.detail.url, $event.detail.title, $event.detail.opener)"

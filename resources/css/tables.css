@@ -30,26 +30,31 @@
     min-width: 0;
 }
 
-/* Native scrollbars, with the same restrained surfaces as each list palette.
+/* Native scrollbars for lists and explicitly opted-in non-list scroll areas.
    Keep the normal-width drag target; touch platforms retain their own overlay bars. */
+.jf-scrollbar,
 [data-list-scroll] {
     --sb-track-color: #f1f5f9;
     --sb-thumb-color: #b45309;
     --sb-size: 14px;
 }
-.dh-app [data-list-scroll] { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; }
-.admin-main [data-list-scroll] { --sb-thumb-color: #b45309; --sb-track-color: #f1f3f9; }
+.dh-app .jf-scrollbar, .dh-app [data-list-scroll] { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; }
+.admin-main .jf-scrollbar, .admin-main [data-list-scroll] { --sb-thumb-color: #b45309; --sb-track-color: #f1f3f9; }
+.jf-scrollbar::-webkit-scrollbar,
 [data-list-scroll]::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+.jf-scrollbar::-webkit-scrollbar-track,
+.jf-scrollbar::-webkit-scrollbar-corner,
 [data-list-scroll]::-webkit-scrollbar-track,
 [data-list-scroll]::-webkit-scrollbar-corner { background: var(--sb-track-color); border-radius: 3px; }
+.jf-scrollbar::-webkit-scrollbar-thumb,
 [data-list-scroll]::-webkit-scrollbar-thumb {
     background: var(--sb-thumb-color);
     border-radius: 3px;
 }
 @supports not selector(::-webkit-scrollbar) {
-    [data-list-scroll] { scrollbar-color: var(--sb-thumb-color) var(--sb-track-color); }
+    .jf-scrollbar, [data-list-scroll] { scrollbar-color: var(--sb-thumb-color) var(--sb-track-color); }
 }
-@media (forced-colors: active) { [data-list-scroll] { scrollbar-color: auto; } }
+@media (forced-colors: active) { .jf-scrollbar, [data-list-scroll] { scrollbar-color: auto; } }
 
 /* Explicit list workspaces only. Short/zoomed/phone layouts and print keep normal page flow.
    Height is the measured remaining viewport, never a fixed table height. */
