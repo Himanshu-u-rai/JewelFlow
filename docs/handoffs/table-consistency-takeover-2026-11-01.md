@@ -2,7 +2,66 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigar form heading cleanup
+## Latest checkpoint — Reusable Indian address assistance
+
+Clean start `e0796a6ef7f2e52c5db16e927cd492ee8bbb72e0`, same branch/worktree.
+Owner approved searchable State suggestions plus optional PIN district/state
+autofill in both Karigar Add/Edit, and requested the same pattern for future
+address forms. New shared `<x-indian-address>` component renders native State
+datalist suggestions (same 36 names as onboarding), PIN and city/locality fields;
+native suggestions remain available without JS. Browser renders the suggestion
+popup, not a new custom dropdown/search service. Names and existing/old values
+are retained; arbitrary legacy state spellings remain valid. PIN input remains
+optional, max12 as existing server validation; lookup only for six digits starting
+1–9. No new required fields/state membership constraint or persisted changes until
+normal Save. Input/label class props preserve the incumbent form treatment.
+
+The shared Alpine helper uses the existing authenticated shops.pincode-lookup
+proxy; no route/controller/provider/permission change. Only PIN is sent, never
+names, phone or street. Empty fields and prior auto-filled values can follow a
+new PIN. Existing nonempty values/manual edits are preserved; edits during the
+request, even clearing a field, prevent that reply filling it. Superseded fetches
+abort, revisions reject late replies, Turbo navigation/cache and Alpine disposal
+cancel pending reads. No lookup on mount; typing a complete PIN triggers lookup,
+and blur can check a prefilled PIN. Fields never disable; failure message offers
+manual entry. City is explicitly a suggested postal district, not guaranteed town.
+Responsive nested grid collapses at640px; native input suggestions avoid clipping
+custom menu layers in the dialog. Impeccable guided that restrained approach.
+CLAUDE.md records this component as the default for future Indian address forms;
+other existing address pages are intentionally not retrofitted in this batch.
+
+Verification actually run:
+
+- New frontend behavior tests RED (missing helper); server-rendering regression
+  RED (no State datalist), then implementation and GREEN. An intermediate HTTP
+  fixture failure came from stacking Http::fake wildcard mappings; corrected to
+  explicit per-PIN fixtures, not by changing production lookup behavior.
+- `node --test tests/Frontend/*.test.mjs`:215 passed,22 skipped,0 failed (237 total).
+  All22 skips are existing customer-photo browser cases requiring
+  PLAYWRIGHT_MODULE_PATH; no skipped address tests. Six new cases exercise valid/
+  partial PIN, preserved edits/legacy values, new-PIN updates, response races,
+  cancellation and malformed/failed responses. External fetch is faked.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/KarigarEditorTest.php tests/Feature/Tables/KarigarDirectoryUiTest.php`:
+  12 passed,115 assertions. Tests guard runs before RefreshDatabase; synthetic
+  fixtures only in the disposable test DB. Rendered create/edit HTML checked
+  for36 State options, input/list linkage, inputmode and preserved legacy fields;
+  normal update persists address fields; authorized proxy and manual fallback
+  checked using Http fakes (stray requests prevented). No live provider request.
+- `npm run build`:82 modules passed; CSS app-PcqYtkx_.css and JS app-DXIyZEpt.js.
+- PHP lint component/shared form/PHP test; guarded preview view:cache/view:clear;
+  git diff --check passed. Source detector found nothing but explicitly warned
+  CSS/PHP regex scanning does not prove rendered correctness.
+
+No full PHP suite rerun for this isolated frontend/component change. Native State
+suggestion keyboard/touch behavior, live browser responsiveness and real upstream
+PIN availability are NOT RUN under the existing browser-policy denial. No physical
+phone claim. Refresh/reopen Add/Edit for owner review. No customer/financial data,
+preview process, other worktree, remote, push, deploy, OTP or SMTP changes.
+Frontend evidence: external quick-bill-notes-dialog-20261102.e6KYil/
+indian-address-frontend.log. No new dependency or migration; revert the scoped
+commit and rebuild assets to roll back.
+
+## Earlier checkpoint — Karigar form heading cleanup
 
 Clean start `c81177bc1c88c7f57cb7feb2cf9f407422856123`, same branch/worktree.
 Removed the requested "Who is the karigar?" introduction and its unused CSS.

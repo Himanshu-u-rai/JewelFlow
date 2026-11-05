@@ -208,20 +208,8 @@
         <input type="text" name="address" aria-labelledby="kf-address-heading" value="{{ old('address', $k?->address) }}" class="kf-input">
     </div>
 
-    <label class="kf-field">
-        <span class="kf-label">City</span>
-        <input type="text" name="city" value="{{ old('city', $k?->city) }}" class="kf-input">
-    </label>
-
-    <label class="kf-field">
-        <span class="kf-label">State</span>
-        <input type="text" name="state" value="{{ old('state', $k?->state) }}" class="kf-input">
-    </label>
-
-    <label class="kf-field">
-        <span class="kf-label">PIN code</span>
-        <input type="text" name="pincode" value="{{ old('pincode', $k?->pincode) }}" class="kf-input">
-    </label>
+    <x-indian-address class="kf-field--full" id-prefix="kf" input-class="kf-input" label-class="kf-label"
+        :city="old('city', $k?->city)" :state="old('state', $k?->state)" :pincode="old('pincode', $k?->pincode)" />
 
     <p class="kf-group">Billing defaults</p>
 

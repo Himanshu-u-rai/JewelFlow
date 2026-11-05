@@ -11,6 +11,7 @@ import { initializeRowActionLabels } from './table-row-actions';
 import { initializeListWorkspaces } from './list-workspace';
 import { createReorderEditor } from './reorder-editor';
 import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
+import { createIndianAddress } from './indian-address';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -194,6 +195,7 @@ registerHistoricalManual(Alpine);
 Alpine.data('reorderRuleEditor', createReorderEditor);
 Alpine.data('karigarEditor', createKarigarEditor);
 Alpine.data('karigarFieldHelp', createKarigarFieldHelp);
+Alpine.data('indianAddress', createIndianAddress);
 Alpine.start();
 
 function showFlashToasts() {

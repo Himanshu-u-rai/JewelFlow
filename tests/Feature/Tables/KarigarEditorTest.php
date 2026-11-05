@@ -5,12 +5,46 @@ namespace Tests\Feature\Tables;
 use App\Models\Karigar;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 class KarigarEditorTest extends TestCase
 {
     use CreatesTestTenant, RefreshDatabase;
+
+    public function test_address_component_offers_states_and_preserves_existing_values_in_both_forms(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $karigar = TenantContext::runFor($shop->id, fn () => Karigar::forceCreate(['shop_id' => $shop->id, 'name' => 'Synthetic artisan', 'city' => 'My locality', 'state' => 'Legacy state spelling', 'pincode' => '411001']));
+        $this->withoutVite();
+        foreach ([route('karigars.create'), route('karigars.edit', $karigar)] as $url) {
+            $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get($url, ['Turbo-Frame' => 'karigar-editor-frame']))->assertOk();
+            $dom = new \DOMDocument();
+            @$dom->loadHTML($response->getContent());
+            $xpath = new \DOMXPath($dom);
+            $this->assertSame(36, $xpath->query('//datalist[@id="kf-states"]/option')->length);
+            $this->assertSame(1, $xpath->query('//input[@name="state" and @list="kf-states"]')->length);
+            $this->assertSame(1, $xpath->query('//input[@name="pincode" and @inputmode="numeric"]')->length);
+            if ($url === route('karigars.edit', $karigar)) {
+                $response->assertSee('value="My locality"', false)->assertSee('value="Legacy state spelling"', false)->assertSee('value="411001"', false);
+            }
+        }
+    }
+
+    public function test_existing_pin_proxy_is_available_to_signed_in_karigar_managers_and_keeps_manual_fallback(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Http::preventStrayRequests();
+        Http::fake([
+            'api.postalpincode.in/pincode/411001' => Http::response([['Status' => 'Success', 'PostOffice' => [['District' => 'Pune', 'State' => 'Maharashtra']]]]),
+            'api.postalpincode.in/pincode/560001' => Http::response([], 503),
+        ]);
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->getJson(route('shops.pincode-lookup', '411001')))
+            ->assertOk()->assertExactJson(['found' => true, 'city' => 'Pune', 'state' => 'Maharashtra']);
+        $this->getJson(route('shops.pincode-lookup', '123'))->assertStatus(422)->assertExactJson(['found' => false]);
+        $this->getJson(route('shops.pincode-lookup', '560001'))->assertOk()->assertExactJson(['found' => false]);
+    }
 
     public function test_authorized_frames_reuse_all_fields_and_standalone_routes_still_work(): void
     {
@@ -45,8 +79,11 @@ class KarigarEditorTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
         $karigar = TenantContext::runFor($shop->id, fn () => Karigar::forceCreate(['shop_id' => $shop->id, 'name' => 'Synthetic artisan']));
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->post(route('karigars.store'), ['_karigar_editor' => '1', 'name' => 'Synthetic new artisan']))->assertRedirect(route('karigars.index'));
-        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->put(route('karigars.update', $karigar), ['_karigar_editor' => '1', 'name' => 'Synthetic edited']))->assertRedirect(route('karigars.index'));
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->put(route('karigars.update', $karigar), ['_karigar_editor' => '1', 'name' => 'Synthetic edited', 'city' => 'My locality', 'state' => 'Maharashtra', 'pincode' => '411001']))->assertRedirect(route('karigars.index'));
         $this->assertSame('Synthetic edited', $karigar->fresh()->name);
+        $this->assertSame('My locality', $karigar->fresh()->city);
+        $this->assertSame('Maharashtra', $karigar->fresh()->state);
+        $this->assertSame('411001', $karigar->fresh()->pincode);
         TenantContext::runFor($shop->id, fn () => $this->put(route('karigars.update', $karigar), ['name' => 'Synthetic direct edit']))->assertRedirect(route('karigars.show', $karigar));
     }
 

@@ -8,6 +8,7 @@
 @import "./reorder-editor.css";
 @import "./vault-workspace.css";
 @import "./karigars-directory.css";
+@import "./indian-address.css";
 
 @tailwind base;
 @tailwind components;

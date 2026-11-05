@@ -20,6 +20,16 @@ Any correction must go through the service layer as an explicit compensating ent
 
 ## Common Pitfalls
 
+**New Indian address forms**
+Reuse `<x-indian-address>` for PIN, city/locality and searchable State suggestions
+(see `resources/views/components/indian-address.blade.php`). Give each instance
+a unique `id-prefix`, supply existing/old values, and pass the form's input/label
+classes. It uses the existing authenticated `shops.pincode-lookup` server proxy,
+never a direct browser call to a third party. PIN results provide a postal district,
+not necessarily a town; preserve manual edits and always allow manual entry on
+lookup failure. Do not silently enforce state-list membership or rewrite legacy
+addresses. Existing forms are not automatically migrated to this pattern.
+
 **PostgreSQL boolean bulk UPDATE**
 Always use `DB::raw('true')` and `DB::raw('false')` in bulk `->update()` calls. Never use PHP `true`/`false` literals — PostgreSQL rejects 0/1 for boolean columns.
 
