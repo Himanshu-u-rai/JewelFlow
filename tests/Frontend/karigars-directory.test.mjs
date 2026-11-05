@@ -37,7 +37,35 @@ test('directory reuses shared mobile bottom-sheet filters and contained desktop 
     assert.match(view, /data-list-scroll tabindex="0" role="region"/);
     assert.equal(value('.karigars-index-page .karigars-register', 'overflow'), 'visible');
     assert.equal(value('.karigars-index-page .karigars-register-head', 'flex-wrap'), 'wrap');
-    assert.equal(value('.karigars-index-page .karigars-filters', 'flex-wrap'), 'wrap');
+    assert.equal(value('.karigars-index-page .karigars-filters', 'display'), 'grid');
+    assert.equal(value('.karigars-index-page .karigars-filters', 'grid-template-columns'), 'minmax(0, 200px) minmax(0, 145px) auto');
+    assert.equal(value('.karigars-index-page .karigars-filters', 'align-items'), 'end');
+    assert.equal(value('.karigars-index-page .karigars-filter-actions', 'flex-wrap'), 'nowrap');
+    assert.equal(value('.karigars-index-page .karigars-filters', 'grid-template-columns', 'screen and (max-width: 768px)'), 'minmax(0, 1fr)');
+});
+
+test('Karigar Apply and Clear share one visible action slot and editing restores Apply', () => {
+    const form = view.match(/<form\b[^>]*class="karigars-filters"[\s\S]*?<\/form>/)?.[0];
+    assert.ok(form);
+    assert.match(form, /hasFilters: @js\(\$search !== '' \|\| \$status !== 'active'\)/);
+    const apply = form.match(/<button\b[^>]*data-karigar-filter-apply[^>]*>/)?.[0];
+    const clear = form.match(/<a\b[^>]*data-karigar-filter-clear[^>]*>/)?.[0];
+    assert.ok(apply, 'normal submit remains available');
+    assert.ok(clear, 'clear navigates to the unfiltered directory');
+    assert.match(clear, /x-cloak/);
+    const visible = (tag, state) => new Function('dirty', 'hasFilters', `return (${tag.match(/x-show="([^"]+)"/)[1]});`)(state.dirty, state.hasFilters);
+    for (const hasFilters of [false, true]) {
+        const state = { dirty: false, hasFilters };
+        assert.equal(visible(apply, state), !hasFilters);
+        assert.equal(visible(clear, state), hasFilters);
+        for (const event of ['input', 'change']) {
+            state.dirty = false;
+            new Function(`with (this) { ${form.match(new RegExp(`@${event}="([^"]+)"`))[1]} }`).call(state);
+            assert.equal(visible(apply, state), true);
+            assert.equal(visible(clear, state), false);
+        }
+    }
+    assert.match(form, /<noscript><a[^>]+>Clear<\/a><\/noscript>/);
 });
 
 test('phone cards wrap long fields, actions retain touch targets and header actions stay in flow', () => {

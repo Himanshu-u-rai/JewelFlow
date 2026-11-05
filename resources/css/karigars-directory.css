@@ -43,15 +43,15 @@
 
 .karigars-index-page .karigars-metric dt { color: var(--jf-text-muted); font-size: 12px; overflow-wrap: anywhere; }
 .karigars-index-page .karigars-metric dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.karigars-index-page .jf-filter-panel { margin-left: auto; color: var(--jf-text); }
+.karigars-index-page .jf-filter-panel { width: min(100%, 425px); margin-left: auto; color: var(--jf-text); }
 .karigars-index-page .jf-filter-toggle { margin-left: auto; }
-.karigars-index-page .karigars-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; min-width: 0; }
-.karigars-index-page .karigars-search-field { flex: 1 1 190px; min-width: 0; max-width: 220px; }
-.karigars-index-page .karigars-status-field { flex: 0 1 145px; min-width: 0; }
+.karigars-index-page .karigars-filters { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 145px) auto; align-items: end; gap: 8px; min-width: 0; }
+.karigars-index-page .karigars-search-field,
+.karigars-index-page .karigars-status-field { min-width: 0; }
 .karigars-index-page .karigars-filters label { display: block; margin-bottom: 5px; font-size: 12px; }
 .karigars-index-page .karigars-filter-input { width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); font-size: 14px; }
 .karigars-index-page .ui-filter-select-trigger { min-height: 44px; }
-.karigars-index-page .karigars-filter-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.karigars-index-page .karigars-filter-actions { display: flex; flex-wrap: nowrap; gap: 8px; }
 .karigars-index-page .karigars-filter-actions .btn { min-height: 44px; }
 .karigars-index-page .karigars-table-shell { min-width: 0; border-radius: 0 0 16px 16px; }
 .karigars-index-page .karigars-table.jf-table { min-width: 1080px; }
@@ -74,8 +74,7 @@
     .karigars-index-page .karigars-register-title { flex: 1; }
     .karigars-index-page .karigars-summary { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
     .karigars-index-page .karigars-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .karigars-index-page .karigars-search-field { max-width: none; }
-    .karigars-index-page .jf-filter-panel { margin: 0; }
+    .karigars-index-page .jf-filter-panel { width: 100%; margin: 0; }
     .karigars-index-page .karigars-filter-input { font-size: 16px; }
     .karigars-index-page .karigars-mobile-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     body.app-shell .content-header.karigars-page-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 44px; gap: 8px 6px; padding: 12px; position: static; }

@@ -2,7 +2,32 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Karigars directory refinement
+## Latest checkpoint — Karigars single visible Apply/Clear action
+
+Clean start `73786e2ab540f4ddd3b11ea3efb1b7f789ac5c27`, same branch/worktree,
+sole writer. Owner caught two simultaneous Apply/Clear actions and a wrapping
+Apply button stretching the header. Reused Stock's existing Alpine dirty/filter
+state: one visible action slot (normal submit Apply, normal navigation Clear
+after an applied filter; input/change brings Apply back). Clear initially cloaked;
+no-JS retains Apply plus an explicit noscript Clear fallback. No new JS module.
+Desktop form is now a three-column grid with bottom-aligned controls and one
+nonwrapping action slot; bounded425px toolbar wraps as a unit when needed instead
+of dropping Apply below the inputs. Phone full-width one-column bottom sheet
+retained. No controller, query, financial or permission changes.
+
+Two source/behavior regression checks RED then26frontend tests passed/0skipped:
+`node --test tests/Frontend/karigars-directory.test.mjs tests/Frontend/stock-filter-action.test.mjs tests/Frontend/list-workspace.test.mjs tests/Frontend/table-row-actions.test.mjs`.
+Guard explicitly passed testing/pgsql/127.0.0.1:5432/jewelflow_testing;
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 artisan test --compact tests/Feature/Tables/KarigarDirectoryUiTest.php`
+passed5tests/46assertions/0skipped. Build80modules, Blade PHP lint, guarded local
+view:cache/view:clear and diff check passed. Impeccable source layout detector[];
+read changed source/diff. Logs karigars-filter-toggle-* in existing external
+evidence directory. Live rendering/real clicks/phone acceptance remain NOT RUN
+under existing browser-policy denial; unit/source checks are not pixel proof.
+No preview records/processes or remote work changed. Owner refresh Karigars to
+review single action and header alignment.
+
+## Earlier checkpoint — Karigars directory refinement
 
 Started clean `db6b031a8a367debcf12efd8b146cb705564e719`, same worktree and
 `feature/table-consistency`; sole Local Codex writer. Owner requested Impeccable,

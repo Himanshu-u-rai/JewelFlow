@@ -40,7 +40,9 @@
                     <dl class="karigars-metric"><dt>Listed · Invoices</dt><dd>{{ $totalInvoices }}</dd></dl>
                 </div>
                 <x-responsive-filter-panel id="karigars-filter-panel" label="Karigar filters">
-                    <form method="GET" action="{{ route('karigars.index') }}" class="karigars-filters" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                    <form method="GET" action="{{ route('karigars.index') }}" class="karigars-filters" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
+                          x-data="{ dirty: false, hasFilters: @js($search !== '' || $status !== 'active') }"
+                          @input="dirty = true" @change="dirty = true">
                         <div class="karigars-search-field">
                             <label for="karigars-search">Search</label>
                             <input id="karigars-search" class="karigars-filter-input" type="search" name="search" value="{{ $search }}" maxlength="120" placeholder="Name, mobile, city…" />
@@ -54,9 +56,10 @@
                             </select>
                         </div>
                         <div class="karigars-filter-actions">
-                            <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                            <button class="btn btn-primary btn-sm" type="submit" data-karigar-filter-apply x-show="dirty || !hasFilters">Apply</button>
+                            <a class="btn btn-primary btn-sm" href="{{ route('karigars.index') }}" data-karigar-filter-clear x-show="!dirty && hasFilters" x-cloak>Clear</a>
                             @if($search !== '' || $status !== 'active')
-                                <a class="btn btn-secondary btn-sm" href="{{ route('karigars.index') }}">Clear</a>
+                                <noscript><a class="btn btn-secondary btn-sm" href="{{ route('karigars.index') }}">Clear</a></noscript>
                             @endif
                         </div>
                     </form>
