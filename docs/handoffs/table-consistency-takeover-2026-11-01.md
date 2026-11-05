@@ -2,7 +2,19 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Compact Karigar and schedule row
+## Latest checkpoint — Karigar fills remaining schedule width
+
+Clean start `0b348b2fd599f4810e9971a5ccb82d98cbc1ce3d`. Owner requested full
+row width: removed Karigar280px cap, retaining flex-grow:1 so it takes all leftover
+space beside the unchanged compact wastage/date fields. Removed redundant mobile
+max-width rule; mobile wrapping/grid and sticky summary unchanged. CSS-only change.
+Regression RED then `node --test tests/Frontend/*.test.mjs`:235passed/22existing
+skips/0failed; `npm run build`:83modules; diff check passed. Log:
+job-order-schedule-fill-frontend.log in existing evidence directory. No PHP rerun
+for CSS-only application change. Live browser/phone confirmation remains NOT RUN
+under earlier policy denial. No data/process/push/deploy/remote/OTP changes.
+
+## Earlier checkpoint — Compact Karigar and schedule row
 
 Clean start `710ba42842fca34ebf45271a4ded6c35610a9da2`. Owner requested Karigar,
 Allowed Wastage, Issue Date and Expected Return Date in one compact desktop row.
