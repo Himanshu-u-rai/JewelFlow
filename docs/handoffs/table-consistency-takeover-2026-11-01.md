@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Themed calendar retained inside dialogs
+## Latest checkpoint — Opening Balance explanation in an info bubble
+
+The themed-calendar work below was interrupted by this additive request, then
+committed intact as `62b9f996e51578e74d9ec6fb96655ee4a841b783` (parent
+`176bc4ea39b01c324c676a1be349175c82cc7a36`). This follow-up moves only the exact
+"Positive = we owe the karigar." text from a permanent hint into the existing
+named Info-button/popover pattern beside Opening Balance. Explicit label/input
+association retained; numeric value, sign, precision and validation unchanged.
+No new styles, JS behavior, dependencies or native date rollback.
+
+New markup regression RED then GREEN; scoped22frontend passed. Full command
+`node --test tests/Frontend/*.test.mjs`:226 passed,22 existing browser skips,
+0failed. Guarded disposable DB command
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/KarigarEditorTest.php`:
+9tests/80assertions passed. PHP lint, guarded preview Blade cache/clear and diff
+check passed. Source detector is regex-only. No new build needed for this shared
+Blade markup using existing help styling/behavior; calendar assets were built
+before its commit. Actual help/calendar visual, keyboard and phone verification
+remain NOT RUN under earlier browser-policy denial. Refresh/reopen the form.
+No preview data/process/remote/deploy/push/OTP changes.
+
+## Earlier checkpoint — Themed calendar retained inside dialogs
 
 Clean start `176bc4ea39b01c324c676a1be349175c82cc7a36`, same branch/worktree.
 Owner rejected native date styling and requested the existing theme. Removed

@@ -224,11 +224,14 @@
             <input type="number" step="0.01" min="0" name="default_making_per_gram" value="{{ old('default_making_per_gram', $k?->default_making_per_gram) }}" class="kf-input">
         </label>
 
-        <label class="kf-field">
-            <span class="kf-label">Opening Balance (₹)</span>
-            <input type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', $k?->opening_balance ?? 0) }}" class="kf-input">
-            <p class="kf-hint">Positive = we owe the karigar.</p>
-        </label>
+        <div class="kf-field" x-data="karigarFieldHelp" @scroll.window.capture="if (help) place()" @resize.window="if (help) place()" @turbo:before-cache.document="close()" @turbo:before-render.document="close()">
+            <div class="kf-help-heading">
+                <label for="kf-opening_balance" class="kf-label">Opening Balance (₹)</label>
+                <button type="button" class="kf-help-toggle" x-ref="helpButton" popovertarget="kf-opening_balance-help" aria-label="About opening balance" aria-controls="kf-opening_balance-help" aria-describedby="kf-opening_balance-help" aria-expanded="false" :aria-expanded="help"><x-icon name="info" size="16" /></button>
+            </div>
+            <input id="kf-opening_balance" type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', $k?->opening_balance ?? 0) }}" class="kf-input">
+            <p id="kf-opening_balance-help" class="kf-help-bubble" popover="auto" role="tooltip" x-ref="bubble" @toggle="help = $event.newState === 'open'; if (help) place(); else $el.style.visibility = 'hidden'">Positive = we owe the karigar.</p>
+        </div>
 
         <label class="kf-field">
             <span class="kf-label">Opening Balance Date</span>

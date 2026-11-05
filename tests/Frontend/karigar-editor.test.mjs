@@ -183,6 +183,15 @@ test('shared form omits the introductory heading and labels the address once', (
     assert.match(form, /<input[^>]*name="address"[^>]*aria-labelledby="kf-address-heading"/);
 });
 
+test('Opening Balance explanation uses the same named floating info bubble as profile helpers', () => {
+    const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
+    assert.match(form, /<button[^>]*type="button"[^>]*popovertarget="kf-opening_balance-help"[^>]*aria-label="About opening balance"/);
+    assert.match(form, /<p id="kf-opening_balance-help"[^>]*class="kf-help-bubble"[^>]*popover="auto"[^>]*>Positive = we owe the karigar\.<\/p>/);
+    assert.match(form, /<label for="kf-opening_balance"/);
+    assert.match(form, /<input id="kf-opening_balance"[^>]*name="opening_balance"/);
+    assert.doesNotMatch(form, /<p class="kf-hint">Positive = we owe the karigar\.<\/p>/);
+});
+
 test('profile helper text stays behind keyboard/touch information buttons, not always-visible copy', () => {
     const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
     for (const [field, text] of [['name', 'The karigar — the person who owns the workshop.'], ['shop_name', 'The workshop or firm they run.'], ['contact_person', 'Who you usually deal with, if not the owner']]) {
