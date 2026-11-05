@@ -129,3 +129,29 @@ test('popup retains native form submission and navigation cleanup, with a scroll
     assert.match(values['max-height'], /100dvh/);
     assert.equal(values['border-radius'], '16px 16px 0 0');
 });
+
+test('billing defaults pack into a wrapping row with compact controls and unchanged numeric limits', () => {
+    const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
+    assert.match(form, /<div class="kf-billing-fields">/);
+    assert.match(form, /<label class="kf-field kf-field--wastage">/);
+    for (const name of ['default_wastage_percent', 'default_making_per_gram', 'opening_balance', 'opening_balance_at']) {
+        const input = form.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))[0];
+        assert.doesNotMatch(input, /maxlength=/, 'sizing must not truncate or cap existing values');
+        if (name !== 'opening_balance_at') assert.match(input, /step="0.01"/);
+        if (name === 'default_wastage_percent') assert.match(input, /max="50"/);
+        if (['default_making_per_gram', 'opening_balance'].includes(name)) assert.doesNotMatch(input, /max=/);
+    }
+    const css = postcss.parse(readFileSync(new URL('../../resources/css/karigars-directory.css', import.meta.url), 'utf8'));
+    const value = (selector, prop) => {
+        let found;
+        css.walkRules(rule => { if (rule.selector === selector) rule.walkDecls(prop, decl => { found = decl.value; }); });
+        return found;
+    };
+    assert.equal(value('.kf-shell .kf-billing-fields', 'display'), 'flex');
+    assert.equal(value('.kf-shell .kf-billing-fields', 'flex-wrap'), 'wrap');
+    assert.equal(value('.kf-shell .kf-billing-fields', 'grid-column'), '1 / -1');
+    assert.equal(value('.kf-shell .kf-billing-fields > .kf-field', 'flex'), '0 1 180px');
+    assert.equal(value('.kf-shell .kf-billing-fields > .kf-field', 'max-width'), '100%');
+    assert.equal(value('.kf-shell .kf-billing-fields > .kf-field--wastage', 'flex-basis'), '140px');
+    assert.equal(value('.kf-shell .kf-field--wastage .kf-input', 'width'), '100px');
+});

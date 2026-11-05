@@ -225,26 +225,28 @@
 
     <p class="kf-group">Billing defaults</p>
 
-    <label class="kf-field">
-        <span class="kf-label">Default Wastage %</span>
-        <input type="number" step="0.01" min="0" max="50" name="default_wastage_percent" value="{{ old('default_wastage_percent', $k?->default_wastage_percent) }}" class="kf-input">
-    </label>
+    <div class="kf-billing-fields">
+        <label class="kf-field kf-field--wastage">
+            <span class="kf-label">Default Wastage %</span>
+            <input type="number" step="0.01" min="0" max="50" name="default_wastage_percent" value="{{ old('default_wastage_percent', $k?->default_wastage_percent) }}" class="kf-input">
+        </label>
 
-    <label class="kf-field">
-        <span class="kf-label">Default Making/g (₹)</span>
-        <input type="number" step="0.01" min="0" name="default_making_per_gram" value="{{ old('default_making_per_gram', $k?->default_making_per_gram) }}" class="kf-input">
-    </label>
+        <label class="kf-field">
+            <span class="kf-label">Default Making/g (₹)</span>
+            <input type="number" step="0.01" min="0" name="default_making_per_gram" value="{{ old('default_making_per_gram', $k?->default_making_per_gram) }}" class="kf-input">
+        </label>
 
-    <label class="kf-field">
-        <span class="kf-label">Opening Balance (₹)</span>
-        <input type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', $k?->opening_balance ?? 0) }}" class="kf-input">
-        <p class="kf-hint">Positive = we owe the karigar.</p>
-    </label>
+        <label class="kf-field">
+            <span class="kf-label">Opening Balance (₹)</span>
+            <input type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', $k?->opening_balance ?? 0) }}" class="kf-input">
+            <p class="kf-hint">Positive = we owe the karigar.</p>
+        </label>
 
-    <label class="kf-field">
-        <span class="kf-label">Opening Balance Date</span>
-        <input type="date" name="opening_balance_at" value="{{ old('opening_balance_at', $k?->opening_balance_at?->toDateString()) }}" class="kf-input">
-    </label>
+        <label class="kf-field">
+            <span class="kf-label">Opening Balance Date</span>
+            <input type="date" name="opening_balance_at" value="{{ old('opening_balance_at', $k?->opening_balance_at?->toDateString()) }}" class="kf-input">
+        </label>
+    </div>
 
     <label class="kf-field kf-field--full">
         <span class="kf-label">Notes</span>

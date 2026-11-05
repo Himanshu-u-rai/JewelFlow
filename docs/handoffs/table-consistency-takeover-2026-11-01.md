@@ -2,7 +2,31 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Popup form prefetch collision
+## Latest checkpoint — Compact Karigar billing defaults
+
+Clean start `b794783df83773b1b902d0bcbe4cf84df5ad9cd5`, same branch/worktree,
+sole writer. Owner requested smaller Wastage, Making/g, Opening Balance and date
+controls. Shared _form now places those four existing labels in one full-grid-span
+wrapping flex row:100px wastage input with140px label slot,180px money/date slots,
+max-width100% and shrink/wrap for narrow windows. Keeps44px control height and
+existing16px phone text. Money width allows room for intended10-crore magnitude,
+decimals and signed opening balance; no new maximum or truncation introduced.
+Wastage's existing0–50/0.01 validation remains unchanged, not increased to999.
+Applies consistently to Add/Edit popups and direct-page fallbacks using the same
+fields. Other form sections, values, hints, methods and validation untouched.
+
+New source/layout contract RED then21frontend passed/0skipped:
+`node --test tests/Frontend/karigar-editor.test.mjs tests/Frontend/karigars-directory.test.mjs tests/Frontend/list-workspace.test.mjs`.
+`npm run build` passed81modules; _form PHP lint, guarded preview view:cache/
+view:clear and diff check passed. Impeccable source layout detector[]; changed
+source/diff read. No PHP/DB suite rerun for markup/CSS-only sizing; existing
+numeric types/step/min/max/value bindings asserted unchanged. Logs
+karigar-billing-sizing-* in existing evidence directory. Actual large-value
+rendering/phone/zoom NOT RUN under existing browser-policy denial; sizing tests
+are source contracts, not pixel measurements. Owner refresh Karigars for review.
+No financial/controller/data/process/remote/OTP/push changes.
+
+## Earlier checkpoint — Popup form prefetch collision
 
 Clean start `b7caa848b1fc8c059b705c9572f3bb2392db7007`, same branch/worktree,
 sole writer. Owner screenshot shows native dialog opening but missing-form error
