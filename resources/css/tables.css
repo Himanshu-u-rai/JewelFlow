@@ -289,14 +289,15 @@
     box-shadow: none;
     transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
 }
-.jf-row-action--view { --jf-ra-bg: var(--jf-t-focus); --jf-ra-line: var(--jf-t-focus); --jf-ra-fg: #ffffff; }
+/* Mobile cards do not inherit the table-scoped palette. */
+.jf-row-action--view { --jf-ra-bg: var(--jf-t-focus, #b45309); --jf-ra-line: var(--jf-t-focus, #b45309); --jf-ra-fg: #ffffff; }
 .jf-row-action--edit { --jf-ra-bg: #fff7ed; --jf-ra-line: #fed7aa; --jf-ra-fg: #92400e; }
 .jf-row-action--danger { --jf-ra-bg: #fef2f2; --jf-ra-line: #fecaca; --jf-ra-fg: #b91c1c; }
 .jf-row-action--success { --jf-ra-bg: #f0fdf4; --jf-ra-line: #bbf7d0; --jf-ra-fg: #15803d; }
 .jf-row-action--primary { --jf-ra-bg: #1e293b; --jf-ra-line: #1e293b; --jf-ra-fg: #ffffff; }
 .jf-row-action:hover { transform: translateY(-1px); }
 .jf-row-action:active { transform: scale(0.97); }
-.jf-row-action:focus-visible { outline: 2px solid var(--jf-t-focus); outline-offset: 2px; }
+.jf-row-action:focus-visible { outline: 2px solid var(--jf-t-focus, #b45309); outline-offset: 2px; }
 .jf-row-action > svg { width: 16px; height: 16px; flex: none; }
 .jf-sr-only {
     position: absolute;

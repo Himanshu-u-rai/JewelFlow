@@ -7,6 +7,14 @@ const available = existsSync(source);
 const module = available ? await import(source) : {};
 const css = readFileSync(new URL('../../resources/css/tables.css', import.meta.url), 'utf8');
 
+test('View actions outside desktop tables have a visible background, border and focus fallback', () => {
+    const view = css.match(/\.jf-row-action--view\s*\{([^}]+)\}/)?.[1];
+    for (const property of ['--jf-ra-bg', '--jf-ra-line']) {
+        assert.match(view, new RegExp(`${property}:\\s*var\\(--jf-t-focus,\\s*#b45309\\)`));
+    }
+    assert.match(css, /\.jf-row-action:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--jf-t-focus,\s*#b45309\)/);
+});
+
 // Only the DOM/event boundaries are stubbed; these exercise the real label controller.
 function fixture({ left = 150, top = 100, fine = true, popover = true, header = false, chart = false } = {}) {
     assert.ok(available, 'Shared row labels must escape table overflow and support dismissal.');

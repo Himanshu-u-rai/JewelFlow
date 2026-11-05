@@ -2,7 +2,26 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Desktop Job Orders filter popup
+## Latest checkpoint — Mobile Karigar View icon contrast
+
+Clean start `3202b86e8d8c5b599bc5df10964cd88a99c2b392`. Owner screenshot
+shows a focusable44px View link with eye SVG but invisible paint on the mobile
+Karigar card. Source trace confirms shared View foreground white while background
+and border depend on --jf-t-focus defined on .jf-table, not its mobile sibling.
+Added existing Retail table-focus color #b45309 as the shared View background,
+border and row-action focus-outline fallback. Table/product-specific overrides
+still win; no hiding workaround, layout, links, permissions or actions changed.
+Also covers the same missing-token case in other mobile cards (including Jobs).
+
+CSS regression RED then `node --test tests/Frontend/*.test.mjs`:231 passed,
+22 existing photo-browser skips,0failed. `npm run build`:83modules; diff check
+passed. Existing local8001 server still listening; no restart or data writes.
+Log: karigar-mobile-view-frontend.log in existing external evidence folder.
+No PHP rerun for CSS-only application change. Live browser/physical-device
+confirmation NOT RUN under earlier policy denial; screenshot and CSS evidence
+are not a live visual pass. No push, deployment, staging, production or OTP changes.
+
+## Earlier checkpoint — Desktop Job Orders filter popup
 
 Clean start `65068228dbe3f356afdcc183d2bb77406f418f83`, same branch/worktree.
 Owner requested desktop filters behind a Filters button too. Job Orders alone
