@@ -27,7 +27,7 @@ class KarigarEditorTest extends TestCase
             $this->assertSame(1, $xpath->query('//input[@name="state" and @list="kf-states"]')->length);
             $this->assertSame(1, $xpath->query('//*[@id="kf-state-menu" and @popover="auto" and @role="listbox"]')->length);
             $this->assertSame(1, $xpath->query('//input[@name="pincode" and @inputmode="numeric"]')->length);
-            $this->assertSame(1, $xpath->query('//input[@name="opening_balance_at" and @type="date" and @data-native-date and not(@readonly) and not(@disabled)]')->length);
+            $this->assertSame(1, $xpath->query('//input[@name="opening_balance_at" and @type="date" and @data-date-editable and not(@data-native-date) and not(@readonly) and not(@disabled)]')->length);
             if ($url === route('karigars.edit', $karigar)) {
                 $response->assertSee('value="My locality"', false)->assertSee('value="Legacy state spelling"', false)->assertSee('value="411001"', false);
             }

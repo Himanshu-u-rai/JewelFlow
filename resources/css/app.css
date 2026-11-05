@@ -22224,6 +22224,15 @@ input[type="date"] {
     animation: jfDateCalendarIn 0.16s ease-out;
 }
 
+.flatpickr-calendar.jf-date-calendar[popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+}
+
 @keyframes jfDateCalendarIn {
     from {
         opacity: 0;

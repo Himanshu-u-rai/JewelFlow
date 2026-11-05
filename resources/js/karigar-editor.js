@@ -42,6 +42,7 @@ export function createKarigarEditor(config = {}) {
         clear() {
             // Removing src cancels Turbo's pending GET before another form opens.
             this.$refs.frame.removeAttribute('src');
+            this.$refs.frame.querySelectorAll('[data-jf-date-picker="true"]').forEach(input => input._flatpickr?.destroy());
             this.$refs.frame.replaceChildren();
             this.loading = false;
             this.error = '';

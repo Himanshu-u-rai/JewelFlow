@@ -9,7 +9,7 @@ function fixture(config = {}) {
     assert.equal(typeof createKarigarEditor, 'function');
     const state = createKarigarEditor(config);
     let focus = 0, clears = 0;
-    const frame = { src: null, removeAttribute() { this.src = null; }, replaceChildren() { clears++; }, querySelector: () => ({ focus() { focus++; } }) };
+    const frame = { src: null, removeAttribute() { this.src = null; }, replaceChildren() { clears++; }, querySelector: () => ({ focus() { focus++; } }), querySelectorAll: () => [] };
     const dialog = { open: false, dataset: {}, showModal() { this.open = true; }, close() { this.open = false; } };
     const opener = { isConnected: true, focus() { focus++; } };
     state.$refs = { editor: dialog, frame };
@@ -156,14 +156,23 @@ test('billing defaults pack into a wrapping row with compact controls and unchan
     assert.equal(value('.kf-shell .kf-field--wastage .kf-input', 'width'), '100px');
 });
 
-test('Opening Balance Date remains a native editable date control instead of a body-mounted calendar', () => {
+test('Opening Balance Date uses the editable themed calendar, not the native opt-out', () => {
     const form = readFileSync(new URL('../../resources/views/karigars/_form.blade.php', import.meta.url), 'utf8');
     const input = form.match(/<input[^>]*name="opening_balance_at"[^>]*>/)[0];
     assert.match(input, /type="date"/);
-    assert.match(input, /data-native-date/);
+    assert.match(input, /data-date-editable/);
+    assert.doesNotMatch(input, /data-native-date/);
     assert.doesNotMatch(input, /\b(?:readonly|disabled)\b/);
     const app = readFileSync(new URL('../../resources/js/app.js', import.meta.url), 'utf8');
     assert.match(app, /const DATE_PICKER_SELECTOR = 'input\[type="date"\]:not\(\[data-native-date\]\)'/);
+});
+
+test('clearing a Karigar frame destroys its themed date picker before removing the input', () => {
+    const f = fixture();
+    let destroyed = 0;
+    f.frame.querySelectorAll = () => [{ _flatpickr: { destroy() { destroyed++; } } }];
+    f.state.clear();
+    assert.equal(destroyed, 1);
 });
 
 test('shared form omits the introductory heading and labels the address once', () => {

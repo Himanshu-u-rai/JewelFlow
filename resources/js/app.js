@@ -12,6 +12,7 @@ import { initializeListWorkspaces } from './list-workspace';
 import { createReorderEditor } from './reorder-editor';
 import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
 import { createIndianAddress } from './indian-address';
+import { configureDialogDatePicker } from './date-picker-dialog';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -1173,7 +1174,7 @@ function styleDatePickerInput(nativeInput, instance) {
 
     displayInput.classList.add('jf-date-picker-input');
     displayInput.setAttribute('autocomplete', 'off');
-    displayInput.readOnly = true;
+    displayInput.readOnly = !instance.config.allowInput;
 
     if (nativeInput.className) {
         nativeInput.className.split(/\s+/).filter(Boolean).forEach((className) => {
@@ -1194,7 +1195,7 @@ function dispatchDatePickerChange(nativeInput) {
 }
 
 function buildDatePickerOptions(nativeInput) {
-    return {
+    return configureDialogDatePicker(nativeInput, {
         dateFormat: 'Y-m-d',
         altInput: true,
         altFormat: 'd/m/Y',
@@ -1218,7 +1219,7 @@ function buildDatePickerOptions(nativeInput) {
             nativeInput.value = dateStr || '';
             dispatchDatePickerChange(nativeInput);
         },
-    };
+    });
 }
 
 function initDatePickers(root = document) {

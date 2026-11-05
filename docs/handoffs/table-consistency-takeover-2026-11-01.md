@@ -2,7 +2,42 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Opening Balance Date in Karigar dialog
+## Latest checkpoint — Themed calendar retained inside dialogs
+
+Clean start `176bc4ea39b01c324c676a1be349175c82cc7a36`, same branch/worktree.
+Owner rejected native date styling and requested the existing theme. Removed
+Karigar native-date opt-out; data-date-editable now enables manual dd/mm/yyyy
+entry through the existing Flatpickr altInput and ISO submission. Shared input
+styling honors instance.config.allowInput instead of forcing readonly. Unmarked
+dates retain the existing readonly policy; no custom parser or validation change.
+
+Small dialog adapter retains all existing jf-date-calendar classes/theme hooks,
+arrows, formats and styling. Only dialog-contained enhanced dates append their
+calendar inside that dialog and use a manually controlled native popover top
+layer, fixed viewport-clamped placement with short-screen scrolling. Calendar
+focus remains inside the modal. Ordinary page date placement is unchanged.
+Scrolling the form closes the calendar; calendar-internal scrolling is ignored.
+Close/destroy remove popover and dialog scroll handlers. Karigar clear destroys
+picker instances before removing frame contents, preventing orphan calendars or
+handlers after cancel/reopen/Turbo cleanup. Existing no-Popover fallback uses
+fixed positioning within the dialog; real older-browser behavior not exercised.
+
+Regressions RED then GREEN (6 initial failures): theme hook composition/dialog
+parent/top-layer placement and viewport fixtures, scroll/close/destroy cleanup,
+ordinary-page noninterference, allowInput/readOnly policy and frame disposal.
+`node --test tests/Frontend/*.test.mjs`:225 passed,22 existing photo-browser skips,
+0failed. `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/KarigarEditorTest.php tests/Feature/Tables/KarigarDirectoryUiTest.php`:
+14 passed/126assertions on guarded disposable DB. Date field markup opts into
+theme/manual input and ordinary update still persists ISO date. Build, PHP lint,
+guarded preview Blade cache/clear and diff check passed. Source detector is
+regex-only, not visual approval. No full PHP suite. Actual picker interaction,
+typed-date parsing in browser, popup focus and physical-phone acceptance NOT RUN
+under earlier browser-policy denial. Refresh/reopen Add/Edit for owner review.
+Frontend log: karigar-themed-date-frontend.log in existing external directory.
+No new dependency, stored customer/financial data, service/process, remote/push,
+deployment, OTP or SMTP changes.
+
+## Earlier checkpoint — Opening Balance Date in Karigar dialog
 
 Clean start `3b7c31bb7f3fabfc0a4f8c5c12e612e7a3819379`, same branch/worktree.
 Owner reported no calendar or manual input. Source trace: global enhancer replaces
