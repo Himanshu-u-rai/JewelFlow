@@ -24,10 +24,13 @@ Any correction must go through the service layer as an explicit compensating ent
 Reuse `<x-indian-address>` for PIN, city/locality and searchable State suggestions
 (see `resources/views/components/indian-address.blade.php`). Give each instance
 a unique `id-prefix`, supply existing/old values, and pass the form's input/label
-classes. It uses the existing authenticated `shops.pincode-lookup` server proxy,
+classes. State uses a compact searchable top-layer popup with native datalist
+fallback when popovers are unavailable. It uses the authenticated
+`shops.pincode-lookup` server proxy,
 never a direct browser call to a third party. PIN results provide a postal district,
 not necessarily a town; preserve manual edits and always allow manual entry on
-lookup failure. Do not silently enforce state-list membership or rewrite legacy
+lookup failure, with an explicit retry and distinct missing/unavailable results.
+Do not silently enforce state-list membership or rewrite legacy
 addresses. Existing forms are not automatically migrated to this pattern.
 
 **PostgreSQL boolean bulk UPDATE**

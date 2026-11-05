@@ -8,11 +8,23 @@
 
 .jf-address-field { display: block; min-width: 0; }
 .jf-address-field > span { display: block; margin-bottom: 7px; }
-.jf-address-field > input { width: 100%; min-width: 0; }
-.jf-address-status { grid-column: 1 / -1; margin: 0; color: var(--jf-text-muted); font-size: 12px; line-height: 1.5; }
+.jf-address-field input { width: 100%; min-width: 0; }
+.jf-state-control { position: relative; }
+.jf-state-control > input { padding-right: 36px; }
+.jf-state-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--jf-text-muted); }
+.jf-address-status-row { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.jf-address-status-row:has(.jf-address-status:empty) { display: none; }
+.jf-address-status { margin: 0; color: var(--jf-text-muted); font-size: 12px; line-height: 1.5; }
 .jf-address-status:empty { display: none; }
+.jf-address-retry { min-height: 44px; border: 0; background: transparent; padding: 4px 0; color: var(--jf-gold-deep); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.jf-address-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.jf-state-menu { position: fixed; inset: auto; margin: 0; padding: 4px; width: 280px; max-width: calc(100vw - 16px); max-height: 224px; overflow-y: auto; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface); color: var(--jf-text); box-shadow: var(--jf-shadow-md); visibility: hidden; scrollbar-width: thin; }
+.jf-state-menu::-webkit-scrollbar { width: 6px; }
+.jf-state-menu > button { display: block; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 13px; line-height: 1.4; text-align: left; overflow-wrap: anywhere; }
+.jf-state-menu > button:is(:hover, .is-active) { background: var(--jf-surface-soft); }
+.jf-state-menu > p { padding: 10px; color: var(--jf-text-muted); font-size: 13px; }
 
 @media (max-width: 640px) {
     .jf-address-fields { grid-template-columns: minmax(0, 1fr); }
-    .jf-address-field > input { font-size: 16px; }
+    .jf-address-field input { font-size: 16px; }
 }

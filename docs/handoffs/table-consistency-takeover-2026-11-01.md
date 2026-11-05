@@ -2,7 +2,60 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Reusable Indian address assistance
+## Latest checkpoint — Compact State picker and honest PIN failure handling
+
+Clean start `6e2ec6c3c99aa04a4b2acf959b9ccbc1f6b21741`, same worktree/branch.
+Owner screenshot demonstrates Chrome's unbounded native datalist and a failed
+370201 lookup. External read-only diagnostics on2026-11-05 around05:30UTC returned
+HTTP200/Success for370201, Gujarat/Kachchh, using both curl and the same Laravel
+HTTP client/settings as the proxy. A repeat returned200 in1.27s. The guarded
+preview cache read for pincode:370201 returned null. Web fetcher could not access
+that endpoint; curl/PHP succeeded. These are provider diagnostics, NOT browser
+or authenticated application-route acceptance. Earlier request's exact failure
+could not be reproduced or attributed; do not call the PIN invalid or claim the
+provider outage cause was proved. No speculative timeout/route/provider changes.
+
+Replaced the oversized native suggestion presentation with a component-scoped
+searchable native popover: input-width, maximum224px height (~five44px options),
+internal scrolling, viewport-clamped/flips above when necessary. Native datalist
+remains a no-JS/no-Popover fallback only. State combobox retains input focus,
+ArrowUp/Down active descendant, Enter selection, Escape dismissal without closing
+the form, Tab/blur close, pointer selection and named listbox. No-match text keeps
+manual/legacy State values; chevron communicates dropdown. Popover closes during
+Turbo/cache/disposal. Existing edits, PIN races and normal form submission remain
+protected. CLAUDE.md future-address convention updated; no global select rewrite.
+
+PIN status previously merged every failure into one message; it now distinguishes
+genuine missing PIN from temporarily unavailable lookup and has an explicit Retry
+button. Shared proxy adds reason fields to failed JSON only; found flag and success
+shape unchanged, preserving shop-onboarding caller. Malformed provider replies
+are no longer cached for30days as missing PINs. No existing caches were purged;
+no fabricated fallback addresses or automatic client retry. Tests cover malformed
+reply followed by success, real unknown status, failed upstream and invalid input.
+
+Checks: new frontend4 regressions RED then GREEN, plus no-Popover cleanup RED then
+GREEN. `node --test tests/Frontend/*.test.mjs`:219 passed,22 existing photo-browser
+skips (PLAYWRIGHT_MODULE_PATH unavailable),0 failed. Ten address cases include
+filter/keyboard/selection, viewport sizing, no-match/manual fallback, Retry/reasons,
+stale replies and edit protection. PHP command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/KarigarEditorTest.php tests/Feature/Tables/KarigarDirectoryUiTest.php tests/Feature/Onboarding/ShopOnboardingTest.php`
+passed27tests/184assertions on guarded disposable DB. HTTP tests fake the provider;
+no real customer test data. Build82modules, PHP lint controller/component/test,
+guarded preview Blade cache/clear and diff check passed. Impeccable source detector
+reported no findings with regex-only warning; not visual approval. Live browser,
+physical phone and actual authenticated form PIN acceptance remain NOT RUN under
+the earlier browser-policy denial. Owner refresh/reopen form and try Retry.
+Frontend log: indian-address-compact-frontend.log in the existing external evidence
+directory. No full PHP suite; focused onboarding broadened due shared proxy change.
+No preview-business-data/remote/push/deploy/OTP/SMTP changes. During the final
+recheck both local listeners had stopped (private PostgreSQL log shows a smart
+shutdown at11:09:40IST; initiator unconfirmed). Guarded Blade checks initially
+refused the unavailable DB. Inspected listeners and the existing startup script;
+restarted only the owned preview cluster55432 and PHP8001 using that unchanged
+script via bash (direct execution lacked execute permission). Guarded compile/
+clear then passed; both listeners present. No other process was stopped.
+
+## Earlier checkpoint — Reusable Indian address assistance
 
 Clean start `e0796a6ef7f2e52c5db16e927cd492ee8bbb72e0`, same branch/worktree.
 Owner approved searchable State suggestions plus optional PIN district/state

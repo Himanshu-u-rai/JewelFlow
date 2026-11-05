@@ -99,7 +99,7 @@ class ShopController extends Controller
     public function lookupPincode(string $pincode)
     {
         if (! preg_match('/^[0-9]{6}$/', $pincode)) {
-            return response()->json(['found' => false], 422);
+            return response()->json(['found' => false, 'reason' => 'invalid'], 422);
         }
 
         $result = \Illuminate\Support\Facades\Cache::remember(
@@ -126,17 +126,26 @@ class ShopController extends Controller
                     $record = is_array($body) ? ($body[0] ?? null) : null;
                     $offices = $record['PostOffice'] ?? null;
 
-                    if (($record['Status'] ?? null) !== 'Success' || empty($offices)) {
+                    if (($record['Status'] ?? null) === 'Error') {
                         // A genuine "not found" is a real answer worth caching.
-                        return ['found' => false];
+                        return ['found' => false, 'reason' => 'not_found'];
+                    }
+
+                    if (($record['Status'] ?? null) !== 'Success' || ! is_array($offices) || empty($offices)) {
+                        return null; // Malformed replies must not become cached missing PINs.
                     }
 
                     $po = $offices[0];
+                    $city = $po['District'] ?? ($po['Division'] ?? '');
+                    $state = $po['State'] ?? '';
+                    if (! is_string($city) || trim($city) === '' || ! is_string($state) || trim($state) === '') {
+                        return null;
+                    }
 
                     return [
                         'found' => true,
-                        'city'  => $po['District'] ?? ($po['Division'] ?? ''),
-                        'state' => $this->canonicalStateName($po['State'] ?? ''),
+                        'city'  => $city,
+                        'state' => $this->canonicalStateName($state),
                     ];
                 } catch (\Throwable $e) {
                     // Connection reset / timeout: transient, never cache.
@@ -148,7 +157,7 @@ class ShopController extends Controller
         // A null (transient error) is not cached; normalise it for the response.
         if ($result === null) {
             \Illuminate\Support\Facades\Cache::forget("pincode:{$pincode}");
-            return response()->json(['found' => false]);
+            return response()->json(['found' => false, 'reason' => 'unavailable']);
         }
 
         return response()->json($result);

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import postcss from 'postcss';
 
 const path = new URL('../../resources/js/indian-address.js', import.meta.url);
 const { createIndianAddress } = existsSync(path) ? await import(path) : {};
@@ -119,4 +121,90 @@ test('unavailable, malformed, unknown and unauthenticated lookups preserve manua
         assert.equal(state.loading, false);
         assert.match(state.message, /type.*city.*state/i);
     }
+});
+
+test('lookup distinguishes unknown PIN from temporary failure and can retry without losing input', async () => {
+    const state = fixture({ pin: '370201', city: 'Manual locality' });
+    await state.lookup(async () => ({ ok: true, json: async () => ({ found: false, reason: 'not_found' }) }));
+    assert.match(state.message, /no area found/i);
+    assert.equal(state.lookupFailed, true);
+    await state.lookup(async () => ({ ok: true, json: async () => ({ found: false, reason: 'unavailable' }) }));
+    assert.match(state.message, /temporarily unavailable/i);
+    await state.lookup(async () => found('Kachchh', 'Gujarat'));
+    assert.equal(state.lookupFailed, false);
+    assert.equal(state.$refs.city.value, 'Manual locality');
+    assert.equal(state.$refs.state.value, 'Gujarat');
+});
+
+function picker() {
+    const state = fixture();
+    let open = false, focus = 0;
+    const scrolled = [];
+    state.$nextTick = fn => fn();
+    state.$refs.states = { options: ['Gujarat', 'Maharashtra', 'Himachal Pradesh', 'Madhya Pradesh'].map(value => ({ value })) };
+    state.$refs.state.removeAttribute = name => { state.removedAttribute = name; };
+    state.$refs.state.focus = () => focus++;
+    state.$refs.state.getBoundingClientRect = () => ({ left: 280, top: 200, bottom: 244, width: 230 });
+    state.$refs.stateMenu = {
+        style: {}, scrollHeight: 300,
+        matches: () => open,
+        showPopover() { open = true; }, hidePopover() { open = false; },
+        querySelector(selector) { return { scrollIntoView() { scrolled.push(selector); } }; },
+    };
+    const place = state.placeStates;
+    state.placeStates = win => place.call(state, win ?? { innerWidth: 540, innerHeight: 640 });
+    assert.equal(typeof state.init, 'function', 'State suggestions must have a controlled, sized popup');
+    state.init();
+    return { state, isOpen: () => open, focused: () => focus, scrolled };
+}
+
+test('compact State suggestions filter typed text and support arrows, selection and dismissal', () => {
+    const { state, isOpen, focused, scrolled } = picker();
+    assert.equal(state.removedAttribute, 'list', 'disable the unbounded native list only after enhancement');
+    state.openStates();
+    assert.equal(isOpen(), true);
+    assert.equal(state.stateMatches.length, 4);
+    state.$refs.state.value = 'pradesh';
+    state.openStates(true);
+    assert.deepEqual(state.stateMatches, ['Himachal Pradesh', 'Madhya Pradesh']);
+    state.moveState(1);
+    assert.equal(state.activeState, 0);
+    state.moveState(1);
+    assert.equal(state.activeState, 1);
+    assert.equal(scrolled.length, 2, 'keyboard highlight must stay visible in the scrolling popup');
+    state.chooseState();
+    assert.equal(state.$refs.state.value, 'Madhya Pradesh');
+    assert.equal(isOpen(), false);
+    assert.equal(focused(), 1);
+    state.openStates();
+    state.cancel();
+    assert.equal(isOpen(), false, 'navigation cleanup must close the top-layer popup');
+});
+
+test('no-match text and browsers without popovers keep manual State entry intact', () => {
+    const { state } = picker();
+    state.$refs.state.value = 'Legacy spelling';
+    state.openStates(true);
+    assert.deepEqual(state.stateMatches, []);
+    state.chooseState();
+    assert.equal(state.$refs.state.value, 'Legacy spelling');
+    const plain = fixture();
+    plain.$refs.stateMenu = { matches() { throw new Error('Unsupported popover selector'); } };
+    plain.init();
+    assert.equal(plain.enhanced, false);
+    assert.doesNotThrow(() => plain.cancel());
+});
+
+test('State popup stays within viewport edges and caps its scroll height', () => {
+    const { state } = picker();
+    state.placeStates({ innerWidth: 320, innerHeight: 350 });
+    assert.equal(state.$refs.stateMenu.style.left, '82px');
+    assert.equal(state.$refs.stateMenu.style.maxHeight, '188px');
+    assert.equal(state.$refs.stateMenu.style.top, '8px');
+    const css = postcss.parse(readFileSync(new URL('../../resources/css/indian-address.css', import.meta.url), 'utf8'));
+    let scrolls = false;
+    css.walkRules(rule => {
+        if (rule.selector === '.jf-state-menu') rule.walkDecls('overflow-y', decl => { scrolls = decl.value === 'auto'; });
+    });
+    assert.equal(scrolls, true);
 });

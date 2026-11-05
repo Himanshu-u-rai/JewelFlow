@@ -25,6 +25,7 @@ class KarigarEditorTest extends TestCase
             $xpath = new \DOMXPath($dom);
             $this->assertSame(36, $xpath->query('//datalist[@id="kf-states"]/option')->length);
             $this->assertSame(1, $xpath->query('//input[@name="state" and @list="kf-states"]')->length);
+            $this->assertSame(1, $xpath->query('//*[@id="kf-state-menu" and @popover="auto" and @role="listbox"]')->length);
             $this->assertSame(1, $xpath->query('//input[@name="pincode" and @inputmode="numeric"]')->length);
             if ($url === route('karigars.edit', $karigar)) {
                 $response->assertSee('value="My locality"', false)->assertSee('value="Legacy state spelling"', false)->assertSee('value="411001"', false);
@@ -42,8 +43,30 @@ class KarigarEditorTest extends TestCase
         ]);
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->getJson(route('shops.pincode-lookup', '411001')))
             ->assertOk()->assertExactJson(['found' => true, 'city' => 'Pune', 'state' => 'Maharashtra']);
-        $this->getJson(route('shops.pincode-lookup', '123'))->assertStatus(422)->assertExactJson(['found' => false]);
-        $this->getJson(route('shops.pincode-lookup', '560001'))->assertOk()->assertExactJson(['found' => false]);
+        $this->getJson(route('shops.pincode-lookup', '123'))->assertStatus(422)->assertExactJson(['found' => false, 'reason' => 'invalid']);
+        $this->getJson(route('shops.pincode-lookup', '560001'))->assertOk()->assertExactJson(['found' => false, 'reason' => 'unavailable']);
+    }
+
+    public function test_pin_proxy_does_not_cache_malformed_provider_replies_as_a_missing_pin(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Http::preventStrayRequests();
+        Http::fake(['api.postalpincode.in/pincode/370201' => Http::sequence()
+            ->push(['unexpected' => 'body'])
+            ->push([['Status' => 'Success', 'PostOffice' => [['District' => 'Kachchh', 'State' => 'Gujarat']]]])]);
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->getJson(route('shops.pincode-lookup', '370201')))
+            ->assertOk()->assertExactJson(['found' => false, 'reason' => 'unavailable']);
+        $this->getJson(route('shops.pincode-lookup', '370201'))->assertOk()
+            ->assertExactJson(['found' => true, 'city' => 'Kachchh', 'state' => 'Gujarat']);
+    }
+
+    public function test_pin_proxy_reports_a_genuine_unknown_pin_distinctly(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Http::preventStrayRequests();
+        Http::fake(['api.postalpincode.in/*' => Http::response([['Status' => 'Error', 'PostOffice' => null]])]);
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->getJson(route('shops.pincode-lookup', '999999')))
+            ->assertOk()->assertExactJson(['found' => false, 'reason' => 'not_found']);
     }
 
     public function test_authorized_frames_reuse_all_fields_and_standalone_routes_still_work(): void
