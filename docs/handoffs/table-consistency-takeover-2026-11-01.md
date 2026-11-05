@@ -2,7 +2,21 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Mobile Karigar View icon contrast
+## Latest checkpoint — Mobile Karigars header alignment
+
+Clean start `c64be5f61c801a1cf8c12df1b5d84a1d87d73440`. Follow-up interpreted
+as the mobile page/nav title shown above the card in the owner's screenshot.
+Karigars scoped mobile grid inherited global .content-header align-items:flex-start,
+so short title text sat at the top of its44px action row. Set align-items:center
+on that mobile header and explicit zero title margin. Desktop, card content,
+permissions and navigation unchanged. CSS regression RED then full frontend
+`node --test tests/Frontend/*.test.mjs`:231passed/22existing skips/0failed.
+`npm run build`:83modules; diff check passed. No PHP rerun for CSS-only change.
+Log: karigar-mobile-header-frontend.log in existing external evidence folder.
+Live visual/phone confirmation remains NOT RUN under earlier browser-policy
+denial. No process/data/remote/push/deployment/staging/production/OTP changes.
+
+## Earlier checkpoint — Mobile Karigar View icon contrast
 
 Clean start `3202b86e8d8c5b599bc5df10964cd88a99c2b392`. Owner screenshot
 shows a focusable44px View link with eye SVG but invisible paint on the mobile

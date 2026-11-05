@@ -75,4 +75,6 @@ test('phone cards wrap long fields, actions retain touch targets and header acti
     assert.equal(value('.karigars-index-page .karigars-filter-input', 'font-size', phone), '16px');
     assert.equal(value('body.app-shell .karigars-page-header > .notice-bell', 'position', phone), 'relative');
     assert.equal(value('body.app-shell .content-header.karigars-page-header', 'grid-template-columns', phone), '44px minmax(0, 1fr) auto 44px');
+    assert.equal(value('body.app-shell .content-header.karigars-page-header', 'align-items', phone), 'center');
+    assert.equal(value('body.app-shell .karigars-page-header .page-title', 'margin', phone), '0');
 });
