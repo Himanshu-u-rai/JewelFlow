@@ -1,0 +1,67 @@
+/* Job list only; Issue/Receive forms and financial workflows stay untouched. */
+.content-inner.job-orders-index-page { min-width: 0; color: var(--jf-text); background: transparent; }
+.job-orders-index-page .jo-register { min-width: 0; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); box-shadow: 0 12px 22px -22px rgba(15, 23, 42, .68); overflow: visible; }
+.job-orders-index-page .jo-register-head { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; min-width: 0; padding: 16px 18px; border-bottom: 1px solid var(--jf-border); border-radius: 16px 16px 0 0; background: var(--jf-surface); }
+.job-orders-index-page .jo-register-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.job-orders-index-page .jo-summary { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.job-orders-index-page .jo-metric { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-inline-size: 100%; margin: 0; padding: 6px 10px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface-soft); }
+.job-orders-index-page .jo-metric dt { color: var(--jf-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.job-orders-index-page .jo-metric dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.job-orders-index-page .jf-filter-panel { width: min(100%, 690px); margin-left: auto; color: var(--jf-text); }
+.job-orders-index-page .jf-filter-toggle { margin-left: auto; }
+.job-orders-index-page .jo-filters { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 165px) repeat(2, minmax(0, 145px)) auto; align-items: end; gap: 8px; min-width: 0; }
+.job-orders-index-page .jo-filter-field { min-width: 0; }
+.job-orders-index-page .jo-filter-field label { display: block; margin-bottom: 5px; font-size: 12px; }
+.job-orders-index-page .jo-filter-input { width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); color: var(--jf-text); font-size: 14px; }
+.job-orders-index-page .jo-filter-field .ui-filter-select-trigger { min-height: 44px; }
+.job-orders-index-page .jo-filter-actions { display: flex; flex-wrap: nowrap; gap: 8px; }
+.job-orders-index-page .jo-filter-actions .btn { min-height: 44px; }
+.job-orders-index-page .jo-records { min-width: 0; border-radius: 0 0 16px 16px; }
+.job-orders-index-page .jo-register-table.jf-table { min-width: 1160px; }
+.job-orders-index-page .jo-register-table tbody tr { cursor: pointer; }
+.job-orders-index-page .jo-name { min-width: 145px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+.job-orders-index-page .jo-number { font-weight: 600; color: var(--jf-gold-deep); overflow-wrap: anywhere; }
+.job-orders-index-page .jo-number:hover { text-decoration: underline; text-underline-offset: 3px; }
+.job-orders-index-page .jo-challan { display: block; margin-top: 4px; color: var(--jf-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.job-orders-index-page .jo-date { white-space: nowrap; }
+.job-orders-index-page .jo-status { display: inline-flex; max-width: 100%; padding: 3px 8px; border-radius: 999px; font-size: 12px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.job-orders-index-page .jo-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.job-orders-index-page .jo-flag { max-width: 100%; padding: 3px 6px; border-radius: 6px; background: #ffe4e6; color: #9f1239; font-size: 12px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.job-orders-index-page .jo-no-flags { color: var(--jf-text-muted); }
+.job-orders-index-page .jf-row-action { min-width: 44px; min-height: 44px; }
+.job-orders-index-page .jo-phone-list { display: none; }
+.job-orders-index-page .jo-pagination { padding: 12px 18px; border-top: 1px solid var(--jf-border); border-radius: 0 0 16px 16px; background: var(--jf-surface); }
+.job-orders-index-page .jo-empty { display: grid; justify-items: center; gap: 14px; padding: 32px 18px; color: var(--jf-text-muted); text-align: center; }
+.job-orders-index-page .jo-empty p { margin: 0; }
+
+@media screen and (max-width: 1023px) {
+    .job-orders-index-page .jo-records { display: none; }
+    .job-orders-index-page .jo-phone-list { display: grid; gap: 12px; padding: 12px; }
+    .job-orders-index-page .jo-record-card { min-width: 0; padding: 12px; border: 1px solid var(--jf-border); border-radius: 12px; background: var(--jf-surface); }
+    .job-orders-index-page .jo-mobile-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 8px; }
+    .job-orders-index-page .jo-mobile-head > div { min-width: 0; }
+    .job-orders-index-page .jo-mobile-index { margin-right: 6px; color: var(--jf-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .job-orders-index-page .jo-mobile-karigar { margin: 12px 0; font-size: 14px; overflow-wrap: anywhere; }
+    .job-orders-index-page .jo-mobile-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .job-orders-index-page .jo-mobile-meta dt { margin-bottom: 4px; color: var(--jf-text-muted); font-size: 12px; }
+    .job-orders-index-page .jo-mobile-meta dd { margin: 0; font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .job-orders-index-page .jo-mobile-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--jf-border); }
+}
+
+@media screen and (max-width: 768px) {
+    .job-orders-index-page .jo-register-head { gap: 12px; padding: 12px; }
+    .job-orders-index-page .jo-summary { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .job-orders-index-page .jo-filters { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .job-orders-index-page .jf-filter-panel { width: 100%; margin: 0; }
+    .job-orders-index-page .jo-filter-input { font-size: 16px; }
+    body.app-shell .content-header.jo-page-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 44px; gap: 8px 6px; padding: 12px; position: static; }
+    body.app-shell .content-header.jo-page-header:has(> .notice-bell) { padding-right: 12px !important; }
+    body.app-shell .jo-page-header .content-header-nav { grid-column: 1; grid-row: 1; }
+    body.app-shell .jo-page-header > .min-w-0 { grid-column: 2; grid-row: 1; }
+    body.app-shell .jo-page-header .page-title { font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+    body.app-shell .jo-page-header .page-subtitle { display: none; }
+    body.app-shell .jo-page-header .page-actions { grid-column: 3; grid-row: 1; width: auto; }
+    body.app-shell .jo-page-header :is(.mobile-menu-btn, .jo-issue, .notice-bell-toggle) { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; }
+    body.app-shell .jo-page-header .jo-issue-label { display: none; }
+    body.app-shell .jo-page-header > .notice-bell { position: relative; grid-column: 4; grid-row: 1; top: auto; right: auto; }
+}

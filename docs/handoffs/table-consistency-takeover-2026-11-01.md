@@ -2,7 +2,61 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Opening Balance explanation in an info bubble
+## Latest checkpoint — Job Orders register consistency
+
+Clean start `924802141a3b3fefcd1e91dd5a31bab24252065a`, same branch/worktree,
+sole writer. Owner approved list-only treatment; Issue Bullion, Receive, detail,
+challan/return documents, controllers/services/models/routes remain unchanged.
+Replaced the list's inline CSS and duplicated desktop/mobile filter state/drawer
+implementation with one normal GET form in the existing responsive-filter-panel.
+Preserves status, active-karigar choices, issue From/To dates and all query names.
+Existing applied unavailable karigar/status values remain visible as selected,
+without fetching a foreign/private name. Shared themed selects/date pickers and
+one mutually exclusive Apply/Clear action reuse the established patterns; no new
+custom JavaScript. Mobile native-dialog bottom sheet has shared focus/Turbo cleanup.
+
+KPI tiles now live in the register header, matching Vault/Stock/Karigars compact
+label/value styling. Matching orders counts all filtered results; other existing
+page-scoped calculations are explicitly Open/Completed/Flagged · page (not new
+shop-wide totals). No additional business queries or fabricated totals. Desktop
+uses shared ten-column table including new continuous row index and named View
+icon; job link and existing row navigation preserved. Weights, date, challan,
+status and discrepancy flags remain visible. Tablet/phone cards retain all data,
+matching indices and44px View control. Existing25-row pagination/query strings
+preserved; pagination sits outside scrolling records. Shared measured tall-desktop
+fit/sticky headings/horizontal scroll reused, with normal short-window/phone flow;
+no fixed row-region height or global body scroll lock. New scoped compiled CSS
+avoids obsolete jo-table/mobile-card selectors with inherited important overrides.
+Phone page actions stay beside the bell as a named compact Issue Bullion icon.
+
+Verification actually run:
+
+- Three frontend and three rendered UI tests initially RED. An early test fixture
+  needed forceCreate for explicit created_at sorting (not fillable on the model);
+  no production ordering changed. CSS checks corrected their media scope and
+  excluded legitimate44px button heights from the no-fixed-list-height assertion.
+- `node --test tests/Frontend/*.test.mjs`:229 passed,22 existing photo-browser
+  skips (PLAYWRIGHT_MODULE_PATH unavailable),0failed. New checks cover actual
+  Apply/Clear expressions, shared sheet/viewport wiring and scoped wrap/layout.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit tests/Feature/Tables/JobOrderDirectoryUiTest.php tests/Feature/Manufacture/JobOrderAccessAndIsolationTest.php tests/Feature/Tables/ListWorkspaceUiTest.php`:
+  44 passed/292assertions. Guard enforced before destructive test setup. Thirty
+  synthetic jobs cover25+5 pages, desktop/mobile indices26–30, page-specific
+  counters, selected filter values, composed filters, retained pagination queries,
+  tenant isolation, viewer permissions, no mutation actions and filtered empties.
+- Build83modules; PHP lint view/new test, guarded preview Blade cache/clear and
+  git diff --check passed. Source detector reported no findings but warned CSS/
+  PHP checks are regex-only. These do not verify real rendered geometry.
+
+Actual browser mouse-wheel/filter dropdown/keyboard/Back/Forward, narrow-screen
+rendering, screenshots and physical-phone checks NOT RUN under the existing
+browser-policy denial. Owner visual review still required. No full repository PHP
+suite, performance benchmark, preview sample-job seeding, or business action run.
+Frontend log job-orders-directory-frontend.log in existing external evidence folder.
+No new dependency, migration, private data, other worktree, service/process,
+remote/push/deployment/mobile/OTP/SMTP changes. Impeccable guided reuse of the
+incumbent compact Operate-mode design, not a new visual system.
+
+## Earlier checkpoint — Opening Balance explanation in an info bubble
 
 The themed-calendar work below was interrupted by this additive request, then
 committed intact as `62b9f996e51578e74d9ec6fb96655ee4a841b783` (parent
