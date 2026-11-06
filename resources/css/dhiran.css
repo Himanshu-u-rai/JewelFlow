@@ -1885,6 +1885,7 @@ body.dh-modal-open {
     border: 1px solid var(--dh-line);
     border-radius: 16px;
     padding: 0;
+    margin: auto; /* app.css `* { margin: 0 }` otherwise pins the modal to the top-left corner */
     width: min(100% - 32px, 480px);
     max-height: min(86dvh, 680px);
     overflow: hidden;
