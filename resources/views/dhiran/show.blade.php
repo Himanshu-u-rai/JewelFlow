@@ -428,7 +428,7 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="dh-form-control dh-native-select">
+                    <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>
@@ -455,7 +455,7 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="dh-form-control dh-native-select">
+                    <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>
@@ -503,7 +503,7 @@
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="dh-form-control dh-native-select">
+                    <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>

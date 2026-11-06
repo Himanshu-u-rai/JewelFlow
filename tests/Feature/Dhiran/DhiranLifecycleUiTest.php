@@ -237,6 +237,23 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertStringNotContainsString('---</td>', $history);
     }
 
+    // Pay Interest, Repay and Pre-Close posted the chosen method as `method`; the controller reads `payment_method`,
+    // so a UPI or bank-transfer payment was recorded (payment row and cash book) as cash.
+    public function test_payment_dialogs_post_the_method_the_controller_reads(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000077');
+        $loan = $this->makeLoan($shop);
+
+        $html = $this->renderShow($shop, $owner, $loan->id);
+        $this->assertSame(3, substr_count($html, 'name="payment_method"'));
+        $this->assertStringNotContainsString('name="method"', $html);
+
+        $this->actingAs($owner)
+            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi'])
+            ->assertRedirect();
+        $this->assertSame('upi', TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->payments()->latest('id')->first()->payment_method));
+    }
+
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
     // so both columns showed "-" for every entry.
     public function test_cash_book_shows_entry_source_and_method(): void
