@@ -273,7 +273,7 @@
                                 <td colspan="11" class="jf-table-empty">
                                     <x-icon name="file-text" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No invoices found</p>
-                                    <p class="text-sm">Create your first sale from the POS</p>
+                                    <p class="text-sm">{{ $hasInvoiceFilters ? 'Try clearing the filters to see all invoices.' : 'Create your first sale from the POS.' }}</p>
                                 </td>
                             </tr>
                         @endforelse

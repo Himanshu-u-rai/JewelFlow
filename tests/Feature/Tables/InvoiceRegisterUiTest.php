@@ -27,6 +27,19 @@ class InvoiceRegisterUiTest extends TestCase
         $this->assertSame('11', $xp->evaluate('string(//*[@data-list-scroll]//td[@colspan]/@colspan)'));
     }
 
+    public function test_empty_register_says_clear_filters_when_a_filter_hides_the_invoices(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $this->actingAs($owner);
+
+        $filtered = $this->xpath($this->get('/invoices?status=cancelled')->assertOk()->getContent());
+        $this->assertStringContainsString('Try clearing the filters', $filtered->evaluate('string(//*[@data-list-scroll]//td[@colspan])'));
+
+        $plain = $this->xpath($this->get('/invoices')->assertOk()->getContent());
+        $this->assertStringContainsString('Create your first sale', $plain->evaluate('string(//*[@data-list-scroll]//td[@colspan])'));
+    }
+
     public function test_one_header_form_retains_all_invoice_filters_and_named_compact_dropdowns(): void
     {
         [$owner] = $this->createRetailerTenant();
