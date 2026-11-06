@@ -10,7 +10,8 @@ function fixture(config = {}) {
     const state = createKarigarEditor(config);
     let focus = 0, clears = 0;
     const frame = { src: null, removeAttribute() { this.src = null; }, replaceChildren() { clears++; }, querySelector: () => ({ focus() { focus++; } }), querySelectorAll: () => [] };
-    const dialog = { open: false, dataset: {}, showModal() { this.open = true; }, close() { this.open = false; } };
+    // showModal throws on a detached dialog, as browsers do (InvalidStateError)
+    const dialog = { open: false, isConnected: true, dataset: {}, showModal() { if (!this.isConnected) throw new Error('InvalidStateError: not in a Document'); this.open = true; }, close() { this.open = false; } };
     const opener = { isConnected: true, focus() { focus++; } };
     state.$refs = { editor: dialog, frame };
     state.$nextTick = fn => fn();
@@ -33,6 +34,16 @@ test('opens server-rendered create/edit forms; cancel clears pending reads and r
     f.state.open('/karigars/4/edit', 'Edit Karigar', f.opener);
     assert.equal(f.frame.src, '/karigars/4/edit');
     assert.equal(f.state.title, 'Edit Karigar');
+});
+
+test('an editor left behind by a Turbo re-render ignores the window open event instead of throwing', () => {
+    const stale = fixture();
+    stale.dialog.isConnected = false;
+    assert.doesNotThrow(() => stale.state.open('/karigars/create', 'Add Karigar', stale.opener));
+    assert.equal(stale.frame.src, null, 'a detached editor must not start a request');
+    const live = fixture();
+    live.state.open('/karigars/create', 'Add Karigar', live.opener);
+    assert.equal(live.dialog.open, true);
 });
 
 test('pending submission cannot close or switch forms; Turbo cleanup prevents cached reopening', () => {

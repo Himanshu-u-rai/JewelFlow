@@ -9,7 +9,8 @@ function fixture(config = {}) {
     assert.equal(typeof createReorderEditor, 'function');
     const state = createReorderEditor({ createUrl: '/reorder', subcategories: { Rings: ['Bands'] }, ...config });
     let opened = 0, closed = 0, focused = 0;
-    const dialog = { open: false, dataset: {}, showModal() { this.open = true; opened++; }, close() { this.open = false; closed++; }, querySelector: () => ({ focus() { focused++; } }) };
+    // showModal throws on a detached dialog, as browsers do (InvalidStateError)
+    const dialog = { open: false, isConnected: true, dataset: {}, showModal() { if (!this.isConnected) throw new Error('InvalidStateError: not in a Document'); this.open = true; opened++; }, close() { this.open = false; closed++; }, querySelector: () => ({ focus() { focused++; } }) };
     state.$refs = { ruleDialog: dialog };
     state.$nextTick = fn => fn();
     return { state, dialog, counts: () => ({ opened, closed, focused }) };
@@ -31,6 +32,16 @@ test('create and edit reuse one dialog; cancelling cannot mutate the original ru
     assert.equal(f.state.form.category, '');
     assert.equal(f.state.editing, false);
     assert.equal(f.state.form.is_active, true);
+});
+
+test('a dialog left behind by a Turbo re-render ignores the window open event instead of throwing', () => {
+    const stale = fixture();
+    stale.dialog.isConnected = false;
+    assert.doesNotThrow(() => stale.state.open({ id: 5, action: '/reorder/5' }));
+    assert.equal(stale.counts().opened, 0);
+    const live = fixture();
+    live.state.open();
+    assert.equal(live.dialog.open, true);
 });
 
 test('validation reopens the correct edit with attempted values, but not a cached error dialog', () => {

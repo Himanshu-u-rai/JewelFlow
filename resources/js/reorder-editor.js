@@ -16,11 +16,13 @@ export function createReorderEditor(config) {
             if (config.hasErrors && this.$refs.ruleDialog.dataset.reopen !== 'false') this.open(config.initialRule, true);
         },
         open(rule = null, preserveErrors = false) {
-            if (this.submitting) return;
+            // A copy left behind by a Turbo re-render still hears the window event; only the dialog on the page may open.
+            if (this.submitting || !this.$refs.ruleDialog.isConnected) return;
             this.form = { ...blank, ...rule };
             this.showErrors = preserveErrors;
             this.$nextTick(() => {
                 const dialog = this.$refs.ruleDialog;
+                if (!dialog.isConnected) return;
                 if (!dialog.open) dialog.showModal();
                 dialog.querySelector(preserveErrors ? '[aria-invalid="true"]' : '[name="category"]')?.focus();
             });

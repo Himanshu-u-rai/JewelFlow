@@ -13,7 +13,8 @@ export function createKarigarEditor(config = {}) {
             }
         },
         open(url, title, opener) {
-            if (this.submitting) return;
+            // A copy left behind by a Turbo re-render still hears the window event; only the editor on the page may open.
+            if (this.submitting || !this.$refs.editor.isConnected) return;
             this.clear();
             this.opener = opener;
             this.url = url;
