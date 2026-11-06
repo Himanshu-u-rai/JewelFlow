@@ -347,16 +347,18 @@ class Customer extends Model
     public function upcomingOccasions(int $daysAhead = 30): array
     {
         $occasions = [];
-        $now = now();
+        // Calendar days from today: measuring from now() (with the time of day) showed "3 days" for a birthday four
+        // days away and dropped a birthday today.
+        $today = now()->startOfDay();
         $fields = ['date_of_birth' => 'Birthday', 'anniversary_date' => 'Anniversary', 'wedding_date' => 'Wedding Anniversary'];
 
         foreach ($fields as $field => $label) {
             if ($this->$field) {
-                $next = $this->$field->copy()->year($now->year);
-                if ($next->lt($now->copy()->startOfDay())) {
+                $next = $this->$field->copy()->startOfDay()->year($today->year);
+                if ($next->lt($today)) {
                     $next->addYear();
                 }
-                $daysUntil = $now->diffInDays($next, false);
+                $daysUntil = $today->diffInDays($next, false);
                 if ($daysUntil >= 0 && $daysUntil <= $daysAhead) {
                     $occasions[] = [
                         'type' => $label,
