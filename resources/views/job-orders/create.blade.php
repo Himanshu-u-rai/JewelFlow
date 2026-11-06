@@ -2,6 +2,46 @@
 
     @php
         $selectedKarigar = $karigars->firstWhere('id', (int) request('karigar'));
+        $lotLabelFor = fn ($lot) => 'Lot #' . $lot->lot_number . ' (' . $lot->source . ') - ' . rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') . ($lot->metal_type === 'silver' ? '‰' : 'K');
+
+        // A refused submission (validation, or the vault refusing more gold than a lot holds) comes back here with the
+        // entered values; they are handed to the Alpine form below so nothing has to be typed again.
+        $old = session()->getOldInput();
+        $restore = null;
+        if (isset($old['karigar_id']) || isset($old['metal_source'])) {
+            $oldKarigar = $karigars->firstWhere('id', (int) ($old['karigar_id'] ?? 0));
+            $oldCustomer = $customers->firstWhere('id', (int) data_get($old, 'sources.0.customer_id'));
+            $oldMethod = $paymentMethods->firstWhere('id', (int) ($old['advance_payment_method_id'] ?? 0));
+            $oldSource = $old['metal_source'] ?? 'vault';
+            $oldMode = $old['advance_mode'] ?? 'cash';
+            $restore = [
+                'karigarId' => $oldKarigar ? (string) $oldKarigar->id : '',
+                'karigarName' => $oldKarigar ? $oldKarigar->name . ($oldKarigar->gst_number ? ' - ' . $oldKarigar->gst_number : '') : '',
+                'allowedWastage' => (string) ($old['allowed_wastage_percent'] ?? ($oldKarigar->default_wastage_percent ?? 2)),
+                'metalType' => ($old['metal_type'] ?? 'gold') === 'silver' ? 'silver' : 'gold',
+                'purity' => (string) ($old['purity'] ?? 22),
+                'metalSource' => in_array($oldSource, ['vault', 'karigar_held', 'customer_advance', 'none'], true) ? $oldSource : 'vault',
+                'advanceMode' => $oldMode,
+                'advanceModeName' => ['cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank Transfer', 'cheque' => 'Cheque', 'other' => 'Other'][$oldMode] ?? 'Cash',
+                'paymentMethodId' => $oldMethod ? (string) $oldMethod->id : '',
+                'paymentMethodName' => $oldMethod ? $oldMethod->name . ' (' . $oldMethod->type . ')' : '',
+                'customerId' => $oldCustomer ? (string) $oldCustomer->id : '',
+                'customerName' => $oldCustomer ? trim($oldCustomer->first_name . ' ' . $oldCustomer->last_name) . ($oldCustomer->mobile ? ' · ' . $oldCustomer->mobile : '') : '',
+                'heldFine' => $oldSource === 'karigar_held' ? (string) data_get($old, 'sources.0.fine_weight', '') : '',
+                'custFine' => $oldSource === 'customer_advance' ? (string) data_get($old, 'sources.0.fine_weight', '') : '',
+                'lines' => collect($old['issuances'] ?? [])->map(function ($line) use ($lots, $lotLabelFor, $old) {
+                    $lot = $lots->firstWhere('id', (int) ($line['metal_lot_id'] ?? 0));
+
+                    return [
+                        'metal_lot_id' => $lot ? (string) $lot->id : '',
+                        'lotName' => $lot ? $lotLabelFor($lot) : '',
+                        'lotAvailable' => $lot ? (float) $lot->fine_weight_remaining : 0,
+                        'fine_weight' => (string) ($line['fine_weight'] ?? ''),
+                        'purity' => (string) ($line['purity'] ?? ($old['purity'] ?? 22)),
+                    ];
+                })->values()->all(),
+            ];
+        }
     @endphp
 
     <x-page-header title="Issue Bullion to Karigar" class="job-create-header">
@@ -14,8 +54,13 @@
 
     <div class="content-inner job-create-shell">
 
+        <x-app-alerts :show-success="false" :show-error="false" class="mb-4" role="alert" />
+        @if($restore)
+            <script type="application/json" id="job-order-restore">@json($restore)</script>
+        @endif
+
         <form method="POST" action="{{ route('job-orders.store') }}" x-data="jobOrderForm()" @keydown.escape.window="closeDropdowns()" @turbo:before-cache.window="closeDropdowns()"
-              @if($selectedKarigar)
+              @if($selectedKarigar && ! $restore)
                   x-init="onKarigarSelect('{{ $selectedKarigar->id }}', @js($selectedKarigar->name . ($selectedKarigar->gst_number ? ' - ' . $selectedKarigar->gst_number : '')), {{ (float) ($selectedKarigar->default_wastage_percent ?? 2) }})"
               @endif>
             @csrf
@@ -68,12 +113,12 @@
 
                             <label class="job-schedule-date">
                                 <span class="job-label">Issue Date *</span>
-                                <input type="date" name="issue_date" required value="{{ now()->toDateString() }}" class="job-control">
+                                <input type="date" name="issue_date" required value="{{ old('issue_date', now()->toDateString()) }}" class="job-control">
                             </label>
 
                             <label class="job-schedule-date">
                                 <span class="job-label">Expected Return Date</span>
-                                <input type="date" name="expected_return_date" class="job-control">
+                                <input type="date" name="expected_return_date" value="{{ old('expected_return_date') }}" class="job-control">
                             </label>
                         </div>
                     </section>
@@ -109,7 +154,7 @@
 
                             <label class="job-field-full">
                                 <span class="job-label">Notes</span>
-                                <textarea name="notes" rows="2" class="job-control"></textarea>
+                                <textarea name="notes" rows="2" class="job-control">{{ old('notes') }}</textarea>
                             </label>
                         </div>
                     </section>
@@ -178,7 +223,7 @@
                                                     </button>
                                                 @foreach($lots as $lot)
                                                     @php
-                                                        $lotLabel = 'Lot #' . $lot->lot_number . ' (' . $lot->source . ') - ' . rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') . ($lot->metal_type === 'silver' ? '‰' : 'K');
+                                                        $lotLabel = $lotLabelFor($lot);
                                                     @endphp
                                                     <button type="button"
                                                             class="job-combobox-option"
@@ -352,7 +397,7 @@
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 <label>
                                     <span class="job-label">Advance Amount</span>
-                                    <input type="number" step="0.01" min="0" name="advance_amount" placeholder="0.00" class="job-control bg-white">
+                                    <input type="number" step="0.01" min="0" name="advance_amount" value="{{ old('advance_amount') }}" placeholder="0.00" class="job-control bg-white">
                                 </label>
 
                                 <div class="job-combobox" @click.outside="advanceModeOpen = false">
@@ -475,6 +520,20 @@
                 heldMap: @js($karigarHeld),
                 heldBuckets: [],
                 lines: [{ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: 22, lotAvailable: 0 }],
+                init() {
+                    // values of a refused submission (see the @php block at the top)
+                    const saved = document.getElementById('job-order-restore');
+                    if (!saved) return;
+                    const restore = JSON.parse(saved.textContent);
+                    ['karigarId', 'karigarName', 'allowedWastage', 'metalType', 'purity', 'metalSource', 'advanceMode', 'advanceModeName',
+                        'paymentMethodId', 'paymentMethodName', 'customerId', 'customerName', 'heldFine', 'custFine']
+                        .forEach((key) => { if (restore[key] !== undefined && restore[key] !== null) this[key] = restore[key]; });
+                    if (Array.isArray(restore.lines) && restore.lines.length) {
+                        this.lines = restore.lines.map((line) => ({ lotOpen: false, gross_weight: '', ...line }));
+                    }
+                    this.loadHeldBuckets();
+                    this.lines.forEach((line, idx) => this.recomputeGross(idx));
+                },
                 get totalGross() {
                     if (this.metalSource !== 'vault') { return 0; }
                     return this.lines.reduce((s, l) => s + (parseFloat(l.gross_weight) || 0), 0);
