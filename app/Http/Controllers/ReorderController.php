@@ -62,7 +62,7 @@ class ReorderController extends Controller
     {
         $this->authorize('update', $rule);
 
-        $data = $this->validateAndNormalizeRulePayload($request);
+        $data = $this->validateAndNormalizeRulePayload($request, $rule);
         $data['is_active'] = $request->boolean('is_active');
 
         $rule->update($data);
@@ -108,8 +108,8 @@ class ReorderController extends Controller
         return compact('vendors', 'categories', 'subCategoryMap');
     }
 
-    /** Validate and normalise the rule payload for both store and update. */
-    private function validateAndNormalizeRulePayload(Request $request): array
+    /** Validate and normalise the rule payload for both store and update ($rule is the rule being edited). */
+    private function validateAndNormalizeRulePayload(Request $request, ?ReorderRule $rule = null): array
     {
         $shopId = (int) auth()->user()->shop_id;
 
@@ -170,6 +170,23 @@ class ReorderController extends Controller
             }
 
             $data['sub_category'] = $subCategory->name;
+        }
+
+        // One rule per stock group: a second rule gave the same shortage two minimums and two alerts.
+        // A rule that keeps its own group is not re-checked, so duplicates saved earlier stay editable.
+        $keepsGroup = $rule && $rule->category === $data['category'] && $rule->sub_category === $data['sub_category'];
+        if (! $keepsGroup) {
+            $duplicate = ReorderRule::where('shop_id', $shopId)
+                ->when($data['category'] === null, fn ($q) => $q->whereNull('category'), fn ($q) => $q->where('category', $data['category']))
+                ->when($data['sub_category'] === null, fn ($q) => $q->whereNull('sub_category'), fn ($q) => $q->where('sub_category', $data['sub_category']))
+                ->when($rule, fn ($q) => $q->whereKeyNot($rule->getKey()))
+                ->exists();
+
+            if ($duplicate) {
+                throw ValidationException::withMessages([
+                    'category' => 'A rule for this category and sub-category already exists. Edit that rule instead.',
+                ]);
+            }
         }
 
         return $data;
