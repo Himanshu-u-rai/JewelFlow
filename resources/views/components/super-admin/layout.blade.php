@@ -15,6 +15,9 @@
     @endif
     @if(session('error'))
         <meta name="flash-error" content="{{ session('error') }}">
+    @elseif(isset($errors) && $errors->any())
+        {{-- Admin screens render almost no inline field errors: toast the refusal so a rejected form is never silent. --}}
+        <meta name="flash-error" content="{{ $errors->first() }}">
     @endif
     @if(session('warning'))
         <meta name="flash-warning" content="{{ session('warning') }}">
