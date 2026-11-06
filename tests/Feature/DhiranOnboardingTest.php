@@ -147,6 +147,19 @@ class DhiranOnboardingTest extends TestCase
         $response->assertDontSee('Choose your business type');
     }
 
+    // 2b. No active Dhiran plan (e.g. an admin deactivated it): the page says so. It used to redirect the signed-in
+    // user to /login, which bounces a signed-in user to /dashboard → /dhiran → /dhiran/plans → /login: an endless loop.
+    public function test_plan_page_without_an_active_dhiran_plan_explains_instead_of_looping(): void
+    {
+        Plan::query()->update(['is_active' => \DB::raw('false')]);
+        $user = $this->dhiranUser();
+
+        $this->actingAs($user)->get(self::DHIRAN.'/dhiran/plans')
+            ->assertOk()
+            ->assertSee('Dhiran plans are not available right now. Please contact support.')
+            ->assertDontSee('Continue to payment');
+    }
+
     // 3. Completing onboarding (with a paid sub) grants ONLY the dhiran edition.
     public function test_dhiran_onboarding_grants_only_dhiran_edition(): void
     {

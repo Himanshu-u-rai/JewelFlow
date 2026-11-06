@@ -93,8 +93,8 @@ class DhiranOnboardingController extends Controller
 
         $plan = $this->dhiranYearlyPlan();
         if (! $plan) {
-            return redirect()->route('login')
-                ->with('error', 'Dhiran plans are not available right now. Please contact support.');
+            // Say it here: redirecting a signed-in user to /login bounced back through /dashboard to this page forever.
+            return view('dhiran.onboarding.plans', ['plan' => null]);
         }
 
         // Seed the shared onboarding state so the reused payment screens scope to

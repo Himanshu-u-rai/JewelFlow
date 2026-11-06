@@ -5,6 +5,11 @@
             <p>Run your pledge loan business with confidence.</p>
         </div>
 
+        @if(! $plan)
+        <div class="dop-card">
+            <p class="dop-note">Dhiran plans are not available right now. Please contact support.</p>
+        </div>
+        @else
         <div class="dop-card">
             <div class="dop-card-top">
                 <span class="dop-badge">Yearly plan</span>
@@ -42,5 +47,6 @@
                 <p class="dop-note">You pay for one year. Set up your business right after payment.</p>
             </div>
         </div>
+        @endif
     </div>
 </x-dhiran-layout>
