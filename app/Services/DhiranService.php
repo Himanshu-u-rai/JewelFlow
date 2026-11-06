@@ -828,8 +828,10 @@ class DhiranService
                 throw new LogicException('Total collateral value is zero — cannot calculate proportional release.');
             }
 
+            // Same basis on both sides: total_collateral_value is the sum of item market values. Using the item's
+            // loan value here took only the LTV share (e.g. 75%) of the principal for every item released.
             $proportionalPrincipal = round(
-                ((float) $item->loan_value / $totalCollateral) * (float) $loan->outstanding_principal,
+                ((float) $item->market_value / $totalCollateral) * (float) $loan->outstanding_principal,
                 2
             );
 

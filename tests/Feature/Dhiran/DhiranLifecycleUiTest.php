@@ -283,6 +283,27 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertMatchesRegularExpression('/dh-flash-error">[^<]*payment amount/i', $shown);
     }
 
+    // An item's release share was its loan value over the loan's total *market* value, so with a 75% LTV releasing the
+    // only item asked for 75% of the outstanding principal and left the rest with no collateral at all.
+    public function test_releasing_the_only_item_requires_the_whole_outstanding_principal(): void
+    {
+        [$shop] = $this->dhiranShopWithOwner('9390000075');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->toDateString()]);
+
+        TenantContext::runFor($shop->id, function () use ($loan) {
+            $loan = $this->fresh($loan->id);
+            $item = $loan->items()->first();
+            $outstanding = (float) $loan->outstanding_principal;
+
+            try {
+                $this->service->releaseItem($loan, $item, round($outstanding * 0.75, 2), 'cash', '');
+                $this->fail('Released the only pledged item for three quarters of the principal.');
+            } catch (\LogicException $e) {
+                $this->assertStringContainsString('proportional principal (' . round($outstanding, 2) . ')', $e->getMessage());
+            }
+        });
+    }
+
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
     // so both columns showed "-" for every entry.
     public function test_cash_book_shows_entry_source_and_method(): void
