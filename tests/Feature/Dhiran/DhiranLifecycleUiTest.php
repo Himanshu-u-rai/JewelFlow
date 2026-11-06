@@ -236,4 +236,23 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertStringContainsString('Upi', $history);
         $this->assertStringNotContainsString('---</td>', $history);
     }
+
+    // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
+    // so both columns showed "-" for every entry.
+    public function test_cash_book_shows_entry_source_and_method(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000078');
+        $this->makeLoan($shop, ['payment_method' => 'upi']);
+        $from = today()->subDays(130)->toDateString();
+        $to = today()->toDateString();
+
+        $html = $this->actingAs($owner)
+            ->get("https://dhiran.jewelflows.com/dhiran/reports/cashbook?from={$from}&to={$to}")
+            ->assertOk()
+            ->getContent();
+        $rows = substr($html, strpos($html, '<tbody'), 3000);
+
+        $this->assertStringContainsString('Disbursement', $rows);
+        $this->assertStringContainsString('Upi', $rows);
+    }
 }

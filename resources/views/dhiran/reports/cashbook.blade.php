@@ -119,11 +119,11 @@
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">OUT</span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->source ?? '-')) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->source_type ?? '-')) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $entry->type === 'in' ? 'text-green-600' : 'text-red-600' }}">
                                     {{ $entry->type === 'in' ? '+' : '-' }}{{ number_format((float) $entry->amount, 2) }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->method ?? '-')) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->payment_method ?? '-')) }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{{ $entry->description ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($runningBalance, 2) }}</td>
                             </tr>
