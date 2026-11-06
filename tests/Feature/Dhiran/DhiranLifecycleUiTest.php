@@ -248,9 +248,9 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertSame(3, substr_count($html, 'name="payment_method"'));
         $this->assertStringNotContainsString('name="method"', $html);
 
-        $this->actingAs($owner)
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi'])
-            ->assertRedirect();
+            ->assertRedirect());
         $this->assertSame('upi', TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->payments()->latest('id')->first()->payment_method));
     }
 
