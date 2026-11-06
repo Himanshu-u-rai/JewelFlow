@@ -221,4 +221,19 @@ class DhiranLifecycleUiTest extends TestCase
         $this->actingAs($ownerA)->get("https://dhiran.jewelflows.com/dhiran/loans/{$loanB->id}/forfeiture-notice")->assertNotFound();
         $this->actingAs($ownerA)->get("https://dhiran.jewelflows.com/dhiran/loans/{$loanB->id}/payments/{$paymentB->id}/receipt")->assertNotFound();
     }
+
+    // The payment history read paid_at and method, which DhiranPayment does not have (payment_date, payment_method):
+    // every date showed "---" and every payment showed "Cash", even a UPI disbursement.
+    public function test_payment_history_shows_the_payment_date_and_method(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000079');
+        $loan = $this->makeLoan($shop, ['payment_method' => 'upi']);
+
+        $html = $this->renderShow($shop, $owner, $loan->id);
+        $history = substr($html, strpos($html, 'Payment History'), 4000);
+
+        $this->assertStringContainsString(today()->subDays(120)->format('d M Y'), $history);
+        $this->assertStringContainsString('Upi', $history);
+        $this->assertStringNotContainsString('---</td>', $history);
+    }
 }

@@ -306,7 +306,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->payments ?? [] as $payment)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->paid_at ? $payment->paid_at->format('d M Y') : '---' }}</td>
+                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->payment_date ? $payment->payment_date->format('d M Y') : '---' }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ ucfirst($payment->type ?? '---') }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->amount, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->principal_component ?? 0, 2) }}</td>
@@ -314,7 +314,7 @@
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->penalty_component ?? 0, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
-                                        {{ ucfirst($payment->method ?? 'cash') }}
+                                        {{ ucfirst($payment->payment_method ?? 'cash') }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
