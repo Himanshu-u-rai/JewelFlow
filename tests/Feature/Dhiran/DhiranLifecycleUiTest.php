@@ -247,6 +247,9 @@ class DhiranLifecycleUiTest extends TestCase
         $html = $this->renderShow($shop, $owner, $loan->id);
         $this->assertSame(3, substr_count($html, 'name="payment_method"'));
         $this->assertStringNotContainsString('name="method"', $html);
+        // The controller accepts cash, upi, card, bank_transfer; "Bank Transfer" was offered as value="bank".
+        $this->assertSame(3, substr_count($html, '<option value="bank_transfer">Bank Transfer</option>'));
+        $this->assertStringNotContainsString('value="bank"', $html);
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi'])

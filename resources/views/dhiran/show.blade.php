@@ -431,7 +431,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
-                        <option value="bank">Bank Transfer</option>
+                        <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
                 <div class="dh-dialog-footer">
@@ -458,7 +458,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
-                        <option value="bank">Bank Transfer</option>
+                        <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
                 <div class="dh-dialog-footer">
@@ -506,7 +506,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
-                        <option value="bank">Bank Transfer</option>
+                        <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
                 <div class="dh-dialog-footer">
