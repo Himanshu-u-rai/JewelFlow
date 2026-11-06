@@ -13,6 +13,7 @@ import { createReorderEditor } from './reorder-editor';
 import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
 import { createIndianAddress } from './indian-address';
 import { configureDialogDatePicker } from './date-picker-dialog';
+import { extractConfirmMessage } from './confirm-message';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -352,12 +353,6 @@ function decodeHtmlEntities(value) {
     return textarea.value;
 }
 
-function extractConfirmMessage(onsubmitAttr) {
-    if (!onsubmitAttr) return 'Are you sure you want to continue?';
-    const match = onsubmitAttr.match(/confirm\((['"])([\s\S]*?)\1\)/);
-    if (!match) return 'Are you sure you want to continue?';
-    return decodeHtmlEntities(match[2]);
-}
 
 function ensureConfirmDialog() {
     if (confirmDialogEl) {
@@ -452,7 +447,7 @@ function normalizeConfirmForms() {
 
         const onsubmitAttr = form.getAttribute('onsubmit') || '';
         if (!form.dataset.confirmMessage) {
-            form.dataset.confirmMessage = extractConfirmMessage(onsubmitAttr);
+            form.dataset.confirmMessage = extractConfirmMessage(onsubmitAttr, decodeHtmlEntities);
         }
         form.removeAttribute('onsubmit');
     });
