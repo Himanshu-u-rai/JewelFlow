@@ -146,6 +146,17 @@ class DhiranLoan extends Model
         );
     }
 
+    // The Dhiran views read these two names; without them every total showed ₹0.00 and LTV 0.0%.
+    public function getTotalOutstandingAttribute(): float
+    {
+        return $this->totalOutstanding();
+    }
+
+    public function getLtvPercentAttribute(): ?float
+    {
+        return $this->ltv_ratio_applied === null ? null : (float) $this->ltv_ratio_applied;
+    }
+
     public function isOverdue(): bool
     {
         return $this->status === 'active'
