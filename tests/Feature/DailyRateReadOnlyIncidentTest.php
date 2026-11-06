@@ -344,7 +344,8 @@ class DailyRateReadOnlyIncidentTest extends TestCase
             ])
             ->assertRedirect(route('dashboard'))
             ->assertSessionHasErrors(['message'])
-            ->assertSessionMissing('error')
+            // The generic refusal (also flashed so every screen shows it), never the pricing flash.
+            ->assertSessionHas('error', 'Shop is in read-only mode. Write operations are not allowed.')
             ->assertSessionMissing('_old_input');
     }
 

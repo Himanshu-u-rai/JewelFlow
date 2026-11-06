@@ -91,7 +91,10 @@ class EnsureSubscriptionIsActive
                     );
                 }
 
-                return back()->withErrors(['message' => NotAvailable::unlessOwner('Shop is in read-only mode. Write operations are not allowed.', $user)]);
+                // `error` as well: the layout toasts it on every screen; `message` shows only where x-app-alerts is used.
+                $message = NotAvailable::unlessOwner('Shop is in read-only mode. Write operations are not allowed.', $user);
+
+                return back()->withErrors(['message' => $message])->with('error', $message);
             }
         }
 

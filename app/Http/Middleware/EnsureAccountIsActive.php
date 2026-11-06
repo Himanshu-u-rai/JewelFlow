@@ -129,8 +129,9 @@ class EnsureAccountIsActive
             );
         }
 
+        // `error` as well: the layout toasts it on every screen; the `shop` key is rendered by few of them.
         return back()->withErrors([
             'shop' => $message,
-        ]);
+        ])->with('error', $message);
     }
 }
