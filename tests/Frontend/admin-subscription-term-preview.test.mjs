@@ -10,13 +10,15 @@ import { runInNewContext } from 'node:vm';
 const blade = readFileSync(new URL('../../resources/views/super-admin/shops/show.blade.php', import.meta.url), 'utf8');
 const source = blade.match(/<script>\s*(\(function \(\) \{\s*const from = document\.getElementById\('sub-from'\)[^]*?)<\/script>/)[1];
 
-function preview({ from, cycle, prevTo, today = '2026-11-07' }) {
+function preview({ from, cycle, prevTo, today = '2026-11-07', toPicker }) {
     const listeners = [];
     const el = (props = {}) => ({ value: '', textContent: '', dataset: {}, addEventListener: (_, fn) => listeners.push(fn), ...props });
     const items = [];
+    const toEl = el();
+    if (toPicker) toEl._flatpickr = { setDate: (value, fire) => { toPicker.push([value, fire]); toEl.value = value; } };
     const nodes = {
         'sub-from': el({ value: from }),
-        'sub-to': el(),
+        'sub-to': toEl,
         'sub-cycle': el({ value: cycle, querySelector: () => null }),
         'sub-plan': el({ selectedOptions: [{ dataset: { graceDays: '5' } }] }),
         'sub-preview': el({ dataset: { today, prevTo } }),
@@ -46,4 +48,10 @@ test('monthly terms follow the no-overflow rule', () => {
 test('starting on the previous end date overlaps; skipping a day leaves a gap', () => {
     assert.match(preview({ from: '2027-11-06', cycle: 'yearly', prevTo: '2027-11-06' }).warnings.join(), /Overlap/);
     assert.match(preview({ from: '2027-11-08', cycle: 'yearly', prevTo: '2027-11-06' }).warnings.join(), /Gap/);
+});
+
+test('a suggested To goes through the date picker, so the visible date box shows what will be submitted', () => {
+    const calls = [];
+    preview({ from: '2027-11-07', cycle: 'yearly', prevTo: '2027-11-06', toPicker: calls });
+    assert.deepEqual(calls, [['2028-11-06', false]]);
 });

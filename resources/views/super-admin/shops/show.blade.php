@@ -757,7 +757,8 @@
                 syncCycleOptions();
                 const f = parse(from.value);
                 const c = cycle.value;
-                if (f && c && !toDirty) to.value = fmt(addCycle(f, c));
+                // Through the date picker when present: writing the hidden input alone left the visible box stale.
+                if (f && c && !toDirty) { const v = fmt(addCycle(f, c)); to._flatpickr ? to._flatpickr.setDate(v, false) : (to.value = v); }
                 const t = parse(to.value);
 
                 termEl.textContent = (f && t) ? human(f) + ' → ' + human(t) : '—';
