@@ -118,6 +118,25 @@ class KarigarPaymentReversalTest extends TestCase
         $this->assertTrue($threw, 'a second reversal of the same payment must be rejected');
     }
 
+    public function test_invoice_page_stops_offering_reverse_once_a_payment_is_reversed(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [$invoice, $payment] = $this->makePaidInvoice($shop->id);
+        $reverseUrl = route('karigar-invoices.payments.reverse', [$invoice, $payment]);
+        $this->withoutVite();
+
+        $this->actingAs($owner);
+        TenantContext::runFor($shop->id, fn () => $this->get(route('karigar-invoices.show', $invoice)))
+            ->assertOk()->assertSee($reverseUrl, false);
+
+        TenantContext::runFor($shop->id, fn () =>
+            app(KarigarInvoiceService::class)->reversePayment($invoice, $payment, null, $owner->id)
+        );
+
+        TenantContext::runFor($shop->id, fn () => $this->get(route('karigar-invoices.show', $invoice)))
+            ->assertOk()->assertDontSee($reverseUrl, false);
+    }
+
     public function test_cannot_reverse_a_reversal_entry(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

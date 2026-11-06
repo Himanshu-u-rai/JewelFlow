@@ -954,7 +954,9 @@
                                         <td class="ki-show-text-right ki-show-mono">₹{{ number_format($pay->amount, 2) }}</td>
                                         @can('karigar_invoice.manage')
                                         <td class="ki-show-text-right">
-                                            @if($pay->amount > 0 && !\Illuminate\Support\Str::startsWith((string) $pay->reference, 'REVERSAL:'))
+                                            {{-- not on a reversal entry, and not on a payment that already has one (the service refuses a second) --}}
+                                            @if($pay->amount > 0 && !\Illuminate\Support\Str::startsWith((string) $pay->reference, 'REVERSAL:')
+                                                && ! $invoice->payments->contains('reference', 'REVERSAL:' . $pay->id))
                                                 <form method="POST" action="{{ route('karigar-invoices.payments.reverse', [$invoice, $pay]) }}" data-turbo-frame="_top"
                                                       data-confirm-message="{{ __('Reverse this payment? A compensating entry will be recorded.') }}">
                                                     @csrf
