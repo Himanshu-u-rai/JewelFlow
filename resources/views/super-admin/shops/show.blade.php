@@ -727,7 +727,13 @@
             const parse = s => s ? new Date(s + 'T00:00:00') : null;
             const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             const human = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            const addCycle = (d, c) => { const n = new Date(d); c === 'yearly' ? n.setFullYear(n.getFullYear() + 1) : n.setMonth(n.getMonth() + 1); return n; };
+            // Inclusive To, as SubscriptionTerm::endsAtFor: From + 1 cycle (no overflow) - 1 day.
+            const addCycle = (d, c) => {
+                const n = new Date(d.getFullYear(), d.getMonth() + (c === 'yearly' ? 12 : 1), 1);
+                n.setDate(Math.min(d.getDate(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate()) - 1);
+                return n;
+            };
+            const dayAfter = s => { const n = parse(s); n.setDate(n.getDate() + 1); return fmt(n); };
             const graceDays = () => parseInt(planSel?.selectedOptions[0]?.dataset.graceDays || '0', 10) || 0;
 
             // A plan that carries no price for a cycle cannot be billed on it. Grey
@@ -760,7 +766,7 @@
 
                 const w = [];
                 if (f && today && from.value < today) w.push('Backdating: From is before today (' + today + ').');
-                if (f && prevTo) { if (from.value > prevTo) w.push('Gap: From is after the previous term end (' + prevTo + ').'); else if (from.value < prevTo) w.push('Overlap: From is before the previous term end (' + prevTo + ').'); }
+                if (f && prevTo) { const next = dayAfter(prevTo); if (from.value > next) w.push('Gap: From is later than the day after the previous term end (' + prevTo + ').'); else if (from.value < next) w.push('Overlap: From is on or before the previous term end (' + prevTo + ').'); }
                 if (f && t && c && fmt(addCycle(f, c)) !== to.value) w.push('Duration differs from the selected ' + c + ' cycle — an override reason will be required.');
                 if (t && f && to.value <= from.value) w.push('To must be after From.');
                 warnEl.replaceChildren(...w.map(x => { const li = document.createElement('li'); li.textContent = '⚠ ' + x; return li; }));
