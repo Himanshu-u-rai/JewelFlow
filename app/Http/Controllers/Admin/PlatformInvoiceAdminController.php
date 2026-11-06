@@ -39,12 +39,15 @@ class PlatformInvoiceAdminController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('issued_at', '>=', $request->input('date_from'));
+        // An unreadable date (hand-edited link) is ignored, not sent to PostgreSQL.
+        $dates = validator($request->only('date_from', 'date_to'), ['date_from' => 'date_format:Y-m-d', 'date_to' => 'date_format:Y-m-d'])->valid();
+
+        if (filled($dates['date_from'] ?? null)) {
+            $query->whereDate('issued_at', '>=', $dates['date_from']);
         }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('issued_at', '<=', $request->input('date_to'));
+        if (filled($dates['date_to'] ?? null)) {
+            $query->whereDate('issued_at', '<=', $dates['date_to']);
         }
 
         // Compute filtered totals before pagination

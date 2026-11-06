@@ -43,12 +43,15 @@ class StockPurchaseController extends Controller
             $query->where('vendor_id', $request->vendor_id);
         }
 
-        if ($request->filled('date_from')) {
-            $query->where('purchase_date', '>=', $request->date_from);
+        // An unreadable date (hand-edited link) is ignored, as on the other registers, not sent to PostgreSQL.
+        $dates = validator($request->only('date_from', 'date_to'), ['date_from' => 'date_format:Y-m-d', 'date_to' => 'date_format:Y-m-d'])->valid();
+
+        if (filled($dates['date_from'] ?? null)) {
+            $query->where('purchase_date', '>=', $dates['date_from']);
         }
 
-        if ($request->filled('date_to')) {
-            $query->where('purchase_date', '<=', $request->date_to);
+        if (filled($dates['date_to'] ?? null)) {
+            $query->where('purchase_date', '<=', $dates['date_to']);
         }
 
         if ($request->filled('search')) {
