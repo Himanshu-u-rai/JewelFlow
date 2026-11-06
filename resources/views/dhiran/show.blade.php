@@ -486,6 +486,24 @@
                         @endforeach
                     </select>
                 </div>
+                {{-- DhiranController::releaseItem requires the amount paid against the item's share of the principal. --}}
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
+                    <input type="number" step="0.01" min="0" name="payment_amount" required placeholder="0.00"
+                           class="dh-form-control">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
+                    <select name="payment_method" class="dh-form-control dh-native-select">
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Condition Note</label>
+                    <input type="text" name="condition_note" maxlength="500" class="dh-form-control">
+                </div>
                 <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('releaseItemModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Release Item</button>

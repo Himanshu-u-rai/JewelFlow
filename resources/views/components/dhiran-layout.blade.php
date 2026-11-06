@@ -96,6 +96,9 @@
             @endif
             @if(session('error'))
                 <div class="dh-flash dh-flash-error">{{ session('error') }}</div>
+            @elseif(isset($errors) && $errors->any())
+                {{-- Dhiran dialogs have no inline field errors: show the refusal so a rejected form is never silent. --}}
+                <div class="dh-flash dh-flash-error">{{ $errors->first() }}</div>
             @endif
 
             @unless($hasPageHeader)

@@ -245,16 +245,42 @@ class DhiranLifecycleUiTest extends TestCase
         $loan = $this->makeLoan($shop);
 
         $html = $this->renderShow($shop, $owner, $loan->id);
-        $this->assertSame(3, substr_count($html, 'name="payment_method"'));
+        // Pay Interest, Repay, Pre-Close, and Release Item (since the release dialog sends what the controller needs).
+        $this->assertSame(4, substr_count($html, 'name="payment_method"'));
         $this->assertStringNotContainsString('name="method"', $html);
         // The controller accepts cash, upi, card, bank_transfer; "Bank Transfer" was offered as value="bank".
-        $this->assertSame(3, substr_count($html, '<option value="bank_transfer">Bank Transfer</option>'));
+        $this->assertSame(4, substr_count($html, '<option value="bank_transfer">Bank Transfer</option>'));
         $this->assertStringNotContainsString('value="bank"', $html);
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi'])
             ->assertRedirect());
         $this->assertSame('upi', TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->payments()->latest('id')->first()->payment_method));
+    }
+
+    // The Release Item dialog sent only item_id; the controller requires payment_amount (and takes payment_method and
+    // condition_note), so every release was refused, and the Dhiran layout never showed validation errors: nothing
+    // happened on screen.
+    public function test_release_item_dialog_sends_what_the_controller_requires_and_refusals_are_shown(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000076');
+        $loan = $this->makeLoan($shop);
+
+        $html = $this->renderShow($shop, $owner, $loan->id);
+        $release = substr($html, strpos($html, 'id="releaseItemModal"'), 3000);
+        foreach (['name="item_id"', 'name="payment_amount"', 'name="payment_method"', 'name="condition_note"'] as $field) {
+            $this->assertStringContainsString($field, $release);
+        }
+
+        $item = TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->items()->first());
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->from("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}")
+            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/release-item", ['item_id' => $item->id])
+            ->assertSessionHasErrors('payment_amount'));
+
+        $shown = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}")->getContent());
+        $this->assertMatchesRegularExpression('/dh-flash-error">[^<]*payment amount/i', $shown);
     }
 
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
