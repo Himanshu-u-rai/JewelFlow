@@ -62,6 +62,36 @@ test('item and tax calculations remain usable through compact controls, includin
     assert.equal(state.hasTaxConflict, true);
 });
 
+test('a purchase rate the user typed survives purity and metal changes; an auto-filled one follows them', () => {
+    const { state } = formState();
+    state.resolvedRates = { gold: { '22.00': { rate_per_gram: 6600 }, '18.00': { rate_per_gram: 5400 } } };
+
+    // the supplier's own price, typed before the purity
+    state.addLine();
+    const typed = state.lines[0];
+    Object.assign(typed, { metal_type: 'gold', gross_weight: '8', purchase_rate_per_gram: '6000' });
+    typed.purity = '22';
+    state.prefillRate(typed);
+    assert.equal(String(typed.purchase_rate_per_gram), '6000');
+
+    // an empty rate is filled from today's rate and follows a later purity change
+    state.addLine();
+    const auto = state.lines[1];
+    Object.assign(auto, { metal_type: 'gold', gross_weight: '8', purchase_rate_per_gram: '' });
+    auto.purity = '22';
+    state.prefillRate(auto);
+    assert.equal(String(auto.purchase_rate_per_gram), '6600');
+    auto.purity = '18';
+    state.prefillRate(auto);
+    assert.equal(String(auto.purchase_rate_per_gram), '5400');
+
+    // once the user changes an auto-filled rate, it is theirs
+    auto.purchase_rate_per_gram = '5300';
+    auto.purity = '22';
+    state.prefillRate(auto);
+    assert.equal(String(auto.purchase_rate_per_gram), '5300');
+});
+
 test('details, step navigation and local draft state remain intact', () => {
     const { state, saved } = formState();
     state.addLine();

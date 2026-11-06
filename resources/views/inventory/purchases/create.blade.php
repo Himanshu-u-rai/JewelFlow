@@ -903,8 +903,13 @@
                 }
                 if (best && bestDiff < 0.5) {
                     const rate = this.resolvedRates[metal][best]?.rate_per_gram;
-                    if (rate) {
+                    // A rate the user typed is the supplier's price and is kept; only an empty rate, or one filled here
+                    // that the user has not changed, follows the metal and purity.
+                    const current = String(line.purchase_rate_per_gram ?? '');
+                    const typedByUser = current !== '' && current !== String(line.rate_prefilled ?? '');
+                    if (rate && !typedByUser) {
                         line.purchase_rate_per_gram = rate;
+                        line.rate_prefilled = rate;
                         this._recalcLineTotal(line);
                     }
                 }
