@@ -108,6 +108,23 @@ class CategoryDeleteGuardTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'category_id' => $category->id]);
     }
 
+    public function test_category_used_by_stock_items_is_blocked(): void
+    {
+        // Items keep their category by name, not by FK: deleting the category used to succeed and
+        // left those items out of every category filter.
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Necklace');
+        TenantContext::runFor($shop->id, fn () => $this->createItem($shop->id, null, ['category' => 'Necklace']));
+
+        $this->destroyAs($shop->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error', fn ($message) => str_contains($message, '1 stock item'));
+
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+    }
+
     public function test_category_with_subcategory_dependency_is_blocked(): void
     {
         [$user, $shop] = $this->createManufacturerTenant();

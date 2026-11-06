@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Concerns\RespondsDynamically;
 use App\Http\Concerns\ReturnsToCategoryList;
 use App\Models\Category;
+use App\Models\Item;
 use App\Models\Product;
 use App\Models\SubCategory;
 use App\Rules\UniqueNameIgnoringCase;
@@ -133,9 +134,16 @@ class CategoryController extends Controller
             // being counted and blocked.
             $productCount = Product::withoutTenant()->where('category_id', $locked->id)->count();
             $subCategoryCount = SubCategory::withoutTenant()->where('category_id', $locked->id)->count();
+            // Stock items keep the category by name (no FK), so they are counted by name within the shop.
+            $itemCount = Item::withoutTenant()->where('shop_id', $locked->shop_id)
+                ->whereRaw('lower(trim(category)) = ?', [mb_strtolower(trim((string) $locked->name))])
+                ->count();
 
-            if ($productCount > 0 || $subCategoryCount > 0) {
+            if ($productCount > 0 || $subCategoryCount > 0 || $itemCount > 0) {
                 $parts = [];
+                if ($itemCount > 0) {
+                    $parts[] = $itemCount.' stock item'.($itemCount === 1 ? '' : 's');
+                }
                 if ($productCount > 0) {
                     $parts[] = $productCount.' product'.($productCount === 1 ? '' : 's');
                 }
