@@ -28,9 +28,7 @@ class UserManagementController extends Controller
                 $builder->where(function ($inner) use ($q) {
                     $inner->where('mobile_number', 'like', "%{$q}%")
                         ->orWhere('name', 'ilike', "%{$q}%")
-                        ->orWhere('email', 'ilike', "%{$q}%")
-                        ->orWhere('first_name', 'ilike', "%{$q}%")
-                        ->orWhere('last_name', 'ilike', "%{$q}%");
+                        ->orWhere('email', 'ilike', "%{$q}%");
                 });
             })
             ->when($request->filled('status'), function ($builder) use ($request) {
