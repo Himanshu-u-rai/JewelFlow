@@ -29,6 +29,28 @@ class LotMetalTypeTest extends TestCase
         $this->withoutVite();
     }
 
+    public function test_a_lot_cannot_be_created_without_its_metal(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $row = ['shop_id' => $shop->id, 'source' => 'purchase', 'purity' => 22, 'fine_weight_total' => 5,
+            'fine_weight_remaining' => 5, 'cost_per_fine_gram' => 0, 'created_at' => now(), 'updated_at' => now()];
+
+        // Through the model and straight into the table: both refused.
+        foreach ([fn () => MetalLot::create($row), fn () => \Illuminate\Support\Facades\DB::table('metal_lots')->insert($row + ['lot_number' => 999])] as $attempt) {
+            try {
+                \Illuminate\Support\Facades\DB::transaction($attempt);
+                $this->fail('a lot without a metal was created');
+            } catch (\LogicException|\Illuminate\Database\QueryException $e) {
+                $this->assertStringContainsString('metal', strtolower($e->getMessage()));
+            }
+        }
+        $this->assertSame(0, MetalLot::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('metal_type')->count());
+
+        // A lot that says its metal is fine.
+        TenantContext::runFor($shop->id, fn () => MetalLot::create(['metal_type' => 'silver'] + $row));
+        $this->assertSame(1, MetalLot::withoutGlobalScopes()->where('shop_id', $shop->id)->where('metal_type', 'silver')->count());
+    }
+
     public function test_gold_taken_in_is_recorded_as_gold(): void
     {
         [$owner, $shop] = $this->createManufacturerTenant();

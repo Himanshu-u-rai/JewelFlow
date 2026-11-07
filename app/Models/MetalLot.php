@@ -69,6 +69,10 @@ class MetalLot extends Model
     protected static function booted(): void
     {
         static::creating(function (self $lot): void {
+            // Every lot says its metal (the database refuses one without, too).
+            if (! in_array($lot->metal_type, ['gold', 'silver'], true)) {
+                throw new \LogicException('A metal lot must have a metal (gold or silver).');
+            }
             if (empty($lot->lot_number) && !empty($lot->shop_id)) {
                 $lot->lot_number = BusinessIdentifierService::nextCounter((int) $lot->shop_id, BusinessIdentifierService::KEY_LOT);
             }

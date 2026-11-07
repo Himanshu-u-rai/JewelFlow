@@ -49,7 +49,7 @@ class MetalLiabilityReportTest extends TestCase
     private function lot(int $shopId, string $source, float $remaining): void
     {
         DB::table('metal_lots')->insert([
-            'shop_id' => $shopId, 'source' => $source, 'purity' => 24,
+            'shop_id' => $shopId, 'source' => $source, 'metal_type' => 'gold', 'purity' => 24,
             'fine_weight_total' => $remaining, 'fine_weight_remaining' => $remaining,
             'cost_per_fine_gram' => 6000, 'created_at' => now(), 'updated_at' => now(),
         ]);

@@ -164,10 +164,11 @@ class BulkImportSafetyTest extends TestCase
         // row cleanly — never pass an empty string to MetalRegistry (which throws).
         [$shop, $user] = $this->createTenant();
         $lot = TenantContext::runFor($shop->id, fn () => MetalLot::create([
-            'source' => 'purchase', 'purity' => 22.00,
+            'source' => 'purchase', 'metal_type' => 'gold', 'purity' => 22.00,
             'fine_weight_total' => 20.0, 'fine_weight_remaining' => 20.0, 'cost_per_fine_gram' => 7000,
-            // metal_type intentionally omitted (null) — a legacy lot.
         ]));
+        // A legacy lot: new lots must say their metal, so take it away the way old data has none.
+        \Illuminate\Support\Facades\DB::table('metal_lots')->where('id', $lot->id)->update(['metal_type' => null]);
         $service = app(BulkImportService::class);
 
         // No exception (no 500): preview completes and flags the row invalid.

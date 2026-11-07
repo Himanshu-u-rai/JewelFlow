@@ -85,7 +85,7 @@ class JobOrderMetalSourceTest extends TestCase
         $pool = MetalLot::withoutGlobalScopes()->where('shop_id', $this->shopId)->where('source', 'customer_advance')->first();
         if (! $pool) {
             $pool = new MetalLot();
-            $pool->forceFill(['shop_id' => $this->shopId, 'source' => 'customer_advance', 'purity' => 24, 'fine_weight_total' => 0, 'fine_weight_remaining' => 0]);
+            $pool->forceFill(['shop_id' => $this->shopId, 'source' => 'customer_advance', 'metal_type' => 'gold', 'purity' => 24, 'fine_weight_total' => 0, 'fine_weight_remaining' => 0]);
             $pool->save();
         }
         $pool->fine_weight_remaining = (float) $pool->fine_weight_remaining + $fine;

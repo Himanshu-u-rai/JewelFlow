@@ -213,6 +213,7 @@ trait CreatesTestTenant
         $lot->forceFill([
             'shop_id' => $shopId,
             'source' => 'purchase',
+            'metal_type' => 'gold',
             'purity' => 22.00,
             'fine_weight_total' => $fineWeight,
             'fine_weight_remaining' => $fineWeight,

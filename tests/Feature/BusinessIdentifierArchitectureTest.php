@@ -38,6 +38,7 @@ class BusinessIdentifierArchitectureTest extends TestCase
 
         $lotA = TenantContext::runFor($shopA->id, fn () => MetalLot::create([
             'source' => 'purchase',
+            'metal_type' => 'gold',
             'purity' => 22,
             'fine_weight_total' => 10,
             'fine_weight_remaining' => 10,
@@ -46,6 +47,7 @@ class BusinessIdentifierArchitectureTest extends TestCase
 
         $lotB = TenantContext::runFor($shopB->id, fn () => MetalLot::create([
             'source' => 'purchase',
+            'metal_type' => 'gold',
             'purity' => 24,
             'fine_weight_total' => 10,
             'fine_weight_remaining' => 10,
@@ -184,6 +186,7 @@ class BusinessIdentifierArchitectureTest extends TestCase
         DB::table('metal_lots')->insert([
             'shop_id' => $shop->id,
             'source' => 'purchase',
+            'metal_type' => 'gold',
             'lot_number' => 99,
             'purity' => 22,
             'fine_weight_total' => 5,
@@ -198,6 +201,7 @@ class BusinessIdentifierArchitectureTest extends TestCase
         DB::table('metal_lots')->insert([
             'shop_id' => $shop->id,
             'source' => 'purchase',
+            'metal_type' => 'gold',
             'lot_number' => 99,
             'purity' => 22,
             'fine_weight_total' => 6,
