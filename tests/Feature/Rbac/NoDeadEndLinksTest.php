@@ -97,7 +97,10 @@ class NoDeadEndLinksTest extends TestCase
                 continue; // a page the role cannot open is not crawled (its own entry link is what we check)
             }
             preg_match_all('/<a\b[^>]*\bhref="([^"#]+)"/i', $response->getContent(), $m);
-            foreach ($m[1] as $href) {
+            // The dashboard's Ctrl+K palette lists pages as JSON, not <a> tags.
+            preg_match('/const pageIndex = (\[.*?\]);/s', $response->getContent(), $palette);
+            $paletteUrls = array_column(json_decode($palette[1] ?? '[]', true) ?: [], 'url');
+            foreach ([...$m[1], ...$paletteUrls] as $href) {
                 $href = html_entity_decode($href);
                 $path = parse_url($href, PHP_URL_PATH) ?? '';
                 $host = parse_url($href, PHP_URL_HOST);

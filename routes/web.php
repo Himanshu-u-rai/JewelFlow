@@ -257,6 +257,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // OwnerOnlySubscriptionCommerceTest::test_a_role_less_user_is_denied_renewal_because_ownership_is_unproven
     // and ::test_staff_cannot_read_the_shops_platform_invoice_history.
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])
+        // Inside the shop group (a shop always exists here), so the gate can sit on the route too: links to the
+        // status page are then hidden from cashiers/staff by RouteAccess.
+        ->middleware('can:owner-or-manager')
         ->name('subscription.status');
 
     // ======= BILLING INVOICES (platform-billing portal — owner, or the manager buying on their behalf) =======
