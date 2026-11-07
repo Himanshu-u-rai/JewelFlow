@@ -164,6 +164,18 @@ class RbacAttackTest extends TestCase
             ->assertSessionHasErrors('customer_id');
     }
 
+    public function test_return_redispose_accepts_only_this_shops_gold_lot(): void
+    {
+        [, $otherShop] = $this->createRetailerTenant();
+        $theirLot = $this->createMetalLot($otherShop->id);
+        $item = $this->createItem($this->shop->id);
+        $this->actingAs($this->owner);
+
+        // Same rule as the melt-recovery step that really uses the lot: this shop's gold lots only.
+        $this->in(fn () => $this->post("/returns/items/{$item->id}/redispose", ['disposition' => 'restocked', 'target_lot_id' => $theirLot->id]))
+            ->assertSessionHasErrors('target_lot_id');
+    }
+
     // ── Access that must end ─────────────────────────────────────────────────────────────────────────────────────
 
     public function test_access_ends_at_once_when_a_permission_or_the_account_is_taken_away(): void

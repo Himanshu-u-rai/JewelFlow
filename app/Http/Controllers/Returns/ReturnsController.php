@@ -493,7 +493,10 @@ class ReturnsController extends Controller
                 ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF,
             ])],
             'notes'         => 'nullable|string|max:500',
-            'target_lot_id' => 'nullable|integer|exists:metal_lots,id',
+            // Same rule as the melt-recovery step, which is where a lot is actually chosen and credited (after the
+            // gold is weighed): this shop's gold lots only. It used to accept any shop's lot number.
+            'target_lot_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('metal_lots', 'id')
+                ->where('shop_id', $shopId)->where('metal_type', 'gold')],
         ]);
 
         // Find the most recent return line item for this item
