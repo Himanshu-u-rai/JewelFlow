@@ -2309,7 +2309,7 @@
             <a href="{{ route('settings.edit', ['tab' => 'general']) }}" class="nav-item {{ $activeTab === 'general' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="settings" size="16" /></span> {{ __('General') }}
             </a>
-            @can('settings.edit')
+            @can('owner-or-manager')
             <a href="{{ route('settings.edit', ['tab' => 'profile']) }}" class="nav-item {{ $activeTab === 'profile' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="user" size="16" /></span> {{ __('Profile') }}
             </a>
@@ -2325,9 +2325,13 @@
             <a href="{{ route('settings.edit', ['tab' => 'gst']) }}" class="nav-item {{ $activeTab === 'gst' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="square-percent" size="16" /></span> {{ __('GST & Tax') }}
             </a>
+            @endcan
+            @can('owner-or-manager')
             <a href="{{ route('settings.edit', ['tab' => 'subscription']) }}" class="nav-item {{ $activeTab === 'subscription' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="receipt" size="16" /></span> {{ __('Plan & Billing') }}
             </a>
+            @endcan
+            @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="credit-card" size="16" /></span> {{ __('Payment Methods') }}
             </a>
@@ -2376,8 +2380,8 @@
                 <span class="nav-icon"><x-icon name="clock" size="16" /></span> {{ __('Audit Log') }}
             </a>
             @endcan
-            {{-- Services — settings.view --}}
-            @can('settings.view')
+            {{-- Business Editions — owner, or the manager acting for them --}}
+            @can('owner-or-manager')
             <a href="{{ route('settings.edit', ['tab' => 'services']) }}" class="nav-item {{ $activeTab === 'services' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="monitor" size="16" /></span> {{ __('Business Editions') }}
             </a>
@@ -2447,7 +2451,7 @@
                 </div>
             @endif
 
-            @can('settings.edit')
+            @can('owner-or-manager')
             @if($activeTab === 'profile')
                 @php $user = auth()->user(); @endphp
                 <div class="settings-header">
@@ -4429,7 +4433,7 @@
                                         @endif
                                     </div>
 
-                                    @can('settings.edit')
+                                    @can('owner-or-manager')
                                         @if(count($active) > 1)
                                             <details class="border-t border-slate-100">
                                                 <summary class="cursor-pointer list-none px-5 py-3 text-xs font-medium text-rose-600 hover:text-rose-700">
@@ -4513,7 +4517,7 @@
                                                 </div>
                                             </div>
 
-                                            @can('settings.edit')
+                                            @can('owner-or-manager')
                                                 <div class="px-5 py-4 space-y-4">
                                                     {{-- Monthly / Yearly choice. Only shown when both exist. --}}
                                                     @if($hasMonthly && $hasYearly)
@@ -4598,14 +4602,14 @@
                                                     <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                                                         {{ __('Asked for since') }} {{ $pending->created_at->format('d M Y') }}. {{ __('We will get back to you soon.') }}
                                                     </p>
-                                                    @can('settings.edit')
+                                                    @can('owner-or-manager')
                                                         <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top">
                                                             @csrf
                                                             <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel this request') }}</button>
                                                         </form>
                                                     @endcan
                                                 </div>
-                                            @elsecan('settings.edit')
+                                            @elsecan('owner-or-manager')
                                                 <details class="border-t border-slate-200">
                                                     <summary class="cursor-pointer list-none px-5 py-3 text-xs font-semibold text-teal-700 hover:text-teal-800">
                                                         {{ __('Ask to turn this on') }}
@@ -4651,7 +4655,7 @@
                                                 <td class="px-5 py-3 font-medium text-slate-800">{{ ucfirst($req->edition) }}</td>
                                                 <td class="px-5 py-3 text-slate-600">{{ $req->created_at->format('d M Y, H:i') }}</td>
                                                 <td class="px-5 py-3 text-right">
-                                                    @can('settings.edit')
+                                                    @can('owner-or-manager')
                                                         <form method="POST" action="{{ route('settings.services.request.cancel', $req) }}" data-turbo-frame="_top">
                                                             @csrf
                                                             <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel') }}</button>

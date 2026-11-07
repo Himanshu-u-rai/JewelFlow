@@ -522,10 +522,13 @@
                 </div>
                 
                 <div class="sidebar-footer">
+                    {{-- Cashiers/staff never edit their own details (owner decision 2026-11-07) --}}
+                    @can('owner-or-manager')
                     <a href="{{ route('settings.edit', ['tab' => 'profile']) }}" class="sidebar-footer-link {{ (request()->routeIs('profile.*') || (request()->routeIs('settings.*') && request()->query('tab') === 'profile')) ? 'is-active' : '' }}" data-nav-match="/profile">
                         <span class="nav-icon"><x-icon name="user" size="16" /></span>
                         {{ __('Profile') }}
                     </a>
+                    @endcan
                     <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link {{ request()->routeIs('settings.*') || ($canOpenSettings && request()->routeIs('export.*', 'imports.*')) ? 'is-active' : '' }}" @if($canOpenSettings) data-nav-match="/export,/imports" @endif>
                         <span class="nav-icon"><x-icon name="settings" size="16" /></span>
                         {{ __('Settings') }}

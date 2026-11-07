@@ -272,7 +272,9 @@ class MastersHubTest extends TestCase
             'karigars'   => ['karigars.index',   'karigar.view',   'retailer'],
             'categories' => ['categories.index', 'inventory.view', null],
             'products'   => ['products.index',   'inventory.view', 'manufacturer'],
-            'gst'        => ['settings.edit',    'settings.view',  null],
+            // /settings itself is open (General tab for everyone); its GST tab checks settings.view in
+            // SettingsController's tab table, which the card mirrors.
+            'gst'        => ['settings.edit',    null,             null],
         ];
 
         foreach ($contract as $slug => [$routeName, $can, $editionCsv]) {
@@ -280,7 +282,9 @@ class MastersHubTest extends TestCase
             $this->assertNotNull($route, "Destination route {$routeName} for card {$slug} must exist.");
             $mw = $route->gatherMiddleware();
 
-            $this->assertContains("can:{$can}", $mw, "Card {$slug} permission must match {$routeName}.");
+            if ($can !== null) {
+                $this->assertContains("can:{$can}", $mw, "Card {$slug} permission must match {$routeName}.");
+            }
 
             $editionMw = array_values(array_filter($mw, fn ($m) => str_starts_with($m, 'edition:')));
             if ($editionCsv === null) {

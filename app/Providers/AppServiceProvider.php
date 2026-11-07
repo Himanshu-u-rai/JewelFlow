@@ -169,6 +169,13 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Auth\Access\Response::allow();
         });
         Gate::define('revoke-user-sessions', fn ($user) => $user->isOwner());
+        // Owner decision 2026-11-07: plan purchase, shop bills, business editions and editing one's own details are
+        // for the owner and the manager only. Not a permission, so an owner cannot hand it to a cashier by accident.
+        // instanceof: shop pages (e.g. an error page) can render while a platform admin is the signed-in user.
+        Gate::define('owner-or-manager', fn ($user) => $user instanceof \App\Models\User && $user->isShopOwnerOrManager());
+        // Own password: the same, plus a signup that has no shop yet (it is their own account; no staff exist).
+        Gate::define('change-own-password', fn ($user) => $user instanceof \App\Models\User
+            && ($user->shop_id === null || $user->isShopOwnerOrManager()));
 
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);

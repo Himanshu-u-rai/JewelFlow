@@ -259,12 +259,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])
         ->name('subscription.status');
 
-    // ======= BILLING INVOICES (platform-billing portal — strictly shop owner) =======
+    // ======= BILLING INVOICES (platform-billing portal — owner, or the manager buying on their behalf) =======
     Route::get('/billing', [\App\Http\Controllers\BillingController::class, 'index'])
-        ->middleware('role:owner')
+        ->middleware('can:owner-or-manager')
         ->name('billing.invoices.index');
     Route::get('/billing/{invoice}', [\App\Http\Controllers\BillingController::class, 'show'])
-        ->middleware('role:owner')
+        ->middleware('can:owner-or-manager')
         ->name('billing.invoices.show');
 
     // ======= DATA EXPORTS HUB (reports.export permission) =======
@@ -604,10 +604,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->middleware('role:owner')->name('store-credit.adjust.store');
     Route::post('/invoices/{invoice}/store-credit/apply', [\App\Http\Controllers\StoreCreditController::class, 'applyToInvoice'])->middleware('can:sales.create')->name('store-credit.apply');
 
-    // ======= PROFILE — owner only (settings.edit = Owner by default) =======
-    Route::get('/profile', [ProfileController::class, 'edit'])->middleware('can:settings.edit')->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('can:settings.edit')->name('profile.update');
-    Route::post('/profile/deactivate', [ProfileController::class, 'deactivate'])->middleware('can:settings.edit')->name('profile.deactivate');
+    // ======= PROFILE — owner and manager only; cashiers/staff never edit their own details (the owner does) =======
+    Route::get('/profile', [ProfileController::class, 'edit'])->middleware('can:owner-or-manager')->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('can:owner-or-manager')->name('profile.update');
+    Route::post('/profile/deactivate', [ProfileController::class, 'deactivate'])->middleware('can:owner-or-manager')->name('profile.deactivate');
 
     // ======= POS =======
     Route::get('/pos', [PosController::class, 'index'])->middleware('can:sales.pos')->name('pos.index');
@@ -838,23 +838,25 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     });
 
     // ======= SETTINGS =======
-    Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->middleware('can:settings.edit')->name('profile.mobile.change');
-    Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->middleware('can:settings.edit')->name('profile.mobile.request');
-    Route::post('/profile/mobile/change-verify', [\App\Http\Controllers\MobileChangeController::class, 'verifyChange'])->middleware('can:settings.edit')->name('profile.mobile.verify');
+    Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->middleware('can:owner-or-manager')->name('profile.mobile.change');
+    Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->middleware('can:owner-or-manager')->name('profile.mobile.request');
+    Route::post('/profile/mobile/change-verify', [\App\Http\Controllers\MobileChangeController::class, 'verifyChange'])->middleware('can:owner-or-manager')->name('profile.mobile.verify');
 
-    // Settings — read access: anyone with `settings.view` permission (default: Owner + Manager).
-    Route::get('/settings', [SettingsController::class, 'edit'])->middleware('can:settings.view')->name('settings.edit');
-    Route::get('/settings/services', [\App\Http\Controllers\ShopServicesController::class, 'index'])->middleware('can:settings.view')->name('settings.services');
+    // Settings — open to every shop user: staff land on the read-only General tab and every other tab checks its own
+    // permission in SettingsController (owner decision 2026-11-07).
+    Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+    // Business editions (and their payments) — owner, or the manager acting for them; never cashiers/staff.
+    Route::get('/settings/services', [\App\Http\Controllers\ShopServicesController::class, 'index'])->middleware('can:owner-or-manager')->name('settings.services');
     Route::get('/settings/payment-methods', [PaymentMethodController::class, 'index'])->middleware('can:settings.view')->name('settings.payment-methods.index');
 
     // Settings — write access: requires `settings.edit` permission (default: Owner only).
-    Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('can:settings.edit')->name('settings.services.request-add');
+    Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('can:owner-or-manager')->name('settings.services.request-add');
     // Paid self-serve add (Phase 5b checkout): initiate Razorpay order for a
     // product, then verify and create a NEW product subscription on success.
-    Route::post('/settings/services/initiate-add', [\App\Http\Controllers\ShopServicesController::class, 'initiateAdd'])->middleware('can:settings.edit')->name('settings.services.initiate-add');
-    Route::post('/settings/services/add-callback', [\App\Http\Controllers\ShopServicesController::class, 'addCallback'])->middleware('can:settings.edit')->name('settings.services.add-callback');
-    Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('can:settings.edit')->name('settings.services.remove');
-    Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('can:settings.edit')->name('settings.services.request.cancel');
+    Route::post('/settings/services/initiate-add', [\App\Http\Controllers\ShopServicesController::class, 'initiateAdd'])->middleware('can:owner-or-manager')->name('settings.services.initiate-add');
+    Route::post('/settings/services/add-callback', [\App\Http\Controllers\ShopServicesController::class, 'addCallback'])->middleware('can:owner-or-manager')->name('settings.services.add-callback');
+    Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('can:owner-or-manager')->name('settings.services.remove');
+    Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('can:owner-or-manager')->name('settings.services.request.cancel');
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');
     Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('can:settings.edit')->name('settings.update.billing');
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');

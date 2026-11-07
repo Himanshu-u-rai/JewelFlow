@@ -86,7 +86,7 @@ class AuthenticatedSessionController extends Controller
         // cannot purchase, so they are logged out with an owner-must-renew note
         // (no plan/payment leakage).
         if ($subscriptionRecoverableShop) {
-            if (auth()->user()->isShopOwner()) {
+            if (auth()->user()->isShopOwnerOrManager()) { // a manager may renew on the owner's behalf
                 return redirect()->route('subscription.plans')->with(
                     'error',
                     'Your subscription has ended. Choose a plan to restore access to your shop.'

@@ -56,7 +56,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
-    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+    // Cashiers/staff never change their own password; the owner does it for them (owner decision 2026-11-07).
+    Route::put('password', [PasswordController::class, 'update'])->middleware('can:change-own-password')->name('password.update');
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');

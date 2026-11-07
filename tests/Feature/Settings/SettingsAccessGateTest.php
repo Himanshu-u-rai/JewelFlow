@@ -57,13 +57,15 @@ class SettingsAccessGateTest extends TestCase
         $this->assertStringContainsString('/login', (string) $res->headers->get('Location'));
     }
 
-    public function test_user_without_settings_view_is_denied(): void
+    // Owner decision 2026-11-07: without settings.view a user reaches only the read-only General tab.
+    public function test_user_without_settings_view_gets_only_the_general_tab(): void
     {
         [, $shop] = $this->createRetailerTenant();
         $noPerm = $this->userWithPerms($shop, ['sales.pos'], '9824400001');
-
         TenantContext::runFor($shop->id, fn () => $this->actingAs($noPerm)
-            ->get(self::ERP . '/settings'))->assertForbidden();
+            ->get(self::ERP . '/settings?tab=shop'))->assertRedirectContains('tab=general');
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($noPerm)
+            ->get(self::ERP . '/settings?tab=general'))->assertOk()->assertDontSee('Shop Info');
     }
 
     public function test_settings_view_user_can_open_index(): void

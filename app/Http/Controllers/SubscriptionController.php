@@ -229,7 +229,8 @@ class SubscriptionController extends Controller
      */
     private function abortUnlessOwner(): void
     {
-        if (! Auth::user()?->isShopOwner()) {
+        // Owner decision 2026-11-07: a manager may also buy/renew on the owner's behalf. Cashiers/staff stay refused.
+        if (! Auth::user()?->isShopOwnerOrManager()) {
             abort(403, \App\Support\NotAvailable::MESSAGE);
         }
     }

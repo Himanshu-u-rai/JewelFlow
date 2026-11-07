@@ -209,6 +209,21 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isShopOwner(): bool
     {
+        return $this->hasShopRoleIn(['owner']);
+    }
+
+    /**
+     * Owner decision 2026-11-07: a manager may buy/renew the plan, read the shop's bills, manage business editions
+     * and edit their own details on the owner's behalf. Cashiers/staff never, whatever permissions they hold.
+     * Same tenant-safe proof as isShopOwner().
+     */
+    public function isShopOwnerOrManager(): bool
+    {
+        return $this->hasShopRoleIn(['owner', 'manager']);
+    }
+
+    private function hasShopRoleIn(array $names): bool
+    {
         if ($this->role_id === null || $this->shop_id === null) {
             return false;
         }
@@ -218,7 +233,7 @@ class User extends Authenticatable implements MustVerifyEmail
             ->first(['name', 'shop_id']);
 
         return $role !== null
-            && $role->name === 'owner'
+            && in_array($role->name, $names, true)
             && (int) $role->shop_id === (int) $this->shop_id;
     }
 

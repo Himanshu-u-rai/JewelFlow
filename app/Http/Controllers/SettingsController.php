@@ -48,7 +48,8 @@ class SettingsController extends Controller
         // beyond the user's reach, redirect to the first tab they CAN see
         // instead of rendering empty content (which broke Turbo Drive frames).
         $tabRequirements = [
-            'general'         => null, // any authenticated user
+            'general'         => null, // any authenticated user — the only tab cashiers/staff get by default
+            'profile'         => 'owner-or-manager', // cashiers/staff never edit their own details
             'shop'            => 'settings.view',
             'billing'         => 'settings.view',
             'gst'             => 'settings.view',
@@ -61,8 +62,8 @@ class SettingsController extends Controller
             'roles'           => '__owner_only__',
             'staff'           => 'staff.view',
             'audit'           => 'settings.view',
-            'services'        => 'settings.view',
-            'subscription'    => 'settings.view',
+            'services'        => 'owner-or-manager', // business editions: owner, or manager on their behalf
+            'subscription'    => 'owner-or-manager', // plan & bills: same
             'devices'         => 'settings.view',
         ];
         $canSee = function (string $tab) use ($user, $tabRequirements): bool {

@@ -38,7 +38,7 @@ class SubscriptionRecovery
         }
 
         $user = Auth::user();
-        if ($user && $user->isShopOwner()) {
+        if ($user && $user->isShopOwnerOrManager()) { // a manager may renew on the owner's behalf
             return redirect()->route('subscription.plans')->with(
                 'error',
                 'Your subscription has ended. Choose a plan to restore access to your shop.'
