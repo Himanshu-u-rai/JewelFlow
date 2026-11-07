@@ -31,10 +31,12 @@ class StaffController extends Controller
                 ->with('error', "Staff limit reached ({$limit} accounts allowed on your plan). Remove an existing member or upgrade your plan.");
         }
 
-        // Scope roles to this shop only, exclude owner
+        // Scope roles to this shop only, exclude owner, and only roles this user may hand out
         $roles = Role::where('shop_id', auth()->user()->shop_id)
             ->where('name', '!=', 'owner')
-            ->get();
+            ->get()
+            ->reject(fn (Role $role) => $this->roleExceedsActor($role->id))
+            ->values();
 
         return view('staff.create', compact('roles', 'shop'));
     }
@@ -77,6 +79,7 @@ class StaffController extends Controller
         ], [
             'mobile_number.unique' => 'This mobile number is already registered. Each mobile number can belong to only one account.',
         ]);
+        $this->assertAssignableRole((int) $validated['role_id']);
 
         $role = Role::where('shop_id', $shopId)->find($validated['role_id']);
         
@@ -126,16 +129,52 @@ class StaffController extends Controller
         if ($staff->role?->name === 'owner') {
             abort(403, \App\Support\NotAvailable::MESSAGE); // the owner's account is not managed from staff management
         }
+
+        // Only the owner manages anyone without limit. Anyone else given staff management may not manage their own
+        // account (no self-promotion or self-service password change) nor anyone whose role holds a permission they
+        // lack (no taking over a stronger account by resetting its password).
+        if (! auth()->user()->isOwner()
+            && ($staff->id === auth()->id() || $this->roleExceedsActor($staff->role_id))) {
+            abort(403, \App\Support\NotAvailable::MESSAGE);
+        }
+    }
+
+    /** Does this role carry any permission the acting (non-owner) user does not have? Owners are never exceeded. */
+    private function roleExceedsActor(?int $roleId): bool
+    {
+        $actor = auth()->user();
+        if ($actor->isOwner() || $roleId === null) {
+            return false;
+        }
+        $role = Role::query()->whereKey($roleId)->first();
+        if ($role === null) {
+            return true;
+        }
+        $mine = $actor->role?->permissions()->pluck('permissions.id')->all() ?? [];
+
+        return $role->permissions()->whereNotIn('permissions.id', $mine)->exists();
+    }
+
+    /** Refuse handing out a role stronger than the acting user's own (owners excepted). */
+    private function assertAssignableRole(int $roleId): void
+    {
+        if ($this->roleExceedsActor($roleId)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'role_id' => 'You can only give a role whose permissions you also have.',
+            ]);
+        }
     }
 
     public function edit(User $staff)
     {
         $this->guardStaffTarget($staff);
 
-        // Scope roles to this shop only, exclude owner (can't promote to owner)
+        // Scope roles to this shop only, exclude owner (can't promote to owner), only roles this user may hand out
         $roles = Role::where('shop_id', auth()->user()->shop_id)
             ->where('name', '!=', 'owner')
-            ->get();
+            ->get()
+            ->reject(fn (Role $role) => $this->roleExceedsActor($role->id))
+            ->values();
 
         return view('staff.edit', compact('staff', 'roles'));
     }
@@ -169,7 +208,8 @@ class StaffController extends Controller
         ], [
             'mobile_number.unique' => 'This mobile number is already registered. Each mobile number can belong to only one account.',
         ]);
-        
+        $this->assertAssignableRole((int) $validated['role_id']);
+
         $staff->name = $validated['name'];
         $staff->mobile_number = $validated['mobile_number'];
         // email is nullable+optional — absent from $validated when not supplied.

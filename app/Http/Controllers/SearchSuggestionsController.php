@@ -21,11 +21,42 @@ use Illuminate\Http\Request;
 
 class SearchSuggestionsController extends Controller
 {
+    /**
+     * Each kind of record is searchable exactly by whoever may open its list page (that route's own rules, via
+     * RouteAccess). The endpoint used to require only inventory.view and then answer for every kind, so a stock
+     * clerk could read customers, invoices, karigars and EMI plans through search.
+     */
+    public const TYPE_LIST_ROUTES = [
+        'customers' => 'customers.index',
+        'vendors' => 'vendors.index',
+        'invoices' => 'invoices.index',
+        'items' => 'inventory.items.index',
+        'products' => 'products.index',
+        'quick-bills' => 'quick-bills.index',
+        'repairs' => 'repairs.index',
+        'karigars' => 'karigars.index',
+        'job-orders' => 'job-orders.index',
+        'karigar-invoices' => 'karigar-invoices.index',
+        'stock-purchases' => 'inventory.purchases.index',
+        'schemes' => 'schemes.index',
+        'installments' => 'installments.index',
+        'reorder-rules' => 'reorder.index',
+    ];
+
+    public static function allowsType(string $type): bool
+    {
+        $route = self::TYPE_LIST_ROUTES[$type] ?? null;
+
+        return $route !== null && \App\Support\RouteAccess::allows($route);
+    }
+
     public function __invoke(Request $request): JsonResponse
     {
         $type = $request->input('type', '');
         $q = trim($request->input('q', ''));
         $shopId = auth()->user()->shop_id;
+
+        abort_unless(self::allowsType((string) $type), 403, \App\Support\NotAvailable::MESSAGE);
 
         if ($q === '' || mb_strlen($q) < 1) {
             return response()->json([]);

@@ -112,7 +112,8 @@ class CustomerManagementTest extends TestCase
         [, $shopB] = $this->createRetailerTenant();
         $this->customer($shopA, ['first_name' => 'Aarav', 'mobile' => '9812300030']);
         $this->customer($shopB, ['first_name' => 'AaravB', 'mobile' => '9812300031']);
-        $userA = $this->userWithPerms($shopA, ['inventory.view'], '9812300032');
+        // customers.view: customer search follows the Customers page's own rule (inventory.view no longer opens it).
+        $userA = $this->userWithPerms($shopA, ['customers.view'], '9812300032');
 
         $res = TenantContext::runFor($shopA->id, fn () => $this->actingAs($userA)
             ->getJson(self::ERP . '/search/suggestions?q=Aarav&type=customers'));

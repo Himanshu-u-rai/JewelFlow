@@ -531,7 +531,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.destroy');
 
     // ======= LIVE SEARCH SUGGESTIONS =======
-    Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->middleware('can:inventory.view')->name('search.suggestions');
+    // Per record type: searchable by whoever may open that type's list page (checked in the controller).
+    Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->name('search.suggestions');
 
     // ======= GOLD INVENTORY (Manufacturer only) =======
     Route::get('/inventory/gold', [GoldInventoryController::class, 'index'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('inventory.gold.index');

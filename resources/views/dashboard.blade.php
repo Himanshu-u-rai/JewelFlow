@@ -3485,7 +3485,6 @@
             $dashCommandPages,
             fn (array $page): bool => \App\Support\RouteAccess::allowsUrl($page['url'])
         ));
-        $dashSearchAllowed = \App\Support\RouteAccess::allows('search.suggestions');
 
         $dashCommandTypes = ['customers', 'invoices', 'items', 'products', 'quick-bills', 'repairs'];
         if ($isRetailer) {
@@ -3568,8 +3567,8 @@
 
             const endpoint = @json(route('search.suggestions'));
             const pageIndex = @json($dashCommandPages);
-            {{-- No record search for users the search endpoint would refuse: they still get the page list. --}}
-            const searchTypes = @json($dashSearchAllowed ? $dashCommandTypes : []);
+            {{-- Search only the record types this user may open (the endpoint refuses the rest). --}}
+            const searchTypes = @json(array_values(array_filter($dashCommandTypes, fn ($t) => \App\Http\Controllers\SearchSuggestionsController::allowsType($t))));
 
             const typeLabel = {
                 customers: 'Customer',
