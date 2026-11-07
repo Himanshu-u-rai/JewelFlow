@@ -2,6 +2,10 @@
     @php
         $cn = $returnOrder->creditNote;
         $invoice = $returnOrder->invoice;
+        // Offer each related page only when this user can open it.
+        $showInvoiceLink = $invoice && \App\Support\RouteAccess::allows('invoices.show');
+        $showExchangeLink = $returnOrder->status === 'settled' && ! $returnOrder->exchangeOrder
+            && \App\Support\RouteAccess::allows('exchanges.create');
         $customer = $invoice?->customer;
         $customerName = $customer ? trim($customer->first_name . ' ' . $customer->last_name) : null;
         $statusLabel = match ($returnOrder->status) {
@@ -31,12 +35,12 @@
                 <x-icon name="arrow-left" size="15" />
                 <span>Back to Returns</span>
             </a>
-            @if($invoice)
+            @if($showInvoiceLink)
                 <a href="{{ route('invoices.show', $invoice) }}" class="returns-show-header-action returns-show-header-action--invoice">
                     View Original Invoice
                 </a>
             @endif
-            @if($returnOrder->status === 'settled' && !$returnOrder->exchangeOrder)
+            @if($showExchangeLink)
                 <a href="{{ route('exchanges.create', $returnOrder) }}" class="returns-show-header-action returns-show-header-action--exchange">
                     <x-icon name="arrow-right-left" size="15" />
                     Link as Exchange
@@ -50,14 +54,14 @@
     </x-page-header>
 
     <div class="content-inner returns-show-page">
-        @if($invoice || $returnOrder->exchangeOrder || ($returnOrder->status === 'settled' && !$returnOrder->exchangeOrder))
+        @if($showInvoiceLink || $returnOrder->exchangeOrder || $showExchangeLink)
             <section class="returns-show-mobile-actions" aria-label="Related actions">
-                @if($invoice)
+                @if($showInvoiceLink)
                     <a href="{{ route('invoices.show', $invoice) }}" class="returns-show-mobile-action">
                         View Original Invoice
                     </a>
                 @endif
-                @if($returnOrder->status === 'settled' && !$returnOrder->exchangeOrder)
+                @if($showExchangeLink)
                     <a href="{{ route('exchanges.create', $returnOrder) }}" class="returns-show-mobile-action returns-show-mobile-action--primary">
                         Link as Exchange
                     </a>

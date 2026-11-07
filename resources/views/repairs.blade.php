@@ -755,11 +755,13 @@
     </style>
     <x-page-header class="repairs-page-header" title="Repairs" subtitle="Receive items, track progress, and deliver repair work">
         <x-slot:actions>
+            @canopen('report.repairs')
             <a href="{{ route('report.repairs') }}"
                class="btn btn-success btn-sm repairs-report-btn">
                 <x-icon name="chart-no-axes-column" class="w-4 h-4 mr-2" />
                 Repairs Report
             </a>
+            @endcanopen
         </x-slot:actions>
     </x-page-header>
 

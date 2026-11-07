@@ -3480,6 +3480,13 @@
             }
         }
 
+        // Only pages this user can actually open (each page's own route rules; settings tabs by their tab rule).
+        $dashCommandPages = array_values(array_filter(
+            $dashCommandPages,
+            fn (array $page): bool => \App\Support\RouteAccess::allowsUrl($page['url'])
+        ));
+        $dashSearchAllowed = \App\Support\RouteAccess::allows('search.suggestions');
+
         $dashCommandTypes = ['customers', 'invoices', 'items', 'products', 'quick-bills', 'repairs'];
         if ($isRetailer) {
             $dashCommandTypes[] = 'vendors';
@@ -3510,19 +3517,25 @@
                 <x-icon name="search" class="dash-command-icon" />
             </button>
 
+            @canopen('pos.index')
             <a href="/pos" class="btn btn-primary btn-sm">
                 <x-icon name="shopping-cart" size="14" />
                 <span class="dash-btn-label-full">Start Sale</span>
                 <span class="dash-btn-label-short">Sale</span>
             </a>
+            @endcanopen
+            @canopen('repairs.index')
             <a href="/repairs" class="btn btn-secondary btn-sm dash-mobile-float-target">
                 <span class="dash-btn-label-full">Repairs</span>
                 <span class="dash-btn-label-short">Repair</span>
             </a>
+            @endcanopen
+            @canopen('report.closing')
             <a href="/report/closing" class="btn btn-dark btn-sm dash-mobile-float-target">
                 <span class="dash-btn-label-full">Daily Closing</span>
                 <span class="dash-btn-label-short">Closing</span>
             </a>
+            @endcanopen
         </x-slot:actions>
     </x-page-header>
 
@@ -3555,7 +3568,8 @@
 
             const endpoint = @json(route('search.suggestions'));
             const pageIndex = @json($dashCommandPages);
-            const searchTypes = @json($dashCommandTypes);
+            {{-- No record search for users the search endpoint would refuse: they still get the page list. --}}
+            const searchTypes = @json($dashSearchAllowed ? $dashCommandTypes : []);
 
             const typeLabel = {
                 customers: 'Customer',
@@ -3900,14 +3914,18 @@
         >
             <div class="dash-mobile-fab-shell" x-bind:class="{ 'is-open': mobileFabOpen }" @click.outside="mobileFabOpen = false">
                 <nav class="dash-mobile-fab-nav" aria-label="Quick mobile actions">
+                    @canopen('report.closing')
                     <a href="/report/closing" class="dash-mobile-fab-action" @click="mobileFabOpen = false">
                         <x-icon name="chart-column" size="16" stroke="#14213d" />
                         <span>Daily Closing</span>
                     </a>
+                    @endcanopen
+                    @canopen('repairs.index')
                     <a href="/repairs" class="dash-mobile-fab-action" @click="mobileFabOpen = false">
                         <x-icon name="wrench" size="16" stroke="#14213d" />
                         <span>Repairs</span>
                     </a>
+                    @endcanopen
                 </nav>
 
                 <button type="button" class="dash-mobile-fab-toggle" x-on:click="mobileFabOpen = !mobileFabOpen" x-bind:aria-expanded="mobileFabOpen.toString()" aria-label="Toggle quick mobile actions">
@@ -4139,22 +4157,30 @@
         <div class="dash-top-grid {{ ($isRetailer ?? false) ? 'dash-top-grid-retailer' : '' }}">
             <div class="dash-block dash-col-quick dash-quick-strip">
                 <div class="dash-quick-list">
+                    @canopen('pos.index')
                     <a href="/pos" class="dash-quick-item dash-quick-sale">
                         <span class="dash-quick-icon"><x-icon name="shopping-cart" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Start Sale</strong><small>Open POS checkout</small></span>
                     </a>
+                    @endcanopen
+                    @canopen('customers.create')
                     <a href="/customers/create" class="dash-quick-item dash-quick-customer">
                         <span class="dash-quick-icon"><x-icon name="user-plus" size="15" /></span>
                         <span class="dash-quick-copy"><strong>New Customer</strong><small>Create customer profile</small></span>
                     </a>
+                    @endcanopen
+                    @canopen('inventory.items.create')
                     <a href="/inventory/items/create" class="dash-quick-item dash-quick-itemadd">
                         <span class="dash-quick-icon"><x-icon name="plus" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Add Inventory</strong><small>Create stock item</small></span>
                     </a>
+                    @endcanopen
+                    @canopen('report.closing')
                     <a href="/report/closing" class="dash-quick-item dash-quick-closing">
                         <span class="dash-quick-icon"><x-icon name="chart-column" size="15" /></span>
                         <span class="dash-quick-copy"><strong>Close Day</strong><small>Run day-end report</small></span>
                     </a>
+                    @endcanopen
                 </div>
             </div>
 
@@ -4204,7 +4230,9 @@
                     @can('settings.view')
                     <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="dash-btn dash-btn-muted" style="min-height: 32px; font-size: 11px;">Edit Shop</a>
                     @endcan
+                    @canopen('inventory.items.index')
                     <a href="/inventory/items" class="dash-btn dash-btn-primary" style="min-height: 32px; font-size: 11px;">View Inventory</a>
+                    @endcanopen
                 </div>
             </div>
             <div class="dash-block dash-top-kpi dash-metal-card dash-col-metal" style="padding: 18px;">
@@ -4334,7 +4362,9 @@
                     <h3 class="dash-mini-value dash-skel">{{ $overdueEmis ?? 0 }}</h3>
                     <div class="dash-mini-kpi-foot">
                         <p class="dash-mini-kpi-title" id="dash-mini-label-overdue-emis">Overdue EMIs</p>
+                        @canopen('installments.index')
                         <a href="{{ route('installments.index', ['status' => 'active']) }}" class="dash-mini-kpi-link">Open</a>
+                        @endcanopen
                     </div>
                 </section>
             @endif

@@ -194,6 +194,8 @@
             // Cash Book and Returns / Exchange are ordinary sidebar entries
             // for whoever may open them.
             $navCan = fn (string $ability): bool => (bool) $authUser?->can($ability);
+            // Can this user open the page behind a route? (its own can:/role: middleware — see RouteAccess)
+            $navOpen = fn (string $route): bool => \App\Support\RouteAccess::allows($route);
             $canOpenReportsHub = $navCan('reports.view');
             $canOpenSettings = $navCan('settings.view');
             $canOpenInvoices = $navCan('sales.view');
@@ -340,11 +342,14 @@
                             <span class="nav-icon"><x-icon name="layers" size="16" /></span>
                             {{ __('Masters') }}
                         </a>
+                        {{-- @canopen: each link shows only when its page would let this user in (RouteAccess). --}}
+                        @canopen('pos.index')
                         <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="shopping-cart" size="16" /></span>
                             {{ __('Sales Counter') }}
                         </a>
-                        @if($authShop?->preferences?->quick_bill_enabled ?? true)
+                        @endcanopen
+                        @if(($authShop?->preferences?->quick_bill_enabled ?? true) && ($navOpen('quick-bills.create') || $navOpen('quick-bills.index')))
                         <a href="{{ route(auth()->user()->can('sales.create') ? 'quick-bills.create' : 'quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}" data-nav-match="/quick-bills">
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Quick Bills') }}
@@ -354,19 +359,33 @@
                     </div>
 
                     {{-- ─── SALES ─── --}}
-                    @if($hasRetailer || $hasManufacturer)
+                    @php
+                        $salesNav = [
+                            'customers' => $navOpen('customers.index'),
+                            'invoices' => $navOpen('invoices.index'),
+                            'schemes' => $hasRetailer && $navOpen('schemes.index'),
+                            'catalog' => $hasRetailer && $navOpen('catalog.index'),
+                        ];
+                        $salesNavAny = in_array(true, $salesNav, true) || $navCan('returns.view') || $navCan('returns.approve')
+                            || ($hasRetailer && $strandedInstallments) || $strandedHistorical;
+                    @endphp
+                    @if(($hasRetailer || $hasManufacturer) && $salesNavAny)
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Sales') }}</div>
                         {{-- Installments is the Customers page's "EMI / Installments" tab, so its pages light this link. --}}
+                        @if($salesNav['customers'])
                         <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') || (! $strandedInstallments && request()->routeIs('installments.*')) ? 'active' : '' }}" @unless($strandedInstallments) data-nav-match="/installments" @endunless>
                             <span class="nav-icon"><x-icon name="users" size="16" /></span>
                             {{ __('Customers') }}
                         </a>
+                        @endif
                         {{-- Historical Sales opens from the Invoices header, so its pages light this link too. --}}
+                        @if($salesNav['invoices'])
                         <a href="{{ route('invoices.index') }}" class="nav-link {{ request()->routeIs('invoices.*') || (! $strandedHistorical && request()->routeIs('historical.*')) ? 'active' : '' }}" @unless($strandedHistorical) data-nav-match="/historical" @endunless>
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Invoices') }}
                         </a>
+                        @endif
                         {{-- Operations still wins on /returns/control-center: the longer address wins. --}}
                         @can('returns.view')
                         <a href="{{ route('returns.index') }}" class="nav-link {{ request()->routeIs('returns.index') || request()->routeIs('returns.show') || request()->routeIs('exchanges.*') ? 'active' : '' }}" data-nav-match="/exchanges">
@@ -381,20 +400,24 @@
                         </a>
                         @endcan
                         @if($hasRetailer)
+                        @if($salesNav['schemes'])
                         <a href="{{ route('schemes.index') }}" class="nav-link {{ request()->routeIs('schemes.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="gift" size="16" /></span>
                             {{ __('Schemes') }}
                         </a>
+                        @endif
                         @if($strandedInstallments)
                         <a href="{{ route('installments.index') }}" class="nav-link {{ request()->routeIs('installments.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="credit-card" size="16" /></span>
                             {{ __('Installments') }}
                         </a>
                         @endif
+                        @if($salesNav['catalog'])
                         <a href="{{ route('catalog.index') }}" class="nav-link {{ request()->routeIs('catalog.*') && ! request()->routeIs('catalog.website.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="message-circle" size="16" /></span>
                             {{ __('Catalog') }}
                         </a>
+                        @endif
                         @endif
                         @if($strandedHistorical)
                         <a href="{{ route('historical.index') }}" class="nav-link {{ request()->routeIs('historical.*') ? 'active' : '' }}">
@@ -406,10 +429,17 @@
                     @endif
 
                     {{-- ─── INVENTORY ─── --}}
-                    @if($hasRetailer || $hasManufacturer)
+                    @php
+                        $inventoryNav = [
+                            'gold' => $hasManufacturer && $navOpen('inventory.gold.index'),
+                            'stock' => $navOpen('inventory.items.index'),
+                            'purchases' => $hasRetailer && $navOpen('inventory.purchases.index'),
+                        ];
+                    @endphp
+                    @if(($hasRetailer || $hasManufacturer) && in_array(true, $inventoryNav, true))
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Inventory') }}</div>
-                        @if($hasManufacturer)
+                        @if($inventoryNav['gold'])
                         <a href="{{ route('inventory.gold.index') }}" class="nav-link {{ request()->routeIs('inventory.gold.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="database" size="16" /></span>
                             {{ __('Gold Inventory') }}
@@ -418,13 +448,15 @@
                         {{-- Categories, Tag Printing and Reorder Alerts open from the Stock page's navigation row,
                              so their pages light this link. The reorder alert count came with them: it stays in
                              sight from every page here, on the way to the link that carries it. --}}
+                        @if($inventoryNav['stock'])
                         <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*', 'inventory.stock-aging', 'inventory.sell-trend', 'categories.*', 'sub-categories.*', 'tags.*', 'reorder.*') ? 'active' : '' }}" data-nav-match="/categories,/sub-categories,/tags,/reorder,/inventory/stock-aging,/inventory/sell-trend">
                             <span class="nav-icon"><x-icon name="package" size="16" /></span>
                             {{ __('Jewellery Stock') }}
                             {{-- Always present: the sidebar survives Turbo visits, so app.js re-reads the count from each page's bell. --}}
                             <span class="sidebar-alert-pill" title="{{ __('Reorder alerts') }}" data-reorder-pill @if(($reorderAlertCount ?? 0) === 0) hidden @endif>{{ $reorderAlertCount ?? 0 }}</span>
                         </a>
-                        @if($hasRetailer)
+                        @endif
+                        @if($inventoryNav['purchases'])
                         <a href="{{ route('inventory.purchases.index') }}" class="nav-link {{ request()->routeIs('inventory.purchases.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="shopping-bag" size="16" /></span>
                             {{ __('Stock Purchases') }}
@@ -434,30 +466,46 @@
                     @endif
 
                     {{-- ─── JOB WORK (retailer edition — bullion vault + karigar workflow) ─── --}}
-                    @if($hasRetailer)
+                    @php
+                        $jobWorkNav = $hasRetailer ? [
+                            'vault' => $navOpen('vault.index'),
+                            'karigars' => $navOpen('karigars.index'),
+                            'jobOrders' => $navOpen('job-orders.index'),
+                            'karigarBills' => $navOpen('karigar-invoices.index'),
+                        ] : [];
+                    @endphp
+                    @if($hasRetailer && in_array(true, $jobWorkNav, true))
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Job Work') }}</div>
+                        @if($jobWorkNav['vault'])
                         <a href="{{ route('vault.index') }}" class="nav-link {{ request()->routeIs('vault.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="lock" size="16" /></span>
                             {{ __('Metal Vault') }}
                         </a>
+                        @endif
+                        @if($jobWorkNav['karigars'])
                         <a href="{{ route('karigars.index') }}" class="nav-link {{ request()->routeIs('karigars.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="hammer" size="16" /></span>
                             {{ __('Karigars') }}
                         </a>
+                        @endif
+                        @if($jobWorkNav['jobOrders'])
                         <a href="{{ route('job-orders.index') }}" class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="clipboard-list" size="16" /></span>
                             {{ __('Job Orders') }}
                         </a>
+                        @endif
+                        @if($jobWorkNav['karigarBills'])
                         <a href="{{ route('karigar-invoices.index') }}" class="nav-link {{ request()->routeIs('karigar-invoices.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Karigar Bills') }}
                         </a>
+                        @endif
                     </div>
                     @endif
 
                     {{-- ─── SERVICES ─── --}}
-                    @if($hasRetailer || $hasManufacturer)
+                    @if(($hasRetailer || $hasManufacturer) && $navOpen('repairs.index'))
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Services') }}</div>
                         <a href="{{ route('repairs.index') }}" class="nav-link {{ request()->routeIs('repairs.*') ? 'active' : '' }}">
@@ -476,12 +524,15 @@
                         $reportsHubActive = request()->routeIs('report.*', 'reporting.*')
                             && ! ($strandedCloseDay && request()->routeIs('report.closing'));
                     @endphp
+                    @if($canOpenReportsHub || $canOpenCashBook || $strandedCloseDay)
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
+                        @if($canOpenReportsHub)
                         <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting">
                             <span class="nav-icon"><x-icon name="layout-grid" size="16" /></span>
                             {{ __('All Reports') }}
                         </a>
+                        @endif
                         @if($canOpenCashBook)
                         <a href="{{ route('cashbook.index') }}" class="nav-link {{ request()->routeIs('cashbook.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="book-open" size="16" /></span>
@@ -495,6 +546,7 @@
                         </a>
                         @endif
                     </div>
+                    @endif
                     @endif
 
                     {{-- Dhiran (Gold Loans) is its own product on the dhiran.* subdomain

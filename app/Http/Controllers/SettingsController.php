@@ -27,27 +27,12 @@ use Illuminate\Validation\Rules\Password;
 
 class SettingsController extends Controller
 {
-    /**
-     * Show the settings page with tabs.
-     */
-    public function edit(Request $request)
-    {
-        $user = Auth::user();
-
-        if (!$user->shop_id) {
-            return redirect()->route('shops.create');
-        }
-
-        $shop = $user->shop;
-
-        // Active tab — resolve first so per-tab queries can be gated.
-        $activeTab = $request->get('tab', 'shop');
-
-        // ─── Per-tab access guard ────────────────────────────────────────────
-        // Each tab has its own permission requirement. If the requested tab is
-        // beyond the user's reach, redirect to the first tab they CAN see
-        // instead of rendering empty content (which broke Turbo Drive frames).
-        $tabRequirements = [
+    // ─── Per-tab access guard ────────────────────────────────────────────
+    // Each tab has its own permission requirement. If the requested tab is
+    // beyond the user's reach, edit() redirects to the first tab they CAN see
+    // instead of rendering empty content (which broke Turbo Drive frames).
+    // Public so links elsewhere (e.g. the dashboard command palette) can ask the same question.
+    public const TAB_REQUIREMENTS = [
             'general'         => null, // any authenticated user — the only tab cashiers/staff get by default
             'profile'         => 'owner-or-manager', // cashiers/staff never edit their own details
             'shop'            => 'settings.view',
@@ -65,16 +50,36 @@ class SettingsController extends Controller
             'services'        => 'owner-or-manager', // business editions: owner, or manager on their behalf
             'subscription'    => 'owner-or-manager', // plan & bills: same
             'devices'         => 'settings.view',
-        ];
-        $canSee = function (string $tab) use ($user, $tabRequirements): bool {
-            $req = $tabRequirements[$tab] ?? null;
-            if ($req === null) return true;
-            if ($req === '__owner_only__') return $user->isOwner();
-            return $user->can($req);
-        };
+    ];
+
+    public static function canSeeTab(User $user, string $tab): bool
+    {
+        $req = self::TAB_REQUIREMENTS[$tab] ?? null;
+        if ($req === null) return true;
+        if ($req === '__owner_only__') return $user->isOwner();
+        return $user->can($req);
+    }
+
+    /**
+     * Show the settings page with tabs.
+     */
+    public function edit(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->shop_id) {
+            return redirect()->route('shops.create');
+        }
+
+        $shop = $user->shop;
+
+        // Active tab — resolve first so per-tab queries can be gated.
+        $activeTab = $request->get('tab', 'shop');
+
+        $canSee = fn (string $tab): bool => self::canSeeTab($user, $tab);
         if (! $canSee($activeTab)) {
             // Pick the first tab the user CAN see and redirect there.
-            foreach (array_keys($tabRequirements) as $tab) {
+            foreach (array_keys(self::TAB_REQUIREMENTS) as $tab) {
                 if ($canSee($tab)) {
                     return redirect()->route('settings.edit', ['tab' => $tab]);
                 }

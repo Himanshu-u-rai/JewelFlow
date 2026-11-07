@@ -177,6 +177,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('change-own-password', fn ($user) => $user instanceof \App\Models\User
             && ($user->shop_id === null || $user->isShopOwnerOrManager()));
 
+        // @canopen('route.name') … @endcanopen — show a link only when its destination would let the user in.
+        \Illuminate\Support\Facades\Blade::if('canopen', fn (string $route) => \App\Support\RouteAccess::allows($route));
+
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(SubCategory::class, SubCategoryPolicy::class);

@@ -1414,9 +1414,9 @@
                 <x-icon name="scan-barcode" size="18" stroke-width="1.8" />
                 <span class="scan-mobile-label">Scan via Mobile</span>
             </button>
-            <a href="{{ route('repairs.index') }}">Repairs</a>
-            <a href="{{ route('invoices.index') }}">Invoices</a>
-            <a href="{{ route('inventory.items.index') }}">Inventory</a>
+            @canopen('repairs.index')<a href="{{ route('repairs.index') }}">Repairs</a>@endcanopen
+            @canopen('invoices.index')<a href="{{ route('invoices.index') }}">Invoices</a>@endcanopen
+            @canopen('inventory.items.index')<a href="{{ route('inventory.items.index') }}">Inventory</a>@endcanopen
         </div>
     </div>
 
@@ -1431,18 +1431,24 @@
                     <x-icon name="scan-barcode" size="16" stroke="#14213d" stroke-width="1.8" />
                     <span>Scan via Mobile</span>
                 </button>
+                @canopen('inventory.items.index')
                 <a href="{{ route('inventory.items.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
                     <x-icon name="package" size="16" stroke="#14213d" />
                     <span>Inventory</span>
                 </a>
+                @endcanopen
+                @canopen('invoices.index')
                 <a href="{{ route('invoices.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
                     <x-icon name="file-text" size="16" stroke="#14213d" />
                     <span>Invoices</span>
                 </a>
+                @endcanopen
+                @canopen('repairs.index')
                 <a href="{{ route('repairs.index') }}" class="pos-mobile-fab-link" @click="posMobileNavOpen = false">
                     <x-icon name="wrench" size="16" stroke="#14213d" />
                     <span>Repairs</span>
                 </a>
+                @endcanopen
             </nav>
 
             <button type="button" class="pos-mobile-fab-toggle" x-on:click="posMobileNavOpen = !posMobileNavOpen" x-bind:aria-expanded="posMobileNavOpen.toString()" aria-label="Toggle POS mobile navigation">
