@@ -54,7 +54,7 @@ class ItemStockSeeder extends Seeder
 
         $createdLots = [];
         foreach ($lots as $lotData) {
-            $lot = MetalLot::create(array_merge($lotData, ['shop_id' => $shop->id]));
+            $lot = MetalLot::create(array_merge($lotData, ['shop_id' => $shop->id, 'metal_type' => 'gold']));
             $createdLots[] = $lot;
         }
 

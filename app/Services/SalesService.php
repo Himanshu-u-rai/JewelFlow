@@ -220,6 +220,7 @@ class SalesService
                     if ($mode === 'old_gold' && $fineWt > 0) {
                         $lot = MetalLot::create([
                             'source' => 'exchange',
+                            'metal_type' => 'gold',
                             'shop_id' => $shopId,
                             'purity' => $purity,
                             'fine_weight_total' => $fineWt,

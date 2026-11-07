@@ -169,7 +169,7 @@ class PilotDemoSeeder extends Seeder
                 ]);
 
                 $lot = MetalLot::create([
-                    'shop_id' => $shop->id, 'source' => 'purchase', 'purity' => 22.00,
+                    'shop_id' => $shop->id, 'source' => 'purchase', 'metal_type' => 'gold', 'purity' => 22.00,
                     'fine_weight_total' => 500.0, 'fine_weight_remaining' => 500.0, 'cost_per_fine_gram' => 6800.00,
                 ]);
 

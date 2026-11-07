@@ -70,6 +70,7 @@ class GoldInventoryController extends Controller
             $lot = MetalLot::create([
                 'shop_id' => $shopId,
                 'source' => $validated['source'],
+                'metal_type' => 'gold',
                 'purity' => $validated['purity'],
                 'fine_weight_total' => $fineGold,
                 'fine_weight_remaining' => $fineGold,

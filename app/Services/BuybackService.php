@@ -36,6 +36,7 @@ class BuybackService
             // Create new gold lot
             $lot = MetalLot::create([
                 'source' => 'buyback',
+                'metal_type' => 'gold',
                 'shop_id' => $shopId,
                 'purity' => $purity,
                 'fine_weight_total' => $fineGold,

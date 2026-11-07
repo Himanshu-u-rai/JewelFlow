@@ -37,7 +37,7 @@ class CustomerGoldController extends Controller
         DB::transaction(function () use ($shopId, $customer, $gross, $purity, $fineGold, $validated) {
             $lot = \App\Models\MetalLot::firstOrCreate(
                 ['shop_id' => $shopId, 'source' => 'customer_advance'],
-                ['purity' => 24, 'fine_weight_total' => 0, 'fine_weight_remaining' => 0]
+                ['metal_type' => 'gold', 'purity' => 24, 'fine_weight_total' => 0, 'fine_weight_remaining' => 0]
             );
 
             $lot->fine_weight_total     += $fineGold;
