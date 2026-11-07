@@ -58,7 +58,7 @@ class DayBookDataset extends ReportDatasetService
                 Filter::for(FK::Period, true),
             ],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            permissions: Perm::default()->withView('reports.money'),
         );
     }
 

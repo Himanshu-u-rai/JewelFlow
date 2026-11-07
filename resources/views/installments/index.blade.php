@@ -63,6 +63,7 @@
                 </div>
             </article>
 
+            @can('reports.money')
             <article class="installments-index-kpi-card installments-index-kpi-card--money">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--success">
                     <x-icon name="circle-check" />
@@ -80,6 +81,7 @@
                     <strong>₹{{ number_format($totalOutstanding ?? 0, 2) }}</strong>
                 </div>
             </article>
+            @endcan
 
             <article class="installments-index-kpi-card installments-index-kpi-card--count">
                 <span class="installments-index-kpi-icon installments-index-kpi-icon--danger">

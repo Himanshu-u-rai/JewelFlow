@@ -35,7 +35,7 @@
                 ['Purchase Efficiency', 'Rate paid on stock purchases vs your market rate', 'report.purchase-efficiency', null],
                 ['Operator Performance', 'Sales, discounts and returns by who handled them', 'report.operator-performance', null],
                 ['Sellers', 'Sales count and value by seller or staff member', 'report.sellers', 'retailer'],
-                ['Occasions', 'Sales broken down by occasion or event category', 'report.occasions', 'retailer'],
+                ['Occasions', 'Upcoming customer birthdays and anniversaries to follow up', 'report.occasions', 'retailer'],
                 ['Suspicious Activity', 'Compliance alerts to review — split bills, missing PAN, threshold breaches', 'report.suspicious-activity', null],
                 ['Profit & Loss', 'Gross margin over the period', 'report.pnl', null],
                 ['Gold Balances', 'Vault fine-weight by metal and purity', 'report.gold', null],
@@ -59,6 +59,7 @@
         $visibleSections = collect($sections)
             ->map(fn ($cards) => collect($cards)->filter(fn ($c) =>
                 \Illuminate\Support\Facades\Route::has($c[2])
+                && \App\Support\RouteAccess::allows($c[2])
                 && ($c[3] === null
                     || ($c[3] === 'retailer' && $isRetailer)
                     || ($c[3] === 'manufacturer' && $isManufacturer))

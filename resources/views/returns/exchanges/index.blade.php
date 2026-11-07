@@ -38,6 +38,7 @@
                 {{ $settledCount > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600' }}">
                 Settled: {{ number_format($settledCount) }}
             </div>
+            @can('reports.money')
             <div class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium
                 {{ (float) $todayNetFlow > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
                 Today's net flow:
@@ -49,6 +50,7 @@
                     ↓ ₹{{ number_format(abs((float) $todayNetFlow), 0) }}
                 @endif
             </div>
+            @endcan
         </div>
 
         <form method="GET" action="{{ route('exchanges.index') }}" class="mb-4 flex flex-wrap gap-3 items-end">

@@ -100,11 +100,13 @@
                 </section>
 
                 <section class="customers-show-retailer-summary" aria-label="Customer summary">
+                    @can('reports.money')
                     <div class="customers-show-retailer-stat">
                         <span>Total Spent</span>
                         <strong>₹{{ number_format($totalSpent, 2) }}</strong>
                         <small>{{ $invoices->count() }} recent {{ Str::plural('invoice', $invoices->count()) }}</small>
                     </div>
+                    @endcan
                     @if(($openingBalance ?? 0) != 0)
                     {{-- Pre-go-live money, posted at onboarding batch lock. This card
                          used to exist only in the manufacturer layout below, so every
@@ -496,7 +498,9 @@
                     <div class="customers-show-panel bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                         <h2 class="text-lg font-semibold text-gray-900">Customer Stats</h2>
                         <div class="mt-3 space-y-2 text-sm">
+                            @can('reports.money')
                             <div class="flex items-center justify-between"><span class="text-gray-500">Total Spent</span><span class="font-semibold">₹{{ number_format($totalSpent, 2) }}</span></div>
+                            @endcan
                             @if(($openingBalance ?? 0) != 0)
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-500">Opening Balance</span>

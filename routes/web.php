@@ -744,73 +744,73 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // + gold/silver summary via the generic screen. The legacy weekly-lots
     // drill-down toggle is dropped (it is a vault view, not a flat report; the
     // same lots appear in the vault/metal-ledger views). Export via POST.
-    Route::get('/report/metal-exchange', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-exchange')->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
+    Route::get('/report/metal-exchange', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-exchange')->middleware(['can:reports.view', 'can:reports.money', 'edition:retailer'])->name('report.metal-exchange');
     Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
     // Daily Sales Summary — served by the reporting spine (Phase 3). Same URL/name/permission;
     // honours the legacy ?date=YYYY-MM-DD bookmark. Sales/GST + the day's metal movement.
-    Route::get('/report/daily', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'daily-summary')->middleware('can:reports.view')->name('report.daily');
+    Route::get('/report/daily', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'daily-summary')->middleware(['can:reports.view', 'can:reports.money'])->name('report.daily');
     // Cash Flow — served by the reporting spine (Phase 3). Same URL/name/permission.
-    Route::get('/report/cash', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cash-flow')->middleware('can:reports.view')->name('report.cash');
+    Route::get('/report/cash', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cash-flow')->middleware(['can:reports.view', 'can:reports.money'])->name('report.cash');
     // Profit & Loss — served by the reporting spine (Phase 4). Same URL/name/permission;
     // honours the legacy ?date=YYYY-MM-DD single-day bookmark, else the current month.
-    Route::get('/report/pnl', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'pnl')->middleware('can:reports.view')->name('report.pnl');
-    Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware('can:reports.view')->name('report.gst');
+    Route::get('/report/pnl', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'pnl')->middleware(['can:reports.view', 'can:reports.money'])->name('report.pnl');
+    Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gst');
     // CA / compliance tax pack (Phase 2 M1) — all read-only, reports.view gated.
-    Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr1')->middleware('can:reports.view')->name('report.gstr1');
+    Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr1')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gstr1');
     // report.gstr1.csv retired (Phase 3 Cleanup #1) — use the spine export (POST /reports/gstr1/export).
-    Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr3b')->middleware('can:reports.view')->name('report.gstr3b');
-    Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cn-register')->middleware('can:reports.view')->name('report.cn-register');
+    Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr3b')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gstr3b');
+    Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cn-register')->middleware(['can:reports.view', 'can:reports.money'])->name('report.cn-register');
     // report.cn-register.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // CA Ledger & Reconciliation pack (Phase 2 M2) — read-only, reports.view gated.
     // Payment Reconciliation — served by the reporting spine (Phase 3). Same URL/name/permission.
-    Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'payment-reconciliation')->middleware('can:reports.view')->name('report.payment-reconciliation');
+    Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'payment-reconciliation')->middleware(['can:reports.view', 'can:reports.money'])->name('report.payment-reconciliation');
     // report.payment-reconciliation.csv retired (Phase 3) — use the spine export (POST /reports/payment-reconciliation/export).
-    Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
+    Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware(['can:reports.view', 'can:reports.money'])->name('report.day-book');
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // Historical Sales Register (Batch 4) — read-only search/list of pre-JewelFlow
     // sale evidence. Same spine as every other report; reports.view/reports.export
     // gates already exist and are reused, not duplicated (HISTORICAL-BATCH-4-REQUIREMENTS.md §6).
-    Route::get('/report/historical-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'historical-sales-register')->middleware('can:reports.view')->name('report.historical-register');
+    Route::get('/report/historical-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'historical-sales-register')->middleware(['can:reports.view', 'can:reports.money'])->name('report.historical-register');
     // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.
-    Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware('can:reports.view')->name('report.inventory-valuation');
+    Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware(['can:reports.view', 'can:reports.money'])->name('report.inventory-valuation');
     // report.inventory-valuation.csv retired (GAP 3): inventory-valuation is on the
     // spine; export goes through POST /reports/inventory-valuation/export (gated,
     // provenance-stamped) instead of the legacy fputcsv path.
     // dead-stock migrated to the spine (GAP 2): generic screen + gated spine export.
-    Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dead-stock')->middleware('can:reports.view')->name('report.dead-stock');
+    Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dead-stock')->middleware(['can:reports.view', 'can:reports.money'])->name('report.dead-stock');
     // report.dead-stock.csv retired (GAP 2/3): export via POST /reports/dead-stock/export.
     // karigar-settlement / shrinkage / purchase-efficiency migrated to the spine
     // (GAP 2 tail). Generic screen + gated spine export; legacy fputcsv retired.
-    Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'karigar-settlement')->middleware('can:reports.view')->name('report.karigar-settlement');
+    Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'karigar-settlement')->middleware(['can:reports.view', 'can:reports.money'])->name('report.karigar-settlement');
     // report.karigar-settlement.csv retired (GAP 2/3): export via POST /reports/karigar-settlement/export.
     Route::get('/report/shrinkage', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'shrinkage')->middleware('can:reports.view')->name('report.shrinkage');
     // report.shrinkage.csv retired (GAP 2/3): export via POST /reports/shrinkage/export.
-    Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'purchase-efficiency')->middleware('can:reports.view')->name('report.purchase-efficiency');
+    Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'purchase-efficiency')->middleware(['can:reports.view', 'can:reports.money'])->name('report.purchase-efficiency');
     // report.purchase-efficiency.csv retired (GAP 2/3): export via POST /reports/purchase-efficiency/export.
     // operator-performance + suspicious-activity migrated to the spine (GAP 2).
     // Audit class → the generic screen enforces the owner/manager surface gate
     // (reports.audit, frozen §11). Export via POST /reports/{key}/export.
-    Route::get('/report/operator-performance', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'operator-performance')->middleware('can:reports.view')->name('report.operator-performance');
+    Route::get('/report/operator-performance', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'operator-performance')->middleware(['can:reports.view', 'can:reports.audit'])->name('report.operator-performance');
     // report.operator-performance.csv retired (GAP 2/3): export via POST /reports/operator-performance/export.
-    Route::get('/report/suspicious-activity', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'suspicious-activity')->middleware('can:reports.view')->name('report.suspicious-activity');
+    Route::get('/report/suspicious-activity', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'suspicious-activity')->middleware(['can:reports.view', 'can:reports.audit'])->name('report.suspicious-activity');
     // report.suspicious-activity.csv retired (GAP 2/3): export via POST /reports/suspicious-activity/export.
     // dues-aging / emi / scheme-liability migrated to the spine (GAP 2 tail).
     // Generic screen + gated spine export; legacy fputcsv retired. dues-aging
     // customer mobile is a sensitive (permission-gated) column. emi +
     // scheme-liability keep the retailer-edition route gate (dataset gate is the
     // belt-and-suspenders backstop).
-    Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dues-aging')->middleware('can:reports.view')->name('report.dues-aging');
+    Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dues-aging')->middleware(['can:reports.view', 'can:reports.money'])->name('report.dues-aging');
     // report.dues-aging.csv retired (GAP 2/3): export via POST /reports/dues-aging/export.
-    Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'emi')->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi');
+    Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'emi')->middleware(['edition:retailer', 'can:reports.view', 'can:reports.money'])->name('report.emi');
     // report.emi.csv retired (GAP 2/3): export via POST /reports/emi/export.
-    Route::get('/report/scheme-liability', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'scheme-liability')->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability');
+    Route::get('/report/scheme-liability', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'scheme-liability')->middleware(['edition:retailer', 'can:reports.view', 'can:reports.money'])->name('report.scheme-liability');
     // report.scheme-liability.csv retired (GAP 2/3): export via POST /reports/scheme-liability/export.
     // Metal Liability — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/metal-liability', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-liability')->middleware('can:reports.view')->name('report.metal-liability');
     // report.metal-liability.csv retired (Phase 3) — use the spine export (POST /reports/metal-liability/export).
     // Daily Closing — served by the reporting spine (Phase 3). Same URL/name; keeps reports.daily_closing.
     Route::get('/report/closing', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'daily-closing')->middleware('can:reports.daily_closing')->name('report.closing');
-    Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
+    Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware(['can:reports.view', 'can:reports.money'])->name('report.repairs');
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
@@ -821,7 +821,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
     // Phase 1 pilot — Sales / Invoice Register screen.
     Route::get('/report/sales-register', [\App\Http\Controllers\Reporting\SalesRegisterController::class, 'index'])
-        ->middleware('can:reports.view')->name('report.sales-register');
+        ->middleware(['can:reports.view', 'can:reports.money'])->name('report.sales-register');
     // Generic spine report screen (any registered report; rigidity enforced in the controller).
     Route::get('/reporting/{report}/screen', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])
         ->middleware('can:reports.view')->name('reporting.report.screen');
@@ -1063,8 +1063,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::match(['get', 'post'], '/tags/print', [TagPrintController::class, 'print'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.print');
 
     // --- Retailer Reports & Analytics (reports.view; catalog.manage for catalog management) ---
-    Route::get('/report/stock-aging', [RetailerDashboardController::class, 'stockAging'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.stock-aging');
-    Route::get('/report/sellers', [RetailerDashboardController::class, 'sellers'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.sellers');
+    Route::get('/report/stock-aging', [RetailerDashboardController::class, 'stockAging'])->middleware(['edition:retailer', 'can:reports.view', 'can:reports.money'])->name('report.stock-aging');
+    Route::get('/report/sellers', [RetailerDashboardController::class, 'sellers'])->middleware(['edition:retailer', 'can:reports.view', 'can:reports.money'])->name('report.sellers');
     Route::get('/report/occasions', [RetailerDashboardController::class, 'occasions'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.occasions');
     Route::get('/catalog', [CatalogController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('catalog.index');
     Route::post('/catalog/collections', [CatalogController::class, 'storeCollection'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('catalog.collections.store');

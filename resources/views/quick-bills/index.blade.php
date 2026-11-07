@@ -1078,6 +1078,7 @@
                         <div class="qb-stat__value">{{ number_format($stats['draft_count']) }}</div>
                     </div>
                 </div>
+                @can('reports.money')
                 <div class="qb-stat">
                     <span class="qb-stat__icon is-money" aria-hidden="true">
                         <x-icon name="indian-rupee" stroke-width="1.9" />
@@ -1096,6 +1097,7 @@
                         <div class="qb-stat__value is-money">₹{{ number_format((float) $stats['outstanding_total'], 2) }}</div>
                     </div>
                 </div>
+                @endcan
             </div>
 
             <section class="qb-register" aria-label="Quick bill register" data-list-frame>

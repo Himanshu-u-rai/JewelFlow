@@ -56,7 +56,7 @@ class CapabilityResolver
             expenses:     $gate('expenses', null, 'cash.view'),
             catalog:      $this->catalogGate($planFeatures, $user),
             // Money figures (revenue, profit, trends); rates and notices need nothing.
-            dashboard:    $gate('dashboard', null, 'reports.view'),
+            dashboard:    $gate('dashboard', null, 'reports.money'),
             // The scanner looks tags up for stock or for a sale (the lookup-item gate:
             // inventory.view or sales.pos, as the web POS's tag lookup).
             scanner:      $user->can('lookup-item') ? true : $this->off('scanner', ['reason' => 'permission']),

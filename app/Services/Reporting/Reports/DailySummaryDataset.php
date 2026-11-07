@@ -89,7 +89,7 @@ class DailySummaryDataset extends ReportDatasetService
                 Filter::for(FK::AsOf, true),
             ],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            permissions: Perm::default()->withView('reports.money'),
         );
     }
 

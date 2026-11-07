@@ -55,7 +55,7 @@ class EmiDataset extends ReportDatasetService
             profiles: [P::Summary, P::Detailed, P::Ca, P::CaStandard],
             filters: [Filter::for(FK::AsOf)],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default()->withEdition(ShopEdition::RETAILER),
+            permissions: Perm::default()->withView('reports.money')->withEdition(ShopEdition::RETAILER),
         );
     }
 

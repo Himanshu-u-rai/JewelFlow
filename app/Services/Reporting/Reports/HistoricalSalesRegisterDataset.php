@@ -123,7 +123,7 @@ class HistoricalSalesRegisterDataset extends ReportDatasetService
             // historical.view is the family gate: reports.view/reports.export
             // alone must never surface historical evidence to a staff member
             // the Historical module itself has not granted view access to.
-            permissions: Perm::default()->withFamilyGate('historical.view'),
+            permissions: Perm::default()->withView('reports.money')->withFamilyGate('historical.view'),
         );
     }
 

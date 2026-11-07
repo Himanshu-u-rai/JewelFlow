@@ -52,7 +52,7 @@ class ReturnsDataset extends ReportDatasetService
                 Filter::for(FK::Period),
             ],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            permissions: Perm::default()->withView('reports.money'),
         );
     }
 

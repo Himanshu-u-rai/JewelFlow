@@ -65,6 +65,8 @@ class TenantRoleService
                 'installments.view', 'installments.create', 'installments.collect',
                 'schemes.view', 'schemes.enroll',
                 'loyalty.adjust',
+                // Everyday (money-free) reports; "See Shop Money" (reports.money) stays off for staff.
+                'reports.view',
                 // Cash Book is not a shop-floor surface: staff/cashier get no
                 // cash.view/cash.create by default. The mobile Cash Book gate
                 // (CashBookController::authorizeCashbook) also denies staff even

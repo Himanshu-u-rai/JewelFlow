@@ -117,13 +117,13 @@ class CapabilityResolverTest extends TestCase
         // blocks; the user still needs the permission the web route asks for.
         [$shop, $user] = $this->buildTenant(
             features: [],
-            permissions: ['cash.view', 'reports.view', 'inventory.view', 'catalog.manage'],
+            permissions: ['cash.view', 'reports.money', 'inventory.view', 'catalog.manage'],
             roleName: 'staff',
         );
 
         $caps = $resolver->resolve($shop, $user);
 
-        $this->assertTrue($caps->dashboard, 'dashboard money figures: plan-silent, reports.view held');
+        $this->assertTrue($caps->dashboard, 'dashboard money figures: plan-silent, reports.money held');
         $this->assertTrue($caps->scanner, 'scanner: plan-silent, inventory.view held');
         $this->assertTrue($caps->purchases, 'purchases: plan-silent, inventory.view held');
         $this->assertTrue($caps->catalog, 'catalog defaults to on when plan has no catalog keys, catalog.manage held');

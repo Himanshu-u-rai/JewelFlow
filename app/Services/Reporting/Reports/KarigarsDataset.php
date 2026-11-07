@@ -55,7 +55,7 @@ class KarigarsDataset extends ReportDatasetService
             profiles: [P::Summary, P::Detailed, P::Raw],
             filters: [],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            permissions: Perm::default()->withView('reports.money'),
         );
     }
 

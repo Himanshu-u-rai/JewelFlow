@@ -81,7 +81,7 @@ class SalesRegisterDataset extends ReportDatasetService
                 Filter::for(FK::Branch), // reserved hook — never rendered (frozen §3.2)
             ],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            permissions: Perm::default()->withView('reports.money'),
         );
     }
 

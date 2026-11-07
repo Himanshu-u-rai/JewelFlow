@@ -109,7 +109,7 @@ class ReportsAccessGateTest extends TestCase
     public function test_reports_view_user_can_open_hub_and_screen(): void
     {
         [, $shop] = $this->createRetailerTenant();
-        $viewer = $this->userWithPerms($shop, ['reports.view'], '9823300004');
+        $viewer = $this->userWithPerms($shop, ['reports.view', 'reports.money'], '9823300004');
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($viewer)
             ->get(self::ERP . '/reports'))->assertOk();

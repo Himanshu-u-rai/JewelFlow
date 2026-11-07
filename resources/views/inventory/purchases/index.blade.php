@@ -36,7 +36,9 @@
                     <h2>Purchase Register</h2>
                     <dl class="customers-directory-summary" aria-label="Stock purchase summary">
                         <div><dt>Total Purchases</dt><dd>{{ number_format($stats->total_confirmed ?? 0) }}</dd></div>
+                        @can('reports.money')
                         <div><dt>This Month</dt><dd>₹{{ number_format($stats->month_amount ?? 0, 0) }}</dd></div>
+                        @endcan
                         <div><dt>Items This Month</dt><dd>{{ number_format($monthItems ?? 0) }}</dd></div>
                         <div><dt>Drafts Pending</dt><dd>{{ number_format($stats->drafts_pending ?? 0) }}</dd></div>
                     </dl>

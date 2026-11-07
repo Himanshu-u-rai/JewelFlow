@@ -89,6 +89,15 @@ class MobileRbacParityTest extends TestCase
             ->assertJsonPath('trend', []);
         $this->assertIsArray($staffView->json('alerts.warnings'));
 
+        // Everyday reports alone do not show shop money; See Shop Money does (as the web dashboard).
+        $everyday = $this->staffToken($shop, ['reports.view', 'quick_bills.view'], '9876512346');
+        $this->send($everyday, 'GET', '/api/mobile/dashboard', [], $shop->id)->assertOk()
+            ->assertJsonPath('figures_visible', false)->assertJsonPath('today.revenue', null);
+        $this->send($everyday, 'GET', '/api/mobile/quick-bills', [], $shop->id)->assertOk()
+            ->assertJsonPath('stats.today_total', null)->assertJsonPath('stats.outstanding_total', null);
+        $money = $this->staffToken($shop, ['reports.money'], '9876512347');
+        $this->send($money, 'GET', '/api/mobile/dashboard', [], $shop->id)->assertOk()->assertJsonPath('figures_visible', true);
+
         $this->send($ownerToken, 'GET', '/api/mobile/dashboard', [], $shop->id)->assertOk()
             ->assertJsonPath('figures_visible', true)->assertJsonStructure(['today' => ['revenue', 'profit', 'invoices']]);
 
@@ -143,7 +152,7 @@ class MobileRbacParityTest extends TestCase
             'invoice_payment' => 'sales.create',
             'quick_bill' => 'quick_bills.view', 'quick_bill_create' => 'quick_bills.create', 'installments' => 'installments.view',
             'repairs' => 'repairs.view', 'repairs_create' => 'repairs.create', 'repairs_edit' => 'repairs.edit',
-            'catalog' => 'catalog.manage', 'dashboard' => 'reports.view', 'returns_approve' => 'returns.approve',
+            'catalog' => 'catalog.manage', 'dashboard' => 'reports.money', 'returns_approve' => 'returns.approve',
             'devices' => 'settings.view', 'pricing' => 'pricing.update', 'expenses' => 'cash.view',
         ];
         $caps = function (array $perms, string $mobile) use ($shop) {

@@ -118,7 +118,7 @@ class DuesAgingDataset extends ReportDatasetService
             // HISTORICAL/COMBINED additionally require historical.view — the
             // same class of data Historical Sales Register already gates
             // behind it (see ReportPermissions::gateForSalesSource()).
-            permissions: Perm::default()->withHistoricalModeGate('historical.view'),
+            permissions: Perm::default()->withView('reports.money')->withHistoricalModeGate('historical.view'),
         );
     }
 

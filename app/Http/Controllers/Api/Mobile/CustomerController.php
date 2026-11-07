@@ -253,7 +253,8 @@ class CustomerController extends Controller
             'customer' => $this->customerProfile($customer),
             'summary' => [
                 'total_invoices' => $totalInvoices,
-                'lifetime_spend' => $lifetimeSpend,
+                // As the web customer page: lifetime spend needs See Shop Money.
+                'lifetime_spend' => $request->user()->can('reports.money') ? $lifetimeSpend : null,
                 'total_repairs' => $totalRepairs,
                 'open_repairs' => $openRepairs,
                 // As the web customer page: + customer owes the shop (Dr), − shop owes the customer (Cr).

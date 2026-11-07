@@ -100,13 +100,13 @@ class DuesAgingHistoricalModeAuthorizationTest extends TestCase
     /** Genuine custom role: exactly reports.view + reports.export, historical.view absent. */
     private function restrictToReportsViewExportOnly(\App\Models\User $user): void
     {
-        $this->grantOnlyPermissions($user, ['reports.view', 'reports.export']);
+        $this->grantOnlyPermissions($user, ['reports.view', 'reports.money', 'reports.export']);
         $user->unsetRelation('role');
     }
 
     private function addHistoricalView(\App\Models\User $user): void
     {
-        $this->grantOnlyPermissions($user, ['reports.view', 'reports.export', 'historical.view']);
+        $this->grantOnlyPermissions($user, ['reports.view', 'reports.money', 'reports.export', 'historical.view']);
         $user->unsetRelation('role');
     }
 
@@ -198,7 +198,7 @@ class DuesAgingHistoricalModeAuthorizationTest extends TestCase
     public function test_missing_reports_export_still_blocks_export_even_with_historical_view(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $this->grantOnlyPermissions($owner, ['reports.view', 'historical.view']); // no reports.export
+        $this->grantOnlyPermissions($owner, ['reports.view', 'reports.money', 'historical.view']); // no reports.export
         $owner->unsetRelation('role');
 
         // Screen (view-only) still works...

@@ -15,12 +15,12 @@ class DashboardController extends Controller
         $shop = $request->user()->shop;
         $metrics = DashboardMetricsService::build($request->user()->shop_id);
         $dailyRate = $shop ? $pricing->currentDailyRate($shop) : null;
-        // The web dashboard's rule: money figures need reports.view.
-        $figures = $request->user()->can('reports.view');
+        // The web dashboard's rule: money figures need See Shop Money.
+        $figures = $request->user()->can('reports.money');
 
         return response()->json([
             'figures_visible' => $figures,
-            // The web shows today's invoice count to everyone; revenue and profit need reports.view.
+            // The web shows today's invoice count to everyone; revenue and profit need reports.money.
             'today' => [
                 'revenue' => $figures ? (float) ($metrics['todaysRevenue'] ?? 0) : null,
                 'profit' => $figures ? (float) ($metrics['todaysProfit'] ?? 0) : null,

@@ -65,17 +65,19 @@ class QuickBillController extends Controller
         $quickBills->getCollection()->transform(fn (QuickBill $quickBill) => $this->transformListItem($quickBill));
 
         $shopId = (int) $request->user()->shop_id;
+        // Shop-wide rupee totals need See Shop Money, as on the web list; counts are for everyone.
+        $money = $request->user()->can('reports.money');
         $stats = [
             'total_count' => QuickBill::query()->where('shop_id', $shopId)->count(),
             'issued_count' => QuickBill::query()->where('shop_id', $shopId)->where('status', QuickBill::STATUS_ISSUED)->count(),
             'draft_count' => QuickBill::query()->where('shop_id', $shopId)->where('status', QuickBill::STATUS_DRAFT)->count(),
             // Issued bills only, as on the web list: a draft is not a sale yet.
-            'today_total' => QuickBill::query()
+            'today_total' => ! $money ? null : QuickBill::query()
                 ->where('shop_id', $shopId)
                 ->whereDate('bill_date', today())
                 ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('total_amount'),
-            'outstanding_total' => QuickBill::query()
+            'outstanding_total' => ! $money ? null : QuickBill::query()
                 ->where('shop_id', $shopId)
                 ->where('status', QuickBill::STATUS_ISSUED)
                 ->sum('due_amount'),

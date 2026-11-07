@@ -161,7 +161,7 @@ class Gap2MigrationTest extends TestCase
     public function test_dead_stock_screen_renders(): void
     {
         [$owner, $shop] = $this->createManufacturerTenant();
-        $this->restrictTo($owner, ['reports.view']);
+        $this->restrictTo($owner, ['reports.view', 'reports.money']);
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->get('/report/dead-stock'))

@@ -4265,8 +4265,8 @@
                 @endif
             </div>
 
-            {{-- Money figures need View Reports, as the reports themselves (and the app). --}}
-            @if(($isRetailer ?? false) && auth()->user()->can('reports.view'))
+            {{-- Money figures need See Shop Money, as the money reports themselves (and the app). --}}
+            @if(($isRetailer ?? false) && auth()->user()->can('reports.money'))
                 <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-revenue" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
@@ -4369,7 +4369,7 @@
             @endif
         </div>
 
-        @can('reports.view')
+        @can('reports.money')
         <div class="dash-main-grid">
             <div class="dash-block dash-panel-pad">
                 @php
@@ -4715,7 +4715,7 @@
             </div>
             @endcan
 
-            @can('reports.view')
+            @can('reports.money')
             <div class="dash-block dash-table-card overflow-hidden dash-top-customers dash-recent-card">
                 <div class="dash-list-head">
                     <div class="dash-list-title">

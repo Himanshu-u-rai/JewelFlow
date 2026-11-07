@@ -415,6 +415,7 @@
                     <strong>{{ $invoices->total() }}</strong>
                 </div>
             </div>
+            @can('reports.money')
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--slate">
                     <x-icon name="list" size="17" stroke-width="2.2" />
@@ -424,6 +425,7 @@
                     <strong>₹{{ number_format($pageTotal, 0) }}</strong>
                 </div>
             </div>
+            @endcan
             <div class="jobwork-kpi-card">
                 <span class="jobwork-kpi-icon jobwork-kpi-icon--green">
                     <x-icon name="check" size="17" stroke-width="2.2" />
