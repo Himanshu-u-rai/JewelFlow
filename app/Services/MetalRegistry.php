@@ -315,6 +315,19 @@ final class MetalRegistry
         return $multiplier === null ? null : round($netWeight * $multiplier, 6);
     }
 
+    /**
+     * The only metal a lot's purity can belong to, by the scales above: karats (up to 24) are gold, fineness
+     * (above 24, up to 1000) is silver. Null when the purity cannot tell (0 = mixed aggregate lot, or out of range).
+     */
+    public static function metalFromPurity(float $purity): ?string
+    {
+        return match (true) {
+            $purity > 0 && $purity <= 24 => 'gold',
+            $purity > 24 && $purity <= 1000 => 'silver',
+            default => null,
+        };
+    }
+
 
     /**
      * Per-process cache. Reset between requests; safe across requests

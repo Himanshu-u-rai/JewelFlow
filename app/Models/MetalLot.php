@@ -69,7 +69,10 @@ class MetalLot extends Model
     protected static function booted(): void
     {
         static::creating(function (self $lot): void {
-            // Every lot says its metal (the database refuses one without, too).
+            // Every lot says its metal (the database refuses one without, too). Left open, the purity decides.
+            if (blank($lot->metal_type)) {
+                $lot->metal_type = \App\Services\MetalRegistry::metalFromPurity((float) $lot->purity);
+            }
             if (! in_array($lot->metal_type, ['gold', 'silver'], true)) {
                 throw new \LogicException('A metal lot must have a metal (gold or silver).');
             }

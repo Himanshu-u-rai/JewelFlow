@@ -35,20 +35,51 @@ class LotMetalTypeTest extends TestCase
         $row = ['shop_id' => $shop->id, 'source' => 'purchase', 'purity' => 22, 'fine_weight_total' => 5,
             'fine_weight_remaining' => 5, 'cost_per_fine_gram' => 0, 'created_at' => now(), 'updated_at' => now()];
 
-        // Through the model and straight into the table: both refused.
-        foreach ([fn () => MetalLot::create($row), fn () => \Illuminate\Support\Facades\DB::table('metal_lots')->insert($row + ['lot_number' => 999])] as $attempt) {
+        // Left open, the purity decides: karats (up to 24) are gold, fineness (above 24, up to 1000) is silver.
+        $gold = TenantContext::runFor($shop->id, fn () => MetalLot::create(['purity' => 22] + $row));
+        $silver = TenantContext::runFor($shop->id, fn () => MetalLot::create(['purity' => 999] + $row));
+        $this->assertSame('gold', $gold->fresh()->metal_type);
+        $this->assertSame('silver', $silver->fresh()->metal_type);
+        // A metal that is given is kept.
+        $this->assertSame('silver', TenantContext::runFor($shop->id, fn () => MetalLot::create(['metal_type' => 'silver', 'purity' => 925] + $row))->metal_type);
+
+        // A purity that cannot decide (0, above 1000), and a raw insert with no metal, are refused.
+        foreach ([fn () => MetalLot::create(['purity' => 0] + $row), fn () => MetalLot::create(['purity' => 1200] + $row),
+            fn () => \Illuminate\Support\Facades\DB::table('metal_lots')->insert($row + ['lot_number' => 999])] as $attempt) {
             try {
-                \Illuminate\Support\Facades\DB::transaction($attempt);
+                \Illuminate\Support\Facades\DB::transaction(fn () => TenantContext::runFor($shop->id, $attempt));
                 $this->fail('a lot without a metal was created');
             } catch (\LogicException|\Illuminate\Database\QueryException $e) {
                 $this->assertStringContainsString('metal', strtolower($e->getMessage()));
             }
         }
         $this->assertSame(0, MetalLot::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('metal_type')->count());
+    }
 
-        // A lot that says its metal is fine.
-        TenantContext::runFor($shop->id, fn () => MetalLot::create(['metal_type' => 'silver'] + $row));
-        $this->assertSame(1, MetalLot::withoutGlobalScopes()->where('shop_id', $shop->id)->where('metal_type', 'silver')->count());
+    public function test_old_unmarked_lots_are_marked_from_their_purity_only_on_commit(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $make = function (float $purity) use ($shop) {
+            $lot = TenantContext::runFor($shop->id, fn () => MetalLot::create(['shop_id' => $shop->id, 'source' => 'purchase',
+                'metal_type' => 'gold', 'purity' => $purity, 'fine_weight_total' => 5, 'fine_weight_remaining' => 5, 'cost_per_fine_gram' => 0]));
+            // Old data: no metal recorded.
+            \Illuminate\Support\Facades\DB::table('metal_lots')->where('id', $lot->id)->update(['metal_type' => null, 'purity' => $purity]);
+
+            return $lot->id;
+        };
+        $karat = $make(22);
+        $fine = $make(999);
+        $undecidable = $make(0);
+        $metal = fn (int $id) => \Illuminate\Support\Facades\DB::table('metal_lots')->where('id', $id)->value('metal_type');
+
+        $this->artisan('lots:mark-metal')->assertSuccessful();
+        $this->assertNull($metal($karat), 'the dry run wrote');
+
+        $this->artisan('lots:mark-metal', ['--commit' => true])->assertSuccessful();
+        $this->assertSame('gold', $metal($karat));
+        $this->assertSame('silver', $metal($fine));
+        $this->assertNull($metal($undecidable), 'a lot the purity cannot decide was guessed');
+        $this->assertSame(2, \App\Models\AuditLog::withoutGlobalScopes()->where('action', 'metal_lot.metal_marked')->count());
     }
 
     public function test_gold_taken_in_is_recorded_as_gold(): void
