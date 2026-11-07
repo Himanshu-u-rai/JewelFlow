@@ -356,6 +356,15 @@ class Repair extends Model
             : \Illuminate\Support\Facades\URL::temporarySignedRoute('mobile.repairs.image', now()->addMinutes(15), ['repair' => $this->id]);
     }
 
+    /**
+     * For updated app builds: the same route without a signature. It opens only with the app's own sign-in token
+     * (a member of this shop with repairs.view), so a forwarded copy shows nothing.
+     */
+    public function authImageUrl(): ?string
+    {
+        return $this->resolveImagePath() === null ? null : route('mobile.repairs.image', ['repair' => $this->id]);
+    }
+
     /** The photo as a response, from whichever disk holds it. Never cached by anything in between. */
     public function imageResponse()
     {

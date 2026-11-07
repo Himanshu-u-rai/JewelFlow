@@ -90,8 +90,20 @@ class RepairController extends Controller
      * released app loads images without headers. The link itself is only ever
      * given out by the authenticated, shop-scoped endpoints of this controller.
      */
-    public function image(int $repair)
+    public function image(Request $request, int $repair)
     {
+        if (! $request->hasValidSignature()) {
+            // No (valid) signature: only the app's own sign-in opens it — a member of the photo's shop with repairs.view.
+            $user = auth('sanctum')->user();
+            $model = Repair::withoutGlobalScopes()->find($repair);
+            // This public-group route has no tenant context, so the role is read inside the photo's shop.
+            abort_unless($user instanceof \App\Models\User && $user->is_active && $model !== null
+                && (int) $user->shop_id === (int) $model->shop_id
+                && \App\Support\TenantContext::runFor((int) $model->shop_id, fn () => $user->can('repairs.view')), 403);
+
+            return $model->imageResponse();
+        }
+
         return Repair::withoutGlobalScopes()->findOrFail($repair)->imageResponse();
     }
 
@@ -191,6 +203,7 @@ class RepairController extends Controller
             'image' => $resolvedImagePath,
             'image_path' => $resolvedImagePath,
             'image_url' => $repair->signedImageUrl(),
+            'image_auth_url' => $repair->authImageUrl(),
             'message' => 'Repair created successfully.',
             'repair' => $this->serializeRepair($repair, true),
         ], 201);
@@ -519,7 +532,8 @@ class RepairController extends Controller
         $payload = $repair->toArray();
         $payload['image'] = $resolvedImagePath;
         $payload['image_path'] = $resolvedImagePath;
-        $payload['image_url'] = $repair->signedImageUrl();
+        $payload['image_url'] = $repair->signedImageUrl(); // app builds that load images without headers
+        $payload['image_auth_url'] = $repair->authImageUrl(); // updated builds: opens only with the app's sign-in
 
         if ($withChallan) {
             // What the challan shows, from the same model methods as the website.

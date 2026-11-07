@@ -21,9 +21,10 @@ use App\Http\Controllers\Api\Mobile\VendorController;
 Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1');
 
-// A repair photo, by the expiring signed link the authenticated API hands out (the app loads images without headers).
+// A repair photo: by the expiring signed link (app builds that load images without headers) or by the app's own
+// sign-in token (updated builds). RepairController::image checks which.
 Route::get('/repairs/{repair}/image', [RepairController::class, 'image'])
-    ->middleware(['signed', 'throttle:240,1'])->name('mobile.repairs.image');
+    ->middleware(['throttle:240,1'])->name('mobile.repairs.image');
 
 // --- Authenticated ---
 Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1', 'shopaccess.open'])

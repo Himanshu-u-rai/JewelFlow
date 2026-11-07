@@ -198,6 +198,37 @@ class RepairImagePrivacyTest extends TestCase
         $this->assertStringNotContainsString('ANOTHER-PHOTO', (string) $swapped->getContent());
     }
 
+    // Owner decision 2026-11-07: the signed link works for anyone holding it for 15 minutes. Updated app builds load
+    // the plain link with their own sign-in token instead, which only a member of the shop with repairs.view passes.
+    public function test_updated_app_builds_get_a_link_that_needs_the_apps_sign_in(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $repair = $this->repairWithPhoto($shop->id, 'local');
+        $token = $user->createToken('phone')->plainTextToken;
+
+        $url = (string) $this->withToken($token)->getJson("/api/mobile/repairs/{$repair->id}")->assertOk()->json('image_auth_url');
+        $this->assertStringContainsString("/api/mobile/repairs/{$repair->id}/image", $url);
+        $this->assertStringNotContainsString('signature=', $url);
+        $listed = collect($this->withToken($token)->getJson('/api/mobile/repairs')->json('data'))->firstWhere('id', $repair->id);
+        $this->assertSame($url, data_get($listed, 'image_auth_url'));
+        $this->app['auth']->forgetGuards();
+
+        $fetched = $this->withToken($token)->get($url);
+        $fetched->assertOk();
+        $this->assertSame('PHOTO-BYTES-OF-A-CUSTOMERS-RING', $fetched->streamedContent());
+
+        $this->app['auth']->forgetGuards();
+        $this->withHeaders(['Authorization' => ''])->get($url)->assertForbidden(); // forwarded link, no sign-in
+
+        [$stranger] = $this->createRetailerTenant();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($stranger->createToken('phone')->plainTextToken)->get($url)->assertForbidden();
+
+        $colleague = \App\Models\User::factory()->create(['shop_id' => $shop->id, 'role_id' => null, 'is_active' => true]);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($colleague->createToken('phone')->plainTextToken)->get($url)->assertForbidden();
+    }
+
     public function test_a_signed_in_user_of_another_shop_is_given_no_link(): void
     {
         [, $shop] = $this->createManufacturerTenant();
