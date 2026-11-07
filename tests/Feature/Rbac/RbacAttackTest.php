@@ -176,6 +176,22 @@ class RbacAttackTest extends TestCase
             ->assertSessionHasErrors('target_lot_id');
     }
 
+    // ── Side door: quick-add from the item form ──────────────────────────────────────────────────────────────────
+
+    public function test_quick_add_category_follows_the_categories_switch(): void
+    {
+        $this->seedRetailerPricing($this->shop, $this->owner, ['gold_24k_rate_per_gram' => 7350, 'silver_999_rate_per_gram' => 96.5]);
+        $catalogOnly = $this->member($this->role('catalog', ['inventory.view', 'inventory.create', 'catalog.manage']), '9810000011');
+        $this->actingAs($catalogOnly);
+        $this->in(fn () => $this->postJson('/inventory/items/quick-add-category', ['name' => 'Sneaky']))->assertForbidden();
+        $this->in(fn () => $this->get('/inventory/items/create'))->assertOk()->assertDontSee('value="__new_category__"', false);
+
+        $categories = $this->member($this->role('cats', ['inventory.view', 'inventory.create', 'categories.manage']), '9810000012');
+        $this->actingAs($categories);
+        $this->in(fn () => $this->postJson('/inventory/items/quick-add-category', ['name' => 'Bangles']))->assertOk();
+        $this->in(fn () => $this->get('/inventory/items/create'))->assertOk()->assertSee('value="__new_category__"', false);
+    }
+
     // ── Access that must end ─────────────────────────────────────────────────────────────────────────────────────
 
     public function test_access_ends_at_once_when_a_permission_or_the_account_is_taken_away(): void

@@ -17,7 +17,9 @@
     <div class="items-sales-summary">
         <dl class="items-analysis-stats">
             <div><dt>Units sold</dt><dd>{{ number_format($sellerTotalSold) }}</dd></div>
+            @can('reports.money')
             <div><dt>Revenue</dt><dd>₹{{ number_format($sellerTotalRevenue, 0) }}</dd></div>
+            @endcan
             <div><dt>Categories</dt><dd>{{ number_format($sellerByCategory->count()) }}</dd></div>
         </dl>
         <p>Figures cover up to 10 shown categories,<br>not the whole shop's sales.</p>
@@ -34,7 +36,7 @@
             <colgroup><col class="items-sales-index"><col class="items-sales-category-col"><col><col class="items-sales-units-col"><col class="items-sales-share-col"></colgroup>
             <thead role="rowgroup"><tr role="row">
                 <th scope="col" class="items-sales-index">#</th><th scope="col">Category</th>
-                <th scope="col">Revenue
+                @can('reports.money')<th scope="col">Revenue
                     @if($sellerByCategory->isNotEmpty())
                         <div class="items-revenue-scale" data-revenue-scale>
                             @foreach([$revenueScaleMin, ($revenueScaleMax + $revenueScaleMin) / 2, $revenueScaleMax] as $tick)
@@ -42,7 +44,7 @@
                             @endforeach
                         </div>
                     @endif
-                </th><th scope="col">Units sold</th><th scope="col">Share of units</th>
+                </th>@endcan<th scope="col">Units sold</th><th scope="col">Share of units</th>
             </tr></thead>
             <tbody role="rowgroup">
                 @forelse($categoriesByRevenue as $row)
@@ -59,6 +61,7 @@
                     <tr role="row" data-sales-category="{{ $row['category'] ?? '—' }}">
                         <td role="cell" class="items-sales-index">{{ $loop->iteration }}</td>
                         <th role="rowheader" scope="row">{{ $row['category'] ?? '—' }}</th>
+                        @can('reports.money')
                         <td role="cell" data-field="Revenue">
                             <div class="items-sales-measure">
                                 <button type="button" class="items-revenue-trigger" data-chart-tip="true" data-tip="{{ $barDetails }}"
@@ -68,6 +71,7 @@
                                 <strong>₹{{ number_format($row['total_revenue'], 2) }}</strong>
                             </div>
                         </td>
+                        @endcan
                         <td role="cell" data-field="Units sold"><strong data-sales-count>{{ number_format($row['sold_count']) }}</strong></td>
                         <td role="cell" data-field="Share of units"><span class="items-sales-share" data-sales-share>{{ number_format($unitShare, 1) }}%</span></td>
                     </tr>
@@ -78,10 +82,13 @@
         </table>
     </div>
     <footer class="items-analysis-footer">
+        @can('reports.money')
         Sorted by revenue, highest first.
         @if($sellerByCategory->isNotEmpty())
             All bars use the same ₹{{ number_format($revenueScaleMin, floor($revenueScaleMin) == $revenueScaleMin ? 0 : 2) }}–₹{{ number_format($revenueScaleMax, floor($revenueScaleMax) == $revenueScaleMax ? 0 : 2) }} scale.
         @endif
-        Hover, focus or tap a bar for details. Refreshed every 10 minutes.
+        Hover, focus or tap a bar for details.
+        @endcan
+        Refreshed every 10 minutes.
     </footer>
 </section>

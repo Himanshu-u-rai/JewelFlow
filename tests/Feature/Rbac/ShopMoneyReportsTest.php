@@ -95,6 +95,65 @@ class ShopMoneyReportsTest extends TestCase
         }
     }
 
+    /** Sheet names of a downloaded .xlsx. */
+    private function sheetNames(string $xlsx): array
+    {
+        $path = tempnam(sys_get_temp_dir(), 'xlsx');
+        file_put_contents($path, $xlsx);
+        $zip = new \ZipArchive();
+        $zip->open($path);
+        preg_match_all('/<sheet [^>]*name="([^"]+)"/', (string) $zip->getFromName('xl/workbook.xml'), $m);
+        $zip->close();
+        unlink($path);
+
+        return array_map('html_entity_decode', $m[1]);
+    }
+
+    public function test_export_everything_and_the_export_page_leave_out_money_data_sets(): void
+    {
+        $this->actingAs($this->userWith(['reports.view', 'reports.export'], '9810001005'));
+
+        $page = $this->get_('/export')->assertOk();
+        $page->assertDontSee(route('reporting.export.panel', ['report' => 'stock-purchases']), false);
+        $page->assertSee(route('reporting.export.panel', ['report' => 'loyalty']), false);
+
+        $response = TenantContext::runFor($this->shop->id, fn () => $this->post('/export/all'));
+        $response->assertOk();
+        $sheets = $this->sheetNames($response->streamedContent());
+        $this->assertContains('Loyalty Points', $sheets);
+        foreach (['Stock Purchases', 'Karigar Invoices', 'Credit Notes', 'EMI Plans', 'Store Credit', 'Returns', 'Customers', 'Repairs'] as $money) {
+            $this->assertNotContains($money, $sheets, "{$money} exported without the money switch");
+        }
+    }
+
+    public function test_export_everything_with_no_open_data_set_is_refused_not_a_crash(): void
+    {
+        $this->actingAs($this->userWith(['reports.export'], '9810001008'));
+
+        $this->get_('/export')->assertOk()->assertDontSee('Download Excel backup');
+        TenantContext::runFor($this->shop->id, fn () => $this->post('/export/all'))->assertRedirect(route('export.index'));
+    }
+
+    public function test_stock_and_returns_pages_hide_shop_wide_money(): void
+    {
+        $perms = ['inventory.view', 'returns.view', 'returns.approve'];
+        $pages = [
+            '/inventory/sell-trend' => 'Revenue',
+            '/inventory/stock-aging' => 'Selling value',
+            '/returns' => "Today's refunds",
+        ];
+
+        $this->actingAs($this->userWith($perms, '9810001006'));
+        foreach ($pages as $url => $label) {
+            $this->get_($url)->assertOk()->assertDontSee($label, false);
+        }
+
+        $this->actingAs($this->userWith([...$perms, 'reports.money'], '9810001007'));
+        foreach ($pages as $url => $label) {
+            $this->get_($url)->assertOk()->assertSee($label, false);
+        }
+    }
+
     public function test_money_switch_opens_the_money_reports(): void
     {
         $this->actingAs($this->userWith(['reports.view', 'reports.money'], '9810001002'));

@@ -70,6 +70,12 @@ class ExportController extends Controller
     ): StreamedResponse|RedirectResponse {
         $user = Auth::user();
         $shopId = (int) $user->shop_id;
+        // Only data sets the user may open on their own (money ones need See Shop Money).
+        $backup = array_filter(self::BACKUP_REPORTS, fn ($sheetTitle, $key) => $registry->has($key)
+            && $user->can($registry->definition($key)->permissions->effectiveViewGate()), ARRAY_FILTER_USE_BOTH);
+        if ($backup === []) {
+            return redirect()->route('export.index')->with('error', \App\Support\NotAvailable::MESSAGE);
+        }
 
         // The backup builds every data set synchronously and holds the whole
         // workbook in memory, so it bypasses the per-report sync/queue router.
@@ -79,7 +85,7 @@ class ExportController extends Controller
         // above a normal shop's lifetime data; tune via REPORTING_BACKUP_MAX_ROWS.
         $ceiling = (int) config('reporting.backup_max_rows', 50000);
         $estimatedTotal = 0;
-        foreach (self::BACKUP_REPORTS as $key => $sheetTitle) {
+        foreach ($backup as $key => $sheetTitle) {
             if ($registry->has($key)) {
                 $estimatedTotal += (int) ($registry->datasetService($key)->estimateRowCount(
                     $this->backupRequest($registry->definition($key), $columns, $user, $shopId)
@@ -94,7 +100,7 @@ class ExportController extends Controller
         }
 
         $sheets = [];
-        foreach (self::BACKUP_REPORTS as $key => $sheetTitle) {
+        foreach ($backup as $key => $sheetTitle) {
             if (! $registry->has($key)) {
                 continue;
             }

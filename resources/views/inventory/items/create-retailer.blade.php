@@ -96,7 +96,7 @@
                                             {{ $cat->name }}
                                         </option>
                                     @endforeach
-                                    <option value="__new_category__">＋ New category…</option>
+                                    @canopen('inventory.items.quick-add-category')<option value="__new_category__">＋ New category…</option>@endcanopen
                                 </select>
                             </div>
 
@@ -118,7 +118,7 @@
                                         <option value="{{ $subName }}" @selected($initialSubCategory === $subName)>{{ $subName }}</option>
                                     @endforeach
                                     @if($initialCategoryObj)
-                                        <option value="__new_sub_category__">＋ New sub-category…</option>
+                                        @canopen('inventory.items.quick-add-sub-category')<option value="__new_sub_category__">＋ New sub-category…</option>@endcanopen
                                     @endif
                                 </select>
                             </div>

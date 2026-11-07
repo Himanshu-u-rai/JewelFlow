@@ -45,9 +45,17 @@
                     ['old-gold', 'Old gold', 'Customers\' own gold received / applied (fine-weight ledger).'],
                 ],
             ];
+            // Only the data sets this user may open (money ones need See Shop Money), as the export panel itself checks.
+            $registry = app(\App\Services\Reporting\Definition\ReportRegistry::class);
+            $groups = collect($groups)
+                ->map(fn ($cards) => array_values(array_filter($cards, fn ($c) => $registry->has($c[0])
+                    && auth()->user()->can($registry->definition($c[0])->permissions->effectiveViewGate()))))
+                ->filter()
+                ->all();
         @endphp
 
-        {{-- Export everything --}}
+        {{-- Export everything (only when at least one data set is open to this user) --}}
+        @if($groups !== [])
         <section class="xp-backup">
             <div class="xp-backup-text">
                 <h2 class="xp-backup-title">Export everything</h2>
@@ -61,6 +69,7 @@
                 </button>
             </form>
         </section>
+        @endif
 
         @foreach($groups as $groupTitle => $cards)
             <h3 class="xp-group-title">{{ $groupTitle }}</h3>

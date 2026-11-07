@@ -137,7 +137,7 @@
                                     @if(!$categories->contains('name', $item->category))
                                         <option value="{{ $item->category }}" selected>{{ $item->category }}</option>
                                     @endif
-                                    <option value="__new_category__">＋ New category…</option>
+                                    @canopen('inventory.items.quick-add-category')<option value="__new_category__">＋ New category…</option>@endcanopen
                                 </select>
                             </div>
 

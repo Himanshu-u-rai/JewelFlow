@@ -929,7 +929,9 @@
                 <p class="rc-queue-copy">These pieces have been set aside for melting. Record the gold recovery to add the weight back to your stock.</p>
 
                 @if($goldPendingRecovery->isNotEmpty())
-                    @if($goldRatePerGram > 0)
+                    @if(auth()->user()->cannot('reports.money'))
+                        {{-- shop-wide value needs See Shop Money --}}
+                    @elseif($goldRatePerGram > 0)
                         <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
                             Estimated recoverable value: ₹{{ number_format($goldPendingValue, 0) }}
                             <span class="text-xs font-normal text-amber-700">(based on today's rate ₹{{ number_format($goldRatePerGram, 0) }}/g)</span>

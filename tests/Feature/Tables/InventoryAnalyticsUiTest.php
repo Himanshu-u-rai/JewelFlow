@@ -75,6 +75,8 @@ class InventoryAnalyticsUiTest extends TestCase
     public function test_sell_comparison_ranks_revenue_on_a_shared_scale_and_preserves_exact_values_and_period_controls(array $rows, array $shares, array $expectedOrder): void
     {
         $this->assertTrue(view()->exists('inventory.items.partials.sell-trend-overview'));
+        // The owner's view: revenue shows only with See Shop Money (ShopMoneyReportsTest covers staff).
+        \Illuminate\Support\Facades\Gate::define('reports.money', fn (?\App\Models\User $user = null) => true);
         $categories = collect($rows);
         $this->app['request']->query->set('seller_period', '90');
         $html = view('inventory.items.partials.sell-trend-overview', [

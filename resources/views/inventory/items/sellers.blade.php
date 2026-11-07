@@ -36,7 +36,7 @@
                                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Cat</th>
                                     <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold</th>
-                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                                    @can('reports.money')<th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>@endcan
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -46,7 +46,7 @@
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $row['category'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-600">{{ $row['sub_category'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-right">{{ $row['sold_count'] }}</td>
-                                    <td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
+                                    @can('reports.money')<td class="px-4 py-3 text-sm text-right text-green-700">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>@endcan
                                 </tr>
                                 @empty
                                 <tr><td colspan="5" class="jf-table-empty">No data.</td></tr>
@@ -69,10 +69,12 @@
                                         <span>Sold</span>
                                         <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
                                     </div>
+                                    @can('reports.money')
                                     <div>
                                         <span>Revenue</span>
                                         <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
                                     </div>
+                                    @endcan
                                 </div>
                             </article>
                         @empty
@@ -91,7 +93,7 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items Sold</th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                                    @can('reports.money')<th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>@endcan
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -100,7 +102,7 @@
                                     <td class="jf-table-index">{{ $i + 1 }}</td>
                                     <td class="px-6 py-3 text-sm font-medium text-gray-900">{{ $row['category'] ?? '—' }}</td>
                                     <td class="px-6 py-3 text-sm text-right text-rose-600 font-medium">{{ $row['sold_count'] }}</td>
-                                    <td class="px-6 py-3 text-sm text-right">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>
+                                    @can('reports.money')<td class="px-6 py-3 text-sm text-right">₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</td>@endcan
                                 </tr>
                                 @empty
                                 <tr><td colspan="4" class="jf-table-empty">No sales data in this period.</td></tr>
@@ -123,10 +125,12 @@
                                         <span>Items Sold</span>
                                         <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
                                     </div>
+                                    @can('reports.money')
                                     <div>
                                         <span>Revenue</span>
                                         <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
                                     </div>
+                                    @endcan
                                 </div>
                             </article>
                         @empty

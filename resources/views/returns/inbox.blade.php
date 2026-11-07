@@ -1588,6 +1588,7 @@
                         </div>
                     </div>
                 </div>
+                @can('reports.money')
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-emerald-100 text-emerald-700 rounded-xl p-2.5">
@@ -1599,6 +1600,8 @@
                         </div>
                     </div>
                 </div>
+                @endcan
+                @can('reports.money')
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card returns-kpi-card--amount">
                     <div class="flex items-center gap-3">
                         <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
@@ -1610,6 +1613,7 @@
                         </div>
                     </div>
                 </div>
+                @endcan
                 <div class="ri-kpi rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card returns-kpi-card">
                     <div class="flex items-center gap-3">
                         <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">

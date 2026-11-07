@@ -551,8 +551,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('can:inventory.create')->name('inventory.items.create');
     Route::post('/inventory/items', [ItemController::class, 'store'])->middleware('can:inventory.create')->name('inventory.items.store');
     Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->middleware('can:inventory.create')->name('inventory.items.quick-add-purity');
-    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->middleware('can:catalog.manage')->name('inventory.items.quick-add-category');
-    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->middleware('can:catalog.manage')->name('inventory.items.quick-add-sub-category');
+    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->middleware('can:categories.manage')->name('inventory.items.quick-add-category');
+    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->middleware('can:categories.manage')->name('inventory.items.quick-add-sub-category');
     Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->middleware('can:karigar.manage')->name('inventory.items.quick-add-karigar');
     Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->middleware('can:inventory.view')->name('inventory.items.show');
     Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->middleware('can:inventory.edit')->name('inventory.items.edit');
