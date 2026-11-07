@@ -123,7 +123,9 @@ class CustomerController extends Controller
 
             $loyaltyData = compact('loyaltyCustomers', 'totalPointsIssued', 'totalPointsRedeemed');
 
-            // --- EMI / Installments ---
+            // --- EMI / Installments --- (its own permission: EMI plans and amounts are not shown to every
+            // user who may see customers)
+            if (auth()->user()->can('installments.view')) {
             $installmentQuery = InstallmentPlan::where('shop_id', $shopId)
                 ->with(['customer', 'invoice']);
 
@@ -145,6 +147,7 @@ class CustomerController extends Controller
                 ->sum('remaining_amount');
 
             $installmentData = compact('installmentPlans', 'overduePlans', 'totalOutstanding', 'installmentStatus');
+            }
 
             // --- Customer Occasions ---
             $daysAhead = (int) $request->input('occasion_days', 30);
@@ -369,7 +372,7 @@ class CustomerController extends Controller
         $shopId = (int) $user->shop_id;
         $tabs = array_filter([
             'invoices'    => $user->can('sales.view'),
-            'quick-bills' => $user->can('sales.view') && ($user->shop?->preferences?->quick_bill_enabled ?? true),
+            'quick-bills' => $user->can('quick_bills.view') && ($user->shop?->preferences?->quick_bill_enabled ?? true),
             'repairs'     => $user->can('repairs.view'),
         ]);
         $tab = (string) $request->query('tab', array_key_first($tabs) ?? 'invoices');

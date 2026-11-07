@@ -144,7 +144,8 @@ class PilotDemoSeeder extends Seeder
             $ownerRole->permissions()->sync(Permission::query()->pluck('id'));
             $managerRole->permissions()->sync($this->permIdsExcluding(['settings.roles', 'settings.staff', 'staff.']));
             $cashierRole->permissions()->sync($this->permIdsMatching([
-                'pos.%', 'sales.%', 'customers.%', 'invoices.%', 'quick-bills.%',
+                'pos.%', 'sales.%', 'customers.%', 'invoices.%', 'quick_bills.%', 'installments.%',
+                'schemes.view', 'schemes.enroll', 'loyalty.adjust',
                 'returns.view', 'repairs.%',
             ]));
 

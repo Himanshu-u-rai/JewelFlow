@@ -60,6 +60,11 @@ class TenantRoleService
                 'returns.view', 'returns.create',
                 'customers.view', 'customers.create', 'customers.edit',
                 'repairs.view', 'repairs.create', 'repairs.edit',
+                // Own switches since 2026-11-07; same abilities staff had through sales.* / customers.edit.
+                'quick_bills.view', 'quick_bills.create',
+                'installments.view', 'installments.create', 'installments.collect',
+                'schemes.view', 'schemes.enroll',
+                'loyalty.adjust',
                 // Cash Book is not a shop-floor surface: staff/cashier get no
                 // cash.view/cash.create by default. The mobile Cash Book gate
                 // (CashBookController::authorizeCashbook) also denies staff even

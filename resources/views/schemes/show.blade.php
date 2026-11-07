@@ -36,7 +36,7 @@
             </a>
 
             @if($scheme->isGoldSavings())
-                @can('sales.create')
+                @can('schemes.enroll')
                     <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action customers-row-action--primary schemes-header-action schemes-header-action--primary">
                         <x-icon name="user-plus" size="15" />
                         Enroll
@@ -44,7 +44,7 @@
                 @endcan
             @endif
 
-            @can('catalog.manage')
+            @can('schemes.manage')
                 <button type="button"
                         onclick="document.getElementById('delete-scheme-modal').classList.remove('hidden')"
                         class="customers-row-action schemes-header-action schemes-header-action--danger scheme-delete-action">
@@ -62,7 +62,7 @@
                     <x-icon name="pencil" size="14" />
                     <span>Edit Scheme</span>
                 </a>
-                @can('catalog.manage')
+                @can('schemes.manage')
                     <button type="button"
                             class="invoice-emi-mobile-fab-link scheme-mobile-fab-delete"
                             x-on:click="schemeQuickFabOpen = false; document.getElementById('delete-scheme-modal').classList.remove('hidden')">
@@ -100,7 +100,7 @@
     </div>
 
     <div class="content-inner schemes-detail-page">
-        @unless(auth()->user()->can('catalog.manage') || auth()->user()->can('sales.create'))
+        @unless(auth()->user()->can('schemes.manage') || auth()->user()->can('schemes.enroll'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'schemes and enrollments'])
         @endunless
 
@@ -211,7 +211,7 @@
                                 <h2>Enrollments</h2>
                                 <p>{{ number_format($enrollmentTotal) }} {{ Str::plural('customer', $enrollmentTotal) }} in this scheme.</p>
                             </div>
-                            @can('sales.create')
+                            @can('schemes.enroll')
                                 <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action customers-row-action--primary schemes-card-action">Enroll Customer</a>
                             @endcan
                         </div>

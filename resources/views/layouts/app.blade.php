@@ -202,7 +202,7 @@
             $canOpenCashBook = $navCan('cash.view');
             $strandedCloseDay = ! $canOpenReportsHub && $navCan('reports.daily_closing');
             $strandedHistorical = $hasRetailer && ! $canOpenInvoices && $navCan('historical.view');
-            $strandedInstallments = $hasRetailer && $canOpenInvoices && ! $navCan('customers.view');
+            $strandedInstallments = $hasRetailer && $navCan('installments.view') && ! $navCan('customers.view');
             $strandedExport = ! $canOpenSettings && $navCan('reports.export');
             $strandedImport = ($hasRetailer || $hasManufacturer) && ! $canOpenSettings && $navCan('imports.manage');
         @endphp
@@ -350,7 +350,7 @@
                         </a>
                         @endcanopen
                         @if(($authShop?->preferences?->quick_bill_enabled ?? true) && ($navOpen('quick-bills.create') || $navOpen('quick-bills.index')))
-                        <a href="{{ route(auth()->user()->can('sales.create') ? 'quick-bills.create' : 'quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}" data-nav-match="/quick-bills">
+                        <a href="{{ route(auth()->user()->can('quick_bills.create') ? 'quick-bills.create' : 'quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}" data-nav-match="/quick-bills">
                             <span class="nav-icon"><x-icon name="file-text" size="16" /></span>
                             {{ __('Quick Bills') }}
                         </a>

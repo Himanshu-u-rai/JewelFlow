@@ -79,7 +79,7 @@
                     </div>
                 </div>
 
-                @if($enrollment->isActive())
+                @if($enrollment->isActive() && auth()->user()->can('schemes.enroll'))
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h3 class="text-sm font-semibold text-gray-900 mb-3">Record Payment</h3>
                     <form method="POST" action="{{ route('schemes.enrollment.pay', $enrollment) }}">
@@ -103,7 +103,7 @@
                         </div>
                     </form>
 
-                    @can('sales.void')
+                    @can('schemes.cancel')
                     <div class="mt-4 pt-4 border-t border-gray-100">
                         <p class="text-xs text-gray-500 mb-2">If the customer wants to leave the scheme, cancel the enrollment. All contributions paid so far (₹{{ number_format($redeemableValue, 2) }}) will be refunded in cash. The maturity bonus is not paid on cancellation.</p>
                         <form method="POST" action="{{ route('schemes.enrollment.cancel', $enrollment) }}" data-turbo-frame="_top"
@@ -117,7 +117,7 @@
                 </div>
                 @endif
 
-                @if($redeemableValue > 0 && $eligibleInvoices->count())
+                @if($redeemableValue > 0 && $eligibleInvoices->count() && auth()->user()->can('schemes.enroll'))
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h3 class="text-sm font-semibold text-gray-900 mb-3">Redeem to Invoice</h3>
                     <form method="POST" action="{{ route('schemes.enrollment.redeem', $enrollment) }}">

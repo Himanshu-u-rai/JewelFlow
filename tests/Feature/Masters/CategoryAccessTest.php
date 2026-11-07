@@ -76,7 +76,7 @@ class CategoryAccessTest extends TestCase
         [$user, $shop] = $this->createManufacturerTenant();
         $this->cat($shop->id);
         // Real write staff hold both read and write catalog permissions.
-        $this->grantOnlyPermissions($user, ['inventory.view', 'catalog.manage']);
+        $this->grantOnlyPermissions($user, ['inventory.view', 'categories.manage']);
         $this->actingAs($user);
 
         $response = $this->index($shop->id);

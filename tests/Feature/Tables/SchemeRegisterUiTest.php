@@ -89,7 +89,7 @@ class SchemeRegisterUiTest extends TestCase
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $scheme = $this->scheme($shop->id, 'Restricted role plan');
-        $this->grantOnlyPermissions($owner, ['catalog.manage']);
+        $this->grantOnlyPermissions($owner, ['schemes.view', 'schemes.manage']);
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get('/schemes')->assertOk()->getContent());
         $this->assertSame(3, $xp->query('//a[@href="'.route('schemes.show', $scheme).'"]')->length);

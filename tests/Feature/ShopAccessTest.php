@@ -267,7 +267,7 @@ class ShopAccessTest extends TestCase
     public function test_reopening_restores_access(): void
     {
         [, $shop] = $this->createManufacturerTenant();
-        $cashier = $this->makeUser($shop, 'cashier', ['sales.view']); // may open Quick Bills when open
+        $cashier = $this->makeUser($shop, 'cashier', ['quick_bills.view']); // may open Quick Bills when open
 
         $this->setShopAccess($shop->id, false);
         $this->actingAs($cashier->fresh())->get(route('quick-bills.index'))->assertRedirect(route('dashboard'));
@@ -296,8 +296,8 @@ class ShopAccessTest extends TestCase
     {
         [, $shopA] = $this->createManufacturerTenant();
         [, $shopB] = $this->createManufacturerTenant();
-        $cashierA = $this->makeUser($shopA, 'cashier', ['sales.view']);
-        $cashierB = $this->makeUser($shopB, 'cashier', ['sales.view']);
+        $cashierA = $this->makeUser($shopA, 'cashier', ['quick_bills.view']);
+        $cashierB = $this->makeUser($shopB, 'cashier', ['quick_bills.view']);
 
         $this->setShopAccess($shopA->id, false);
 

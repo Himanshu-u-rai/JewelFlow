@@ -46,7 +46,7 @@ class SettingsController extends Controller
             'website'         => 'settings.view',
             'roles'           => '__owner_only__',
             'staff'           => 'staff.view',
-            'audit'           => 'settings.view',
+            'audit'           => 'audit.view',
             'services'        => 'owner-or-manager', // business editions: owner, or manager on their behalf
             'subscription'    => 'owner-or-manager', // plan & bills: same
             'devices'         => 'settings.view',
@@ -98,7 +98,9 @@ class SettingsController extends Controller
         $permissionGroups = collect();
         if ($activeTab === 'roles') {
             $roles = Role::with('permissions')->get();
-            $permissions = Permission::orderBy('group')->orderBy('name')->get();
+            // billing.view is not offered: plan & bills are owner/manager-only by role (owner decision 2026-11-07),
+            // so the switch would do nothing.
+            $permissions = Permission::where('name', '!=', 'billing.view')->orderBy('group')->orderBy('name')->get();
             $permissionGroups = $permissions->groupBy('group');
         }
 

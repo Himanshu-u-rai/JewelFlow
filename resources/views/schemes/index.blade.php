@@ -20,7 +20,7 @@
         subtitle="Manage savings plans and store offers"
     >
         <x-slot:actions>
-            @can('catalog.manage')
+            @can('schemes.manage')
                 <a href="{{ route('schemes.create') }}" class="btn btn-success btn-sm customers-add-btn" aria-label="Create Scheme" title="Create Scheme">
                     <x-icon name="plus" class="w-4 h-4 mr-2" />
                     <span class="customers-add-label">Create Scheme</span>
@@ -33,7 +33,7 @@
         class="content-inner customers-index-page schemes-index-page jf-skeleton-host is-loading"
         data-list-workspace
     >
-        @unless(auth()->user()->can('catalog.manage') || auth()->user()->can('sales.create'))
+        @unless(auth()->user()->can('schemes.manage') || auth()->user()->can('schemes.enroll'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'schemes and enrollments'])
         @endunless
 
@@ -129,7 +129,7 @@
                                     <div class="jf-table-actions">
                                         <a href="{{ route('schemes.show', $scheme) }}" class="jf-row-action jf-row-action--view" data-tip="View" aria-label="View {{ $scheme->name }}"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                         @if($scheme->isGoldSavings())
-                                            @can('sales.create')
+                                            @can('schemes.enroll')
                                                 <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action">
                                                     Enroll
                                                 </a>
@@ -188,7 +188,7 @@
                         <div class="customers-mobile-card__actions">
                             <a href="{{ route('schemes.show', $scheme) }}" class="customers-row-action customers-row-action--primary">View</a>
                             @if($scheme->isGoldSavings())
-                                @can('sales.create')
+                                @can('schemes.enroll')
                                     <a href="{{ route('schemes.enroll.form', $scheme) }}" class="customers-row-action">Enroll</a>
                                 @endcan
                             @endif

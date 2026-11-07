@@ -197,7 +197,7 @@
                                 <h2>Loyalty Points History</h2>
                                 <p>Recent points earned and redeemed for this customer.</p>
                             </div>
-                            <button @click="showAdjust = !showAdjust" type="button" class="customers-show-retailer-secondary-btn" x-text="showAdjust ? 'Cancel' : 'Adjust Points'"></button>
+                            @can('loyalty.adjust')<button @click="showAdjust = !showAdjust" type="button" class="customers-show-retailer-secondary-btn" x-text="showAdjust ? 'Cancel' : 'Adjust Points'"></button>@endcan
                         </div>
 
                         <div x-show="showAdjust" x-cloak class="customers-show-retailer-adjust">

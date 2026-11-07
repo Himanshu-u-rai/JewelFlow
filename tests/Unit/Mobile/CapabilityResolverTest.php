@@ -55,6 +55,9 @@ class CapabilityResolverTest extends TestCase
                 // so the "user has permission" path is actually exercised.
                 'sales.view',
                 'invoices.view',
+                // Own switches since 2026-11-07.
+                'schemes.view',
+                'installments.view',
                 'customers.view',
                 'repairs.view',
                 'cash.view',

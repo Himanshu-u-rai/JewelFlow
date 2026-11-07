@@ -106,7 +106,7 @@ class MobileRbacParityTest extends TestCase
     public function test_capabilities_follow_the_websites_permissions_and_say_why_one_is_off(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $cashier = $this->staffToken($shop, ['sales.view', 'sales.create', 'sales.pos', 'customers.view', 'customers.create', 'repairs.view', 'repairs.create']);
+        $cashier = $this->staffToken($shop, ['sales.view', 'sales.create', 'sales.pos', 'customers.view', 'customers.create', 'repairs.view', 'repairs.create', 'quick_bills.view', 'quick_bills.create', 'installments.view']);
 
         $caps = $this->send($cashier, 'GET', '/api/mobile/bootstrap', [], $shop->id)->assertOk()->json('data.capabilities')
             ?? $this->send($cashier, 'GET', '/api/mobile/bootstrap', [], $shop->id)->json('capabilities');
@@ -141,7 +141,7 @@ class MobileRbacParityTest extends TestCase
             'items_edit' => 'inventory.edit', 'customers' => 'customers.view', 'customers_create' => 'customers.create',
             'suppliers' => 'vendors.view', 'suppliers_manage' => 'vendors.manage', 'pos' => 'sales.pos', 'invoice' => 'sales.view',
             'invoice_payment' => 'sales.create',
-            'quick_bill' => 'sales.view', 'quick_bill_create' => 'sales.create', 'installments' => 'sales.view',
+            'quick_bill' => 'quick_bills.view', 'quick_bill_create' => 'quick_bills.create', 'installments' => 'installments.view',
             'repairs' => 'repairs.view', 'repairs_create' => 'repairs.create', 'repairs_edit' => 'repairs.edit',
             'catalog' => 'catalog.manage', 'dashboard' => 'reports.view', 'returns_approve' => 'returns.approve',
             'devices' => 'settings.view', 'pricing' => 'pricing.update', 'expenses' => 'cash.view',

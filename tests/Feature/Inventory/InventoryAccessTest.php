@@ -62,7 +62,7 @@ class InventoryAccessTest extends TestCase
     }
 
     private const VIEW = ['inventory.view'];
-    private const FULL = ['inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'catalog.manage'];
+    private const FULL = ['inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'catalog.manage', 'categories.manage'];
 
     // ── Cross-shop item isolation ──────────────────────────────────────────
 

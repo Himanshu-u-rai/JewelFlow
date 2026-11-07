@@ -1134,7 +1134,7 @@
                 </section>
 
                 @if($quickBill->status !== \App\Models\QuickBill::STATUS_VOID)
-                    @can('sales.void')
+                    @can('quick_bills.void')
                         <section class="qb-detail-card is-danger">
                             <div class="qb-danger-body">
                                 <h2 class="qb-danger-title">Void quick bill</h2>

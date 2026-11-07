@@ -76,7 +76,7 @@ class SchemeCancelRefundTest extends TestCase
     {
         $this->assertTrue(Route::has('schemes.enrollment.cancel'));
         $route = Route::getRoutes()->getByName('schemes.enrollment.cancel');
-        $this->assertContains('can:sales.void', $route->gatherMiddleware());
+        $this->assertContains('can:schemes.cancel', $route->gatherMiddleware());
     }
 
     public function test_cancel_refunds_contributions_excluding_bonus(): void

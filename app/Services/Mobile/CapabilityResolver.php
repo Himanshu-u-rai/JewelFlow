@@ -49,8 +49,8 @@ class CapabilityResolver
             suppliers:    $gate('suppliers', 'vendors', 'vendors.view'),
             purchases:    $gate('purchases', null, 'inventory.view'),
             pos:          $gate('pos', 'pos', 'sales.pos'),
-            // The web: quick-bills list = sales.view, create = sales.create.
-            quick_bill:   $quickBill('quick_bill', 'sales.view'),
+            // The web: quick-bills list = quick_bills.view, create = quick_bills.create.
+            quick_bill:   $quickBill('quick_bill', 'quick_bills.view'),
             invoice:      $gate('invoice', 'invoices', 'sales.view'),
             repairs:      $gate('repairs', 'repairs', 'repairs.view'),
             expenses:     $gate('expenses', null, 'cash.view'),
@@ -60,9 +60,9 @@ class CapabilityResolver
             // The scanner looks tags up for stock or for a sale (the lookup-item gate:
             // inventory.view or sales.pos, as the web POS's tag lookup).
             scanner:      $user->can('lookup-item') ? true : $this->off('scanner', ['reason' => 'permission']),
-            schemes:      $gate('schemes', 'schemes', null),
+            schemes:      $gate('schemes', 'schemes', 'schemes.view'),
             loyalty:      $gate('loyalty', 'loyalty', null),
-            installments: $gate('installments', 'installments', 'sales.view'),
+            installments: $gate('installments', 'installments', 'installments.view'),
             cashbook:        $this->cashbookGate('cashbook', $user, 'cash.view'),
             cashbook_create: $this->cashbookGate('cashbook_create', $user, 'cash.create'),
             items_create:    $gate('items_create', 'inventory', 'inventory.create'),
@@ -70,7 +70,7 @@ class CapabilityResolver
             repairs_edit:    $gate('repairs_edit', 'repairs', 'repairs.edit'),
             suppliers_manage: $gate('suppliers_manage', 'vendors', 'vendors.manage'),
             devices:         $gate('devices', null, 'settings.view'),
-            quick_bill_create: $quickBill('quick_bill_create', 'sales.create'),
+            quick_bill_create: $quickBill('quick_bill_create', 'quick_bills.create'),
             customers_create:  $gate('customers_create', 'customers', 'customers.create'),
             repairs_create:    $gate('repairs_create', 'repairs', 'repairs.create'),
             items_edit:        $gate('items_edit', 'inventory', 'inventory.edit'),

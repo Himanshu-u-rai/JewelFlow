@@ -165,7 +165,7 @@ class ProductEditionGateTest extends TestCase
         [$user, $shop] = $this->createManufacturerTenant();
         $product = $this->makeProduct($shop->id);
         $role = \App\Models\Role::withoutTenant()->findOrFail($user->role_id);
-        $role->permissions()->sync(\App\Models\Permission::where('name', 'catalog.manage')->pluck('id'));
+        $role->permissions()->sync(\App\Models\Permission::where('name', 'categories.manage')->pluck('id'));
         $this->actingAs($user);
 
         // inventory.view was stripped, so read actions are forbidden...

@@ -255,16 +255,16 @@ class QuickBillToggleTest extends TestCase
         $resolver = app(CapabilityResolver::class);
 
         $cashierNoSales = $this->makeUser($shop, 'cashier');
-        $cashierWithSales = $this->makeUser($shop, 'clerk', ['sales.view', 'sales.create']);
+        $cashierWithSales = $this->makeUser($shop, 'clerk', ['quick_bills.view', 'quick_bills.create']);
 
-        // The web's quick-bill routes: the list needs sales.view, a new bill sales.create.
+        // The web's quick-bill routes: the list needs quick_bills.view, a new bill quick_bills.create.
         [$noSales, $withSales] = TenantContext::runFor($shop->id, fn () => [
             $resolver->resolve($shop->fresh(), $cashierNoSales),
             $resolver->resolve($shop->fresh(), $cashierWithSales),
         ]);
 
-        $this->assertFalse($noSales->quick_bill, 'enabled feature still gated by sales.view');
-        $this->assertFalse($noSales->quick_bill_create, 'and a new bill by sales.create');
+        $this->assertFalse($noSales->quick_bill, 'enabled feature still gated by quick_bills.view');
+        $this->assertFalse($noSales->quick_bill_create, 'and a new bill by quick_bills.create');
         $this->assertTrue($withSales->quick_bill);
         $this->assertTrue($withSales->quick_bill_create);
     }

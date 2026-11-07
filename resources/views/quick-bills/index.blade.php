@@ -5,7 +5,7 @@
         subtitle="A flexible mini bill register, separate from your main invoices."
     >
         <x-slot:actions>
-            @can('sales.create')
+            @can('quick_bills.create')
                 <a href="{{ route('quick-bills.create') }}" class="qb-new-btn">
                     <x-icon name="plus" stroke-width="2.2" />
                     <span>New Quick Bill</span>
@@ -1045,7 +1045,7 @@
         x-effect="document.body.style.overflow = filterOpen ? 'hidden' : ''"
         @keydown.escape.window="filterOpen = false"
     >
-        @unless(auth()->user()->can('sales.create'))
+        @unless(auth()->user()->can('quick_bills.create'))
             @include('partials.view-only-banner', ['permission' => 'sales.create', 'message' => 'creating quick bills'])
         @endunless
 

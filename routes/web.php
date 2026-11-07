@@ -487,13 +487,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // below). These create/show/edit routes have no controller methods/views — a
     // direct URL hit used to 500. They are kept (names preserved for safety) but
     // now redirect to the index instead, with the same permission gate.
-    Route::get('/categories/create', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('categories.create');
-    Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->middleware('can:catalog.manage')->name('categories.store');
+    Route::get('/categories/create', fn () => redirect()->route('categories.index'))->middleware('can:categories.manage')->name('categories.create');
+    Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->middleware('can:categories.manage')->name('categories.store');
     Route::get('/categories/{category}', fn () => redirect()->route('categories.index'))->middleware('can:inventory.view')->name('categories.show');
-    Route::get('/categories/{category}/edit', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('categories.edit');
-    Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:catalog.manage')->name('categories.update');
-    Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:catalog.manage');
-    Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('categories.destroy');
+    Route::get('/categories/{category}/edit', fn () => redirect()->route('categories.index'))->middleware('can:categories.manage')->name('categories.edit');
+    Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:categories.manage')->name('categories.update');
+    Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:categories.manage');
+    Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('can:categories.manage')->name('categories.destroy');
 
     // Sub-categories are managed inline on the unified categories index page.
     // index/create/show/edit have no controller methods (a direct URL hit used
@@ -502,13 +502,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // methods, params and permission gates are all unchanged. The index carries
     // the safe ?q search term through so a bookmarked search still lands right.
     Route::get('/sub-categories', fn (\Illuminate\Http\Request $request) => redirect()->route('categories.index', $request->only('q')))->middleware('can:inventory.view')->name('sub-categories.index');
-    Route::get('/sub-categories/create', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('sub-categories.create');
-    Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('can:catalog.manage')->name('sub-categories.store');
+    Route::get('/sub-categories/create', fn () => redirect()->route('categories.index'))->middleware('can:categories.manage')->name('sub-categories.create');
+    Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('can:categories.manage')->name('sub-categories.store');
     Route::get('/sub-categories/{sub_category}', fn () => redirect()->route('categories.index'))->middleware('can:inventory.view')->name('sub-categories.show');
-    Route::get('/sub-categories/{sub_category}/edit', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('sub-categories.edit');
-    Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage')->name('sub-categories.update');
-    Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage');
-    Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('sub-categories.destroy');
+    Route::get('/sub-categories/{sub_category}/edit', fn () => redirect()->route('categories.index'))->middleware('can:categories.manage')->name('sub-categories.edit');
+    Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:categories.manage')->name('sub-categories.update');
+    Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:categories.manage');
+    Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('can:categories.manage')->name('sub-categories.destroy');
 
     Route::get('/api/sub-categories', function (\Illuminate\Http\Request $request) {
         $shopId = auth()->user()->shop_id;
@@ -522,13 +522,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     })->middleware('can:inventory.view')->name('api.sub-categories');
 
     Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('products.index');
-    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.create');
-    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.store');
+    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.create');
+    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.store');
     Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('products.show');
-    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.edit');
-    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.update');
-    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:catalog.manage']);
-    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.destroy');
+    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.edit');
+    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.update');
+    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:categories.manage']);
+    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware(['edition:manufacturer', 'can:categories.manage'])->name('products.destroy');
 
     // ======= LIVE SEARCH SUGGESTIONS =======
     Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->middleware('can:inventory.view')->name('search.suggestions');
@@ -813,9 +813,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
-    })->middleware('can:settings.view');
+    })->middleware('can:audit.view');
     Route::get('/settings/audit/export', [SettingsController::class, 'exportAudit'])
-        ->middleware('can:settings.view')->name('settings.audit.export');
+        ->middleware('can:audit.view')->name('settings.audit.export');
 
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
     // Phase 1 pilot — Sales / Invoice Register screen.
@@ -936,34 +936,34 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // quickbill.enabled blocks the whole feature when the owner toggles it off.
     Route::middleware('quickbill.enabled')->group(function () {
         Route::get('/quick-bills', [QuickBillController::class, 'index'])
-            ->middleware('can:sales.view')
+            ->middleware('can:quick_bills.view')
             ->name('quick-bills.index');
         Route::get('/quick-bills/create', [QuickBillController::class, 'create'])
-            ->middleware('can:sales.create')
+            ->middleware('can:quick_bills.create')
             ->name('quick-bills.create');
         Route::post('/quick-bills', [QuickBillController::class, 'store'])
-            ->middleware('can:sales.create')
+            ->middleware('can:quick_bills.create')
             ->name('quick-bills.store');
         Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
-            ->middleware('can:sales.view')
+            ->middleware('can:quick_bills.view')
             ->name('quick-bills.show');
         Route::get('/quick-bills/{quickBill}/edit', [QuickBillController::class, 'edit'])
-            ->middleware('can:sales.create')
+            ->middleware('can:quick_bills.create')
             ->name('quick-bills.edit');
         Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-            ->middleware('can:sales.create')
+            ->middleware('can:quick_bills.create')
             ->name('quick-bills.update');
         Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-            ->middleware('can:sales.void')
+            ->middleware('can:quick_bills.void')
             ->name('quick-bills.void');
         // S3-04: 'nocache' for the same (corrected) reason as invoices.print —
         // both blades inline the signature, and no-store covers the private
         // caches that `private` permits. Not a shared-cache fix.
         Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
-            ->middleware(['can:sales.view', 'nocache'])
+            ->middleware(['can:quick_bills.view', 'nocache'])
             ->name('quick-bills.print');
         Route::get('/quick-bills/{quickBill}/print/original', [QuickBillController::class, 'printOriginal'])
-            ->middleware(['can:sales.view', 'nocache'])
+            ->middleware(['can:quick_bills.view', 'nocache'])
             ->name('quick-bills.print-original');
     });
 
@@ -1015,38 +1015,38 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/vendors/{vendor}/reactivate', [VendorController::class, 'reactivate'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.reactivate');
 
     // --- Schemes & Offers (reuse catalog.manage — no dedicated schemes permission in seed) ---
-    Route::get('/schemes', [SchemeController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.index');
-    Route::get('/schemes/create', [SchemeController::class, 'create'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.create');
-    Route::post('/schemes', [SchemeController::class, 'store'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.store');
-    Route::get('/schemes/{scheme}', [SchemeController::class, 'show'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.show');
-    Route::get('/schemes/{scheme}/edit', [SchemeController::class, 'edit'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.edit');
-    Route::put('/schemes/{scheme}', [SchemeController::class, 'update'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.update');
-    Route::delete('/schemes/{scheme}', [SchemeController::class, 'destroy'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.destroy');
+    Route::get('/schemes', [SchemeController::class, 'index'])->middleware(['edition:retailer', 'can:schemes.view'])->name('schemes.index');
+    Route::get('/schemes/create', [SchemeController::class, 'create'])->middleware(['edition:retailer', 'can:schemes.manage'])->name('schemes.create');
+    Route::post('/schemes', [SchemeController::class, 'store'])->middleware(['edition:retailer', 'can:schemes.manage'])->name('schemes.store');
+    Route::get('/schemes/{scheme}', [SchemeController::class, 'show'])->middleware(['edition:retailer', 'can:schemes.view'])->name('schemes.show');
+    Route::get('/schemes/{scheme}/edit', [SchemeController::class, 'edit'])->middleware(['edition:retailer', 'can:schemes.manage'])->name('schemes.edit');
+    Route::put('/schemes/{scheme}', [SchemeController::class, 'update'])->middleware(['edition:retailer', 'can:schemes.manage'])->name('schemes.update');
+    Route::delete('/schemes/{scheme}', [SchemeController::class, 'destroy'])->middleware(['edition:retailer', 'can:schemes.manage'])->name('schemes.destroy');
     // Enrollment + payment recording — customer-facing actions, sales-level access.
-    Route::get('/schemes/{scheme}/enroll', [SchemeController::class, 'enrollForm'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enroll.form');
-    Route::post('/schemes/{scheme}/enroll', [SchemeController::class, 'enroll'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enroll');
-    Route::get('/scheme-enrollments/{enrollment}', [SchemeController::class, 'enrollmentShow'])->middleware(['edition:retailer', 'can:sales.view'])->name('schemes.enrollment.show');
-    Route::post('/scheme-enrollments/{enrollment}/pay', [SchemeController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.pay');
-    Route::post('/scheme-enrollments/{enrollment}/redeem', [SchemeController::class, 'redeemToInvoice'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.redeem');
-    Route::post('/scheme-enrollments/{enrollment}/cancel', [SchemeController::class, 'cancelEnrollment'])->middleware(['edition:retailer', 'can:sales.void'])->name('schemes.enrollment.cancel');
+    Route::get('/schemes/{scheme}/enroll', [SchemeController::class, 'enrollForm'])->middleware(['edition:retailer', 'can:schemes.enroll'])->name('schemes.enroll.form');
+    Route::post('/schemes/{scheme}/enroll', [SchemeController::class, 'enroll'])->middleware(['edition:retailer', 'can:schemes.enroll'])->name('schemes.enroll');
+    Route::get('/scheme-enrollments/{enrollment}', [SchemeController::class, 'enrollmentShow'])->middleware(['edition:retailer', 'can:schemes.view'])->name('schemes.enrollment.show');
+    Route::post('/scheme-enrollments/{enrollment}/pay', [SchemeController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:schemes.enroll'])->name('schemes.enrollment.pay');
+    Route::post('/scheme-enrollments/{enrollment}/redeem', [SchemeController::class, 'redeemToInvoice'])->middleware(['edition:retailer', 'can:schemes.enroll'])->name('schemes.enrollment.redeem');
+    Route::post('/scheme-enrollments/{enrollment}/cancel', [SchemeController::class, 'cancelEnrollment'])->middleware(['edition:retailer', 'can:schemes.cancel'])->name('schemes.enrollment.cancel');
 
     // --- Loyalty Points (read = customers.view; adjust = customers.edit; the two redirects don't need stricter gating since they redirect to customer views which are themselves gated) ---
     Route::get('/loyalty', fn () => redirect()->route('customers.index', ['view' => 'loyalty']))->middleware(['edition:retailer', 'can:customers.view'])->name('loyalty.index');
     Route::get('/loyalty/{customer}/history', fn (\App\Models\Customer $customer) => redirect()->route('customers.show', $customer))->middleware(['edition:retailer', 'can:customers.view'])->name('loyalty.history');
-    Route::get('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjustForm'])->middleware(['edition:retailer', 'can:customers.edit'])->name('loyalty.adjust.form');
-    Route::post('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjust'])->middleware(['edition:retailer', 'can:customers.edit'])->name('loyalty.adjust');
+    Route::get('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjustForm'])->middleware(['edition:retailer', 'can:loyalty.adjust'])->name('loyalty.adjust.form');
+    Route::post('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjust'])->middleware(['edition:retailer', 'can:loyalty.adjust'])->name('loyalty.adjust');
 
     // --- EMI / Installments (sales.* — installments are a sales settlement option) ---
-    Route::get('/installments', [InstallmentController::class, 'index'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.index');
-    Route::get('/installments/create', [InstallmentController::class, 'create'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.create');
-    Route::post('/installments', [InstallmentController::class, 'store'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.store');
+    Route::get('/installments', [InstallmentController::class, 'index'])->middleware(['edition:retailer', 'can:installments.view'])->name('installments.index');
+    Route::get('/installments/create', [InstallmentController::class, 'create'])->middleware(['edition:retailer', 'can:installments.create'])->name('installments.create');
+    Route::post('/installments', [InstallmentController::class, 'store'])->middleware(['edition:retailer', 'can:installments.create'])->name('installments.store');
     // Discard the POS-EMI draft when the cashier cancels the EMI form (declared
     // before the {plan} wildcard so it isn't captured as a plan id).
-    Route::post('/installments/discard-draft', [InstallmentController::class, 'discardDraft'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.discard-draft');
-    Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.show');
-    Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.pay');
-    Route::post('/installments/{plan}/default', [InstallmentController::class, 'markDefaulted'])->middleware(['edition:retailer', 'can:sales.void'])->name('installments.default');
-    Route::get('/installments/{plan}/payments/{payment}/receipt', [InstallmentController::class, 'receipt'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.receipt');
+    Route::post('/installments/discard-draft', [InstallmentController::class, 'discardDraft'])->middleware(['edition:retailer', 'can:installments.create'])->name('installments.discard-draft');
+    Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware(['edition:retailer', 'can:installments.view'])->name('installments.show');
+    Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:installments.collect'])->name('installments.pay');
+    Route::post('/installments/{plan}/default', [InstallmentController::class, 'markDefaulted'])->middleware(['edition:retailer', 'can:installments.default'])->name('installments.default');
+    Route::get('/installments/{plan}/payments/{payment}/receipt', [InstallmentController::class, 'receipt'])->middleware(['edition:retailer', 'can:installments.view'])->name('installments.receipt');
 
     // --- Reorder Alerts (inventory.view to see; inventory.edit to mutate rules) ---
     Route::get('/reorder', [ReorderController::class, 'index'])->middleware(['edition:retailer', 'can:inventory.view'])->name('reorder.index');

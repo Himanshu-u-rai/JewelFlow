@@ -2374,8 +2374,8 @@
                 <span class="nav-icon"><x-icon name="users" size="16" /></span> {{ __('Staff') }}
             </a>
             @endcan
-            {{-- Audit Log — settings.view (sensitive history) --}}
-            @can('settings.view')
+            {{-- Audit Log — its own permission (audit.view) --}}
+            @can('audit.view')
             <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" class="nav-item {{ $activeTab === 'audit' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="clock" size="16" /></span> {{ __('Audit Log') }}
             </a>

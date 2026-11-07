@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-page-header title="Product Catalog" subtitle="Manage your jewellery product templates">
         <x-slot:actions>
-            @can('catalog.manage')
+            @can('categories.manage')
             <a href="{{ route('products.create') }}" class="btn btn-primary btn-sm">
                 <x-icon name="plus" class="w-4 h-4 mr-2" />
                 Add Product
@@ -12,7 +12,7 @@
 
     <div class="content-inner jf-skeleton-host is-loading" data-list-workspace>
 
-        @unless(auth()->user()->can('catalog.manage'))
+        @unless(auth()->user()->can('categories.manage'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'product catalog management'])
         @endunless
 <!-- Search -->
@@ -46,7 +46,7 @@
                 <x-icon name="package" class="w-16 h-16 mx-auto text-gray-300 mb-4" />
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">No Products Yet</h3>
                 <p class="text-gray-500 mb-6">Create your first product template</p>
-                @can('catalog.manage')
+                @can('categories.manage')
                 <a href="{{ route('products.create') }}"
                    class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium">
                     Add First Product
@@ -116,7 +116,7 @@
                                         @endcan
                                         <a href="{{ route('products.show', $product) }}"
                                            class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
-                                        @can('catalog.manage')
+                                        @can('categories.manage')
                                         <a href="{{ route('products.edit', $product) }}"
                                            class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="square-pen" size="16" /><span class="jf-sr-only">Edit</span></a>
                                         @endcan

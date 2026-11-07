@@ -24,10 +24,12 @@
                     <x-icon name="star" size="14" />
                     Loyalty Points
                 </button>
+                @can('installments.view')
                 <button type="button" @click="view = 'emi'" aria-pressed="{{ $viewDefault === 'emi' ? 'true' : 'false' }}" :aria-pressed="view === 'emi'" :class="view === 'emi' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
                     <x-icon name="credit-card" size="14" />
                     EMI / Installments
                 </button>
+                @endcan
                 <button type="button" @click="view = 'occasions'" aria-pressed="{{ $viewDefault === 'occasions' ? 'true' : 'false' }}" :aria-pressed="view === 'occasions'" :class="view === 'occasions' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
                     <x-icon name="calendar" size="14" />
                     Occasions
@@ -407,7 +409,9 @@
                                 <td class="px-6 py-4 text-center">
                                     <div class="jf-table-actions jf-table-actions--center">
                                         <a href="{{ route('customers.show', $lCustomer) }}" class="jf-row-action jf-row-action--view" data-tip="View Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">View Profile</span></a>
+                                        @can('loyalty.adjust')
                                         <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="jf-row-action jf-row-action--edit" data-tip="Adjust points"><x-icon name="sliders-vertical" size="16" /><span class="jf-sr-only">Adjust points</span></a>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -441,7 +445,9 @@
 
                             <div class="customers-mobile-card__actions">
                                 <a href="{{ route('customers.show', $lCustomer) }}" class="customers-row-action customers-row-action--primary">View Profile</a>
+                                @can('loyalty.adjust')
                                 <a href="{{ route('loyalty.adjust.form', $lCustomer) }}" class="customers-row-action">Adjust</a>
+                                @endcan
                             </div>
                         </article>
                     @empty
@@ -496,7 +502,7 @@
                                 @endif
                             </form>
                         </x-responsive-filter-panel>
-                        @can('sales.create')
+                        @can('installments.create')
                             <a href="{{ route('installments.create') }}" class="btn btn-primary btn-sm customers-directory-apply">
                                 <x-icon name="plus" size="14" class="mr-1.5" />
                                 Create EMI Plan

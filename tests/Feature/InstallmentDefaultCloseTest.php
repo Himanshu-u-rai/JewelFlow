@@ -72,8 +72,8 @@ class InstallmentDefaultCloseTest extends TestCase
     {
         $this->assertTrue(Route::has('installments.default'));
         $route = Route::getRoutes()->getByName('installments.default');
-        $this->assertContains('can:sales.void', $route->gatherMiddleware(),
-            'write-off must be gated on sales.void (manager/owner level)');
+        $this->assertContains('can:installments.default', $route->gatherMiddleware(),
+            'write-off must be gated on installments.default (its own switch since 2026-11-07)');
     }
 
     public function test_mark_defaulted_closes_plan_and_preserves_writeoff(): void

@@ -21,7 +21,7 @@
             >
                 <x-icon name="chevron-down" class="w-4 h-4 categories-mobile-toggle-icon" />
             </button>
-            @can('catalog.manage')
+            @can('categories.manage')
             <button
                 data-category-id="{{ $category->id }}"
                 data-category-name="{{ $category->name }}"
@@ -64,7 +64,7 @@
                 @foreach($category->subCategories as $sub)
                     <li class="group categories-sub-row">
                         <span class="min-w-0 text-sm font-medium text-slate-700">{{ $sub->name }}</span>
-                        @can('catalog.manage')
+                        @can('categories.manage')
                         <div class="flex shrink-0 items-center gap-1 categories-sub-actions">
                             <button
                                 data-sub-id="{{ $sub->id }}"

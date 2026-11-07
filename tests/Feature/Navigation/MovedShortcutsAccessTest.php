@@ -46,7 +46,7 @@ class MovedShortcutsAccessTest extends TestCase
     private const MOVED = [
         'report.closing' => ['reports.daily_closing', 'reports.view'],
         'historical.index' => ['historical.view', 'sales.view'],
-        'installments.index' => ['sales.view', 'customers.view'],
+        'installments.index' => ['installments.view', 'customers.view'],
         'export.index' => ['reports.export', 'settings.view'],
         'imports.index' => ['imports.manage', 'settings.view'],
     ];
@@ -233,7 +233,7 @@ class MovedShortcutsAccessTest extends TestCase
 
         // Customers: the sidebar gave up Installments because this tab is here.
         $this->assertStringContainsString('EMI / Installments',
-            $this->between($this->pageAs($user, ['customers.view'], route('customers.index')), 'customers-view-toggle', '</div>'));
+            $this->between($this->pageAs($user, ['customers.view', 'installments.view'], route('customers.index')), 'customers-view-toggle', '</div>'));
     }
 
     public function test_invoices_header_and_sales_sidebar_offer_the_moved_links_by_their_own_permissions(): void
@@ -330,7 +330,7 @@ class MovedShortcutsAccessTest extends TestCase
     public function test_quick_bill_view_only_staff_keep_the_register_sidebar_destination(): void
     {
         [$staff] = $this->createRetailerTenant();
-        $page = $this->pageAs($staff, ['sales.view'], route('quick-bills.index'));
+        $page = $this->pageAs($staff, ['quick_bills.view'], route('quick-bills.index'));
         $sidebar = $this->sidebarNav($page);
         $this->assertStringContainsString($this->href('quick-bills.index'), $sidebar);
         $this->assertStringNotContainsString($this->href('quick-bills.create'), $sidebar);
@@ -341,7 +341,7 @@ class MovedShortcutsAccessTest extends TestCase
     public function test_quick_bill_create_only_staff_are_not_offered_the_forbidden_register(): void
     {
         [$staff] = $this->createRetailerTenant();
-        $page = $this->pageAs($staff, ['sales.create'], route('quick-bills.create'));
+        $page = $this->pageAs($staff, ['quick_bills.create'], route('quick-bills.create'));
         $this->assertStringContainsString($this->href('quick-bills.create'), $this->sidebarNav($page));
         $this->assertStringNotContainsString($this->href('quick-bills.index'), $this->pageHeader($page));
         $this->get(route('quick-bills.index'))->assertForbidden();

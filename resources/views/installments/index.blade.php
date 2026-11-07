@@ -21,7 +21,7 @@
         subtitle="Track installment plans and EMI payments"
     >
         <x-slot:actions>
-            @can('sales.create')
+            @can('installments.create')
                 <a href="{{ route('installments.create') }}" class="btn btn-success btn-sm customers-add-btn installments-create-btn">
                     <x-icon name="plus" class="w-4 h-4 mr-2" />
                     <span class="installments-create-label-full">Create EMI Plan</span>

@@ -230,25 +230,25 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             // Finalize a POS-EMI draft into a plan, record a monthly EMI payment,
             // and discard an abandoned draft. Reuse the web InstallmentService.
             Route::post('/installments/finalize', [InstallmentController::class, 'finalizeDraft'])
-                ->middleware('can:sales.create')
+                ->middleware('can:installments.create')
                 ->name('mobile.v1.installments.finalize');
 
             Route::post('/installments/discard-draft', [InstallmentController::class, 'discardDraft'])
-                ->middleware('can:sales.create')
+                ->middleware('can:installments.create')
                 ->name('mobile.v1.installments.discard_draft');
 
             Route::post('/installments/{plan}/pay', [InstallmentController::class, 'pay'])
-                ->middleware('can:sales.create')
+                ->middleware('can:installments.collect')
                 ->name('mobile.v1.installments.pay');
 
         });
 
         // EMI read endpoints (no idempotency needed) — gated to sales.view.
         Route::get('/installments', [InstallmentController::class, 'index'])
-            ->middleware('can:sales.view')
+            ->middleware('can:installments.view')
             ->name('mobile.v1.installments.index');
 
         Route::get('/installments/{plan}', [InstallmentController::class, 'show'])
-            ->middleware('can:sales.view')
+            ->middleware('can:installments.view')
             ->name('mobile.v1.installments.show');
     });

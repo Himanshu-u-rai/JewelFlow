@@ -199,22 +199,22 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // when the owner has turned the feature off for the shop.
         Route::middleware('quickbill.enabled')->group(function () {
             Route::get('/quick-bills', [QuickBillController::class, 'index'])
-                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+                ->middleware(['throttle:api-pos-read', 'can:quick_bills.view']);
             Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
-                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+                ->middleware(['throttle:api-pos-read', 'can:quick_bills.view']);
             Route::get('/quick-bills/{quickBill}/template', [QuickBillController::class, 'template'])
-                ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
+                ->middleware(['throttle:api-pos-read', 'can:quick_bills.view', 'nocache']);
             // The app sends X-Idempotency-Key on create; without this the same
             // request twice booked two bills. After `can:` so that a refused
             // user stakes no claim. Optional: older builds send no key.
             Route::post('/quick-bills', [QuickBillController::class, 'store'])
-                ->middleware(['throttle:api-pos-sale', 'can:sales.create', 'mobile.idempotency:optional']);
+                ->middleware(['throttle:api-pos-sale', 'can:quick_bills.create', 'mobile.idempotency:optional']);
             // An edit is retried too. Without the key's protection a late retry of
             // an earlier edit was applied again and undid the edit made since.
             Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-                ->middleware(['throttle:api-pos-sale', 'can:sales.create', 'mobile.idempotency:optional']);
+                ->middleware(['throttle:api-pos-sale', 'can:quick_bills.create', 'mobile.idempotency:optional']);
             Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-                ->middleware(['throttle:api-pos-sale', 'can:sales.void']);
+                ->middleware(['throttle:api-pos-sale', 'can:quick_bills.void']);
         });
 
         // Catalog Sharing — view = catalog.manage (catalog is owner/manager only by default).

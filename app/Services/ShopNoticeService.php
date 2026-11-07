@@ -36,7 +36,7 @@ class ShopNoticeService
             'href' => match ($warning['key']) {
                 'repair_backlog' => $user->can('repairs.view') ? route('repairs.index') : null,
                 'low_stock' => $canStock ? route('inventory.items.index') : null,
-                'overdue_emis' => $user->can('sales.view') ? route('installments.index', ['status' => 'active']) : null,
+                'overdue_emis' => $user->can('installments.view') ? route('installments.index', ['status' => 'active']) : null,
                 default => null,
             },
         ], self::warnings($shopId, $isRetailer));

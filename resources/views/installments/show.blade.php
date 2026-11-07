@@ -208,6 +208,7 @@
 
             <aside class="installments-show-rail">
                 @if($plan->isActive())
+                    @can('installments.collect')
                     <section class="installments-show-card installments-show-payment-card-main">
                         <div class="installments-show-card-head is-compact">
                             <div>
@@ -265,8 +266,9 @@
                             <button type="submit" class="installments-show-primary">Record payment</button>
                         </form>
                     </section>
+                    @endcan
 
-                    @can('sales.void')
+                    @can('installments.default')
                         <section class="installments-show-card installments-show-danger-card">
                             <div class="installments-show-card-head is-compact">
                                 <div>

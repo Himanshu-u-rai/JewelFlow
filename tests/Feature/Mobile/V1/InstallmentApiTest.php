@@ -181,9 +181,9 @@ class InstallmentApiTest extends TestCase
     public function test_create_requires_sales_create_permission(): void
     {
         [$user, $shop, $draft] = $this->setupDraft();
-        // Revoke sales.create — only sales.view remains.
+        // Revoke installments.create (creating an EMI plan's own switch).
         TenantContext::runFor((int) $shop->id, function () use ($user) {
-            \App\Models\Role::withoutTenant()->findOrFail($user->role_id)->revokePermission('sales.create');
+            \App\Models\Role::withoutTenant()->findOrFail($user->role_id)->revokePermission('installments.create');
         });
         Sanctum::actingAs($user->fresh());
         TenantContext::set((int) $shop->id);

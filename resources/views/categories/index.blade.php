@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-stock-workspace-header active="categories" class="categories-page-header">
-        @can('catalog.manage')
+        @can('categories.manage')
         <button onclick="openAddCategoryModal()" aria-label="{{ __('Add Category') }}"
             class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
             <x-icon name="plus" class="w-4 h-4 mr-2" />
@@ -12,7 +12,7 @@
 
     <div class="content-inner categories-index-page stock-tool-page">
         @include('inventory.items.partials.navigation', ['placement' => 'body', 'active' => 'categories'])
-        @unless(auth()->user()->can('catalog.manage'))
+        @unless(auth()->user()->can('categories.manage'))
             @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'category management'])
         @endunless
         <section class="stock-tool-board" aria-label="Category directory">
@@ -44,7 +44,7 @@
                     <x-icon name="tag" size="28" />
                     <h2>{{ __('No Categories Yet') }}</h2>
                     <p>{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
-                    @can('catalog.manage')
+                    @can('categories.manage')
                         <button onclick="openAddCategoryModal()" class="categories-primary-action btn btn-primary !min-h-[44px] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">{{ __('Add First Category') }}</button>
                     @endcan
                 </div>
