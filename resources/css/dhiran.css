@@ -1,16 +1,10 @@
+@import "./dhiran-tokens.css";
+
 /* Migrated Dhiran page styles from Blade. Keep centralized here. */
 
 /* ---- migrated from resources/views/components/dhiran-layout.blade.php ---- */
 
-        :root {
-            --dh-gold: #f4a300;
-            --dh-gold-deep: #d98b00;
-            --dh-ink: #0f172a;
-            --dh-muted: #64748b;
-            --dh-line: #ded6c8;
-            --dh-bg: #f3f0e8;
-            --dh-ease: cubic-bezier(0.23, 1, 0.32, 1);
-        }
+
         * { box-sizing: border-box; }
         body {
             margin: 0;
@@ -22,7 +16,7 @@
         .dh-sidebar {
             width: 248px;
             flex-shrink: 0;
-            background: #fffaf1;
+            background: var(--dh-header);
             border-right: 1px solid var(--dh-line);
             display: flex;
             flex-direction: column;
@@ -44,9 +38,9 @@
         .dh-brand-mark {
             width: 34px; height: 34px;
             border-radius: 10px;
-            background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
+            background: var(--dh-highlight);
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 700; font-size: 17px;
+            color: var(--dh-on-highlight); font-weight: 700; font-size: 17px;
         }
         .dh-brand-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
         .dh-brand-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
@@ -55,16 +49,16 @@
             display: flex; align-items: center; gap: 11px;
             padding: 10px 12px;
             border-radius: 10px;
-            color: #334155;
+            color: var(--dh-ink-soft);
             text-decoration: none;
             font-size: 14px; font-weight: 600;
             transition: background 160ms var(--dh-ease), color 160ms var(--dh-ease);
         }
         .dh-nav-link svg { width: 18px; height: 18px; flex-shrink: 0; }
         @media (hover: hover) and (pointer: fine) {
-            .dh-nav-link:hover { background: #fff7ea; color: var(--dh-gold-deep); }
+            .dh-nav-link:hover { background: var(--dh-accent-soft); color: var(--dh-accent); }
         }
-        .dh-nav-link.active { background: #fff3df; color: var(--dh-gold-deep); }
+        .dh-nav-link.active { background: var(--dh-accent-soft); color: var(--dh-accent); }
         .dh-foot { border-top: 1px solid var(--dh-line); padding-top: 12px; }
         .dh-foot-user { font-size: 13px; font-weight: 700; }
         .dh-foot-shop { font-size: 11px; color: var(--dh-muted); margin-bottom: 8px; }
@@ -73,15 +67,15 @@
             padding: 8px 12px;
             border: 1px solid var(--dh-line);
             border-radius: 9px;
-            background: #fffdf8;
-            color: #475569;
+            background: var(--dh-raised);
+            color: var(--dh-ink-soft);
             font-size: 13px; font-weight: 600;
             cursor: pointer;
             transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease);
         }
         .dh-logout:active { transform: scale(0.97); }
         @media (hover: hover) and (pointer: fine) {
-            .dh-logout:hover { background: #f8f4ec; }
+            .dh-logout:hover { background: var(--dh-muted-surface); }
         }
         .dh-main { flex: 1; min-width: 0; padding: 26px 30px; }
         .dh-flash {
@@ -90,11 +84,11 @@
             margin-bottom: 18px;
             font-size: 14px; font-weight: 600;
         }
-        .dh-flash-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-        .dh-flash-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .dh-flash-success { background: var(--dh-success-soft); color: var(--dh-success); border: 1px solid var(--dh-success-line); }
+        .dh-flash-error { background: var(--dh-danger-soft); color: var(--dh-danger); border: 1px solid var(--dh-danger-line); }
 
         /* iOS-style drawer easing — slides in fast, settles soft. */
-        :root { --dh-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+
 
         /* Mobile nav toggle: a self-contained floating control (no top bar),
            so it never reads as an empty/duplicate header. Hidden ≥720px. */
@@ -102,14 +96,14 @@
         .dh-menu-toggle {
             align-items: center; justify-content: center;
             width: 42px; height: 42px; border-radius: 12px;
-            border: 1px solid var(--dh-line); background: #fffdf8; color: var(--dh-ink);
-            box-shadow: 0 6px 18px rgba(92, 64, 28, 0.08);
+            border: 1px solid var(--dh-line); background: var(--dh-raised); color: var(--dh-ink);
+            box-shadow: 0 6px 18px color-mix(in srgb, var(--dh-shadow-tint) 8%, transparent);
             cursor: pointer;
             transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease), opacity 160ms var(--dh-ease);
         }
         .dh-menu-toggle:active { transform: scale(0.94); }
         @media (hover: hover) and (pointer: fine) {
-            .dh-menu-toggle:hover { background: #f8f4ec; }
+            .dh-menu-toggle:hover { background: var(--dh-muted-surface); }
         }
         .dh-menu-toggle svg { width: 21px; height: 21px; }
 
@@ -118,20 +112,20 @@
             display: none;
             align-items: center; justify-content: center;
             width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-            border: 1px solid var(--dh-line); background: #fffdf8; color: var(--dh-ink);
+            border: 1px solid var(--dh-line); background: var(--dh-raised); color: var(--dh-ink);
             cursor: pointer;
             transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease);
         }
         .dh-header-toggle:active { transform: scale(0.94); }
         @media (hover: hover) and (pointer: fine) {
-            .dh-header-toggle:hover { background: #f8f4ec; }
+            .dh-header-toggle:hover { background: var(--dh-muted-surface); }
         }
         .dh-header-toggle svg { width: 20px; height: 20px; }
 
         /* Scrim sits behind the drawer; fades with opacity only. */
         .dh-scrim {
             position: fixed; inset: 0; z-index: 40;
-            background: rgba(42, 31, 18, 0.42);
+            background: color-mix(in srgb, var(--dh-scrim-tint) 42%, transparent);
             opacity: 0; pointer-events: none;
             transition: opacity 240ms var(--dh-ease-drawer);
         }
@@ -157,7 +151,7 @@
             .dh-sidebar {
                 position: fixed; top: 0; left: 0; bottom: 0;
                 width: min(82vw, 300px); height: 100dvh; z-index: 50;
-                box-shadow: 0 18px 46px rgba(92, 64, 28, 0.16);
+                box-shadow: 0 18px 46px color-mix(in srgb, var(--dh-shadow-tint) 16%, transparent);
                 transform: translateX(-100%);
                 transition: transform 260ms var(--dh-ease-drawer);
                 will-change: transform;
@@ -177,27 +171,20 @@
 /* ---- migrated from resources/views/dhiran/dashboard.blade.php ---- */
 
         .dhiran-dash {
-            --dd-ink: #0f172a;
-            --dd-muted: #64748b;
-            --dd-gold: #f4a300;
-            --dd-gold-deep: #d98b00;
-            --dd-line: #ded6c8;
-            --dd-card: #ffffff;
-            --dd-shadow: 0 8px 22px rgba(92, 64, 28, 0.055);
+            --dd-ink: var(--dh-ink);
+            --dd-muted: var(--dh-muted);
+            --dd-gold: var(--dh-highlight);
+            --dd-gold-deep: var(--dh-accent);
+            --dd-line: var(--dh-line);
+            --dd-card: var(--dh-card);
+            --dd-shadow: 0 8px 22px color-mix(in srgb, var(--dh-shadow-tint) 5.5%, transparent);
             padding-top: 18px;
         }
     
 
 /* ---- migrated from resources/views/dhiran/create.blade.php ---- */
 
-        :root {
-            --dh-ink: #0f172a;
-            --dh-ink-soft: #334155;
-            --dh-muted: #64748b;
-            --dh-border: #ded6c8;
-            --dh-bg: #f3f0e8;
-            --dh-accent: #d98b00;
-        }
+
         .dh-label {
             display: flex; align-items: center; gap: 6px;
             font-size: 12px; font-weight: 600;
@@ -211,10 +198,10 @@
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
         }
         .dh-input:focus, .dh-select:focus, .dh-textarea:focus {
-            outline: none; border-color: var(--dh-accent); background: #fff;
-            box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12);
+            outline: none; border-color: var(--dh-accent); background: var(--dh-card);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent);
         }
-        .dh-input::placeholder, .dh-textarea::placeholder { color: #9ca3af; font-weight: 400; }
+        .dh-input::placeholder, .dh-textarea::placeholder { color: var(--dh-subtle); font-weight: 400; }
         .dh-select {
             appearance: none; -webkit-appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -236,7 +223,7 @@
         }
         .dh-section-title svg { width: 16px; height: 16px; color: var(--dh-accent); }
         .dh-item-row {
-            background: #f8f4ec;
+            background: var(--dh-muted-surface);
             border: 1px solid var(--dh-border);
             border-radius: 12px;
             padding: 16px;
@@ -247,11 +234,11 @@
             position: absolute; top: 8px; right: 8px;
             width: 28px; height: 28px;
             display: flex; align-items: center; justify-content: center;
-            border: 1px solid #fecaca; border-radius: 8px;
-            background: #fef2f2; color: #dc2626; cursor: pointer;
+            border: 1px solid var(--dh-danger-line); border-radius: 8px;
+            background: var(--dh-danger-soft); color: var(--dh-danger); cursor: pointer;
             transition: background 0.15s;
         }
-        .dh-item-remove:hover { background: #fee2e2; }
+        .dh-item-remove:hover { background: var(--dh-danger-soft); }
         .dh-item-remove svg { width: 14px; height: 14px; }
         .dh-add-item-btn {
             display: inline-flex; align-items: center; gap: 6px;
@@ -260,10 +247,10 @@
             background: transparent; color: var(--dh-accent); cursor: pointer;
             transition: border-color 0.15s, background 0.15s;
         }
-        .dh-add-item-btn:hover { border-color: var(--dh-accent); background: #fffbeb; }
+        .dh-add-item-btn:hover { border-color: var(--dh-accent); background: var(--dh-accent-soft); }
         .dh-add-item-btn svg { width: 14px; height: 14px; }
         .dh-calc-field {
-            background: #fffbeb; border-color: #fde68a;
+            background: var(--dh-accent-soft); border-color: var(--dh-accent-line);
         }
         .dh-summary-row {
             display: flex; justify-content: space-between; align-items: center;
@@ -282,8 +269,8 @@
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             text-align: left; position: relative;
         }
-        .dh-dd-trigger:focus { outline: none; border-color: var(--dh-accent); background: #fff; box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
-        .dh-dd-trigger.open { border-color: var(--dh-accent); background: #fff; box-shadow: 0 0 0 3px rgba(217,139,0,.12); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+        .dh-dd-trigger:focus { outline: none; border-color: var(--dh-accent); background: var(--dh-card); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent); }
+        .dh-dd-trigger.open { border-color: var(--dh-accent); background: var(--dh-card); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
         .dh-dd-trigger::after {
             content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
             width: 16px; height: 16px;
@@ -291,28 +278,28 @@
             background-repeat: no-repeat; background-position: center; transition: transform .15s;
         }
         .dh-dd-trigger.open::after { transform: translateY(-50%) rotate(180deg); }
-        .dh-dd-placeholder { color: #9ca3af; font-weight: 400; }
+        .dh-dd-placeholder { color: var(--dh-subtle); font-weight: 400; }
         .dh-dd-panel {
             display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 18;
-            background: #fff; border: 1.5px solid var(--dh-accent); border-top: none;
+            background: var(--dh-card); border: 1.5px solid var(--dh-accent); border-top: none;
             border-radius: 0 0 10px 10px;
-            box-shadow: 0 12px 28px rgba(92,64,28,.10); max-height: 220px; overflow: hidden;
+            box-shadow: 0 12px 28px color-mix(in srgb, var(--dh-shadow-tint) 10%, transparent); max-height: 220px; overflow: hidden;
         }
         .dh-dd-panel.open { display: block; }
         .dh-dd-search {
             width: 100%; padding: 8px 12px 8px 34px; font-size: 12px; font-weight: 400;
-            border: none; border-bottom: 1px solid #ebe3d6; background: #fbfcfe;
+            border: none; border-bottom: 1px solid var(--dh-line-soft); background: var(--dh-raised);
             color: var(--dh-ink); outline: none;
         }
-        .dh-dd-search::placeholder { color: #9ca3af; }
+        .dh-dd-search::placeholder { color: var(--dh-subtle); }
         .dh-dd-search-icon { position: absolute; left: 12px; top: 8px; color: var(--dh-muted); }
         .dh-dd-list { max-height: 170px; overflow-y: auto; }
         .dh-dd-opt {
             padding: 8px 12px; cursor: pointer; transition: background .1s;
-            border-bottom: 1px solid #ebe3d6;
+            border-bottom: 1px solid var(--dh-line-soft);
         }
         .dh-dd-opt:last-child { border-bottom: none; }
-        .dh-dd-opt:hover, .dh-dd-opt.active { background: #fffbeb; }
+        .dh-dd-opt:hover, .dh-dd-opt.active { background: var(--dh-accent-soft); }
         .dh-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--dh-ink); }
         .dh-dd-opt-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
         .dh-dd-empty { padding: 14px; text-align: center; color: var(--dh-muted); font-size: 12px; }
@@ -323,14 +310,14 @@
             display: flex; align-items: center; gap: 7px;
             width: 100%; padding: 10px 12px;
             border: none; border-top: 1px solid var(--dh-line);
-            background: #fffdf7; color: var(--dh-gold-deep, #d98b00);
+            background: var(--dh-raised); color: var(--dh-accent);
             font-size: 12px; font-weight: 700; cursor: pointer;
         }
-        .dh-dd-add:hover { background: #fff7e6; }
+        .dh-dd-add:hover { background: var(--dh-accent-soft); }
         .dh-borrower-form {
             padding: 12px;
             border-top: 1px solid var(--dh-line);
-            background: #fff;
+            background: var(--dh-card);
         }
         .dh-borrower-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
@@ -338,16 +325,16 @@
         .dh-borrower-input {
             width: 100%; padding: 8px 10px;
             border: 1px solid var(--dh-line); border-radius: 8px;
-            font-size: 12px; background: #fff;
+            font-size: 12px; background: var(--dh-card);
         }
-        .dh-borrower-input:focus { outline: none; border-color: var(--dh-accent, #d98b00); box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
+        .dh-borrower-input:focus { outline: none; border-color: var(--dh-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent); }
         .dh-borrower-input--wide { grid-column: 1 / -1; }
-        .dh-borrower-error { margin: 8px 0 0; color: #b91c1c; font-size: 12px; font-weight: 600; }
+        .dh-borrower-error { margin: 8px 0 0; color: var(--dh-danger); font-size: 12px; font-weight: 600; }
         .dh-borrower-save {
             margin-top: 10px; width: 100%;
             padding: 9px 12px; border: none; border-radius: 9px;
-            background: linear-gradient(135deg, var(--dh-gold, #f4a300), var(--dh-gold-deep, #d98b00));
-            color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+            background: var(--dh-highlight);
+            color: var(--dh-on-highlight); font-size: 13px; font-weight: 700; cursor: pointer;
         }
         .dh-borrower-save:disabled { opacity: .6; cursor: not-allowed; }
     
@@ -355,11 +342,11 @@
 /* ---- migrated from resources/views/dhiran/show.blade.php ---- */
 
         .dhiran-show-root {
-            --ds-ink: #0f172a;
-            --ds-muted: #64748b;
-            --ds-border: #ded6c8;
-            --ds-gold: #d98b00;
-            --ds-shadow: 0 8px 22px rgba(92, 64, 28, 0.055);
+            --ds-ink: var(--dh-ink);
+            --ds-muted: var(--dh-muted);
+            --ds-border: var(--dh-line);
+            --ds-gold: var(--dh-accent);
+            --ds-shadow: 0 8px 22px color-mix(in srgb, var(--dh-shadow-tint) 5.5%, transparent);
         }
         .ds-fin-grid {
             display: grid;
@@ -368,7 +355,7 @@
             margin-bottom: 24px;
         }
         .ds-fin-card {
-            background: #fff;
+            background: var(--dh-card);
             border: 1px solid var(--ds-border);
             border-radius: 14px;
             padding: 14px;
@@ -401,12 +388,12 @@
 /* ---- migrated from resources/views/dhiran/settings.blade.php ---- */
 
         .dhiran-settings-root {
-            --dset-ink: #0f172a;
-            --dset-ink-soft: #334155;
-            --dset-muted: #64748b;
-            --dset-border: #ded6c8;
-            --dset-bg: #fbfcfe;
-            --dset-accent: #d98b00;
+            --dset-ink: var(--dh-ink);
+            --dset-ink-soft: var(--dh-ink-soft);
+            --dset-muted: var(--dh-muted);
+            --dset-border: var(--dh-line);
+            --dset-bg: var(--dh-raised);
+            --dset-accent: var(--dh-accent);
         }
         .dset-label {
             display: flex; align-items: center; gap: 6px;
@@ -420,10 +407,10 @@
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
         }
         .dset-input:focus, .dset-select:focus {
-            outline: none; border-color: var(--dset-accent); background: #fff;
-            box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12);
+            outline: none; border-color: var(--dset-accent); background: var(--dh-card);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent);
         }
-        .dset-input::placeholder { color: #9ca3af; font-weight: 400; }
+        .dset-input::placeholder { color: var(--dh-subtle); font-weight: 400; }
         .dset-select {
             appearance: none; -webkit-appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -448,13 +435,13 @@
 /* ---- migrated from resources/views/dhiran/activate.blade.php ---- */
 
         .dhiran-activate-root {
-            --da-ink: #0f172a;
-            --da-muted: #64748b;
-            --da-gold: #f4a300;
-            --da-gold-deep: #d98b00;
-            --da-line: #d7dee8;
-            --da-card: #ffffff;
-            --da-shadow: 0 8px 22px rgba(92, 64, 28, 0.055);
+            --da-ink: var(--dh-ink);
+            --da-muted: var(--dh-muted);
+            --da-gold: var(--dh-highlight);
+            --da-gold-deep: var(--dh-accent);
+            --da-line: var(--dh-line);
+            --da-card: var(--dh-card);
+            --da-shadow: 0 8px 22px color-mix(in srgb, var(--dh-shadow-tint) 5.5%, transparent);
             padding-top: 18px;
         }
         .da-hero {
@@ -468,7 +455,7 @@
             width: 72px;
             height: 72px;
             border-radius: 20px;
-            background: linear-gradient(135deg, #fff7e8 0%, #fef3cd 100%);
+            background: linear-gradient(135deg, var(--dh-accent-soft) 0%, var(--dh-accent-soft) 100%);
             margin-bottom: 20px;
         }
         .da-hero-icon svg {
@@ -535,17 +522,17 @@
             padding: 14px 32px;
             border: none;
             border-radius: 12px;
-            background: linear-gradient(135deg, var(--da-gold) 0%, var(--da-gold-deep) 100%);
-            color: #fff;
+            background: var(--da-gold);
+            color: var(--dh-on-highlight);
             font-size: 15px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(244, 163, 0, 0.35);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--dh-highlight) 35%, transparent);
             transition: transform 0.15s, box-shadow 0.15s;
         }
         .da-activate-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(244, 163, 0, 0.45);
+            box-shadow: 0 6px 20px color-mix(in srgb, var(--dh-highlight) 45%, transparent);
         }
         .da-activate-btn svg {
             width: 18px;
@@ -556,14 +543,14 @@
 /* ---- migrated from resources/views/dhiran/reports/index.blade.php ---- */
 
         .dhiran-reports-root {
-            --dr-ink: #0f172a;
-            --dr-muted: #64748b;
-            --dr-border: #ded6c8;
-            --dr-accent: #d98b00;
-            --dr-shadow: 0 8px 22px rgba(92, 64, 28, 0.055);
+            --dr-ink: var(--dh-ink);
+            --dr-muted: var(--dh-muted);
+            --dr-border: var(--dh-line);
+            --dr-accent: var(--dh-accent);
+            --dr-shadow: 0 8px 22px color-mix(in srgb, var(--dh-shadow-tint) 5.5%, transparent);
         }
         .dr-report-card {
-            background: #fff;
+            background: var(--dh-card);
             border: 1px solid var(--dr-border);
             border-radius: 14px;
             padding: 20px;
@@ -572,7 +559,7 @@
         }
         .dr-report-card:hover {
             border-color: var(--dr-accent);
-            box-shadow: 0 12px 28px rgba(92, 64, 28, 0.10);
+            box-shadow: 0 12px 28px color-mix(in srgb, var(--dh-shadow-tint) 10%, transparent);
         }
         .dr-report-icon {
             display: flex; align-items: center; justify-content: center;
@@ -591,16 +578,16 @@
         .dob-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
         .dob-head p { color: var(--dh-muted); font-size: 15px; margin: 0; }
         .dob-card {
-            background: #fff;
+            background: var(--dh-card);
             border: 1px solid var(--dh-line);
             border-radius: 18px;
-            box-shadow: 0 14px 36px rgba(92, 64, 28, 0.08);
+            box-shadow: 0 14px 36px color-mix(in srgb, var(--dh-shadow-tint) 8%, transparent);
             padding: 26px;
         }
         .dob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .dob-field { display: flex; flex-direction: column; gap: 6px; }
         .dob-field.full { grid-column: 1 / -1; }
-        .dob-field label { font-size: 13px; font-weight: 700; color: #334155; }
+        .dob-field label { font-size: 13px; font-weight: 700; color: var(--dh-ink-soft); }
         .dob-field .opt { color: var(--dh-muted); font-weight: 500; }
         .dob-field input {
             width: 100%;
@@ -608,25 +595,25 @@
             border: 1px solid var(--dh-line);
             border-radius: 10px;
             font-size: 14px;
-            background: #fff;
+            background: var(--dh-card);
             transition: border-color 150ms var(--dh-ease), box-shadow 150ms var(--dh-ease);
         }
         .dob-field input:focus {
             outline: 0;
-            border-color: var(--dh-gold);
-            box-shadow: 0 0 0 3px rgba(244, 163, 0, 0.16);
+            border-color: var(--dh-highlight);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-highlight) 16%, transparent);
         }
-        .dob-err { color: #b91c1c; font-size: 12px; font-weight: 600; }
+        .dob-err { color: var(--dh-danger); font-size: 12px; font-weight: 600; }
         .dob-foot { margin-top: 22px; }
         .dob-btn {
             width: 100%;
             padding: 14px 18px;
             border: 0; border-radius: 12px;
-            background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
-            color: #fff; font-size: 15px; font-weight: 700;
+            background: var(--dh-highlight);
+            color: var(--dh-on-highlight); font-size: 15px; font-weight: 700;
             cursor: pointer;
             transition: transform 150ms var(--dh-ease);
-            box-shadow: 0 8px 20px rgba(217, 139, 0, 0.28);
+            box-shadow: 0 8px 20px color-mix(in srgb, var(--dh-focus) 28%, transparent);
         }
         .dob-btn:active { transform: scale(0.97); }
         @media (max-width: 560px) { .dob-grid { grid-template-columns: 1fr; } }
@@ -639,23 +626,23 @@
         .dop-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
         .dop-head p { color: var(--dh-muted); font-size: 15px; margin: 0; }
         .dop-card {
-            background: #fff;
+            background: var(--dh-card);
             border: 1px solid var(--dh-line);
             border-radius: 18px;
-            box-shadow: 0 14px 36px rgba(92, 64, 28, 0.08);
+            box-shadow: 0 14px 36px color-mix(in srgb, var(--dh-shadow-tint) 8%, transparent);
             overflow: hidden;
         }
         .dop-card-top {
             padding: 24px 26px 20px;
-            background: linear-gradient(135deg, #fff8ec, #fff);
+            background: linear-gradient(135deg, var(--dh-accent-soft), var(--dh-card));
             border-bottom: 1px solid var(--dh-line);
         }
         .dop-badge {
             display: inline-block;
             font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: var(--dh-gold-deep);
-            background: #fff3df;
+            color: var(--dh-accent);
+            background: var(--dh-accent-soft);
             padding: 4px 10px; border-radius: 999px;
             margin-bottom: 12px;
         }
@@ -664,18 +651,18 @@
         .dop-price .amt { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
         .dop-price .per { color: var(--dh-muted); font-size: 14px; font-weight: 600; }
         .dop-feat { list-style: none; padding: 22px 26px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
-        .dop-feat li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #334155; }
-        .dop-feat svg { width: 18px; height: 18px; color: var(--dh-gold-deep); flex-shrink: 0; margin-top: 1px; }
+        .dop-feat li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--dh-ink-soft); }
+        .dop-feat svg { width: 18px; height: 18px; color: var(--dh-accent); flex-shrink: 0; margin-top: 1px; }
         .dop-foot { padding: 0 26px 26px; }
         .dop-btn {
             width: 100%;
             padding: 14px 18px;
             border: 0; border-radius: 12px;
-            background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
-            color: #fff; font-size: 15px; font-weight: 700;
+            background: var(--dh-highlight);
+            color: var(--dh-on-highlight); font-size: 15px; font-weight: 700;
             cursor: pointer;
             transition: transform 150ms var(--dh-ease), box-shadow 150ms var(--dh-ease);
-            box-shadow: 0 8px 20px rgba(217, 139, 0, 0.28);
+            box-shadow: 0 8px 20px color-mix(in srgb, var(--dh-focus) 28%, transparent);
         }
         .dop-btn:active { transform: scale(0.97); }
         .dop-note { text-align: center; color: var(--dh-muted); font-size: 12px; margin-top: 14px; }
@@ -683,34 +670,7 @@
 
 /* ---- Dhiran shared overrides ---- */
 /* Dhiran service UI: loaded only by Dhiran-authenticated pages. */
-:root {
-    --dh-gold: #f4a300;
-    --dh-gold-deep: #d98b00;
-    --dh-gold-soft: #fff7e6;
-    --dh-ink: #0f172a;
-    --dh-ink-soft: #334155;
-    --dh-muted: #64748b;
-    --dh-subtle: #94a3b8;
-    --dh-line: #ded6c8;
-    --dh-line-soft: #ebe3d6;
-    --dh-bg: #f3f0e8;
-    --dh-header: #fffaf1;
-    --dh-card: #ffffff;
-    --dh-raised: #fffdf8;
-    --dh-muted-surface: #f8f4ec;
-    --dh-field: #f8f3ea;
-    --dh-field-border: #d5c9b7;
-    --dh-table-head: #fbf2df;
-    --dh-row-hover: #fff8ea;
-    --dh-danger: #b91c1c;
-    --dh-success: #047857;
-    --dh-radius: 14px;
-    --dh-radius-sm: 10px;
-    --dh-shadow: 0 8px 22px rgba(92, 64, 28, 0.055);
-    --dh-shadow-soft: 0 1px 2px rgba(92, 64, 28, 0.055);
-    --dh-ease: cubic-bezier(0.23, 1, 0.32, 1);
-    --dh-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-}
+
 
 * { box-sizing: border-box; }
 
@@ -758,11 +718,11 @@
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
+    background: var(--dh-highlight);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--dh-on-highlight);
     font-weight: 700;
     font-size: 17px;
     flex: 0 0 34px;
@@ -808,7 +768,7 @@
     gap: 11px;
     padding: 10px 12px;
     border-radius: 10px;
-    color: #334155;
+    color: var(--dh-ink-soft);
     text-decoration: none;
     font-size: 14px;
     font-weight: 600;
@@ -816,9 +776,9 @@
 }
 .dh-nav-link svg { width: 18px; height: 18px; flex-shrink: 0; }
 @media (hover: hover) and (pointer: fine) {
-    .dh-nav-link:hover { background: var(--dh-gold-soft); color: var(--dh-gold-deep); }
+    .dh-nav-link:hover { background: var(--dh-accent-soft); color: var(--dh-accent); }
 }
-.dh-nav-link.active { background: #fff3df; color: var(--dh-gold-deep); }
+.dh-nav-link.active { background: var(--dh-accent-soft); color: var(--dh-accent); }
 .dh-foot { border-top: 1px solid var(--dh-line); padding-top: 12px; }
 .dh-foot-user { font-size: 13px; font-weight: 700; }
 .dh-foot-shop { font-size: 11px; color: var(--dh-muted); margin-bottom: 8px; }
@@ -829,7 +789,7 @@
     border: 1px solid var(--dh-line);
     border-radius: 9px;
     background: var(--dh-raised);
-    color: #475569;
+    color: var(--dh-ink-soft);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -855,8 +815,8 @@
     font-size: 14px;
     font-weight: 600;
 }
-.dh-flash-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-.dh-flash-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.dh-flash-success { background: var(--dh-success-soft); color: var(--dh-success); border: 1px solid var(--dh-success-line); }
+.dh-flash-error { background: var(--dh-danger-soft); color: var(--dh-danger); border: 1px solid var(--dh-danger-line); }
 
 .dh-menu-toggle,
 .dh-header-toggle {
@@ -882,7 +842,7 @@
     position: fixed;
     inset: 0;
     z-index: 1190;
-    background: rgba(42, 31, 18, 0.42);
+    background: color-mix(in srgb, var(--dh-scrim-tint) 42%, transparent);
     opacity: 0;
     pointer-events: none;
     transition: opacity 240ms var(--dh-ease-drawer);
@@ -950,9 +910,9 @@
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
-    border: 1px solid #f5d48a;
-    background: #fff8e8;
-    color: #9a6200;
+    border: 1px solid var(--dh-accent-line);
+    background: var(--dh-accent-soft);
+    color: var(--dh-accent-hover);
     padding: 4px 9px;
     font-size: 11px;
     line-height: 1;
@@ -994,9 +954,9 @@
 .btn-primary,
 .btn-dark,
 .dh-btn-primary {
-    border-color: var(--dh-gold-deep);
-    background: var(--dh-gold-deep);
-    color: #fff;
+    border-color: var(--dh-accent);
+    background: var(--dh-accent);
+    color: var(--dh-on-accent);
 }
 .btn-secondary,
 .dh-btn-secondary {
@@ -1004,9 +964,9 @@
     background: var(--dh-raised);
     color: var(--dh-ink-soft);
 }
-.btn-success { border-color: var(--dh-success); background: var(--dh-success); color: #fff; }
+.btn-success { border-color: var(--dh-success); background: var(--dh-success); color: var(--dh-on-accent); }
 .btn-danger,
-.dh-btn-danger { border-color: var(--dh-danger); background: var(--dh-danger); color: #fff; }
+.dh-btn-danger { border-color: var(--dh-danger); background: var(--dh-danger); color: var(--dh-on-accent); }
 .btn[disabled],
 .dh-btn[disabled] { opacity: .58; cursor: not-allowed; }
 @media (hover: hover) and (pointer: fine) {
@@ -1014,7 +974,7 @@
     .dh-btn-secondary:hover { background: var(--dh-muted-surface); color: var(--dh-ink); }
     .btn-primary:hover,
     .btn-dark:hover,
-    .dh-btn-primary:hover { background: #c77d00; border-color: #c77d00; }
+    .dh-btn-primary:hover { background: var(--dh-accent-hover); border-color: var(--dh-accent-hover); }
 }
 
 .dh-header-mobile-fab {
@@ -1058,8 +1018,8 @@
     justify-content: flex-start;
     padding: 11px 14px;
     border-radius: 999px;
-    border: 1px solid #f0d28e;
-    background: #fffdf8;
+    border: 1px solid var(--dh-accent-line);
+    background: var(--dh-raised);
     color: var(--dh-ink) !important;
     font-size: 13px;
     font-weight: 700;
@@ -1072,9 +1032,9 @@
 }
 .dh-app .dh-header-mobile-fab-nav :is(.btn-primary, .btn-dark, .dh-btn-primary),
 .dh-app .dh-header-mobile-fab-nav form > :is(.btn-primary, .btn-dark, .dh-btn-primary) {
-    border-color: var(--dh-gold-deep) !important;
-    background: var(--dh-gold-deep) !important;
-    color: #fff !important;
+    border-color: var(--dh-accent) !important;
+    background: var(--dh-accent) !important;
+    color: var(--dh-on-accent) !important;
     box-shadow: none !important;
     filter: none !important;
 }
@@ -1104,8 +1064,8 @@
     height: 54px;
     border: 0;
     border-radius: 999px;
-    background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
-    color: #fff;
+    background: var(--dh-highlight);
+    color: var(--dh-on-highlight);
     box-shadow: none !important;
     filter: none !important;
     cursor: pointer;
@@ -1257,7 +1217,7 @@
     border-radius: 10px;
     background: var(--dh-field);
     color: var(--dh-ink);
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-input:focus,
 .dh-select:focus,
@@ -1267,12 +1227,12 @@
 .dset-textarea:focus,
 .dh-form-control:focus {
     outline: none;
-    border-color: var(--dh-gold-deep);
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12), inset 0 1px 2px rgba(92, 64, 28, 0.03);
+    border-color: var(--dh-accent);
+    background: var(--dh-card);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent);
 }
 .dh-input::placeholder,
-.dh-textarea::placeholder { color: #9ca3af; font-weight: 400; }
+.dh-textarea::placeholder { color: var(--dh-subtle); font-weight: 400; }
 .dh-select,
 .dh-native-select {
     appearance: none;
@@ -1308,7 +1268,7 @@
     padding-bottom: 8px;
     border-bottom: 1px solid var(--dh-line);
 }
-.dh-section-title svg { width: 16px; height: 16px; color: var(--dh-gold-deep); }
+.dh-section-title svg { width: 16px; height: 16px; color: var(--dh-accent); }
 
 .dh-dd-wrap { position: relative; z-index: 2; }
 .dh-dd-wrap.dd-open { z-index: 34; }
@@ -1325,7 +1285,7 @@
     cursor: pointer;
     text-align: left;
     position: relative;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-dd-trigger > span {
     min-width: 0;
@@ -1337,9 +1297,9 @@
 .dh-dd-trigger:focus,
 .dh-dd-trigger.open {
     outline: none;
-    border-color: var(--dh-gold-deep);
+    border-color: var(--dh-accent);
     background: var(--dh-card);
-    box-shadow: 0 0 0 3px rgba(217,139,0,.12), inset 0 1px 2px rgba(92, 64, 28, 0.03);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent);
 }
 .dh-dd-trigger.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .dh-dd-trigger::after {
@@ -1355,7 +1315,7 @@
     background-position: center;
 }
 .dh-dd-trigger.open::after { transform: translateY(-50%) rotate(180deg); }
-.dh-dd-placeholder { color: #9ca3af; font-weight: 400; }
+.dh-dd-placeholder { color: var(--dh-subtle); font-weight: 400; }
 .dh-dd-value { font-weight: 600; color: var(--dh-ink); }
 .dh-dd-panel {
     display: none;
@@ -1365,10 +1325,10 @@
     right: 0;
     z-index: 18;
     background: var(--dh-card);
-    border: 1.5px solid var(--dh-gold-deep);
+    border: 1.5px solid var(--dh-accent);
     border-top: none;
     border-radius: 0 0 10px 10px;
-    box-shadow: 0 12px 28px rgba(92, 64, 28, .10);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--dh-shadow-tint) 10%, transparent);
     max-height: min(420px, 70vh);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -1390,12 +1350,12 @@
     background: var(--dh-field);
     color: var(--dh-ink);
     outline: none;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-dd-search:focus {
-    border-color: var(--dh-gold-deep);
+    border-color: var(--dh-accent);
     background: var(--dh-card);
-    box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12), inset 0 1px 2px rgba(92, 64, 28, 0.03);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent);
 }
 .dh-dd-search-icon {
     position: absolute;
@@ -1434,7 +1394,7 @@
     border: none;
     border-top: 1px solid var(--dh-line);
     background: var(--dh-raised);
-    color: var(--dh-gold-deep);
+    color: var(--dh-accent);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -1488,26 +1448,26 @@
     font-weight: 500;
     line-height: 1.3;
     outline: none;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 
 .dh-customer-search-input::placeholder {
-    color: #9aa4b2;
+    color: var(--dh-subtle);
     font-weight: 400;
 }
 
 .dh-customer-search-input:focus,
 .dh-customer-search-control.open .dh-customer-search-input {
-    border-color: var(--dh-gold-deep);
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12), inset 0 1px 2px rgba(92, 64, 28, 0.03);
+    border-color: var(--dh-accent);
+    background: var(--dh-card);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent);
 }
 
 .dh-customer-results-panel {
     top: calc(100% + 6px);
-    border: 1px solid var(--dh-gold-deep);
+    border: 1px solid var(--dh-accent);
     border-radius: 12px;
-    box-shadow: 0 14px 34px rgba(92, 64, 28, 0.14);
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--dh-shadow-tint) 14%, transparent);
     overflow: hidden;
 }
 
@@ -1518,19 +1478,19 @@
     justify-content: center;
     gap: 7px;
     padding: 0 16px !important;
-    border: 1px solid var(--dh-gold-deep) !important;
+    border: 1px solid var(--dh-accent) !important;
     border-radius: 12px !important;
-    background: var(--dh-gold) !important;
-    color: #fff !important;
+    background: var(--dh-highlight) !important;
+    color: var(--dh-on-highlight) !important;
     font-size: 13px;
     font-weight: 700;
     white-space: nowrap;
     cursor: pointer;
-    box-shadow: 0 8px 18px rgba(217, 139, 0, 0.18);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--dh-focus) 18%, transparent);
 }
 
 .dh-customer-add-btn:hover {
-    background: var(--dh-gold-deep);
+    background: var(--dh-accent);
 }
 
 .dh-customer-details-layout {
@@ -1579,8 +1539,8 @@
     justify-content: center;
     flex: 0 0 42px;
     border-radius: 12px;
-    background: var(--dh-gold);
-    color: #fff;
+    background: var(--dh-highlight);
+    color: var(--dh-on-highlight);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0;
@@ -1641,7 +1601,7 @@
     border-radius: 8px;
     font-size: 12px;
     background: var(--dh-field);
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-borrower-input--wide { grid-column: 1 / -1; }
 .dh-borrower-error { margin: 8px 0 0; color: var(--dh-danger); font-size: 12px; font-weight: 600; }
@@ -1652,8 +1612,8 @@
     padding: 9px 12px;
     border: none;
     border-radius: 9px;
-    background: var(--dh-gold-deep);
-    color: #fff;
+    background: var(--dh-accent);
+    color: var(--dh-on-accent);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
@@ -1674,7 +1634,7 @@ body.dh-modal-open {
     align-items: center;
     justify-content: center;
     padding: 18px;
-    background: rgba(42, 31, 18, 0.48);
+    background: color-mix(in srgb, var(--dh-scrim-tint) 48%, transparent);
     overscroll-behavior: contain;
     pointer-events: auto;
 }
@@ -1688,7 +1648,7 @@ body.dh-modal-open {
     border: 1px solid var(--dh-line);
     border-radius: 18px;
     background: var(--dh-card);
-    box-shadow: 0 24px 58px rgba(92, 64, 28, 0.24);
+    box-shadow: 0 24px 58px color-mix(in srgb, var(--dh-shadow-tint) 24%, transparent);
 }
 
 .dh-borrower-modal-head,
@@ -1791,10 +1751,10 @@ body.dh-modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #fecaca;
+    border: 1px solid var(--dh-danger-line);
     border-radius: 9px;
-    background: #fef2f2;
-    color: #dc2626;
+    background: var(--dh-danger-soft);
+    color: var(--dh-danger);
     cursor: pointer;
 }
 .dh-item-remove svg { width: 14px; height: 14px; }
@@ -1809,10 +1769,10 @@ body.dh-modal-open {
     border: 1.5px dashed var(--dh-line);
     border-radius: 10px;
     background: transparent;
-    color: var(--dh-gold-deep);
+    color: var(--dh-accent);
     cursor: pointer;
 }
-.dh-calc-field { background: #fff8ea; border-color: #f2d28b; }
+.dh-calc-field { background: var(--dh-accent-soft); border-color: var(--dh-accent-line); }
 .dh-summary-row {
     display: flex;
     justify-content: space-between;
@@ -1856,7 +1816,7 @@ body.dh-modal-open {
     margin-bottom: 24px;
 }
 .ds-fin-card { padding: 14px; }
-.ds-fin-card-primary { border-color: var(--dh-gold-deep); }
+.ds-fin-card-primary { border-color: var(--dh-accent); }
 .ds-fin-value { font-size: 20px; font-weight: 700; color: var(--dh-ink); }
 .ds-info-grid {
     display: grid;
@@ -1881,7 +1841,7 @@ body.dh-modal-open {
     border-radius: 10px;
     background: var(--dh-field);
     font-size: 13px;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-attachment-row {
     display: flex;
@@ -1903,9 +1863,9 @@ body.dh-modal-open {
     overflow: hidden;
     background: var(--dh-card);
     color: var(--dh-ink);
-    box-shadow: 0 24px 56px rgba(92, 64, 28, .18);
+    box-shadow: 0 24px 56px color-mix(in srgb, var(--dh-shadow-tint) 18%, transparent);
 }
-.dh-dialog::backdrop { background: rgba(42, 31, 18, .42); }
+.dh-dialog::backdrop { background: color-mix(in srgb, var(--dh-scrim-tint) 42%, transparent); }
 .dh-dialog-body { padding: 20px; overflow-y: auto; max-height: calc(86dvh - 74px); }
 .dh-dialog-footer {
     display: flex;
@@ -1925,26 +1885,26 @@ body:has(.dh-auth-panel) {
     box-shadow: var(--dh-shadow);
 }
 .form-card:has(.dh-auth-panel)::before {
-    background: linear-gradient(90deg, transparent, var(--dh-gold), #f7d779, transparent);
+    background: linear-gradient(90deg, transparent, var(--dh-highlight), var(--dh-accent-line), transparent);
 }
 .form-card:has(.dh-auth-panel) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea) {
     background: var(--dh-field);
     border-color: var(--dh-field-border);
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .form-card:has(.dh-auth-panel) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea):focus {
     background: var(--dh-card);
-    border-color: var(--dh-gold-deep);
+    border-color: var(--dh-accent);
 }
 .form-card:has(.dh-auth-panel) button[type="submit"] {
-    background: var(--dh-gold-deep) !important;
-    color: #fff !important;
+    background: var(--dh-accent) !important;
+    color: var(--dh-on-accent) !important;
     box-shadow: none !important;
 }
 .dh-auth-panel .form-card { border-radius: 18px; }
 .dh-auth-title { font-size: 22px; line-height: 1.2; font-weight: 700; color: var(--dh-ink); text-align: center; margin: 0 0 6px; }
 .dh-auth-copy { font-size: 14px; line-height: 1.55; color: var(--dh-muted); text-align: center; margin: 0 0 22px; }
-.dh-auth-link { font-weight: 700; color: var(--dh-gold-deep); text-decoration: none; }
+.dh-auth-link { font-weight: 700; color: var(--dh-accent); text-decoration: none; }
 .dh-auth-helper { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--dh-muted); }
 
 .dh-verify-body {
@@ -1964,7 +1924,7 @@ body:has(.dh-auth-panel) {
     background: var(--dh-card);
     border: 1px solid var(--dh-line);
     border-radius: 18px;
-    box-shadow: 0 14px 38px rgba(92, 64, 28, 0.08);
+    box-shadow: 0 14px 38px color-mix(in srgb, var(--dh-shadow-tint) 8%, transparent);
     padding: 32px 28px;
 }
 .dh-verify-body .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
@@ -1972,11 +1932,11 @@ body:has(.dh-auth-panel) {
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
+    background: var(--dh-highlight);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--dh-on-highlight);
     font-weight: 700;
     font-size: 18px;
 }
@@ -1992,14 +1952,14 @@ body:has(.dh-auth-panel) {
     border-radius: 11px;
     background: var(--dh-field);
     color: var(--dh-ink);
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
-.dh-verify-body input:focus { outline: none; border-color: var(--dh-gold); background: #fff; box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
+.dh-verify-body input:focus { outline: none; border-color: var(--dh-highlight); background: var(--dh-card); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent); }
 .dh-verify-body .btn { width: 100%; margin-top: 14px; }
 .dh-verify-body .btn-link {
     background: none;
     border: none;
-    color: var(--dh-gold-deep);
+    color: var(--dh-accent);
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
@@ -2008,8 +1968,8 @@ body:has(.dh-auth-panel) {
 }
 .dh-btn-link-spaced { margin-left: 14px; }
 .dh-verify-body .msg { font-size: 13px; margin-top: 12px; padding: 9px 12px; border-radius: 9px; }
-.dh-verify-body .msg.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-.dh-verify-body .msg.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.dh-verify-body .msg.ok { background: var(--dh-success-soft); color: var(--dh-success); border: 1px solid var(--dh-success-line); }
+.dh-verify-body .msg.err { background: var(--dh-danger-soft); color: var(--dh-danger); border: 1px solid var(--dh-danger-line); }
 .dh-verify-body .step2 { display: none; }
 .dh-verify-body .foot {
     margin-top: 18px;
@@ -2072,7 +2032,7 @@ body:has(.dh-auth-panel) {
 .dh-app :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea) {
     background-color: var(--dh-field);
     border-color: var(--dh-field-border);
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent);
 }
 .dh-app :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea):focus {
     background-color: var(--dh-card);
@@ -2082,13 +2042,13 @@ body:has(.dh-auth-panel) {
     border-color: var(--dh-field-border) !important;
     border-radius: 10px !important;
     background-color: var(--dh-field) !important;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045) !important;
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 4.5%, transparent) !important;
 }
 .dh-app :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea):is(.shadow-sm, .rounded-xl):focus,
 .dh-app .dh-filter-card :is(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea):focus {
     background-color: var(--dh-card) !important;
-    border-color: var(--dh-gold-deep) !important;
-    box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12), inset 0 1px 2px rgba(92, 64, 28, 0.03) !important;
+    border-color: var(--dh-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent) !important;
 }
 .dh-app thead,
 .dh-app tfoot {
@@ -2104,16 +2064,16 @@ body:has(.dh-auth-panel) {
 .dh-app .text-blue-600,
 .dh-app .text-blue-700,
 .dh-app .text-sky-700,
-.dh-app .text-violet-700 { color: var(--dh-gold-deep) !important; }
+.dh-app .text-violet-700 { color: var(--dh-accent) !important; }
 .dh-app .bg-blue-100,
 .dh-app .bg-sky-100,
-.dh-app .bg-violet-100 { background-color: #fff3df !important; }
+.dh-app .bg-violet-100 { background-color: var(--dh-accent-soft) !important; }
 .dh-app .text-green-600,
 .dh-app .text-green-700,
-.dh-app .text-emerald-700 { color: #047857 !important; }
+.dh-app .text-emerald-700 { color: var(--dh-success) !important; }
 .dh-app .bg-green-100,
-.dh-app .bg-emerald-100 { background-color: #ecfdf5 !important; }
-.dh-app table a { color: var(--dh-gold-deep); }
+.dh-app .bg-emerald-100 { background-color: var(--dh-success-soft) !important; }
+.dh-app table a { color: var(--dh-accent); }
 .dh-app table a:hover { text-decoration: underline; }
 
 @media (max-width: 900px) {
@@ -2182,7 +2142,7 @@ body:has(.dh-auth-panel) {
         height: 100dvh;
         z-index: 1200;
         padding: 16px 14px;
-        box-shadow: 0 18px 46px rgba(92, 64, 28, 0.16);
+        box-shadow: 0 18px 46px color-mix(in srgb, var(--dh-shadow-tint) 16%, transparent);
         transform: translateX(-100%);
         transition: transform 260ms var(--dh-ease-drawer);
         will-change: transform;
@@ -2338,7 +2298,7 @@ body:has(.dh-auth-panel) {
         width: min(88vw, 304px);
         height: 100dvh;
         z-index: 1200;
-        box-shadow: 0 18px 46px rgba(92, 64, 28, 0.16);
+        box-shadow: 0 18px 46px color-mix(in srgb, var(--dh-shadow-tint) 16%, transparent);
         transform: translateX(-100%);
         transition: transform 260ms var(--dh-ease-drawer);
         will-change: transform;
@@ -2462,7 +2422,7 @@ body:has(.dh-auth-panel) {
         border: 1.5px solid var(--dh-line);
         border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 18px 46px rgba(92, 64, 28, 0.18);
+        box-shadow: 0 18px 46px color-mix(in srgb, var(--dh-shadow-tint) 18%, transparent);
     }
     .dh-dd-panel.open {
         display: flex;
@@ -2493,7 +2453,7 @@ body:has(.dh-auth-panel) {
         position: sticky;
         bottom: 0;
         min-height: 44px;
-        box-shadow: 0 -8px 18px rgba(255, 255, 255, 0.92);
+        box-shadow: 0 -8px 18px color-mix(in srgb, var(--dh-white) 92%, transparent);
     }
     .dh-dialog { width: calc(100vw - 24px); max-height: 88dvh; }
     .dh-dialog-footer { flex-direction: column-reverse; }
@@ -2665,18 +2625,18 @@ body:has(.dh-auth-panel) {
 }
 
 .dh-app .dhiran-create-form :is(.dh-input, .dh-select, .dh-textarea, .dh-dd-trigger, .dh-dd-search, .dh-borrower-input) {
-    background-color: #fffdf8 !important;
+    background-color: var(--dh-raised) !important;
     border-color: var(--dh-field-border) !important;
     border-radius: 9px !important;
-    box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.055) !important;
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 5.5%, transparent) !important;
 }
 
 .dh-app .dhiran-create-form :is(.dh-input, .dh-select, .dh-textarea, .dh-dd-search, .dh-borrower-input):focus,
 .dh-app .dhiran-create-form .dh-dd-trigger:focus,
 .dh-app .dhiran-create-form .dh-dd-trigger.open {
-    background-color: #fff !important;
-    border-color: var(--dh-gold-deep) !important;
-    box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12), inset 0 1px 2px rgba(92, 64, 28, 0.03) !important;
+    background-color: var(--dh-card) !important;
+    border-color: var(--dh-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 3%, transparent) !important;
 }
 
 .dh-app .dhiran-create-form .dh-dd-search-wrap {
@@ -2894,7 +2854,7 @@ body:has(.dh-auth-panel) {
 /* One scrollbar look across Dhiran (owner 2026-11-08): the page, the sidebar, tables and any scrolling box use the
    lists' amber bar (tables.css gives it to [data-list-scroll] only; everything else showed the grey default).
    Bars a component hides (display: none / scrollbar-width: none) stay hidden. */
-.dh-html { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; --sb-size: 14px; }
+.dh-html { --sb-thumb-color: var(--dh-scrollbar-thumb); --sb-track-color: var(--dh-muted-surface); --sb-size: 14px; }
 .dh-html::-webkit-scrollbar,
 .dh-app *::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
 .dh-html::-webkit-scrollbar-track,
@@ -2907,3 +2867,114 @@ body:has(.dh-auth-panel) {
     .dh-html, .dh-app * { scrollbar-color: var(--sb-thumb-color) var(--sb-track-color); }
 }
 @media (forced-colors: active) { .dh-html, .dh-app * { scrollbar-color: auto; } }
+
+/* ==== Theme roles: dark navy + bright gold (owner 2026-11-08). Colours come only from dhiran-tokens.css. ==== */
+
+/* Sidebar: dark navy, light text, gold active item. */
+.dh-sidebar { background: var(--dh-sidebar); border-right-color: var(--dh-sidebar-line); color: var(--dh-sidebar-ink); }
+.dh-sidebar-head { border-bottom-color: var(--dh-sidebar-line); }
+.dh-brand-name { color: var(--dh-sidebar-ink-strong); }
+.dh-brand-sub { color: var(--dh-sidebar-muted); }
+.dh-nav-link { color: var(--dh-sidebar-ink); }
+.dh-nav-link:hover { background: var(--dh-sidebar-hover); color: var(--dh-sidebar-ink-strong); }
+.dh-nav-link.active,
+.dh-nav-link.active:hover { background: var(--dh-sidebar-active); color: var(--dh-sidebar-active-ink); }
+.dh-foot { border-top-color: var(--dh-sidebar-line); }
+.dh-foot-user { color: var(--dh-sidebar-ink-strong); }
+.dh-foot-shop { color: var(--dh-sidebar-muted); }
+.dh-sidebar .dh-logout { background: transparent; border-color: var(--dh-sidebar-line); color: var(--dh-sidebar-ink); }
+.dh-sidebar .dh-logout:hover { background: var(--dh-sidebar-hover); color: var(--dh-sidebar-ink-strong); }
+.dh-sidebar-close { background: transparent; border-color: var(--dh-sidebar-line); color: var(--dh-sidebar-ink); }
+
+/* Header: white band with a thin gold underline. */
+.dh-page-header,
+.content-header { background: var(--dh-header); border-bottom: 2px solid var(--dh-highlight); }
+
+/* Buttons: gold for the main action (navy text), navy for the others. */
+.btn-primary,
+.dh-btn-primary,
+.dh-app .dh-header-mobile-fab-nav :is(.btn-primary, .dh-btn-primary) {
+    border-color: var(--dh-highlight) !important;
+    background: var(--dh-highlight) !important;
+    color: var(--dh-on-highlight) !important;
+}
+.btn-primary:hover,
+.dh-btn-primary:hover { border-color: var(--dh-highlight-hover) !important; background: var(--dh-highlight-hover) !important; }
+.btn-dark,
+.dh-borrower-save,
+.dh-app .dh-header-mobile-fab-nav .btn-dark {
+    border-color: var(--dh-accent) !important;
+    background: var(--dh-accent) !important;
+    color: var(--dh-on-accent) !important;
+}
+.btn-dark:hover,
+.dh-borrower-save:hover { border-color: var(--dh-accent-hover) !important; background: var(--dh-accent-hover) !important; }
+.dh-customer-add-btn {
+    border-color: var(--dh-accent) !important;
+    background: var(--dh-accent) !important;
+    color: var(--dh-on-accent) !important;
+    box-shadow: none;
+}
+.dh-customer-add-btn:hover { background: var(--dh-accent-hover) !important; }
+.form-card:has(.dh-auth-panel) button[type="submit"] {
+    background: var(--dh-highlight) !important;
+    color: var(--dh-on-highlight) !important;
+}
+
+/* Links: blue on light surfaces. Row action buttons keep their own colours (the old "table a" rule painted the
+   view icon the same colour as its button, so it vanished). */
+.dh-app table a:not(.jf-row-action):not(.btn),
+.dh-auth-link { color: var(--dh-link); }
+.dh-app table a:not(.jf-row-action):not(.btn):hover { color: var(--dh-link-hover); }
+.dh-app .jf-row-action { color: var(--jf-ra-fg); }
+.dh-app .jf-row-action--view { --jf-ra-bg: var(--dh-accent); --jf-ra-line: var(--dh-accent); --jf-ra-fg: var(--dh-on-accent); }
+
+/* Focus: one visible ring. */
+.dh-app :is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
+
+/* Colour utility classes used in Dhiran pages, mapped onto tokens. */
+.dh-app .text-amber-700,
+.dh-app .text-blue-600,
+.dh-app .text-blue-700,
+.dh-app .text-sky-700 { color: var(--dh-link) !important; }
+.dh-app .hover\:text-amber-700:hover,
+.dh-app .hover\:text-amber-800:hover { color: var(--dh-link-hover) !important; }
+.dh-app .text-amber-500 { color: var(--dh-subtle) !important; }
+.dh-app .text-amber-600,
+.dh-app .text-amber-800,
+.dh-app .text-amber-900,
+.dh-app .text-yellow-800 { color: var(--dh-warning-ink) !important; }
+.dh-app .bg-amber-50,
+.dh-app .bg-amber-100,
+.dh-app .bg-yellow-50,
+.dh-app .bg-yellow-100,
+.dh-app .hover\:bg-amber-100:hover { background-color: var(--dh-warning-soft) !important; }
+.dh-app .bg-amber-500 { background-color: var(--dh-highlight) !important; }
+.dh-app .border-amber-200 { border-color: var(--dh-warning-line) !important; }
+.dh-app .border-amber-500 { border-color: var(--dh-highlight) !important; }
+.dh-app .focus\:border-amber-500:focus { border-color: var(--dh-focus) !important; }
+.dh-app .focus\:ring-amber-500:focus,
+.dh-app .focus\:ring-amber-500\/15:focus { --tw-ring-color: color-mix(in srgb, var(--dh-focus) 15%, transparent) !important; }
+/* Icon chips (dashboard KPIs, report cards, feature cards). */
+.dh-app :is(.bg-amber-100, .bg-violet-100):is(.text-amber-700, .text-violet-700) { background-color: var(--dh-icon-soft) !important; color: var(--dh-icon) !important; }
+.dh-app .text-violet-700 { color: var(--dh-icon) !important; }
+.dh-app .bg-violet-100,
+.dh-app .bg-blue-100,
+.dh-app .bg-sky-100 { background-color: var(--dh-icon-soft) !important; }
+.dh-app .ds-fin-value.text-amber-700 { color: var(--dh-ink) !important; }
+/* Light grey helper text was too faint to read (2.6 and lower). */
+.dh-app :is(.text-slate-300, .text-slate-400, .text-gray-300, .text-gray-400) { color: var(--dh-muted) !important; }
+
+/* Phones and tablets: the closed slide-out menu sits off-screen; hide it from keyboard and screen readers too
+   (its links were reachable while invisible). Visibility flips after the slide so the close animation still plays. */
+@media (max-width: 900px) {
+    .dh-shell:not(.is-open) .dh-sidebar { visibility: hidden; transition: transform 260ms var(--dh-ease-drawer), visibility 0s linear 260ms; }
+    .dh-shell.is-open .dh-sidebar { visibility: visible; transition: transform 260ms var(--dh-ease-drawer), visibility 0s; }
+}
+
+/* Phones: text links in tables, cards and details were 16-19px tall; give them a tappable height (24px+). The New
+   Loan action bar no longer stretches past the page edge (its negative margins assumed a different padding). */
+@media (max-width: 720px) {
+    .dh-app .dh-scroll a:not(.btn):not(.jf-row-action) { display: inline-block; padding-block: 4px; }
+    .dh-app .dhiran-create-form > .flex.justify-end { margin-inline: 0; padding-inline: 0; border-radius: var(--dh-radius-sm); }
+}

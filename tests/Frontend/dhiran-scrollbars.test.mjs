@@ -21,7 +21,8 @@ test('the Dhiran page carries the class the scrollbar style hangs on', () => {
 });
 
 test('the page and every scroll area inside Dhiran use the amber bar', () => {
-    assert.equal(decls('.dh-html')['--sb-thumb-color'], '#a77320');
+    // The colour itself lives in dhiran-tokens.css (no hard-coded Dhiran colours).
+    assert.equal(decls('.dh-html')['--sb-thumb-color'], 'var(--dh-scrollbar-thumb)');
     for (const scope of ['.dh-html', '.dh-app *']) {
         assert.equal(decls(`${scope}::-webkit-scrollbar-thumb`).background, 'var(--sb-thumb-color)', scope);
         assert.equal(decls(`${scope}::-webkit-scrollbar-track`).background, 'var(--sb-track-color)', scope);

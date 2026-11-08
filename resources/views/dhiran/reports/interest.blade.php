@@ -30,7 +30,7 @@
                     <input type="date" name="to" value="{{ $toDate }}" class="dh-form-control">
                 </div>
                 <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-primary btn-sm">View</button>
+                    <button type="submit" class="btn btn-dark btn-sm">View</button>
                     @if(request()->hasAny(['from', 'to']))
                         <a href="{{ route('dhiran.reports.interest') }}" class="btn btn-secondary btn-sm">Clear</a>
                     @endif

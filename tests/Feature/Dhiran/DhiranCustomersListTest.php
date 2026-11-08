@@ -98,6 +98,19 @@ class DhiranCustomersListTest extends TestCase
         }
     }
 
+    // On a phone the table needed a sideways swipe to reach Profile / New Loan; like the Loans list, phones get cards.
+    public function test_phones_get_customer_cards_with_their_actions(): void
+    {
+        $customer = $this->customer('Cardy', '9811120011', 'active');
+        $html = $this->list();
+
+        $this->assertStringContainsString('class="dh-table-wrap"', $html, 'the table hides on phones');
+        $cards = substr($html, strpos($html, 'class="dh-mobile-list'));
+        $this->assertStringContainsString('Cardy K', $cards);
+        $this->assertStringContainsString(route('dhiran.borrowers.show', $customer), $cards);
+        $this->assertStringContainsString(route('dhiran.create', ['customer_id' => $customer->id]), $cards);
+    }
+
     public function test_details_can_be_saved_without_a_loan(): void
     {
         $response = TenantContext::runFor($this->shop->id, function () {

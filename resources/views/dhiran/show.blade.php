@@ -29,7 +29,7 @@
         <div class="page-actions flex flex-wrap gap-2">
             @if($loan->status === 'active')
                 @can('dhiran.pay')
-                <button type="button" class="btn btn-dark btn-sm" onclick="document.getElementById('payInterestModal').showModal()">
+                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('payInterestModal').showModal()">
                     <x-icon name="dollar-sign" size="14" class="mr-1" />
                     Pay Interest
                 </button>

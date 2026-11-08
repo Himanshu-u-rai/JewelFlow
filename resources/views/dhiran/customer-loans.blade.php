@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '' }} {{ $customer->email ? '/ ' . $customer->email : '' }}</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">
+            <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-primary btn-sm">
                 <x-icon name="plus" size="14" class="mr-1" />
                 New Loan
             </a>

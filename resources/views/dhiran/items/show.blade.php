@@ -34,7 +34,6 @@
                     <x-icon name="arrow-left" size="14" class="mr-1" />
                     Back to Loan
                 </a>
-                <a href="{{ route('dhiran.show', $loan) }}#receipt" class="hidden"></a>
             @endif
             @if($borrower)
                 <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="btn btn-secondary btn-sm">Back to Customer</a>

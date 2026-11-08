@@ -39,7 +39,7 @@
                     </select>
                 </div>
                 <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-primary btn-sm">Generate Report</button>
+                    <button type="submit" class="btn btn-dark btn-sm">Generate Report</button>
                 </div>
             </form>
         </div>

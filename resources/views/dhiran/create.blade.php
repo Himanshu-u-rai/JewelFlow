@@ -444,7 +444,7 @@
                     <x-icon name="x" size="14" class="mr-1" />
                     Cancel
                 </a>
-                <button type="submit" class="btn btn-dark btn-sm">
+                <button type="submit" class="btn btn-primary btn-sm">
                     <x-icon name="save" size="14" class="mr-1" />
                     Create Loan
                 </button>

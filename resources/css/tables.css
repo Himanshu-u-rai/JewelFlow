@@ -38,7 +38,7 @@
     --sb-thumb-color: #b45309;
     --sb-size: 14px;
 }
-.dh-app .jf-scrollbar, .dh-app [data-list-scroll] { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; }
+.dh-app .jf-scrollbar, .dh-app [data-list-scroll] { --sb-thumb-color: var(--dh-scrollbar-thumb); --sb-track-color: var(--dh-scrollbar-track); }
 .admin-main .jf-scrollbar, .admin-main [data-list-scroll] { --sb-thumb-color: #b45309; --sb-track-color: #f1f3f9; }
 .jf-scrollbar::-webkit-scrollbar,
 [data-list-scroll]::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }

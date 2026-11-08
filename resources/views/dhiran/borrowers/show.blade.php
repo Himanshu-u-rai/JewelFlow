@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '' }}{{ $customer->customer_code ? ' · ' . $customer->customer_code : '' }}</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">
+            <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-primary btn-sm">
                 <x-icon name="plus" size="14" class="mr-1" />
                 New Loan for this customer
             </a>
@@ -85,7 +85,7 @@
                 <div class="px-6 py-12 text-center">
                     <p class="text-base font-semibold text-slate-700 mb-1">No loans yet</p>
                     <p class="text-sm text-slate-500 mb-4">This customer has no pledge loans with your shop.</p>
-                    <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">Create loan for this customer</a>
+                    <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-primary btn-sm">Create loan for this customer</a>
                 </div>
             @else
                 <div class="overflow-x-auto">

@@ -7,7 +7,7 @@
             <p class="text-sm text-gray-500 mt-1">Overview of all pledge loan activity</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm" data-dh-mobile-pin="true">
+            <a href="{{ route('dhiran.create') }}" class="btn btn-primary btn-sm" data-dh-mobile-pin="true">
                 <x-icon name="plus" size="14" class="mr-1" />
                 New Loan
             </a>
