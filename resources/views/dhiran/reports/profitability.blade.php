@@ -59,7 +59,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Loan profitability records">
-                <table class="w-full border-collapse jf-table">
+                <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
@@ -80,15 +80,15 @@
                                     + (float) $loan->processing_fee;
                             @endphp
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $loan->total_interest_collected, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $loan->total_penalty_collected, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ number_format((float) $loan->processing_fee, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
+                                <td data-label="Interest Collected" class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $loan->total_interest_collected, 2) }}</td>
+                                <td data-label="Penalty Collected" class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $loan->total_penalty_collected, 2) }}</td>
+                                <td data-label="Processing Fee" class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ number_format((float) $loan->processing_fee, 2) }}</td>
+                                <td data-label="Status" class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                     @if($loan->status === 'active')
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
                                     @elseif($loan->status === 'closed')
@@ -99,7 +99,7 @@
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($loan->status) }}</span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loanProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                <td data-label="Profit/Loss" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loanProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     {{ number_format($loanProfit, 2) }}
                                 </td>
                             </tr>

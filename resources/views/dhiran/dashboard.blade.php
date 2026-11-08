@@ -93,7 +93,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Recent Loans</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px] jf-table">
+                <table class="w-full min-w-[800px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
@@ -107,20 +107,20 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($recentLoans ?? [] as $loan)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap">
+                                <td data-label="Loan #" class="pl-6 pr-4 py-4 whitespace-nowrap">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap">
+                                <td data-label="Customer" class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</div>
                                     <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '' }}</div>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
+                                <td data-label="Principal" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">
+                                <td data-label="Outstanding" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding, 2) }}
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
                                     @php
                                         $statusColors = [
                                             'pending_evidence' => 'bg-amber-100 text-amber-800',
@@ -135,7 +135,7 @@
                                         {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
+                                <td data-label="Date" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                     {{ $loan->loan_date->format('d M Y') }}
                                 </td>
                             </tr>

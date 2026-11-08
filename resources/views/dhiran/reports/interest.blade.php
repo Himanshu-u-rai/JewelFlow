@@ -67,7 +67,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Interest collection records">
-                <table class="w-full border-collapse jf-table">
+                <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -82,15 +82,15 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($payments as $payment)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $payment->payment_date?->format('d M Y') ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td data-label="Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $payment->payment_date?->format('d M Y') ?? '-' }}</td>
+                                <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     <a href="{{ route('dhiran.show', $payment->loan) }}" class="text-blue-600 hover:underline">{{ $payment->loan?->loan_number ?? '-' }}</a>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payment->loan?->customer?->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $payment->amount, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $payment->interest_component, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $payment->penalty_component, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ number_format((float) $payment->principal_component, 2) }}</td>
+                                <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payment->loan?->customer?->name ?? '-' }}</td>
+                                <td data-label="Amount" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $payment->amount, 2) }}</td>
+                                <td data-label="Interest" class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $payment->interest_component, 2) }}</td>
+                                <td data-label="Penalty" class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $payment->penalty_component, 2) }}</td>
+                                <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ number_format((float) $payment->principal_component, 2) }}</td>
                             </tr>
                         @empty
                             <tr>

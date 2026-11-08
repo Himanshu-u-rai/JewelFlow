@@ -107,7 +107,7 @@
                 @endif
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full jf-table">
+                <table class="w-full jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             @foreach($reportColumns ?? [] as $col)
@@ -119,7 +119,7 @@
                         @foreach($reportData as $row)
                             <tr class="hover:bg-slate-50/70">
                                 @foreach($row as $cell)
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{{ $cell }}</td>
+                                    <td data-label="{{ array_values($reportColumns ?? [])[$loop->index] ?? '' }}" class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{{ $cell }}</td>
                                 @endforeach
                             </tr>
                         @endforeach

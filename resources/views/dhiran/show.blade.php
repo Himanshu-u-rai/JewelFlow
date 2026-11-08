@@ -238,7 +238,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Pledged Items</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[900px] jf-table">
+                <table class="w-full min-w-[900px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Description</th>
@@ -256,17 +256,17 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->items ?? [] as $item)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <td data-label="Description" class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium">
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-700 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->gross_weight, 3) }}g</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->net_metal_weight, 3) }}g</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">@if(($item->metal_type ?? "gold") === "other")—@else{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? "gold") === "silver" ? "" : "K" }}@endif</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->fine_weight, 3) }}g</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($item->loan_value, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Metal" class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
+                                <td data-label="Gross Wt" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->gross_weight, 3) }}g</td>
+                                <td data-label="Net Wt" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->net_metal_weight, 3) }}g</td>
+                                <td data-label="Purity" class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">@if(($item->metal_type ?? "gold") === "other")—@else{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? "gold") === "silver" ? "" : "K" }}@endif</td>
+                                <td data-label="Fine Wt" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->fine_weight, 3) }}g</td>
+                                <td data-label="Market Val" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
+                                <td data-label="Loan Val" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($item->loan_value, 2) }}</td>
+                                <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
                                     @php
                                         $itemStatus = $item->status ?? 'pledged';
                                         $itemStatusColors = [
@@ -279,7 +279,7 @@
                                         {{ ucfirst($itemStatus) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{{ $item->huid ?? '---' }}</td>
+                                <td data-label="HUID" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{{ $item->huid ?? '---' }}</td>
                             </tr>
                         @empty
                             <tr>
@@ -297,7 +297,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Payment History</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px] jf-table">
+                <table class="w-full min-w-[800px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
@@ -313,18 +313,18 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->payments ?? [] as $payment)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->payment_date ? $payment->payment_date->format('d M Y') : '---' }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $payment->type ? ucwords(str_replace('_', ' ', $payment->type)) : '---' }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->amount, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->principal_component ?? 0, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->interest_component ?? 0, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->penalty_component ?? 0, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Date" class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->payment_date ? $payment->payment_date->format('d M Y') : '---' }}</td>
+                                <td data-label="Type" class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $payment->type ? ucwords(str_replace('_', ' ', $payment->type)) : '---' }}</td>
+                                <td data-label="Amount" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->amount, 2) }}</td>
+                                <td data-label="Principal" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->principal_component ?? 0, 2) }}</td>
+                                <td data-label="Interest" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->interest_component ?? 0, 2) }}</td>
+                                <td data-label="Penalty" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->penalty_component ?? 0, 2) }}</td>
+                                <td data-label="Method" class="px-4 py-4 whitespace-nowrap text-center">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
                                         {{ \App\Models\Dhiran\DhiranPayment::methodLabel($payment->payment_method) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Receipt" class="px-4 py-4 whitespace-nowrap text-center">
                                     <a href="{{ route('dhiran.payment-receipt', [$loan, $payment]) }}" target="_blank" class="text-amber-700 hover:underline text-xs font-medium">Print Receipt</a>
                                 </td>
                             </tr>

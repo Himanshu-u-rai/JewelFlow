@@ -54,7 +54,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Active loan records">
-                <table class="w-full border-collapse jf-table">
+                <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
@@ -70,16 +70,16 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($loans as $loan)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->loan_date?->format('d M Y') ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loan->totalOutstanding() > 0 ? 'text-red-600' : 'text-green-600' }}">{{ number_format($loan->totalOutstanding(), 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{{ number_format((float) $loan->interest_rate_monthly, 2) }}%/mo</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->maturity_date?->format('d M Y') ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <td data-label="Loan Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->loan_date?->format('d M Y') ?? '-' }}</td>
+                                <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
+                                <td data-label="Outstanding" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loan->totalOutstanding() > 0 ? 'text-red-600' : 'text-green-600' }}">{{ number_format($loan->totalOutstanding(), 2) }}</td>
+                                <td data-label="Interest Rate" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{{ number_format((float) $loan->interest_rate_monthly, 2) }}%/mo</td>
+                                <td data-label="Maturity Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->maturity_date?->format('d M Y') ?? '-' }}</td>
+                                <td data-label="Days to Maturity" class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                     @if($loan->isOverdue())
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue</span>
                                     @elseif($loan->daysTillMaturity() <= 30)

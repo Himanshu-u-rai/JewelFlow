@@ -17,7 +17,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto jf-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Forfeited loan records">
-                <table class="w-full border-collapse jf-table">
+                <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
@@ -36,15 +36,15 @@
                                 $itemsCount = $loan->items->count();
                             @endphp
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 text-right">{{ number_format($writtenOff, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ $itemsCount }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->forfeited_at?->format('d M Y') ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
+                                <td data-label="Written Off Amount" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 text-right">{{ number_format($writtenOff, 2) }}</td>
+                                <td data-label="Items Count" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ $itemsCount }}</td>
+                                <td data-label="Forfeiture Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->forfeited_at?->format('d M Y') ?? '-' }}</td>
+                                <td data-label="Notice Sent Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     @if($loan->forfeiture_notice_sent_at)
                                         {{ $loan->forfeiture_notice_sent_at->format('d M Y') }}
                                     @else

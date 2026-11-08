@@ -3064,3 +3064,25 @@ body:has(.dh-auth-panel) {
 .dh-evidence-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--dh-line); }
 .dh-evidence-viewer-body { display: flex; justify-content: center; padding: 16px; background: var(--dh-muted-surface); }
 .dh-evidence-viewer-body img { max-width: 100%; max-height: calc(92dvh - 110px); object-fit: contain; border-radius: var(--dh-radius-sm); }
+
+/* Phones: tables tagged dh-stack become one card per row; each cell shows its column name (data-label, written in
+   the view) on the left and its value on the right. No sideways swipe. */
+@media (max-width: 720px) {
+    .dh-app table.dh-stack { min-width: 0; width: 100%; }
+    .dh-app table.dh-stack thead { display: none; }
+    .dh-app table.dh-stack tbody tr { display: block; padding: 10px 16px; border-bottom: 1px solid var(--dh-line); }
+    .dh-app table.dh-stack tbody tr:last-child { border-bottom: 0; }
+    .dh-app table.dh-stack tbody td[data-label] {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 5px 0; text-align: right; white-space: normal; overflow-wrap: anywhere; border: 0;
+    }
+    .dh-app table.dh-stack tbody td[data-label]:not([data-label=""])::before {
+        content: attr(data-label); flex-shrink: 0; text-align: left;
+        font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dh-muted);
+    }
+    .dh-app table.dh-stack tbody td[data-label=""] { justify-content: flex-end; }
+    .dh-app table.dh-stack tbody td:not([data-label]) { display: block; }
+    .dh-app table.dh-stack tfoot :is(tr, td) { display: block; }
+    .dh-app table.dh-stack tfoot td { padding: 4px 16px; text-align: left; }
+    .dh-app table.dh-stack tfoot td:empty { display: none; }
+}

@@ -99,6 +99,17 @@ test('every Dhiran dialog is centred and links do not underline', () => {
     assert.ok(!/underline/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'no rule in dhiran.css adds an underline');
 });
 
+// Owner 2026-11-08: on phones, tagged tables stack into one card per row, each cell showing its column name.
+test('phones: stacked tables become cards with column names', () => {
+    const css = read('dhiran.css');
+    const m = '(max-width: 720px)';
+    assert.equal(decls(css, '.dh-app table.dh-stack thead', m).display, 'none');
+    assert.equal(decls(css, '.dh-app table.dh-stack tbody tr', m).display, 'block');
+    assert.equal(decls(css, '.dh-app table.dh-stack tbody td[data-label]', m).display, 'flex');
+    assert.equal(decls(css, '.dh-app table.dh-stack tbody td[data-label]:not([data-label=""])::before', m).content, 'attr(data-label)');
+    assert.equal(decls(css, '.dh-app table.dh-stack', m)['min-width'], '0');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');

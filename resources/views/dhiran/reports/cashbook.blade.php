@@ -80,7 +80,7 @@
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto" data-list-scroll tabindex="0" role="region" aria-label="Dhiran cashbook entries">
-                <table class="w-full border-collapse jf-table">
+                <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -104,28 +104,28 @@
                                 }
                             @endphp
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $entry->entry_date?->format('d M Y') ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td data-label="Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $entry->entry_date?->format('d M Y') ?? '-' }}</td>
+                                <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     @if($entry->loan)
                                         <a href="{{ route('dhiran.show', $entry->loan) }}" class="text-blue-600 hover:underline">{{ $entry->loan->loan_number }}</a>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <td data-label="Type" class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                     @if($entry->type === 'in')
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">IN</span>
                                     @else
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">OUT</span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->source_type ?? '-')) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $entry->type === 'in' ? 'text-green-600' : 'text-red-600' }}">
+                                <td data-label="Source" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $entry->source_type ?? '-')) }}</td>
+                                <td data-label="Amount" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $entry->type === 'in' ? 'text-green-600' : 'text-red-600' }}">
                                     {{ $entry->type === 'in' ? '+' : '-' }}{{ number_format((float) $entry->amount, 2) }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ \App\Models\Dhiran\DhiranPayment::methodLabel($entry->payment_method) }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{{ $entry->description ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($runningBalance, 2) }}</td>
+                                <td data-label="Method" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ \App\Models\Dhiran\DhiranPayment::methodLabel($entry->payment_method) }}</td>
+                                <td data-label="Description" class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{{ $entry->description ?? '-' }}</td>
+                                <td data-label="Running Balance" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($runningBalance, 2) }}</td>
                             </tr>
                         @empty
                             <tr>

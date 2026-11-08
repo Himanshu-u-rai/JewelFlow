@@ -69,7 +69,7 @@
         {{-- Loans Table --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px] jf-table">
+                <table class="w-full min-w-[800px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
@@ -84,14 +84,14 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loans ?? [] as $loan)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap">
+                                <td data-label="Loan #" class="pl-6 pr-4 py-4 whitespace-nowrap">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{{ $loan->loan_date->format('d M Y') }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding, 2) }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ $loan->interest_rate_monthly }}%/mo</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Date" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{{ $loan->loan_date->format('d M Y') }}</td>
+                                <td data-label="Principal" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}</td>
+                                <td data-label="Outstanding" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding, 2) }}</td>
+                                <td data-label="Rate" class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ $loan->interest_rate_monthly }}%/mo</td>
+                                <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
                                     @php
                                         $statusColors = [
                                             'active' => 'bg-emerald-100 text-emerald-800',
@@ -105,7 +105,7 @@
                                         {{ ucfirst($loan->status) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <td data-label="Actions" class="px-4 py-4 whitespace-nowrap text-center">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-50" title="View">
                                         <x-icon name="eye" size="16" />
                                     </a>

@@ -75,7 +75,7 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[760px] jf-table">
+                    <table class="w-full min-w-[760px] jf-table dh-stack">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan #</th>
@@ -99,17 +99,17 @@
                             @endphp
                             @foreach($loans as $loan)
                                 <tr class="hover:bg-slate-50/70">
-                                    <td class="pl-6 pr-4 py-4"><a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
-                                    <td class="px-4 py-4 text-center">
+                                    <td data-label="Loan #" class="pl-6 pr-4 py-4"><a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
+                                    <td data-label="Status" class="px-4 py-4 text-center">
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
                                             {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-4 text-right text-sm text-slate-700">₹{{ number_format($loan->principal_amount, 2) }}</td>
-                                    <td class="px-4 py-4 text-right text-sm font-medium text-slate-800">₹{{ number_format($loan->totalOutstanding(), 2) }}</td>
-                                    <td class="px-4 py-4 text-sm text-slate-500">{{ $loan->loan_date?->format('d M Y') }}</td>
-                                    <td class="px-4 py-4 text-sm text-slate-500">{{ $loan->maturity_date?->format('d M Y') }}</td>
-                                    <td class="px-4 py-4 text-center"><a href="{{ route('dhiran.show', $loan) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a></td>
+                                    <td data-label="Principal" class="px-4 py-4 text-right text-sm text-slate-700">₹{{ number_format($loan->principal_amount, 2) }}</td>
+                                    <td data-label="Outstanding" class="px-4 py-4 text-right text-sm font-medium text-slate-800">₹{{ number_format($loan->totalOutstanding(), 2) }}</td>
+                                    <td data-label="Created" class="px-4 py-4 text-sm text-slate-500">{{ $loan->loan_date?->format('d M Y') }}</td>
+                                    <td data-label="Maturity" class="px-4 py-4 text-sm text-slate-500">{{ $loan->maturity_date?->format('d M Y') }}</td>
+                                    <td data-label="" class="px-4 py-4 text-center"><a href="{{ route('dhiran.show', $loan) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -123,7 +123,7 @@
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Recent payments</h2></div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[760px] jf-table">
+                <table class="w-full min-w-[760px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</th>
@@ -139,16 +139,16 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($payments as $p)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-3 text-sm text-slate-500 whitespace-nowrap">{{ optional($p->payment_date)->format('d M Y') ?? $p->created_at->format('d M Y') }}</td>
-                                <td class="px-4 py-3 text-sm font-mono text-slate-600">
+                                <td data-label="Date" class="pl-6 pr-4 py-3 text-sm text-slate-500 whitespace-nowrap">{{ optional($p->payment_date)->format('d M Y') ?? $p->created_at->format('d M Y') }}</td>
+                                <td data-label="Loan" class="px-4 py-3 text-sm font-mono text-slate-600">
                                     @if($p->loan)<a href="{{ route('dhiran.show', $p->loan) }}" class="hover:text-amber-700">{{ $p->loan->loan_number }}</a>@else — @endif
                                 </td>
-                                <td class="px-4 py-3 text-sm text-slate-600">{{ ucwords(str_replace('_', ' ', $p->type)) }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->principal_component, 2) }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->interest_component, 2) }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->penalty_component, 2) }}</td>
-                                <td class="px-4 py-3 text-sm text-right font-medium text-slate-800">₹{{ number_format($p->amount, 2) }}</td>
-                                <td class="px-4 py-3 text-center">
+                                <td data-label="Type" class="px-4 py-3 text-sm text-slate-600">{{ ucwords(str_replace('_', ' ', $p->type)) }}</td>
+                                <td data-label="Principal" class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->principal_component, 2) }}</td>
+                                <td data-label="Interest" class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->interest_component, 2) }}</td>
+                                <td data-label="Penalty" class="px-4 py-3 text-sm text-right text-slate-600">₹{{ number_format($p->penalty_component, 2) }}</td>
+                                <td data-label="Total" class="px-4 py-3 text-sm text-right font-medium text-slate-800">₹{{ number_format($p->amount, 2) }}</td>
+                                <td data-label="" class="px-4 py-3 text-center">
                                     @if($p->loan)<a href="{{ route('dhiran.payment-receipt', [$p->loan, $p]) }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800">Receipt</a>@endif
                                 </td>
                             </tr>
@@ -165,7 +165,7 @@
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Pledged items</h2></div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[820px] jf-table">
+                <table class="w-full min-w-[820px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Item</th>
@@ -180,15 +180,15 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($allItems as [$item, $loan])
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-3 text-sm">
+                                <td data-label="Item" class="pl-6 pr-4 py-3 text-sm">
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-800 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
-                                <td class="px-4 py-3 text-sm text-center text-slate-600">@if(($item->metal_type ?? "gold") === "other")—@else{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? "gold") === "silver" ? "" : "K" }}@endif</td>
-                                <td class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap">{{ number_format($item->gross_weight, 3) }} / {{ number_format($item->net_metal_weight, 3) }} / {{ number_format($item->fine_weight, 3) }}g</td>
-                                <td class="px-4 py-3 text-center text-sm text-slate-600 capitalize">{{ $item->status ?? 'pledged' }}</td>
-                                <td class="px-4 py-3 text-sm font-mono"><a href="{{ route('dhiran.show', $loan) }}" class="text-slate-600 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
-                                <td class="px-4 py-3 text-center">
+                                <td data-label="Metal" class="px-4 py-3 text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
+                                <td data-label="Purity" class="px-4 py-3 text-sm text-center text-slate-600">@if(($item->metal_type ?? "gold") === "other")—@else{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? "gold") === "silver" ? "" : "K" }}@endif</td>
+                                <td data-label="Gross / Net / Fine" class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap">{{ number_format($item->gross_weight, 3) }} / {{ number_format($item->net_metal_weight, 3) }} / {{ number_format($item->fine_weight, 3) }}g</td>
+                                <td data-label="Status" class="px-4 py-3 text-center text-sm text-slate-600 capitalize">{{ $item->status ?? 'pledged' }}</td>
+                                <td data-label="Loan" class="px-4 py-3 text-sm font-mono"><a href="{{ route('dhiran.show', $loan) }}" class="text-slate-600 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
+                                <td data-label="Photo" class="px-4 py-3 text-center">
                                     @if(in_array($item->id, $itemsWithPhoto))
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">Photo</span>
                                     @else
