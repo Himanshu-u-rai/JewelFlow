@@ -992,32 +992,44 @@ class DhiranController extends Controller
         };
     }
 
+    /**
+     * A report's card figures over EVERY loan the query matches, not just the page on screen (the cards used to add
+     * up only the first 20 rows).
+     *
+     * @return array{count: int, principal: float, outstanding: float, interest: float, penalty: float, fees: float}
+     */
+    private function loanTotals(\Illuminate\Database\Eloquent\Builder $query): array
+    {
+        $row = (clone $query)->reorder()->toBase()->selectRaw(
+            'count(*) as count, coalesce(sum(principal_amount), 0) as principal,'
+            . ' coalesce(sum(coalesce(outstanding_principal, 0) + coalesce(outstanding_interest, 0) + coalesce(outstanding_penalty, 0)), 0) as outstanding,'
+            . ' coalesce(sum(total_interest_collected), 0) as interest, coalesce(sum(total_penalty_collected), 0) as penalty,'
+            . ' coalesce(sum(processing_fee), 0) as fees'
+        )->first();
+
+        return ['count' => (int) $row->count] + array_map('floatval', array_diff_key((array) $row, ['count' => 0]));
+    }
+
     public function reportActive(Request $request)
     {
         $shopId = auth()->user()->shop_id;
 
-        $loans = DhiranLoan::where('shop_id', $shopId)
-            ->active()
-            ->with('customer')
-            ->latest('loan_date')
-            ->paginate(20)
-            ->withQueryString();
+        $query = DhiranLoan::where('shop_id', $shopId)->active();
+        $totals = $this->loanTotals($query);
+        $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.active', compact('loans'));
+        return view('dhiran.reports.active', compact('loans', 'totals'));
     }
 
     public function reportOverdue(Request $request)
     {
         $shopId = auth()->user()->shop_id;
 
-        $loans = DhiranLoan::where('shop_id', $shopId)
-            ->overdue()
-            ->with('customer')
-            ->orderBy('maturity_date')
-            ->paginate(20)
-            ->withQueryString();
+        $query = DhiranLoan::where('shop_id', $shopId)->overdue();
+        $totals = $this->loanTotals($query);
+        $loans = $query->with('customer')->orderBy('maturity_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.overdue', compact('loans'));
+        return view('dhiran.reports.overdue', compact('loans', 'totals'));
     }
 
     public function reportInterest(Request $request)
@@ -1038,8 +1050,8 @@ class DhiranController extends Controller
         // Payments that carried interest or penalty (the report's subject); the cards cover the whole period, not
         // only the rows on this page.
         $period = fn () => DhiranPayment::where('shop_id', $shopId)->whereBetween('payment_date', [$from, $to]);
-        $payments = $period()
-            ->where(fn ($q) => $q->where('interest_component', '>', 0)->orWhere('penalty_component', '>', 0))
+        $rows = fn () => $period()->where(fn ($q) => $q->where('interest_component', '>', 0)->orWhere('penalty_component', '>', 0));
+        $payments = $rows()
             ->with(['loan', 'loan.customer'])
             ->latest('payment_date')
             ->paginate(20)
@@ -1047,8 +1059,11 @@ class DhiranController extends Controller
 
         $totalInterest = (float) $period()->sum('interest_component');
         $totalPenalty  = (float) $period()->sum('penalty_component');
+        // The table footer covers every listed payment, not only this page.
+        $footer = (array) $rows()->toBase()->selectRaw('coalesce(sum(amount), 0) as amount, coalesce(sum(interest_component), 0) as interest,'
+            . ' coalesce(sum(penalty_component), 0) as penalty, coalesce(sum(principal_component), 0) as principal')->first();
 
-        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'totalPenalty', 'from', 'to'));
+        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'totalPenalty', 'footer', 'from', 'to'));
     }
 
     public function reportForfeiture(Request $request)
@@ -1077,15 +1092,30 @@ class DhiranController extends Controller
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to   = $request->input('to', now()->toDateString());
 
-        $entries = \App\Models\Dhiran\DhiranCashEntry::where('shop_id', $shopId)
-            ->whereBetween('entry_date', [$from, $to])
-            ->with('loan')
-            ->orderBy('entry_date')
-            ->orderBy('id')
-            ->paginate(30)
-            ->withQueryString();
+        // Totals cover the whole period; the opening balance is every entry before it; each page's running balance
+        // starts where the previous page ended (it used to restart at 0 and total only the 30 rows shown).
+        $signed = DB::raw("CASE WHEN type = 'in' THEN amount ELSE -amount END");
+        $all = fn () => \App\Models\Dhiran\DhiranCashEntry::where('shop_id', $shopId);
+        $period = fn () => $all()->whereBetween('entry_date', [$from, $to]);
 
-        return view('dhiran.reports.cashbook', compact('entries', 'from', 'to'));
+        $opening = (float) $all()->where('entry_date', '<', $from)->sum($signed);
+        $totals = [
+            'opening' => $opening,
+            'in'      => (float) $period()->where('type', 'in')->sum('amount'),
+            'out'     => (float) $period()->where('type', 'out')->sum('amount'),
+        ];
+        $totals['net'] = $totals['in'] - $totals['out'];
+        $totals['closing'] = $opening + $totals['net'];
+
+        $entries = $period()->with('loan')->orderBy('entry_date')->orderBy('id')->paginate(30)->withQueryString();
+
+        $first = $entries->first();
+        $pageStartBalance = $opening + ($first ? (float) $period()
+            ->where(fn ($q) => $q->where('entry_date', '<', $first->entry_date)
+                ->orWhere(fn ($w) => $w->where('entry_date', $first->entry_date)->where('id', '<', $first->id)))
+            ->sum($signed) : 0);
+
+        return view('dhiran.reports.cashbook', compact('entries', 'from', 'to', 'totals', 'pageStartBalance'));
     }
 
     public function reportProfitability(Request $request)
@@ -1100,12 +1130,10 @@ class DhiranController extends Controller
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to   = $request->input('to', now()->toDateString());
 
-        $loans = DhiranLoan::where('shop_id', $shopId)
-            ->whereBetween('loan_date', [$from, $to])
-            ->with('customer')
-            ->latest('loan_date')
-            ->get();
+        $query = DhiranLoan::where('shop_id', $shopId)->whereBetween('loan_date', [$from, $to]);
+        $totals = $this->loanTotals($query);
+        $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.profitability', compact('loans', 'from', 'to'));
+        return view('dhiran.reports.profitability', compact('loans', 'from', 'to', 'totals'));
     }
 }

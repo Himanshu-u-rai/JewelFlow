@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Loans past maturity date requiring attention</p>
         </div>
         <div class="page-actions">
-            <span class="header-badge">{{ $loans->count() }} Overdue</span>
+            <span class="header-badge">{{ $totals['count'] }} Overdue</span>
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
                 <x-icon name="printer" size="14" />
                 Print
@@ -23,7 +23,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Overdue</p>
-                        <p class="text-xl font-bold text-gray-900">{{ $loans->count() }}</p>
+                        <p class="text-xl font-bold text-gray-900" data-report-total="count">{{ $totals['count'] }}</p>
                     </div>
                 </div>
             </div>
@@ -34,7 +34,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Overdue Amount</p>
-                        <p class="text-xl font-bold text-red-600">{{ number_format($loans->sum(fn($l) => $l->totalOutstanding()), 2) }}</p>
+                        <p class="text-xl font-bold text-red-600" data-report-total="outstanding">{{ number_format($totals['outstanding'], 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -108,6 +108,9 @@
                     </tbody>
                 </table>
             </div>
+            @if($loans->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">{{ $loans->links() }}</div>
+            @endif
         </div>
     </div>
 </x-dhiran-layout>

@@ -1,10 +1,10 @@
 <x-dhiran-layout title="Profitability Report">
     @php
-        $totalDisbursed = $loans->sum('principal_amount');
-        $totalInterestEarned = $loans->sum('total_interest_collected');
-        $totalPenalties = $loans->sum('total_penalty_collected');
-        $totalProcessingFees = $loans->sum('processing_fee');
-        $totalPrincipalCollected = $loans->sum('total_principal_collected');
+        // $totals covers every loan given in the period, on every page.
+        $totalDisbursed = $totals['principal'];
+        $totalInterestEarned = $totals['interest'];
+        $totalPenalties = $totals['penalty'];
+        $totalProcessingFees = $totals['fees'];
         $netProfit = $totalInterestEarned + $totalPenalties + $totalProcessingFees;
     @endphp
 
@@ -22,12 +22,32 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
+        {{-- Loans given in this period (the controller always took a range; the page had no way to set it). --}}
+        <div class="dh-filter-card">
+            <form method="GET" action="{{ route('dhiran.reports.profitability') }}" class="dh-filter-row">
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">Loans given from</label>
+                    <input type="date" name="from" value="{{ $from }}" class="dh-form-control">
+                </div>
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">To</label>
+                    <input type="date" name="to" value="{{ $to }}" class="dh-form-control">
+                </div>
+                <div class="dh-filter-actions">
+                    <button type="submit" class="btn btn-dark btn-sm">View</button>
+                    @if(request()->hasAny(['from', 'to']))
+                        <a href="{{ route('dhiran.reports.profitability') }}" class="btn btn-secondary btn-sm">Clear</a>
+                    @endif
+                </div>
+            </form>
+        </div>
+
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div>
                     <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Disbursed</p>
-                    <p class="text-xl font-bold text-gray-900 mt-1">{{ number_format($totalDisbursed, 2) }}</p>
+                    <p class="text-xl font-bold text-gray-900 mt-1" data-report-total="principal">{{ number_format($totalDisbursed, 2) }}</p>
                 </div>
             </div>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -112,7 +132,7 @@
                     @if($loans->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="2" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $loans->count() }} loans)</td>
+                            <td colspan="2" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $totals['count'] }} loans)</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($totalDisbursed, 2) }}</td>
                             <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($totalInterestEarned, 2) }}</td>
                             <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($totalPenalties, 2) }}</td>
@@ -124,6 +144,9 @@
                     @endif
                 </table>
             </div>
+            @if($loans->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">{{ $loans->links() }}</div>
+            @endif
         </div>
     </div>
 </x-dhiran-layout>

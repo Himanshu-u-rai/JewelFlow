@@ -101,17 +101,20 @@
                     @if($payments->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            {{-- Sums of the rows shown; the cards above cover the whole period. --}}
-                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">{{ $payments->hasPages() ? 'This page' : 'Totals' }}</td>
-                            <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($payments->sum('amount'), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($payments->sum('interest_component'), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($payments->sum('penalty_component'), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-blue-700 text-right">{{ number_format($payments->sum('principal_component'), 2) }}</td>
+                            {{-- Every listed payment in the period, on every page. --}}
+                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $payments->total() }} payments)</td>
+                            <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($footer['amount'], 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($footer['interest'], 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($footer['penalty'], 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-blue-700 text-right">{{ number_format($footer['principal'], 2) }}</td>
                         </tr>
                     </tfoot>
                     @endif
                 </table>
             </div>
+            @if($payments->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">{{ $payments->links() }}</div>
+            @endif
         </div>
     </div>
 </x-dhiran-layout>

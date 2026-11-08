@@ -2,9 +2,8 @@
     @php
         $fromDate = request('from', now()->startOfMonth()->format('Y-m-d'));
         $toDate = request('to', now()->format('Y-m-d'));
-        $totalInflows = $entries->where('type', 'in')->sum('amount');
-        $totalOutflows = $entries->where('type', 'out')->sum('amount');
-        $net = $totalInflows - $totalOutflows;
+        // $totals (opening, in, out, net, closing) and $pageStartBalance come from the controller: whole period,
+        // every page, starting from the balance before the period.
     @endphp
 
     <x-dhiran.page-header>
@@ -41,40 +40,26 @@
         </div>
 
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-100 flex items-center justify-center rounded-lg">
-                        <x-icon name="trending-up" size="18" class="text-green-600" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Inflows</p>
-                        <p class="text-xl font-bold text-green-600">{{ number_format($totalInflows, 2) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-red-100 flex items-center justify-center rounded-lg">
-                        <x-icon name="trending-down" size="18" class="text-red-600" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Outflows</p>
-                        <p class="text-xl font-bold text-red-600">{{ number_format($totalOutflows, 2) }}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            @foreach([
+                ['opening', 'Opening balance', 'wallet', 'bg-slate-100', 'text-slate-700', 'Before ' . \Illuminate\Support\Carbon::parse($fromDate)->format('d M Y')],
+                ['in', 'Total inflows', 'trending-up', 'bg-green-100', 'text-green-600', null],
+                ['out', 'Total outflows', 'trending-down', 'bg-red-100', 'text-red-600', null],
+                ['closing', 'Closing balance', 'chart-no-axes-column', 'bg-blue-100', $totals['closing'] >= 0 ? 'text-blue-600' : 'text-red-600', 'Net ' . number_format($totals['net'], 2) . ' in this period'],
+            ] as [$key, $label, $icon, $tint, $ink, $sub])
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 {{ $tint }} flex items-center justify-center rounded-lg">
+                            <x-icon :name="$icon" size="18" :class="$ink" />
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">{{ $label }}</p>
+                            <p class="text-xl font-bold {{ $ink }}" data-report-total="{{ $key }}">{{ number_format($totals[$key], 2) }}</p>
+                            @if($sub)<p class="text-xs text-gray-500 mt-0.5">{{ $sub }}</p>@endif
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 {{ $net >= 0 ? 'bg-blue-100' : 'bg-red-100' }} flex items-center justify-center rounded-lg">
-                        <x-icon name="chart-no-axes-column" size="18" :class="$net >= 0 ? 'text-blue-600' : 'text-red-600'" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Net</p>
-                        <p class="text-xl font-bold {{ $net >= 0 ? 'text-blue-600' : 'text-red-600' }}">{{ number_format($net, 2) }}</p>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Table --}}
@@ -94,7 +79,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @php $runningBalance = 0; @endphp
+                        @php $runningBalance = $pageStartBalance; @endphp
                         @forelse($entries as $entry)
                             @php
                                 if ($entry->type === 'in') {
@@ -125,7 +110,7 @@
                                 </td>
                                 <td data-label="Method" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ \App\Models\Dhiran\DhiranPayment::methodLabel($entry->payment_method) }}</td>
                                 <td data-label="Description" class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{{ $entry->description ?? '-' }}</td>
-                                <td data-label="Running Balance" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($runningBalance, 2) }}</td>
+                                <td data-label="Running Balance" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}" data-running-balance>{{ number_format($runningBalance, 2) }}</td>
                             </tr>
                         @empty
                             <tr>
@@ -136,15 +121,18 @@
                     @if($entries->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Totals</td>
-                            <td class="px-6 py-3 text-sm text-gray-900 text-right">Net: {{ number_format($net, 2) }}</td>
-                            <td colspan="2"></td>
-                            <td class="px-6 py-3 text-sm font-bold text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($runningBalance, 2) }}</td>
+                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Period totals ({{ $entries->total() }} entries)</td>
+                            <td class="px-6 py-3 text-sm text-gray-900 text-right">Net: {{ number_format($totals['net'], 2) }}</td>
+                            <td colspan="2" class="px-6 py-3 text-sm text-gray-700 text-right">Closing balance</td>
+                            <td class="px-6 py-3 text-sm font-bold text-right {{ $totals['closing'] >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($totals['closing'], 2) }}</td>
                         </tr>
                     </tfoot>
                     @endif
                 </table>
             </div>
+            @if($entries->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">{{ $entries->links() }}</div>
+            @endif
         </div>
     </div>
 </x-dhiran-layout>
