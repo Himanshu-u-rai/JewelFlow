@@ -1,4 +1,4 @@
-<x-dhiran-layout title="Borrower Profile">
+<x-dhiran-layout title="Customer Profile">
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">{{ $customer->name }}</h1>
@@ -7,7 +7,7 @@
         <div class="page-actions">
             <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">
                 <x-icon name="plus" size="14" class="mr-1" />
-                New Loan for this borrower
+                New Loan for this customer
             </a>
             <a href="{{ route('dhiran.borrowers.index') }}" class="btn btn-secondary btn-sm">
                 <x-icon name="arrow-left" size="14" class="mr-1" />
@@ -20,7 +20,7 @@
 
         {{-- 1. Basic details --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
-            <h2 class="text-base font-semibold text-slate-900 mb-4">Borrower details</h2>
+            <h2 class="text-base font-semibold text-slate-900 mb-4">Customer details</h2>
             <x-customer-photo :customer="$customer" realm="dhiran" />
             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Name</dt><dd class="text-slate-800 font-medium mt-0.5">{{ $customer->name }}</dd></div>
@@ -60,7 +60,7 @@
         {{-- 2. KYC / Documents --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
             <h2 class="text-base font-semibold text-slate-900 mb-1">Documents &amp; evidence</h2>
-            <p class="text-xs text-slate-500 mb-4">ID proof, photos, and loan documents for this borrower. Files are private to your shop.</p>
+            <p class="text-xs text-slate-500 mb-4">ID proof, photos, and loan documents for this customer. Files are private to your shop.</p>
             @if($attachments->isEmpty())
                 <p class="text-sm text-slate-400">No documents uploaded yet.</p>
             @else
@@ -84,8 +84,8 @@
             @if($loans->isEmpty())
                 <div class="px-6 py-12 text-center">
                     <p class="text-base font-semibold text-slate-700 mb-1">No loans yet</p>
-                    <p class="text-sm text-slate-500 mb-4">This borrower has no pledge loans with your shop.</p>
-                    <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">Create loan for this borrower</a>
+                    <p class="text-sm text-slate-500 mb-4">This customer has no pledge loans with your shop.</p>
+                    <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">Create loan for this customer</a>
                 </div>
             @else
                 <div class="overflow-x-auto">

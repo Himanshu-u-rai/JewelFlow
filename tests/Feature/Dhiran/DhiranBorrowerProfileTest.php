@@ -126,7 +126,12 @@ class DhiranBorrowerProfileTest extends TestCase
         [$c] = $this->borrowerWithLoan($shop, $owner, 'Asha', '9811110021');
         $html = $this->profile($shop, $owner, $c->id)->render();
         $this->assertStringContainsString('Asha Borrower', $html);
-        $this->assertStringContainsString('Borrower details', $html);
+        // The page is about a customer, with or without a loan (owner, 2026-11-08).
+        $this->assertStringContainsString('Customer details', $html);
+        // (The test customer's surname is "Borrower", so check the page's own words, not every occurrence.)
+        foreach (['Borrower Profile', 'Borrower details', 'this borrower', 'This borrower'] as $old) {
+            $this->assertStringNotContainsString($old, $html);
+        }
     }
 
     // 6. Profile rejects ERP shop customer.
