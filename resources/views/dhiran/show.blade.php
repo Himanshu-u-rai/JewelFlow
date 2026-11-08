@@ -481,12 +481,14 @@
                         <option value="">Choose item...</option>
                         @foreach($loan->items ?? [] as $item)
                             @if(($item->status ?? 'pledged') === 'pledged')
-                                <option value="{{ $item->id }}">{{ $item->description }} ({{ number_format($item->gross_weight, 3) }}g)</option>
+                                @php $releaseMin = rescue(fn () => app(\App\Services\DhiranService::class)->releaseMinimum($loan, $item), null, false); @endphp
+                                <option value="{{ $item->id }}">{{ $item->description }} ({{ number_format($item->gross_weight, 3) }}g){{ $releaseMin !== null ? ' — pay at least ' . ($currencySymbol ?? '₹') . number_format($releaseMin, 2) : '' }}</option>
                             @endif
                         @endforeach
                     </select>
+                    <p class="mt-1 text-xs text-slate-500">The amount covers interest and penalty due up to {{ \Illuminate\Support\Carbon::parse($loan->interest_accrued_through ?? $loan->loan_date)->format('d M Y') }}, plus the item's share of the principal. Interest for any days since is added when you release.</p>
                 </div>
-                {{-- DhiranController::releaseItem requires the amount paid against the item's share of the principal. --}}
+                {{-- DhiranService::releaseMinimum: interest and penalty due plus the item's share of the principal among the items still pledged. --}}
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
                     <input type="number" step="0.01" min="0" name="payment_amount" required placeholder="0.00"

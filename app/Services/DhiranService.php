@@ -792,6 +792,27 @@ class DhiranService
     /**
      * Release a single pledged item. Requires proportional principal payment.
      */
+    /**
+     * What must be paid to release one pledged item: the penalty and interest due (a payment settles those first),
+     * plus the item's share of the principal by market value among the items STILL pledged, so releasing the last
+     * item clears the principal. (The loan's total_collateral_value never shrinks on release, so it cannot be the
+     * basis: with two equal items the second release would ask for half of what is left.)
+     */
+    public function releaseMinimum(DhiranLoan $loan, DhiranLoanItem $item): float
+    {
+        $pledgedValue = (float) DhiranLoanItem::query()
+            ->where('dhiran_loan_id', $loan->id)
+            ->where('status', 'pledged')
+            ->sum('market_value');
+        if ($pledgedValue <= 0) {
+            throw new LogicException('No pledged value is left on this loan — cannot calculate the release amount.');
+        }
+
+        $principalShare = round(((float) $item->market_value / $pledgedValue) * (float) $loan->outstanding_principal, 2);
+
+        return round((float) $loan->outstanding_penalty + (float) $loan->outstanding_interest + $principalShare, 2);
+    }
+
     public function releaseItem(
         DhiranLoan $loan,
         DhiranLoanItem $item,
@@ -822,22 +843,12 @@ class DhiranService
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
             $item = DhiranLoanItem::lockForUpdate()->find($item->id);
 
-            // ── Calculate proportional principal ─────────────
-            $totalCollateral = (float) $loan->total_collateral_value;
-            if ($totalCollateral <= 0) {
-                throw new LogicException('Total collateral value is zero — cannot calculate proportional release.');
-            }
-
-            // Same basis on both sides: total_collateral_value is the sum of item market values. Using the item's
-            // loan value here took only the LTV share (e.g. 75%) of the principal for every item released.
-            $proportionalPrincipal = round(
-                ((float) $item->market_value / $totalCollateral) * (float) $loan->outstanding_principal,
-                2
-            );
-
-            if ($paymentAmount < $proportionalPrincipal) {
+            $required = $this->releaseMinimum($loan, $item);
+            $proportionalPrincipal = round($required - (float) $loan->outstanding_penalty - (float) $loan->outstanding_interest, 2);
+            if ($paymentAmount < $required) {
                 throw new LogicException(
-                    "Payment amount ({$paymentAmount}) is less than proportional principal ({$proportionalPrincipal}) required to release this item."
+                    'Payment amount (' . number_format($paymentAmount, 2) . ') is less than the ' . number_format($required, 2)
+                    . ' needed to release this item (interest and penalty due, plus its share of the principal).'
                 );
             }
 
@@ -918,6 +929,7 @@ class DhiranService
                 'meta'                    => json_encode([
                     'item_id'                => $item->id,
                     'proportional_principal' => $proportionalPrincipal,
+                    'release_minimum'        => $required,
                     'condition_note'         => $conditionNote,
                 ]),
                 'created_by'              => $loan->created_by,

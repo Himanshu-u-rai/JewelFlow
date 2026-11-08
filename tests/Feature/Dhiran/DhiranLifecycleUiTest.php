@@ -299,8 +299,70 @@ class DhiranLifecycleUiTest extends TestCase
                 $this->service->releaseItem($loan, $item, round($outstanding * 0.75, 2), 'cash', '');
                 $this->fail('Released the only pledged item for three quarters of the principal.');
             } catch (\LogicException $e) {
-                $this->assertStringContainsString('proportional principal (' . round($outstanding, 2) . ')', $e->getMessage());
+                $this->assertStringContainsString('needed to release this item', $e->getMessage());
             }
+        });
+    }
+
+    // Each release's share was measured against the loan's original total, which never shrinks: two equal items on a
+    // loan meant the second release asked for only half of what was left, leaving principal owed with no gold held.
+    public function test_releasing_items_one_by_one_clears_the_whole_principal(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000076');
+        $loan = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = Customer::create(['shop_id' => $shop->id, 'first_name' => 'Two', 'last_name' => 'Items', 'mobile' => '9811130001']);
+            $item = ['metal_type' => 'gold', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000];
+
+            return $this->service->createLoan($shop, $customer, [['description' => 'Chain'] + $item, ['description' => 'Bangle'] + $item], [
+                'principal_amount' => 100000, 'gold_rate_on_date' => 6000, 'tenure_months' => 1, 'grace_period_days' => 0,
+                'loan_date' => today()->toDateString(), 'created_by' => null,
+            ]);
+        });
+
+        TenantContext::runFor($shop->id, function () use ($loan, $shop, $owner) {
+            [$chain, $bangle] = $this->fresh($loan->id)->items()->orderBy('id')->get()->all();
+
+            $this->service->releaseItem($this->fresh($loan->id), $chain, $this->service->releaseMinimum($this->fresh($loan->id), $chain), 'cash', '');
+            $left = $this->fresh($loan->id);
+            $this->assertEqualsWithDelta(50000, (float) $left->outstanding_principal, 0.01, 'first item released for half');
+
+            // The last item carries all that is left; half of it is not enough.
+            $this->assertEqualsWithDelta($left->totalOutstanding(), $this->service->releaseMinimum($left, $bangle), 0.01);
+            try {
+                $this->service->releaseItem($left, $bangle, 25000, 'cash', '');
+                $this->fail('Released the last pledged item while half the remaining principal stayed owed.');
+            } catch (\LogicException $e) {
+                $this->assertStringContainsString('needed to release this item', $e->getMessage());
+            }
+            // The release dialog says what each item needs.
+            $dialog = $this->renderShow($shop, $owner, $loan->id);
+            $this->assertStringContainsString('pay at least ₹' . number_format($left->totalOutstanding(), 2), $dialog);
+
+            $this->service->releaseItem($this->fresh($loan->id), $bangle, $left->totalOutstanding(), 'cash', '');
+            $this->assertEqualsWithDelta(0, (float) $this->fresh($loan->id)->outstanding_principal, 0.01, 'principal left with no gold held');
+        });
+    }
+
+    // The payment pays interest and penalty first, so a minimum of only the principal share let interest eat into it.
+    public function test_release_minimum_includes_interest_due(): void
+    {
+        [$shop] = $this->dhiranShopWithOwner('9390000077');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->subDays(20)->toDateString()]);
+
+        TenantContext::runFor($shop->id, function () use ($loan) {
+            $loan = $this->fresh($loan->id);
+            $this->service->accrueInterest($loan);
+            $loan = $this->fresh($loan->id);
+            $this->assertGreaterThan(0, (float) $loan->outstanding_interest, 'test premise: interest is due');
+            $item = $loan->items()->first();
+
+            try {
+                $this->service->releaseItem($loan, $item, (float) $loan->outstanding_principal, 'cash', '');
+                $this->fail('Released the only item for the principal alone while interest was due.');
+            } catch (\LogicException $e) {
+                $this->assertStringContainsString('needed to release this item', $e->getMessage());
+            }
+            $this->assertEqualsWithDelta($loan->totalOutstanding(), $this->service->releaseMinimum($loan, $item), 0.01);
         });
     }
 
