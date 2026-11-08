@@ -3065,6 +3065,10 @@ body:has(.dh-auth-panel) {
 .dh-evidence-viewer-body { display: flex; justify-content: center; padding: 16px; background: var(--dh-muted-surface); }
 .dh-evidence-viewer-body img { max-width: 100%; max-height: calc(92dvh - 110px); object-fit: contain; border-radius: var(--dh-radius-sm); }
 
+/* New Loan: how much the pledged items allow, under Principal; a warning when the amount is outside the limits. */
+.dh-principal-limit { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--dh-muted); }
+.dh-principal-limit.is-problem { color: var(--dh-danger); font-weight: 600; }
+
 /* Phones: tables tagged dh-stack become one card per row; each cell shows its column name (data-label, written in
    the view) on the left and its value on the right. No sideways swipe. */
 @media (max-width: 720px) {

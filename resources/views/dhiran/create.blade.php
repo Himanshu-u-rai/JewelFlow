@@ -329,8 +329,10 @@
                             <input type="number" step="0.01" name="principal_amount" id="principal_amount"
                                    x-model.number="principal_amount"
                                    value="{{ old('principal_amount') }}"
-                                   placeholder="0.00" class="dh-input" required>
+                                   placeholder="0.00" class="dh-input" required
+                                   :aria-invalid="principalProblem ? 'true' : 'false'" aria-describedby="principal-limit">
                         </div>
+                        <p id="principal-limit" class="dh-principal-limit" data-principal-limit :class="principalProblem && 'is-problem'" x-text="principalHint" aria-live="polite"></p>
                         @error('principal_amount')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -486,6 +488,10 @@
                 processingFeePercent: {{ $defaults['processing_fee_percent'] ?? 0 }},
                 processingFeeFlat: {{ $defaults['processing_fee_flat'] ?? 0 }},
                 ltvPercent: {{ $defaults['ltv_percent'] ?? 75 }},
+                highValueLtv: {{ $defaults['high_value_ltv'] ?? 75 }},
+                highValueThreshold: {{ $defaults['high_value_threshold'] ?? 250000 }},
+                minLoan: {{ $defaults['min_loan'] ?? 0 }},
+                maxLoan: {{ $defaults['max_loan'] ?? 0 }},
 
                 // After a refused save, the items come back as typed (init() recalculates their values).
                 items: {{ Illuminate\Support\Js::from(collect(old('items') ?: [[]])->values()->map(fn ($i) => [
@@ -506,6 +512,29 @@
                 },
                 get totalLoanValue() {
                     return this.items.reduce((sum, i) => sum + (i.loan_value || 0), 0);
+                },
+                // Largest principal the server will accept (mirrors DhiranService::createLoan): the items' market
+                // value at the LTV for the principal's tier (each item rounded to paise), never above the shop's
+                // maximum. A principal at or over the high-value threshold gets the (usually lower) high-value LTV.
+                itemsLoanValueAt(ltv) {
+                    return this.items.reduce((sum, i) => sum + Math.round((i.market_value || 0) * ltv) / 100, 0);
+                },
+                get maxPrincipal() {
+                    const T = this.highValueThreshold, low = this.itemsLoanValueAt(this.ltvPercent), high = this.itemsLoanValueAt(this.highValueLtv);
+                    const best = T <= 0 ? high : (high >= T ? Math.max(high, Math.min(low, T - 0.01)) : Math.min(low, T - 0.01));
+                    return Math.max(0, this.maxLoan > 0 ? Math.min(best, this.maxLoan) : best);
+                },
+                get principalProblem() {
+                    const p = Number(this.principal_amount) || 0;
+                    if (p <= 0 || this.totalMarketValue <= 0) return false;
+                    return p > this.maxPrincipal + 0.001 || p < this.minLoan;
+                },
+                get principalHint() {
+                    if (this.totalMarketValue <= 0) return 'Add the pledged items to see how much can be lent.';
+                    const p = Number(this.principal_amount) || 0, sym = '{{ $currencySymbol ?? '₹' }}';
+                    if (p > 0 && p < this.minLoan) return 'The smallest loan is ' + sym + this.money(this.minLoan) + '.';
+                    if (p > this.maxPrincipal + 0.001) return 'Too high: these items allow up to ' + sym + this.money(this.maxPrincipal) + '.';
+                    return 'Up to ' + sym + this.money(this.maxPrincipal) + ' against these items.';
                 },
                 get monthlyInterest() {
                     return (this.principal_amount || 0) * (this.interest_rate_monthly || 0) / 100;
