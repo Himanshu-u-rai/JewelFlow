@@ -38,7 +38,7 @@
     --dh-muted-surface: #f3f5f8;
     --dh-field: var(--dh-white);
     --dh-field-border: #cbd5e1;
-    --dh-table-head: #f1f4f8;
+    --dh-table-head: #eaeff5;   /* header band, clearly apart from white rows */
     --dh-row-hover: #f8fafc;
 
     /* sidebar (dark) */

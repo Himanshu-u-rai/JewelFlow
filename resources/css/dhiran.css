@@ -3013,6 +3013,28 @@ body:has(.dh-auth-panel) {
     box-shadow: var(--dh-card-shadow);
 }
 .dh-app .ds-fin-card-primary { border-color: var(--dh-accent); }
+/* Lists (owner 2026-11-08, Customers "incomplete"): the shared list layout stretched the table box to the window,
+   so a short list sat at the top of a big empty white box. Short lists end at their last row; long ones still stop
+   at the window and scroll inside. The box clips its corners so the header band follows the rounding. */
+@media screen and (min-width: 1024px) and (min-height: 800px) {
+    .dh-app [data-list-workspace][data-list-fit] [data-list-frame] { flex: 0 1 auto; }
+    .dh-app [data-list-workspace][data-list-fit] [data-list-scroll] { flex: 0 1 auto; min-height: 0; }
+}
+.dh-app [data-list-frame] { overflow: hidden; }
+/* app.css un-clips direct rounded children of .content-inner; table cards must clip so the header band follows the
+   round corners. A wrapper under a card title is mid-card: its top corners stay square. */
+.dh-app .content-inner > :is([data-list-frame], div.overflow-hidden) { overflow: hidden; }
+.dh-app .content-inner .overflow-x-auto:not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; }
+/* Buttons in table rows line up with the 36px row action icons. */
+.dh-app .dh-scroll td :is(.btn, .jf-row-action) { vertical-align: middle; }
+.dh-app .dh-scroll td .btn-sm { min-height: 36px; height: 36px; padding-block: 0; }
+/* Table headers: header cells were painted near-white over the band with faint text; one clear band everywhere. */
+.dh-app .dh-scroll table thead th {
+    background-color: var(--dh-table-head) !important;
+    color: var(--dh-ink-soft) !important;
+    border-bottom: 1px solid var(--dh-line);
+}
+
 /* Tinted panels (e.g. the green Net Profit card) matched shared and older 12px !important rules; same corners as
    every other Dhiran card. */
 .dh-app .content-inner :is(div, section, article):is(.rounded-lg, .rounded-xl, .rounded-2xl).border { border-radius: var(--dh-card-radius) !important; }

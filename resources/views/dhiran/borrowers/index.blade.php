@@ -82,7 +82,7 @@
                                     <td class="px-4 py-4 text-right text-sm font-semibold text-slate-800 whitespace-nowrap">₹{{ number_format($outstanding[$borrower->id] ?? 0, 2) }}</td>
                                     <td class="px-4 py-4 text-center whitespace-nowrap">
                                         <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="jf-row-action jf-row-action--view" data-tip="Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">Profile</span></a>
-                                        <a href="{{ route('dhiran.create', ['customer_id' => $borrower->id]) }}" class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100">New Loan</a>
+                                        <a href="{{ route('dhiran.create', ['customer_id' => $borrower->id]) }}" class="btn btn-primary btn-sm ml-2 align-middle">New Loan</a>
                                     </td>
                                 </tr>
             @if($loop->last)

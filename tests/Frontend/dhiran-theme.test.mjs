@@ -62,6 +62,32 @@ test('one content width and one card look, both from tokens', () => {
     assert.equal(app['--app-card-border'], 'var(--dh-card-border)');
 });
 
+// Owner 2026-11-08 (Customers list "incomplete", "where is the header"): the shared list layout stretched the table
+// box to the window, leaving a big empty white box under a short list, and header cells were painted near-white with
+// faint text. Short lists now end at their last row; header cells get a clear band from tokens.
+test('lists end at their last row and table headers stand out', () => {
+    const css = read('dhiran.css');
+    const media = 'screen and (min-width: 1024px) and (min-height: 800px)';
+    assert.equal(decls(css, '.dh-app [data-list-workspace][data-list-fit] [data-list-frame]', media).flex, '0 1 auto');
+    assert.equal(decls(css, '.dh-app [data-list-workspace][data-list-fit] [data-list-scroll]', media).flex, '0 1 auto');
+    const th = decls(css, '.dh-app .dh-scroll table thead th'); // outranks the .dh-app .text-slate-500 class mapping
+    assert.equal(th['background-color'], 'var(--dh-table-head)');
+    assert.equal(th.color, 'var(--dh-ink-soft)');
+    assert.equal(decls(css, '.dh-app [data-list-frame]').overflow, 'hidden');
+});
+
+// Owner 2026-11-08 ("table edges not round on left, header misaligned"): app.css un-clips every direct rounded child of
+// .content-inner (0,2,1), so the grey header band's square corners stuck out past the card's round corners; and the
+// shared "wrapper inherits the card radius" rule rounded the band's own corners when a title sits above the table.
+test('table cards clip their header band to the round corners', () => {
+    const css = read('dhiran.css');
+    const clip = '.dh-app .content-inner > :is([data-list-frame], div.overflow-hidden)'; // 0,3,1 beats app.css 0,2,1
+    assert.equal(decls(css, clip).overflow, 'hidden');
+    const midCard = decls(css, '.dh-app .content-inner .overflow-x-auto:not(:first-child)');
+    assert.equal(midCard['border-top-left-radius'], '0');
+    assert.equal(midCard['border-top-right-radius'], '0');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');
