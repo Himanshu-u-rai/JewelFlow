@@ -835,10 +835,18 @@
     cursor: pointer;
 }
 .dh-main { flex: 1; min-width: 0; padding: 26px 30px; }
-/* Messages render before the page header in the markup; the header's negative top margin then slid it over the
-   message. Order the header first so it stays the top band and messages sit just below it. */
+/* The layout renders the page header in its own band, then .dh-scroll (messages + page). On desktop only .dh-scroll
+   scrolls, so the page scrollbar starts under the header instead of running beside it, as in the ERP shell (owner
+   2026-11-08). Phones keep normal page flow (overlay scrollbars, the sticky header); print is untouched. */
 .dh-main { display: flex; flex-direction: column; }
-.dh-main > .dh-page-header { order: -1; }
+@media screen and (min-width: 901px) {
+    .dh-html { height: 100%; overflow: hidden; }
+    .dh-html body { height: 100%; overflow: hidden; }
+    .dh-shell { height: 100vh; min-height: 0; }
+    .dh-main { height: 100vh; padding: 0; overflow: hidden; }
+    .dh-main > .dh-page-header { margin: 0; flex: none; }
+    .dh-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 26px 30px; }
+}
 .content-inner { max-width: 1180px; margin: 0 auto; width: 100%; }
 .dh-flash {
     border-radius: 12px;

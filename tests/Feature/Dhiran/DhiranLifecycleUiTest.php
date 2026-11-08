@@ -583,6 +583,26 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertStringContainsString('Back to Customer', $html);
     }
 
+    // The page scrollbar ran beside the header (the header was inside the scrolling page). The header now renders in
+    // its own band, then one scroll area holds the messages and the page (owner screenshot 2026-11-08).
+    public function test_header_sits_above_the_scroll_area_with_messages_inside_it(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000092');
+        $loan = $this->makeLoan($shop);
+
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->withSession(['error' => 'Something was refused.'])
+            ->get("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}"))->assertOk()->getContent();
+
+        $header = strpos($html, 'class="content-header dh-page-header');
+        $scroll = strpos($html, 'class="dh-scroll"');
+        $flash = strpos($html, 'Something was refused.');
+        $this->assertNotFalse($header);
+        $this->assertNotFalse($scroll);
+        $this->assertTrue($header < $scroll && $scroll < $flash, 'header, then the scroll area holding the message');
+        $this->assertSame(1, substr_count($html, 'class="content-header dh-page-header'), 'one header only (no fallback beside the page\'s own)');
+    }
+
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
     // so both columns showed "-" for every entry.
     public function test_cash_book_shows_entry_source_and_method(): void

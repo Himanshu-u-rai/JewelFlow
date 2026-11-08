@@ -87,21 +87,17 @@
 
         <main class="dh-main">
             @php
+                // Rendering the page first lets <x-dhiran.page-header> push itself into the header band below.
                 $slotMarkup = (string) $slot;
-                $hasPageHeader = str_contains($slotMarkup, 'dh-page-header');
+                $pageHeader = trim($__env->yieldPushContent('dh-page-header'));
+                $hasPageHeader = $pageHeader !== '';
             @endphp
 
-            @if(session('success'))
-                <div class="dh-flash dh-flash-success">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="dh-flash dh-flash-error">{{ session('error') }}</div>
-            @elseif(isset($errors) && $errors->any())
-                {{-- Dhiran dialogs have no inline field errors: show the refusal so a rejected form is never silent. --}}
-                <div class="dh-flash dh-flash-error">{{ $errors->first() }}</div>
-            @endif
-
-            @unless($hasPageHeader)
+            {{-- Header band, then the scroll area: on desktop only .dh-scroll scrolls, so the page scrollbar starts
+                 under the header instead of running beside it (as in the ERP shell). --}}
+            @if($hasPageHeader)
+                {!! $pageHeader !!}
+            @else
                 <div class="content-header dh-page-header dh-page-header-fallback">
                     <div class="dh-page-header-content">
                         <button type="button" class="dh-header-toggle"
@@ -114,9 +110,21 @@
                         </div>
                     </div>
                 </div>
-            @endunless
+            @endif
 
-            {!! $slotMarkup !!}
+            <div class="dh-scroll">
+                @if(session('success'))
+                    <div class="dh-flash dh-flash-success">{{ session('success') }}</div>
+                @endif
+                @if(session('error'))
+                    <div class="dh-flash dh-flash-error">{{ session('error') }}</div>
+                @elseif(isset($errors) && $errors->any())
+                    {{-- Dhiran dialogs have no inline field errors: show the refusal so a rejected form is never silent. --}}
+                    <div class="dh-flash dh-flash-error">{{ $errors->first() }}</div>
+                @endif
+
+                {!! $slotMarkup !!}
+            </div>
         </main>
     </div>
     @stack('scripts')

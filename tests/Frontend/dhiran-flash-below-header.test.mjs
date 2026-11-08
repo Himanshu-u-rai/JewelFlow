@@ -3,27 +3,29 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import postcss from 'postcss';
 
-// A success/error message renders before the page header in the markup. The header pulls itself up with a negative
-// top margin (to sit flush as the top band), so it slid over the message's bottom edge and stopped being the top band.
-// The main column orders the header first, so messages show just below it.
+// The page header renders in its own band above .dh-scroll (see dhiran-layout.blade.php). On desktop only .dh-scroll
+// scrolls, so the scrollbar starts under the header instead of running beside it (owner screenshots 2026-11-08), and
+// messages sit inside the scroll area below the header. Phones and print keep normal page flow.
 const css = postcss.parse(readFileSync(new URL('../../resources/css/dhiran.css', import.meta.url), 'utf8'));
 
-function decls(selector) {
+function desktopDecls(selector) {
     const out = {};
-    css.walkRules(rule => {
-        if (rule.parent.type === 'root' && rule.selectors.includes(selector)) {
-            rule.walkDecls(d => { out[d.prop] = d.value; });
-        }
+    css.walkAtRules('media', at => {
+        if (!/screen and \(min-width: 901px\)/.test(at.params)) return;
+        at.walkRules(rule => {
+            if (rule.selectors.includes(selector)) rule.walkDecls(d => { out[d.prop] = d.value; });
+        });
     });
     return out;
 }
 
-test('the Dhiran main column is a vertical flex column', () => {
-    const main = decls('.dh-main');
-    assert.equal(main.display, 'flex');
-    assert.equal(main['flex-direction'], 'column');
+test('on desktop the page itself does not scroll', () => {
+    assert.equal(desktopDecls('.dh-html').overflow, 'hidden');
 });
 
-test('the page header comes first, ahead of any message', () => {
-    assert.equal(decls('.dh-main > .dh-page-header').order, '-1');
+test('on desktop only the area under the header scrolls', () => {
+    const scroll = desktopDecls('.dh-scroll');
+    assert.equal(scroll['overflow-y'], 'auto');
+    assert.equal(scroll['min-height'], '0');
+    assert.equal(desktopDecls('.dh-main > .dh-page-header').margin, '0');
 });

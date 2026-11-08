@@ -11,8 +11,9 @@
     $hasHeaderActions = ($useSlotLayout && str_contains($slotMarkup, 'page-actions')) || isset($actions) || $badge;
 @endphp
 
-{{-- Dhiran-only page header. The shell keeps this as a full-width sticky top
-     band, matching the ERP header behavior without floating controls. --}}
+{{-- Dhiran-only page header. Pushed to the layout's header band, above the scroll area, so the page scrollbar
+     starts under the header (as the ERP shell does); nothing renders where the page wrote <x-dhiran.page-header>. --}}
+@push('dh-page-header')
 <div {{ $attributes->merge(['class' => 'content-header dh-page-header', 'data-legacy-header-normalized' => 'true']) }}
      x-data="{
         dhHeaderActionsOpen: false,
@@ -162,3 +163,4 @@
         </div>
     @endif
 </div>
+@endpush
