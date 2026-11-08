@@ -2882,3 +2882,20 @@ body:has(.dh-auth-panel) {
     .dh-menu-toggle,
     .dh-header-toggle { transition-duration: 0ms; }
 }
+
+/* One scrollbar look across Dhiran (owner 2026-11-08): the page, the sidebar, tables and any scrolling box use the
+   lists' amber bar (tables.css gives it to [data-list-scroll] only; everything else showed the grey default).
+   Bars a component hides (display: none / scrollbar-width: none) stay hidden. */
+.dh-html { --sb-thumb-color: #a77320; --sb-track-color: #f8f4eb; --sb-size: 14px; }
+.dh-html::-webkit-scrollbar,
+.dh-app *::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+.dh-html::-webkit-scrollbar-track,
+.dh-app *::-webkit-scrollbar-track { background: var(--sb-track-color); }
+.dh-html::-webkit-scrollbar-corner,
+.dh-app *::-webkit-scrollbar-corner { background: var(--sb-track-color); }
+.dh-html::-webkit-scrollbar-thumb,
+.dh-app *::-webkit-scrollbar-thumb { background: var(--sb-thumb-color); border-radius: 3px; }
+@supports not selector(::-webkit-scrollbar) {
+    .dh-html, .dh-app * { scrollbar-color: var(--sb-thumb-color) var(--sb-track-color); }
+}
+@media (forced-colors: active) { .dh-html, .dh-app * { scrollbar-color: auto; } }
