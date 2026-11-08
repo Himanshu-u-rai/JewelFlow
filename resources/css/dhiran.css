@@ -3083,6 +3083,112 @@ body:has(.dh-auth-panel) {
 .dh-app .text-sky-800 { color: var(--dh-accent) !important; }
 .dh-app .text-amber-800\/80 { color: color-mix(in srgb, var(--dh-warning-ink) 80%, transparent) !important; }
 
+/* ── Filters (owner 2026-11-08: modern) ─────────────────────────────────────────────────────────────────────
+   Search + Filters button; active filters as removable chips; the choices are tap chips in a panel that is a
+   right-hand drawer on desktop and a bottom sheet on phones. */
+.dh-fbar { margin-bottom: 18px; }
+.dh-fbar-row { display: flex; gap: 10px; align-items: center; }
+.dh-fbar-search {
+    position: relative; flex: 1 1 auto; min-width: 0; max-width: 520px; display: flex; align-items: center;
+    height: 44px; padding: 0 12px; gap: 8px; color: var(--dh-muted);
+    background: var(--dh-field); border: 1px solid var(--dh-field-border); border-radius: 12px;
+    transition: border-color 150ms var(--dh-ease), box-shadow 150ms var(--dh-ease);
+}
+.dh-fbar-search:focus-within { border-color: var(--dh-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dh-focus) 18%, transparent); }
+.dh-fbar-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 14px; color: var(--dh-ink); }
+.dh-fbar-search input::-webkit-search-cancel-button { display: none; }
+.dh-fbar-clear { display: inline-flex; padding: 6px; border-radius: 999px; color: var(--dh-muted); }
+.dh-fbar-clear:hover { background: var(--dh-muted-surface); color: var(--dh-ink); }
+.dh-fbar-open {
+    display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; flex-shrink: 0;
+    border: 1px solid var(--dh-field-border); border-radius: 12px; background: var(--dh-card);
+    color: var(--dh-ink); font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: border-color 150ms var(--dh-ease), background-color 150ms var(--dh-ease);
+}
+.dh-fbar-open:hover { border-color: var(--dh-accent); }
+.dh-fbar-open.is-on { border-color: var(--dh-accent); background: var(--dh-accent); color: var(--dh-on-accent); }
+.dh-fbar-open:focus-visible, .dh-fchip:focus-visible, .dh-fopt:has(input:focus-visible), .dh-fopt--btn:focus-visible {
+    outline: 2px solid var(--dh-focus); outline-offset: 2px;
+}
+.dh-fbar-badge {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 999px; background: var(--dh-highlight); color: var(--dh-on-highlight); font-size: 12px; font-weight: 700;
+}
+.dh-fbar-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.dh-app .dh-fchip {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 12px;
+    border-radius: 999px; background: var(--dh-accent-soft); border: 1px solid var(--dh-accent-line);
+    color: var(--dh-ink); font-size: 13px; font-weight: 600; text-decoration: none;
+    transition: background-color 150ms var(--dh-ease);
+}
+.dh-app .dh-fchip svg { color: var(--dh-muted); }
+.dh-app .dh-fchip:hover { background: color-mix(in srgb, var(--dh-highlight) 22%, var(--dh-white)); }
+.dh-app .dh-fbar-clearall { font-size: 13px; font-weight: 600; color: var(--dh-link); padding: 0 4px; }
+.dh-fbar-range { margin-left: auto; font-size: 12px; color: var(--dh-muted); }
+
+/* The panel: a right-hand drawer on desktop. */
+.dh-app dialog.dh-fpanel {
+    margin: 0 0 0 auto; padding: 0; border: 0; width: min(420px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh;
+    background: var(--dh-card); color: var(--dh-ink); box-shadow: -16px 0 40px color-mix(in srgb, var(--dh-shadow-tint) 18%, transparent);
+    animation: dh-fpanel-in 220ms var(--dh-ease-drawer);
+}
+.dh-fpanel::backdrop { background: color-mix(in srgb, var(--dh-scrim-tint) 40%, transparent); animation: dh-fade-in 200ms ease-out; }
+.dh-fpanel-inner { display: flex; flex-direction: column; height: 100%; }
+.dh-fpanel-handle { display: none; }
+.dh-fpanel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--dh-line); }
+.dh-fpanel-head h2 { font-size: 18px; font-weight: 700; color: var(--dh-ink); }
+.dh-fpanel-x { display: inline-flex; padding: 8px; border-radius: 10px; color: var(--dh-muted); }
+.dh-fpanel-x:hover { background: var(--dh-muted-surface); color: var(--dh-ink); }
+.dh-fpanel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 20px 20px; }
+.dh-fsec { border: 0; padding: 16px 0 0; margin: 0; }
+.dh-fsec + .dh-fsec { border-top: 1px solid var(--dh-line-soft); margin-top: 16px; }
+.dh-app .dh-fsec legend { padding: 0; margin-bottom: 10px; font-size: 13px; font-weight: 700; color: var(--dh-ink); letter-spacing: 0; text-transform: none; }
+.dh-fopts { display: flex; flex-wrap: wrap; gap: 8px; }
+.dh-app .dh-fopt {
+    position: relative; display: inline-flex; cursor: pointer;
+    font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1; color: var(--dh-ink-soft);
+}
+.dh-fopt input { position: absolute; opacity: 0; pointer-events: none; }
+.dh-fopt span {
+    display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid var(--dh-field-border); background: var(--dh-card);
+    transition: background-color 150ms var(--dh-ease), border-color 150ms var(--dh-ease), color 150ms var(--dh-ease);
+}
+.dh-fopt:hover span { border-color: var(--dh-accent); }
+.dh-fopt input:checked + span, .dh-fopt--btn.is-picked span { background: var(--dh-accent); border-color: var(--dh-accent); color: var(--dh-on-accent); }
+.dh-fopt--btn { padding: 0; border: 0; background: none; }
+.dh-fdates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.dh-app .dh-fdates label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: var(--dh-muted); }
+.dh-fpanel-foot {
+    display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--dh-line); background: var(--dh-card);
+}
+.dh-fpanel-foot .btn { justify-content: center; min-height: 46px; }
+html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page behind stays put */
+
+@keyframes dh-fpanel-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes dh-fsheet-in { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes dh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Phones: a bottom sheet with a grab handle; search and the Filters button share the row. */
+@media (max-width: 720px) {
+    .dh-fbar-search { max-width: none; }
+    .dh-fbar-open { padding: 0 12px; }
+    .dh-fbar-range { margin-left: 0; width: 100%; }
+    .dh-app dialog.dh-fpanel {
+        margin: auto 0 0; width: 100vw; height: auto; max-height: 88dvh; border-radius: 20px 20px 0 0;
+        box-shadow: 0 -12px 40px color-mix(in srgb, var(--dh-shadow-tint) 20%, transparent);
+        animation-name: dh-fsheet-in;
+    }
+    .dh-fpanel-inner { height: auto; max-height: 88dvh; }
+    .dh-fpanel-handle { display: block; width: 40px; height: 5px; margin: 8px auto 0; border-radius: 999px; background: var(--dh-field-border); }
+    .dh-fpanel-head { padding: 10px 20px 12px; }
+    .dh-fopt span { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dh-app dialog.dh-fpanel, .dh-fpanel::backdrop { animation: none; }
+}
+
 /* New Loan: how much the pledged items allow, under Principal; a warning when the amount is outside the limits. */
 .dh-principal-limit { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--dh-muted); }
 .dh-principal-limit.is-problem { color: var(--dh-danger); font-weight: 600; }

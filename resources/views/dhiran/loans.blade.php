@@ -19,39 +19,8 @@
     <div class="content-inner" data-list-workspace>
 
         {{-- Filters --}}
-        <div class="dh-filter-card">
-            <form method="GET" action="{{ route('dhiran.loans') }}" class="dh-filter-row">
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">Search</label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                            <x-icon name="search" size="16" />
-                        </span>
-                        <input type="text" name="search" value="{{ request('search') }}"
-                               placeholder="Loan number or customer..."
-                               class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none"
-                               autocomplete="off">
-                    </div>
-                </div>
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">Status</label>
-                    <select name="status" class="dh-form-control dh-native-select">
-                        <option value="">All</option>
-                        <option value="pending_evidence" {{ request('status') === 'pending_evidence' ? 'selected' : '' }}>Awaiting Evidence</option>
-                        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="closed" {{ request('status') === 'closed' ? 'selected' : '' }}>Closed</option>
-                        <option value="renewed" {{ request('status') === 'renewed' ? 'selected' : '' }}>Renewed</option>
-                        <option value="forfeited" {{ request('status') === 'forfeited' ? 'selected' : '' }}>Forfeited</option>
-                    </select>
-                </div>
-                <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-dark btn-sm">Filter</button>
-                    @if(request()->hasAny(['search', 'status']))
-                        <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </div>
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.loans')" period-label="Loan date"
+            :fields="['search', 'period', 'status', 'metal', 'amount', 'overdue', 'maturing']" />
 
         {{-- Loans Table --}}
         <div class="dh-table-card" data-list-frame>

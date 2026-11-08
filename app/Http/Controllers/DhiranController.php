@@ -395,35 +395,13 @@ class DhiranController extends Controller
 
     public function loans(Request $request)
     {
-        $request->validate([
-            'status' => ['nullable', Rule::in(['pending_evidence', 'active', 'closed', 'renewed', 'forfeited'])],
-            'search' => 'nullable|string|max:100',
-        ]);
-
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
         $shopId = auth()->user()->shop_id;
 
-        $query = DhiranLoan::where('shop_id', $shopId)
-            ->with('customer');
+        $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
+        $loans = $query->with('customer')->latest()->paginate(20)->withQueryString();
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('loan_number', 'ilike', "%{$search}%")
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where('first_name', 'ilike', "%{$search}%")
-                         ->orWhere('last_name', 'ilike', "%{$search}%")
-                         ->orWhere('mobile', 'ilike', "%{$search}%");
-                  });
-            });
-        }
-
-        $loans = $query->latest()->paginate(20)->withQueryString();
-
-        return view('dhiran.loans', compact('loans'));
+        return view('dhiran.loans', compact('loans', 'filters'));
     }
 
     public function show(DhiranLoan $loan)
@@ -1014,42 +992,39 @@ class DhiranController extends Controller
     {
         $shopId = auth()->user()->shop_id;
 
-        $query = DhiranLoan::where('shop_id', $shopId)->active();
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
+        $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->active());
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.active', compact('loans', 'totals'));
+        return view('dhiran.reports.active', compact('loans', 'totals', 'filters'));
     }
 
     public function reportOverdue(Request $request)
     {
         $shopId = auth()->user()->shop_id;
 
-        $query = DhiranLoan::where('shop_id', $shopId)->overdue();
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
+        $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->overdue(), null);
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->orderBy('maturity_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.overdue', compact('loans', 'totals'));
+        return view('dhiran.reports.overdue', compact('loans', 'totals', 'filters'));
     }
 
     public function reportInterest(Request $request)
     {
-        $request->validate([
-            'from' => 'nullable|date',
-            'to'   => 'nullable|date|after_or_equal:from',
-        ]);
-
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request, 'this_month');
         $shopId = auth()->user()->shop_id;
-
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to   = $request->input('to', now()->toDateString());
+        [$from, $to] = [$filters->from(), $filters->to()];
 
         // Filter by payment_date (the accounting date for the transaction),
         // NOT created_at. A back-dated payment recorded today belongs in the
         // fiscal period of payment_date.
         // Payments that carried interest or penalty (the report's subject); the cards cover the whole period, not
-        // only the rows on this page.
-        $period = fn () => DhiranPayment::where('shop_id', $shopId)->whereBetween('payment_date', [$from, $to]);
+        // only the rows on this page. Search narrows to matching loans or customers.
+        $period = fn () => $filters->applyPeriod(DhiranPayment::where('shop_id', $shopId), 'payment_date')
+            ->when($filters->get('search'), fn ($q) => $q->whereHas('loan', fn ($l) => $filters->applySearch($l)));
         $rows = fn () => $period()->where(fn ($q) => $q->where('interest_component', '>', 0)->orWhere('penalty_component', '>', 0));
         $payments = $rows()
             ->with(['loan', 'loan.customer'])
@@ -1063,40 +1038,35 @@ class DhiranController extends Controller
         $footer = (array) $rows()->toBase()->selectRaw('coalesce(sum(amount), 0) as amount, coalesce(sum(interest_component), 0) as interest,'
             . ' coalesce(sum(penalty_component), 0) as penalty, coalesce(sum(principal_component), 0) as principal')->first();
 
-        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'totalPenalty', 'footer', 'from', 'to'));
+        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'totalPenalty', 'footer', 'from', 'to', 'filters'));
     }
 
     public function reportForfeiture(Request $request)
     {
         $shopId = auth()->user()->shop_id;
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
 
-        $loans = DhiranLoan::where('shop_id', $shopId)
-            ->where('status', 'forfeited')
+        $loans = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at')
             ->with('customer')
             ->latest('forfeited_at')
             ->paginate(20)
             ->withQueryString();
 
-        return view('dhiran.reports.forfeiture', compact('loans'));
+        return view('dhiran.reports.forfeiture', compact('loans', 'filters'));
     }
 
     public function reportCashbook(Request $request)
     {
-        $request->validate([
-            'from' => 'nullable|date',
-            'to'   => 'nullable|date|after_or_equal:from',
-        ]);
-
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request, 'this_month');
         $shopId = auth()->user()->shop_id;
-
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to   = $request->input('to', now()->toDateString());
+        [$from, $to] = [$filters->from(), $filters->to()];
 
         // Totals cover the whole period; the opening balance is every entry before it; each page's running balance
         // starts where the previous page ended (it used to restart at 0 and total only the 30 rows shown).
+        // The in/out filter narrows the rows only; the balances stay those of the whole cash book.
         $signed = DB::raw("CASE WHEN type = 'in' THEN amount ELSE -amount END");
         $all = fn () => \App\Models\Dhiran\DhiranCashEntry::where('shop_id', $shopId);
-        $period = fn () => $all()->whereBetween('entry_date', [$from, $to]);
+        $period = fn () => $filters->applyPeriod($all(), 'entry_date');
 
         $opening = (float) $all()->where('entry_date', '<', $from)->sum($signed);
         $totals = [
@@ -1107,7 +1077,8 @@ class DhiranController extends Controller
         $totals['net'] = $totals['in'] - $totals['out'];
         $totals['closing'] = $opening + $totals['net'];
 
-        $entries = $period()->with('loan')->orderBy('entry_date')->orderBy('id')->paginate(30)->withQueryString();
+        $entries = $period()->when($filters->get('cash'), fn ($q, $t) => $q->where('type', $t))
+            ->with('loan')->orderBy('entry_date')->orderBy('id')->paginate(30)->withQueryString();
 
         $first = $entries->first();
         $pageStartBalance = $opening + ($first ? (float) $period()
@@ -1115,25 +1086,19 @@ class DhiranController extends Controller
                 ->orWhere(fn ($w) => $w->where('entry_date', $first->entry_date)->where('id', '<', $first->id)))
             ->sum($signed) : 0);
 
-        return view('dhiran.reports.cashbook', compact('entries', 'from', 'to', 'totals', 'pageStartBalance'));
+        return view('dhiran.reports.cashbook', compact('entries', 'from', 'to', 'totals', 'pageStartBalance', 'filters'));
     }
 
     public function reportProfitability(Request $request)
     {
-        $request->validate([
-            'from' => 'nullable|date',
-            'to'   => 'nullable|date|after_or_equal:from',
-        ]);
-
+        $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request, 'this_month');
         $shopId = auth()->user()->shop_id;
+        [$from, $to] = [$filters->from(), $filters->to()];
 
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to   = $request->input('to', now()->toDateString());
-
-        $query = DhiranLoan::where('shop_id', $shopId)->whereBetween('loan_date', [$from, $to]);
+        $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
 
-        return view('dhiran.reports.profitability', compact('loans', 'from', 'to', 'totals'));
+        return view('dhiran.reports.profitability', compact('loans', 'from', 'to', 'totals', 'filters'));
     }
 }

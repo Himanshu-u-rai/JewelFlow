@@ -1,9 +1,5 @@
 <x-dhiran-layout title="Interest Report">
-    @php
-        $fromDate = request('from', now()->startOfMonth()->format('Y-m-d'));
-        $toDate = request('to', now()->format('Y-m-d'));
-        // $totalInterest / $totalPenalty come from the controller and cover the whole period.
-    @endphp
+    {{-- $totalInterest / $totalPenalty / $footer come from the controller and cover the whole filtered period. --}}
 
     <x-dhiran.page-header>
         <div>
@@ -19,24 +15,8 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <div class="dh-filter-card">
-            <form method="GET" action="{{ route('dhiran.reports.interest') }}" class="dh-filter-row">
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">From</label>
-                    <input type="date" name="from" value="{{ $fromDate }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">To</label>
-                    <input type="date" name="to" value="{{ $toDate }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-dark btn-sm">View</button>
-                    @if(request()->hasAny(['from', 'to']))
-                        <a href="{{ route('dhiran.reports.interest') }}" class="btn btn-secondary btn-sm">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </div>
+        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.interest')" default-period="this_month"
+            period-label="Paid in" :fields="['search', 'period']" />
 
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

@@ -14,6 +14,8 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
+        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.overdue')"
+            :fields="['search', 'metal', 'amount', 'overdue']" />
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">

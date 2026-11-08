@@ -23,24 +23,8 @@
 
     <div class="content-inner" data-list-workspace>
         {{-- Loans given in this period (the controller always took a range; the page had no way to set it). --}}
-        <div class="dh-filter-card">
-            <form method="GET" action="{{ route('dhiran.reports.profitability') }}" class="dh-filter-row">
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">Loans given from</label>
-                    <input type="date" name="from" value="{{ $from }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">To</label>
-                    <input type="date" name="to" value="{{ $to }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-dark btn-sm">View</button>
-                    @if(request()->hasAny(['from', 'to']))
-                        <a href="{{ route('dhiran.reports.profitability') }}" class="btn btn-secondary btn-sm">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </div>
+        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.profitability')" default-period="this_month"
+            period-label="Loans given in" :fields="['search', 'period', 'status', 'metal', 'amount']" />
 
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">

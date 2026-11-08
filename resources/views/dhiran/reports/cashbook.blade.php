@@ -1,9 +1,10 @@
 <x-dhiran-layout title="Cash Book">
     @php
-        $fromDate = request('from', now()->startOfMonth()->format('Y-m-d'));
-        $toDate = request('to', now()->format('Y-m-d'));
         // $totals (opening, in, out, net, closing) and $pageStartBalance come from the controller: whole period,
-        // every page, starting from the balance before the period.
+        // every page, starting from the balance before the period. With the in/out filter on, rows skip the other
+        // kind, so a per-row running balance would be wrong: it is left out.
+        $fromDate = $from;
+        $showRunning = ! $filters->get('cash');
     @endphp
 
     <x-dhiran.page-header>
@@ -20,24 +21,8 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <div class="dh-filter-card">
-            <form method="GET" action="{{ route('dhiran.reports.cashbook') }}" class="dh-filter-row">
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">From</label>
-                    <input type="date" name="from" value="{{ $fromDate }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-field">
-                    <label class="dh-label-upper block mb-2">To</label>
-                    <input type="date" name="to" value="{{ $toDate }}" class="dh-form-control">
-                </div>
-                <div class="dh-filter-actions">
-                    <button type="submit" class="btn btn-dark btn-sm">View</button>
-                    @if(request()->hasAny(['from', 'to']))
-                        <a href="{{ route('dhiran.reports.cashbook') }}" class="btn btn-secondary btn-sm">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </div>
+        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.cashbook')" default-period="this_month"
+            :fields="['period', 'cash']" />
 
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -110,7 +95,7 @@
                                 </td>
                                 <td data-label="Method" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ \App\Models\Dhiran\DhiranPayment::methodLabel($entry->payment_method) }}</td>
                                 <td data-label="Description" class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{{ $entry->description ?? '-' }}</td>
-                                <td data-label="Running Balance" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}" data-running-balance>{{ number_format($runningBalance, 2) }}</td>
+                                <td data-label="Running Balance" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right {{ $runningBalance >= 0 ? 'text-gray-900' : 'text-red-600' }}" data-running-balance>{{ $showRunning ? number_format($runningBalance, 2) : '—' }}</td>
                             </tr>
                         @empty
                             <tr>
