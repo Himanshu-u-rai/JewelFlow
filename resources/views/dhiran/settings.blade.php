@@ -2,7 +2,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Settings</h1>
-            <p class="text-sm text-gray-500 mt-1">Configure pledge loan module preferences</p>
+            <p class="text-sm text-gray-500 mt-1">Defaults for new pledge loans</p>
         </div>
         <div class="page-actions">
             @if(auth()->user()?->isShopOwner())
@@ -15,246 +15,157 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner dhiran-settings-root">
+    {{-- Every field here is a DhiranSettings column that loans read (2026-11-08: the old form used names the save did not
+         accept, so it never saved, and showed placeholder values). Existing loans keep their own terms. --}}
+    @php
+        $v = fn (string $key, $fallback = null) => old($key, $settings->{$key} ?? $fallback);
+        $num = fn (string $key) => is_numeric($v($key)) ? rtrim(rtrim(number_format((float) $v($key), 2, '.', ''), '0'), '.') : $v($key);
+        $err = fn (string $key) => $errors->first($key);
+    @endphp
 
+    <div class="content-inner dhiran-settings-root">
         <form method="POST" action="{{ route('dhiran.settings.update') }}" class="max-w-3xl mx-auto" data-turbo-frame="_top">
             @csrf
             @method('PATCH')
 
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+                @if($errors->any())
+                    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ $errors->first() }}</div>
+                @endif
 
-                {{-- Interest Defaults --}}
                 <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="calculator" />
-                        Interest Defaults
-                    </div>
+                    <div class="dset-section-title"><x-icon name="calculator" /> Interest</div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="dset-label">Default Monthly Rate (%)</label>
-                            <input type="number" step="0.01" name="interest_rate_monthly" class="dset-input"
-                                   value="{{ old('interest_rate_monthly', $settings['interest_rate_monthly'] ?? 1.5) }}">
-                            @error('interest_rate_monthly') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                            <label class="dset-label" for="ds-rate">Monthly interest rate (%)</label>
+                            <input id="ds-rate" type="number" step="0.01" min="0" max="10" required name="default_interest_rate_monthly" class="dset-input" value="{{ $num('default_interest_rate_monthly') }}">
                         </div>
                         <div>
-                            <label class="dset-label">Default Interest Type</label>
-                            <select name="interest_type" class="dset-select">
-                                <option value="flat" {{ ($settings['interest_type'] ?? 'flat') === 'flat' ? 'selected' : '' }}>Flat (Simple)</option>
-                                <option value="daily" {{ ($settings['interest_type'] ?? '') === 'daily' ? 'selected' : '' }}>Daily</option>
-                                <option value="compound" {{ ($settings['interest_type'] ?? '') === 'compound' ? 'selected' : '' }}>Compound</option>
+                            <label class="dset-label" for="ds-type">Interest type</label>
+                            <select id="ds-type" name="default_interest_type" class="dset-select">
+                                @foreach(['flat' => 'Flat (Simple)', 'daily' => 'Daily', 'compound' => 'Compound'] as $value => $label)
+                                    <option value="{{ $value }}" @selected($v('default_interest_type', 'flat') === $value)>{{ $label }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="dset-label">Default Penalty Rate (%/month)</label>
-                            <input type="number" step="0.01" name="penalty_rate_monthly" class="dset-input"
-                                   value="{{ old('penalty_rate_monthly', $settings['penalty_rate_monthly'] ?? 2.0) }}">
+                            <label class="dset-label" for="ds-penalty">Penalty rate (%/month)</label>
+                            <input id="ds-penalty" type="number" step="0.01" min="0" max="10" required name="default_penalty_rate_monthly" class="dset-input" value="{{ $num('default_penalty_rate_monthly') }}">
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-minint">Minimum interest (months)</label>
+                            <input id="ds-minint" type="number" min="0" max="12" required name="default_min_interest_months" class="dset-input" value="{{ $v('default_min_interest_months') }}">
+                            <p class="dset-hint">Charged even if the loan is closed or renewed sooner.</p>
                         </div>
                     </div>
                 </div>
 
-                {{-- LTV Settings --}}
                 <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="trending-up" />
-                        LTV Settings
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="dset-label">Default LTV Percentage (%)</label>
-                            <input type="number" step="0.1" name="ltv_percent" class="dset-input"
-                                   value="{{ old('ltv_percent', $settings['ltv_percent'] ?? 75) }}">
-                            <p class="dset-hint">Loan value as a percentage of market value of pledged gold</p>
-                        </div>
-                        <div>
-                            <label class="dset-label">Max LTV Percentage (%)</label>
-                            <input type="number" step="0.1" name="max_ltv_percent" class="dset-input"
-                                   value="{{ old('max_ltv_percent', $settings['max_ltv_percent'] ?? 85) }}">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Loan Limits --}}
-                <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="circle-dollar-sign" />
-                        Loan Limits
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="dset-label">Minimum Loan Amount</label>
-                            <input type="number" step="0.01" name="min_loan_amount" class="dset-input"
-                                   value="{{ old('min_loan_amount', $settings['min_loan_amount'] ?? 1000) }}">
-                        </div>
-                        <div>
-                            <label class="dset-label">Maximum Loan Amount</label>
-                            <input type="number" step="0.01" name="max_loan_amount" class="dset-input"
-                                   value="{{ old('max_loan_amount', $settings['max_loan_amount'] ?? 500000) }}">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Processing Fee --}}
-                <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="camera" />
-                        Processing Fee
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="dset-label">Processing Fee (%)</label>
-                            <input type="number" step="0.01" name="processing_fee_percent" class="dset-input"
-                                   value="{{ old('processing_fee_percent', $settings['processing_fee_percent'] ?? 0) }}">
-                            <p class="dset-hint">Percentage of principal charged as processing fee. Set 0 to disable.</p>
-                        </div>
-                        <div>
-                            <label class="dset-label">Min Processing Fee (fixed)</label>
-                            <input type="number" step="0.01" name="min_processing_fee" class="dset-input"
-                                   value="{{ old('min_processing_fee', $settings['min_processing_fee'] ?? 0) }}">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Tenure & Periods --}}
-                <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="calendar" />
-                        Tenure & Periods
-                    </div>
+                    <div class="dset-section-title"><x-icon name="trending-up" /> Loan value (LTV)</div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="dset-label">Default Tenure (months)</label>
-                            <input type="number" name="tenure_months" class="dset-input"
-                                   value="{{ old('tenure_months', $settings['tenure_months'] ?? 6) }}">
+                            <label class="dset-label" for="ds-ltv">Loan value (% of market value)</label>
+                            <input id="ds-ltv" type="number" step="0.01" min="1" max="100" required name="default_ltv_ratio" class="dset-input" value="{{ $num('default_ltv_ratio') }}">
                         </div>
                         <div>
-                            <label class="dset-label">Grace Period (days)</label>
-                            <input type="number" name="grace_period_days" class="dset-input"
-                                   value="{{ old('grace_period_days', $settings['grace_period_days'] ?? 7) }}">
-                            <p class="dset-hint">Days after maturity before penalty applies</p>
+                            <label class="dset-label" for="ds-hv-threshold">Large loans from (₹)</label>
+                            <input id="ds-hv-threshold" type="number" step="0.01" min="0" required name="high_value_threshold" class="dset-input" value="{{ $num('high_value_threshold') }}">
                         </div>
                         <div>
-                            <label class="dset-label">Interest Billing Cycle</label>
-                            <select name="billing_cycle" class="dset-select">
-                                <option value="monthly" {{ ($settings['billing_cycle'] ?? 'monthly') === 'monthly' ? 'selected' : '' }}>Monthly</option>
-                                <option value="quarterly" {{ ($settings['billing_cycle'] ?? '') === 'quarterly' ? 'selected' : '' }}>Quarterly</option>
-                                <option value="on_closure" {{ ($settings['billing_cycle'] ?? '') === 'on_closure' ? 'selected' : '' }}>On Closure</option>
-                            </select>
+                            <label class="dset-label" for="ds-hv-ltv">Large-loan value (%)</label>
+                            <input id="ds-hv-ltv" type="number" step="0.01" min="1" max="100" required name="high_value_ltv_ratio" class="dset-input" value="{{ $num('high_value_ltv_ratio') }}">
+                            <p class="dset-hint">Used instead of the normal % for loans of this size or more.</p>
                         </div>
                     </div>
                 </div>
 
-                {{-- Forfeiture --}}
                 <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="triangle-alert" />
-                        Forfeiture
-                    </div>
+                    <div class="dset-section-title"><x-icon name="circle-dollar-sign" /> Loan limits and fee</div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="dset-label">Forfeiture After (days overdue)</label>
-                            <input type="number" name="forfeiture_after_days" class="dset-input"
-                                   value="{{ old('forfeiture_after_days', $settings['forfeiture_after_days'] ?? 365) }}">
-                            <p class="dset-hint">Days after maturity before automatic forfeiture warning</p>
+                            <label class="dset-label" for="ds-min">Minimum loan (₹)</label>
+                            <input id="ds-min" type="number" step="0.01" min="0" required name="min_loan_amount" class="dset-input" value="{{ $num('min_loan_amount') }}">
                         </div>
                         <div>
-                            <label class="dset-label">Notice Period (days)</label>
-                            <input type="number" name="notice_period_days" class="dset-input"
-                                   value="{{ old('notice_period_days', $settings['notice_period_days'] ?? 30) }}">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Loan Number --}}
-                <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="hash" />
-                        Loan Number
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="dset-label">Loan Number Prefix</label>
-                            <input type="text" name="loan_number_prefix" class="dset-input"
-                                   value="{{ old('loan_number_prefix', $settings['loan_number_prefix'] ?? 'GL-') }}" placeholder="GL-">
+                            <label class="dset-label" for="ds-max">Maximum loan (₹)</label>
+                            <input id="ds-max" type="number" step="0.01" min="0" required name="max_loan_amount" class="dset-input" value="{{ $num('max_loan_amount') }}">
                         </div>
                         <div>
-                            <label class="dset-label">Next Loan Number</label>
-                            <input type="number" name="next_loan_number" class="dset-input"
-                                   value="{{ old('next_loan_number', $settings['next_loan_number'] ?? 1) }}">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- KYC --}}
-                <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="id-card" />
-                        KYC Requirements
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="dset-label">Aadhaar Required?</label>
-                            <select name="aadhaar_required" class="dset-select">
-                                <option value="1" {{ ($settings['aadhaar_required'] ?? false) ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ !($settings['aadhaar_required'] ?? false) ? 'selected' : '' }}>No</option>
+                            <label class="dset-label" for="ds-fee-type">Processing fee</label>
+                            <select id="ds-fee-type" name="processing_fee_type" class="dset-select">
+                                <option value="flat" @selected($v('processing_fee_type', 'flat') === 'flat')>Fixed amount (₹)</option>
+                                <option value="percent" @selected($v('processing_fee_type') === 'percent')>% of the loan</option>
                             </select>
                         </div>
                         <div>
-                            <label class="dset-label">PAN Required?</label>
-                            <select name="pan_required" class="dset-select">
-                                <option value="1" {{ ($settings['pan_required'] ?? false) ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ !($settings['pan_required'] ?? false) ? 'selected' : '' }}>No</option>
-                            </select>
+                            <label class="dset-label" for="ds-fee">Fee value</label>
+                            <input id="ds-fee" type="number" step="0.01" min="0" required name="processing_fee_value" class="dset-input" value="{{ $num('processing_fee_value') }}">
+                            <p class="dset-hint">0 for no fee.</p>
                         </div>
                     </div>
                 </div>
 
-                {{-- Receipts/Certificates --}}
                 <div class="dset-section">
-                    <div class="dset-section-title">
-                        <x-icon name="printer" />
-                        Receipts & Certificates
-                    </div>
-                    <div>
-                        <label class="dset-label">Terms & Conditions (printed on receipt)</label>
-                        <textarea name="terms_and_conditions" rows="4" class="dset-input dset-textarea">{{ old('terms_and_conditions', $settings['terms_and_conditions'] ?? '') }}</textarea>
+                    <div class="dset-section-title"><x-icon name="calendar" /> Tenure and forfeiture</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="dset-label" for="ds-tenure">Tenure (months)</label>
+                            <input id="ds-tenure" type="number" min="1" max="60" required name="default_tenure_months" class="dset-input" value="{{ $v('default_tenure_months') }}">
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-lock">Lock-in (months)</label>
+                            <input id="ds-lock" type="number" min="0" max="60" required name="default_min_lock_months" class="dset-input" value="{{ $v('default_min_lock_months') }}">
+                            <p class="dset-hint">The loan cannot be closed early before this.</p>
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-grace">Grace period (days)</label>
+                            <input id="ds-grace" type="number" min="0" max="90" required name="grace_period_days" class="dset-input" value="{{ $v('grace_period_days') }}">
+                            <p class="dset-hint">Days after maturity before penalty applies and a forfeiture notice can be sent.</p>
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-notice">Forfeiture notice period (days)</label>
+                            <input id="ds-notice" type="number" min="0" max="365" required name="forfeiture_notice_days" class="dset-input" value="{{ $v('forfeiture_notice_days') }}">
+                            <p class="dset-hint">Days the customer gets to pay after the notice, before forfeiture.</p>
+                        </div>
                     </div>
                 </div>
 
-                {{-- Notifications --}}
+                <div class="dset-section">
+                    <div class="dset-section-title"><x-icon name="printer" /> Loan numbers and printouts</div>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="max-w-xs">
+                            <label class="dset-label" for="ds-prefix">Loan number prefix</label>
+                            <input id="ds-prefix" type="text" maxlength="10" name="loan_number_prefix" class="dset-input" value="{{ $v('loan_number_prefix') }}" placeholder="DH-">
+                            <p class="dset-hint">Numbers continue from the last loan.</p>
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-terms">Terms printed on the pledge receipt</label>
+                            <textarea id="ds-terms" name="receipt_terms_text" rows="4" maxlength="5000" class="dset-input dset-textarea">{{ $v('receipt_terms_text') }}</textarea>
+                        </div>
+                        <div>
+                            <label class="dset-label" for="ds-closure">Text on the closure certificate</label>
+                            <textarea id="ds-closure" name="closure_certificate_text" rows="3" maxlength="5000" class="dset-input dset-textarea">{{ $v('closure_certificate_text') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="dset-section dset-section-last">
-                    <div class="dset-section-title">
-                        <x-icon name="bell" />
-                        Notifications
-                    </div>
+                    <div class="dset-section-title"><x-icon name="bell" /> Reminders</div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="dset-label">SMS on Loan Creation</label>
-                            <select name="sms_on_creation" class="dset-select">
-                                <option value="1" {{ ($settings['sms_on_creation'] ?? false) ? 'selected' : '' }}>Enabled</option>
-                                <option value="0" {{ !($settings['sms_on_creation'] ?? false) ? 'selected' : '' }}>Disabled</option>
+                            <label class="dset-label" for="ds-sms">Due-date reminders</label>
+                            <select id="ds-sms" name="sms_reminders_enabled" class="dset-select">
+                                <option value="1" @selected((bool) $v('sms_reminders_enabled'))>On</option>
+                                <option value="0" @selected(! (bool) $v('sms_reminders_enabled'))>Off</option>
                             </select>
                         </div>
                         <div>
-                            <label class="dset-label">SMS on Payment</label>
-                            <select name="sms_on_payment" class="dset-select">
-                                <option value="1" {{ ($settings['sms_on_payment'] ?? false) ? 'selected' : '' }}>Enabled</option>
-                                <option value="0" {{ !($settings['sms_on_payment'] ?? false) ? 'selected' : '' }}>Disabled</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="dset-label">Overdue Reminder (days before)</label>
-                            <input type="number" name="overdue_reminder_days" class="dset-input"
-                                   value="{{ old('overdue_reminder_days', $settings['overdue_reminder_days'] ?? 7) }}">
-                        </div>
-                        <div>
-                            <label class="dset-label">Maturity Reminder (days before)</label>
-                            <input type="number" name="maturity_reminder_days" class="dset-input"
-                                   value="{{ old('maturity_reminder_days', $settings['maturity_reminder_days'] ?? 15) }}">
+                            <label class="dset-label" for="ds-remind">Remind (days before due)</label>
+                            <input id="ds-remind" type="number" min="1" max="30" name="reminder_days_before_due" class="dset-input" value="{{ $v('reminder_days_before_due') }}">
                         </div>
                     </div>
                 </div>
 
-                {{-- Submit --}}
                 <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
                     <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">Cancel</a>
                     <button type="submit" class="btn btn-dark btn-sm">

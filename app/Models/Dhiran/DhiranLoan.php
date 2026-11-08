@@ -217,6 +217,13 @@ class DhiranLoan extends Model
         return $this->forfeiture_notice_sent_at !== null;
     }
 
+    /** A forfeiture notice may go out only for an active loan past maturity AND its grace period. */
+    public function forfeitureNoticeDue(): bool
+    {
+        return $this->isOverdue()
+            && today()->gt(\Illuminate\Support\Carbon::parse($this->maturity_date)->addDays((int) $this->grace_period_days));
+    }
+
     /**
      * Whether forfeiture can be EXECUTED right now. Mirrors the authoritative
      * service guard (DhiranService::executeForfeit): the loan must be active, a

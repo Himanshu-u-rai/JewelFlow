@@ -245,11 +245,11 @@ class DhiranLifecycleUiTest extends TestCase
         $loan = $this->makeLoan($shop);
 
         $html = $this->renderShow($shop, $owner, $loan->id);
-        // Pay Interest, Repay, Pre-Close, and Release Item (since the release dialog sends what the controller needs).
-        $this->assertSame(4, substr_count($html, 'name="payment_method"'));
+        // Pay Interest, Repay, Pre-Close, Release Item, and Renew (since 2026-11-08 renewal asks how its interest was paid).
+        $this->assertSame(5, substr_count($html, 'name="payment_method"'));
         $this->assertStringNotContainsString('name="method"', $html);
         // The controller accepts cash, upi, card, bank_transfer; "Bank Transfer" was offered as value="bank".
-        $this->assertSame(4, substr_count($html, '<option value="bank_transfer">Bank Transfer</option>'));
+        $this->assertSame(5, substr_count($html, '<option value="bank_transfer">Bank Transfer</option>'));
         $this->assertStringNotContainsString('value="bank"', $html);
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
@@ -364,6 +364,162 @@ class DhiranLifecycleUiTest extends TestCase
             }
             $this->assertEqualsWithDelta($loan->totalOutstanding(), $this->service->releaseMinimum($loan, $item), 0.01);
         });
+    }
+
+    // ── Full Dhiran QA 2026-11-08 ────────────────────────────────────────────────────────────────────────────────
+
+    // The dashboard view read $stats[...] but the controller passed separate variables, so every tile showed 0.
+    public function test_dashboard_tiles_show_the_real_figures(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000080');
+        $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6]);
+
+        $html = $this->actingAs($owner)->get('https://dhiran.jewelflows.com/dhiran')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/Active Loans<\/p>\s*<p class="dd-kpi-value">1</', $html);
+        $this->assertMatchesRegularExpression('/Total Outstanding<\/p>\s*<p class="dd-kpi-value">₹100,000\.00</', $html);
+    }
+
+    // Payment types printed raw ("Pre_closure").
+    public function test_payment_history_names_types_in_words(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000081');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6]);
+        TenantContext::runFor($shop->id, fn () => $this->service->preCloseLoan($this->fresh($loan->id)));
+
+        $html = $this->renderShow($shop, $owner, $loan->id);
+        $this->assertStringContainsString('Pre Closure', $html);
+        $this->assertStringNotContainsString('Pre_closure', $html);
+    }
+
+    // A forfeiture notice is only for a loan past maturity and grace: the button showed (and the server refused it),
+    // and the printable notice opened for any loan, telling the customer a future date had already passed.
+    public function test_forfeiture_notice_is_not_offered_before_grace_ends(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000082');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6]);
+
+        $this->assertStringNotContainsString(route('dhiran.send-notice', $loan), $this->renderShow($shop, $owner, $loan->id));
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/forfeiture-notice"))->assertRedirect();
+
+        // Past maturity and grace: offered.
+        $due = $this->makeLoan($shop);
+        $this->assertStringContainsString(route('dhiran.send-notice', $due), $this->renderShow($shop, $owner, $due->id));
+    }
+
+    // The pledge receipt printed "Dhiran" where the lender's name belongs: the view read a $shop nobody passed.
+    public function test_pledge_receipt_names_the_lender(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000083');
+        $loan = $this->makeLoan($shop);
+
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/receipt"))->assertOk()->getContent();
+        $this->assertStringContainsString('receipt-shop-name">' . e($shop->name), $html);
+    }
+
+    // The interest report's cards summed only the rows on the current page, left out penalty-only payments, and showed
+    // "Principal Collected" for just the payments that carried interest.
+    public function test_interest_report_totals_cover_the_whole_period(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000084');
+        $loan = $this->makeLoan($shop);
+        TenantContext::runFor($shop->id, function () use ($loan, $shop) {
+            foreach ([[0, 0, 500], [0, 200, 0]] as $i => [$principal, $penalty, $interest]) {
+                \App\Models\Dhiran\DhiranPayment::record([
+                    'shop_id' => $shop->id, 'dhiran_loan_id' => $loan->id, 'payment_date' => today()->toDateString(),
+                    'type' => 'interest_payment', 'amount' => $principal + $penalty + $interest, 'direction' => 'in', 'payment_method' => 'cash',
+                    'interest_component' => $interest, 'penalty_component' => $penalty, 'principal_component' => $principal,
+                    'processing_fee_component' => 0, 'outstanding_principal_after' => 100000, 'outstanding_interest_after' => 0,
+                    'outstanding_penalty_after' => 0, 'created_by' => null,
+                ]);
+            }
+        });
+
+        $html = $this->actingAs($owner)->get('https://dhiran.jewelflows.com/dhiran/reports/interest')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/Penalty Collected<\/p>\s*<p[^>]*>200\.00</', $html, 'a penalty-only payment was left out');
+        $this->assertStringNotContainsString('Principal Collected', $html);
+    }
+
+    // A refused New Loan (e.g. principal above the LTV limit) came back with the items list empty, so staff typed
+    // every item again.
+    public function test_a_refused_new_loan_keeps_what_was_typed(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000085');
+        $customer = TenantContext::runFor($shop->id, fn () => Customer::create(['shop_id' => $shop->id, 'first_name' => 'Keep', 'last_name' => 'Typed', 'mobile' => '9811130009']));
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        $page = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->from('https://dhiran.jewelflows.com/dhiran/create')
+            ->followingRedirects()
+            ->post('https://dhiran.jewelflows.com/dhiran', [
+                'customer_id' => $customer->id, 'principal_amount' => 40000, 'gold_rate_on_date' => 6000,
+                'interest_rate_monthly' => 1.5, 'interest_type' => 'flat', 'tenure_months' => 6,
+                'items' => [['description' => 'Gold ring', 'metal_type' => 'gold', 'value_mode' => 'metal', 'gross_weight' => 8, 'stone_weight' => 0, 'purity' => 22, 'rate_per_gram_at_pledge' => 6000]],
+            ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('exceeds maximum loan value', $page);
+        $this->assertStringContainsString('principal_amount: 40000', $page);
+        $this->assertStringContainsString('Gold ring', $page, 'the items typed were dropped');
+    }
+
+    // Renewing collects the interest due (at least the minimum interest), but the dialog never said so or asked how it
+    // was paid: every renewal was booked as cash. The old loan also gave no way to its new loan.
+    public function test_renewal_says_what_to_collect_records_how_and_links_both_loans(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000086');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6]);
+
+        $due = TenantContext::runFor($shop->id, fn () => $this->service->renewalDue($this->fresh($loan->id)));
+        $this->assertGreaterThan(0, $due, 'test premise: the minimum interest applies');
+        $this->assertStringContainsString('collect ₹' . number_format($due, 2), $this->renderShow($shop, $owner, $loan->id));
+
+        $new = TenantContext::runFor($shop->id, fn () => $this->service->renewLoan($this->fresh($loan->id), null, null, 'upi'));
+        $payment = \App\Models\Dhiran\DhiranPayment::withoutGlobalScopes()->where('dhiran_loan_id', $loan->id)->where('type', 'renewal_interest')->firstOrFail();
+        $this->assertSame('upi', $payment->payment_method);
+        $this->assertEqualsWithDelta($due, (float) $payment->amount, 0.01);
+        $this->assertSame('upi', \App\Models\Dhiran\DhiranCashEntry::withoutGlobalScopes()->where('dhiran_payment_id', $payment->id)->value('payment_method'));
+
+        $old = TenantContext::runFor($shop->id, function () use ($owner, $loan) {
+            $this->actingAs($owner);
+            view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+            $l = DhiranLoan::with(['customer', 'items', 'payments', 'renewals', 'renewedFrom'])->findOrFail($loan->id);
+
+            return view('dhiran.show', ['loan' => $l])->render();
+        });
+        $this->assertStringContainsString(route('dhiran.show', $new), $old, 'the renewed loan does not lead to its new loan');
+    }
+
+    // Settings were disconnected end to end: the page showed placeholder values (it read keys the settings do not have),
+    // saving always failed (the form's field names were not the ones the save required), and New Loan never got the
+    // shop's defaults.
+    public function test_settings_show_save_and_feed_new_loans(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000087');
+        DhiranSettings::getForShop($shop->id)->update(['default_interest_rate_monthly' => 2.25]);
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $as = fn (callable $fn) => TenantContext::runFor($shop->id, fn () => $fn($this->actingAs($owner)));
+
+        $as(fn ($t) => $t->get('https://dhiran.jewelflows.com/dhiran/settings'))->assertOk()
+            ->assertSee('name="default_interest_rate_monthly"', false)->assertSee('value="2.25"', false);
+
+        $as(fn ($t) => $t->patch('https://dhiran.jewelflows.com/dhiran/settings', [
+            'default_interest_rate_monthly' => 2.5, 'default_interest_type' => 'flat', 'default_penalty_rate_monthly' => 1,
+            'default_ltv_ratio' => 70, 'high_value_ltv_ratio' => 65, 'high_value_threshold' => 300000,
+            'min_loan_amount' => 1000, 'max_loan_amount' => 900000, 'processing_fee_type' => 'percent', 'processing_fee_value' => 1,
+            'default_tenure_months' => 9, 'default_min_lock_months' => 0, 'default_min_interest_months' => 1,
+            'grace_period_days' => 15, 'forfeiture_notice_days' => 20, 'loan_number_prefix' => 'PL-',
+            'receipt_terms_text' => 'Pay on time.', 'closure_certificate_text' => '', 'sms_reminders_enabled' => '0', 'reminder_days_before_due' => 7,
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+
+        $s = DhiranSettings::getForShop($shop->id)->fresh();
+        $this->assertSame([2.5, 9, 70.0, 20, 'PL-', 'percent'], [(float) $s->default_interest_rate_monthly, (int) $s->default_tenure_months,
+            (float) $s->default_ltv_ratio, (int) $s->forfeiture_notice_days, $s->loan_number_prefix, $s->processing_fee_type]);
+
+        $create = $as(fn ($t) => $t->get('https://dhiran.jewelflows.com/dhiran/create'))->assertOk()->getContent();
+        foreach (['interest_rate_monthly: 2.5', 'tenure_months: 9', 'ltvPercent: 70', 'penalty_rate_monthly: 1'] as $default) {
+            $this->assertStringContainsString($default, $create, "New Loan ignores the shop's {$default}");
+        }
     }
 
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,

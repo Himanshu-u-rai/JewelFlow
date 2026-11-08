@@ -2,9 +2,7 @@
     @php
         $fromDate = request('from', now()->startOfMonth()->format('Y-m-d'));
         $toDate = request('to', now()->format('Y-m-d'));
-        $totalInterest = $payments->sum('interest_component');
-        $totalPenalty = $payments->sum('penalty_component');
-        $totalPrincipal = $payments->sum('principal_component');
+        // $totalInterest / $totalPenalty come from the controller and cover the whole period.
     @endphp
 
     <x-dhiran.page-header>
@@ -41,7 +39,7 @@
         </div>
 
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-100 flex items-center justify-center rounded-lg">
@@ -61,17 +59,6 @@
                     <div>
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Penalty Collected</p>
                         <p class="text-xl font-bold text-amber-600">{{ number_format($totalPenalty, 2) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-100 flex items-center justify-center rounded-lg">
-                        <x-icon name="banknote" size="18" class="text-blue-600" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Principal Collected</p>
-                        <p class="text-xl font-bold text-blue-600">{{ number_format($totalPrincipal, 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -114,11 +101,12 @@
                     @if($payments->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">Totals</td>
+                            {{-- Sums of the rows shown; the cards above cover the whole period. --}}
+                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">{{ $payments->hasPages() ? 'This page' : 'Totals' }}</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($payments->sum('amount'), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($totalInterest, 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($totalPenalty, 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-blue-700 text-right">{{ number_format($totalPrincipal, 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($payments->sum('interest_component'), 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($payments->sum('penalty_component'), 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-blue-700 text-right">{{ number_format($payments->sum('principal_component'), 2) }}</td>
                         </tr>
                     </tfoot>
                     @endif

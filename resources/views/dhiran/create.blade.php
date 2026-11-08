@@ -243,7 +243,8 @@
                                     <select :name="'items['+index+'][purity]'" x-model.number="item.purity" class="dh-select" required @change="recalcItem(index)">
                                         <option value="">Select</option>
                                         <template x-for="opt in purityOptions(item.metal_type)" :key="opt.value">
-                                            <option :value="opt.value" x-text="opt.label"></option>
+                                            {{-- :selected — the options draw after x-model sets the value, so it showed "Select". --}}
+                                            <option :value="opt.value" x-text="opt.label" :selected="Number(opt.value) === Number(item.purity)"></option>
                                         </template>
                                     </select>
                                 </div>
@@ -289,12 +290,12 @@
                                            x-model.number="item.market_value" placeholder="0.00" class="dh-input" @input="recalcItem(index)">
                                 </div>
                                 <input type="text" readonly class="dh-input dh-calc-field" x-show="item.metal_type !== 'other' && item.value_mode !== 'appraised'"
-                                       :value="'{{ $currencySymbol ?? '₹' }}' + item.market_value.toFixed(2)">
+                                       :value="'{{ $currencySymbol ?? '₹' }}' + money(item.market_value)">
                             </div>
                             <div>
                                 <label class="dh-label">Loan Value</label>
                                 <input type="text" readonly class="dh-input dh-calc-field"
-                                       :value="'{{ $currencySymbol ?? '₹' }}' + item.loan_value.toFixed(2)">
+                                       :value="'{{ $currencySymbol ?? '₹' }}' + money(item.loan_value)">
                                 <input type="hidden" :name="'items['+index+'][loan_value]'" :value="item.loan_value">
                             </div>
                             <div></div>
@@ -394,7 +395,7 @@
                     <div>
                         <label class="dh-label">Processing Fee</label>
                         <input type="text" readonly class="dh-input dh-calc-field"
-                               :value="'{{ $currencySymbol ?? '₹' }}' + processingFee.toFixed(2)">
+                               :value="'{{ $currencySymbol ?? '₹' }}' + money(processingFee)">
                         <input type="hidden" name="processing_fee" :value="processingFee">
                     </div>
                 </div>
@@ -408,23 +409,23 @@
                 </div>
                 <div class="dh-summary-row">
                     <span class="dh-summary-label">Total Market Value</span>
-                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + totalMarketValue.toFixed(2)"></span>
+                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + money(totalMarketValue)"></span>
                 </div>
                 <div class="dh-summary-row">
                     <span class="dh-summary-label">Total Loan Value (from items)</span>
-                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + totalLoanValue.toFixed(2)"></span>
+                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + money(totalLoanValue)"></span>
                 </div>
                 <div class="dh-summary-row border-t border-slate-200 pt-2">
                     <span class="dh-summary-label font-semibold text-slate-900">Principal Amount</span>
-                    <span class="dh-summary-value text-lg" x-text="'{{ $currencySymbol ?? '₹' }}' + (principal_amount || 0).toFixed(2)"></span>
+                    <span class="dh-summary-value text-lg" x-text="'{{ $currencySymbol ?? '₹' }}' + money((principal_amount || 0))"></span>
                 </div>
                 <div class="dh-summary-row">
                     <span class="dh-summary-label">Monthly Interest (approx.)</span>
-                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + monthlyInterest.toFixed(2)"></span>
+                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + money(monthlyInterest)"></span>
                 </div>
                 <div class="dh-summary-row">
                     <span class="dh-summary-label">Processing Fee</span>
-                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + processingFee.toFixed(2)"></span>
+                    <span class="dh-summary-value" x-text="'{{ $currencySymbol ?? '₹' }}' + money(processingFee)"></span>
                 </div>
             </div>
 
@@ -453,7 +454,8 @@
 
     @push('scripts')
     <script>
-        document.addEventListener('alpine:init', () => {
+        (() => {
+        const registerDhiranCreateForm = () => {
             Alpine.data('dhiranCreateForm', () => ({
                 customer_id: '{{ old('customer_id', $preselectedCustomerId ?? '') }}',
                 customerDisplayName: '',
@@ -482,13 +484,22 @@
                 tenure_months: {{ old('tenure_months', $defaults['tenure_months'] ?? 6) }},
                 penalty_rate_monthly: {{ old('penalty_rate_monthly', $defaults['penalty_rate_monthly'] ?? 2) }},
                 processingFeePercent: {{ $defaults['processing_fee_percent'] ?? 0 }},
+                processingFeeFlat: {{ $defaults['processing_fee_flat'] ?? 0 }},
                 ltvPercent: {{ $defaults['ltv_percent'] ?? 75 }},
 
-                items: [{
-                    description: '', metal_type: 'gold', value_mode: 'metal', gross_weight: 0, stone_weight: 0, purity: 22,
-                    rate_per_gram_at_pledge: 0, huid: '',
-                    net_metal_weight: 0, fine_weight: 0, market_value: 0, loan_value: 0
-                }],
+                // After a refused save, the items come back as typed (init() recalculates their values).
+                items: {{ Illuminate\Support\Js::from(collect(old('items') ?: [[]])->values()->map(fn ($i) => [
+                    'description' => (string) ($i['description'] ?? ''),
+                    'metal_type' => (string) ($i['metal_type'] ?? 'gold'),
+                    'value_mode' => (string) ($i['value_mode'] ?? 'metal'),
+                    'gross_weight' => (float) ($i['gross_weight'] ?? 0),
+                    'stone_weight' => (float) ($i['stone_weight'] ?? 0),
+                    'purity' => (float) ($i['purity'] ?? 22),
+                    'rate_per_gram_at_pledge' => (float) ($i['rate_per_gram_at_pledge'] ?? 0),
+                    'huid' => (string) ($i['huid'] ?? ''),
+                    'net_metal_weight' => 0, 'fine_weight' => 0,
+                    'market_value' => (float) ($i['market_value'] ?? 0), 'loan_value' => 0,
+                ])) }},
 
                 get totalMarketValue() {
                     return this.items.reduce((sum, i) => sum + (i.market_value || 0), 0);
@@ -500,10 +511,16 @@
                     return (this.principal_amount || 0) * (this.interest_rate_monthly || 0) / 100;
                 },
                 get processingFee() {
-                    return (this.principal_amount || 0) * (this.processingFeePercent || 0) / 100;
+                    // The shop's fee is either a % of the loan or a fixed amount (Dhiran settings).
+                    return (Number(this.principal_amount) || 0) * (this.processingFeePercent || 0) / 100 + (this.processingFeeFlat || 0);
+                },
+                // Rupees as the rest of the app shows them (₹44,000.00); Number() also covers a value typed as text.
+                money(v) {
+                    return (Number(v) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
 
                 init() {
+                    this.items.forEach((_, i) => this.recalcItem(i));
                     // If a borrower was preselected (?customer_id= from the borrower
                     // profile/list), show their name in the picker on load.
                     if (this.customer_id) {
@@ -678,7 +695,11 @@
                     this.items.forEach((_, i) => this.recalcItem(i));
                 }
             }));
-        });
+        };
+        // A Turbo visit runs this script again but alpine:init fired on an earlier page: register now, so the form
+        // gets this render's values (not none, nor a previous page's). The IIFE keeps the const re-runnable.
+        window.Alpine ? registerDhiranCreateForm() : document.addEventListener('alpine:init', registerDhiranCreateForm);
+        })();
     </script>
     @endpush
 </x-dhiran-layout>

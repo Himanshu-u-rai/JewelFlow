@@ -67,14 +67,15 @@ class DhiranController extends Controller
             ->limit(10)
             ->get();
 
-        return view('dhiran.dashboard', compact(
-            'settings',
-            'activeLoans',
-            'overdueLoans',
-            'totalOutstanding',
-            'thisMonthInterest',
-            'recentLoans'
-        ));
+        // The view reads $stats[...]; without it every tile showed 0.
+        $stats = [
+            'active_loans'      => $activeLoans,
+            'overdue_loans'     => $overdueLoans,
+            'total_outstanding' => (float) $totalOutstanding,
+            'month_interest'    => $thisMonthInterest,
+        ];
+
+        return view('dhiran.dashboard', compact('settings', 'stats', 'recentLoans'));
     }
 
     public function activate(Request $request)
@@ -126,7 +127,19 @@ class DhiranController extends Controller
             $preselectedCustomerId = $customers->firstWhere('id', (int) $request->customer_id)?->id;
         }
 
-        return view('dhiran.create', compact('settings', 'customers', 'preselectedCustomerId'));
+        // The shop's Dhiran settings seed the form (the view read $defaults, which was never passed, so it always
+        // showed built-in values whatever the shop had set).
+        $defaults = [
+            'interest_rate_monthly'  => (float) $settings->default_interest_rate_monthly,
+            'interest_type'          => $settings->default_interest_type ?: 'flat',
+            'tenure_months'          => (int) $settings->default_tenure_months,
+            'penalty_rate_monthly'   => (float) $settings->default_penalty_rate_monthly,
+            'processing_fee_percent' => $settings->processing_fee_type === 'percent' ? (float) $settings->processing_fee_value : 0,
+            'processing_fee_flat'    => $settings->processing_fee_type === 'percent' ? 0 : (float) $settings->processing_fee_value,
+            'ltv_percent'            => (float) $settings->default_ltv_ratio,
+        ];
+
+        return view('dhiran.create', compact('settings', 'customers', 'preselectedCustomerId', 'defaults'));
     }
 
     /**
@@ -544,13 +557,15 @@ class DhiranController extends Controller
         $data = $request->validate([
             'tenure_months'         => 'nullable|integer|min:1|max:60',
             'interest_rate_monthly' => 'nullable|numeric|min:0|max:10',
+            'payment_method'        => 'nullable|in:cash,upi,bank_transfer',
         ]);
 
         try {
             $newLoan = $this->dhiranService->renewLoan(
                 $loan,
                 isset($data['tenure_months']) ? (int) $data['tenure_months'] : null,
-                isset($data['interest_rate_monthly']) ? (float) $data['interest_rate_monthly'] : null
+                isset($data['interest_rate_monthly']) ? (float) $data['interest_rate_monthly'] : null,
+                $data['payment_method'] ?? 'cash'
             );
         } catch (\LogicException $e) {
             return redirect()->route('dhiran.show', $loan)
@@ -697,8 +712,9 @@ class DhiranController extends Controller
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         $loan->load(['customer', 'items', 'creator']);
+        $shop = $loan->shop; // the lender named on the receipt (the view fell back to "Dhiran" without it)
 
-        return view('dhiran.receipt', compact('loan'));
+        return view('dhiran.receipt', compact('loan', 'shop'));
     }
 
     public function closureCertificate(DhiranLoan $loan)
@@ -714,6 +730,11 @@ class DhiranController extends Controller
     public function forfeitureNotice(DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
+        // The letter says the loan matured and the grace period ended; never print it before that is true.
+        if (! $loan->forfeitureNoticeSent() && ! $loan->forfeitureNoticeDue()) {
+            return redirect()->route('dhiran.show', $loan)
+                ->with('error', 'A forfeiture notice can be issued only after the loan matures and its grace period ends.');
+        }
         $loan->load(['customer', 'items']);
 
         return view('dhiran.forfeiture-notice', compact('loan'));
@@ -912,20 +933,30 @@ class DhiranController extends Controller
     {
         $shopId = auth()->user()->shop_id;
 
+        // Exactly the fields the settings page sends; each is a setting that new loans read.
         $data = $request->validate([
             'default_interest_rate_monthly' => 'required|numeric|min:0|max:10',
+            'default_interest_type'         => 'required|in:flat,daily,compound',
+            'default_penalty_rate_monthly'  => 'required|numeric|min:0|max:10',
+            'default_min_interest_months'   => 'required|integer|min:0|max:12',
+            'default_ltv_ratio'             => 'required|numeric|min:1|max:100',
+            'high_value_threshold'          => 'required|numeric|min:0',
+            'high_value_ltv_ratio'          => 'required|numeric|min:1|max:100',
+            'min_loan_amount'               => 'required|numeric|min:0',
+            'max_loan_amount'               => 'required|numeric|gte:min_loan_amount',
+            'processing_fee_type'           => 'required|in:flat,percent',
+            'processing_fee_value'          => 'required|numeric|min:0',
             'default_tenure_months'         => 'required|integer|min:1|max:60',
             'default_min_lock_months'       => 'required|integer|min:0|max:60',
             'grace_period_days'             => 'required|integer|min:0|max:90',
-            'default_penalty_rate_monthly'  => 'required|numeric|min:0|max:10',
-            'default_ltv_ratio'             => 'required|numeric|min:1|max:100',
-            'kyc_mandatory'                 => 'boolean',
-            'sms_reminders_enabled'         => 'boolean',
-            'reminder_days_before_due'      => 'nullable|integer|min:1|max:30',
+            'forfeiture_notice_days'        => 'required|integer|min:0|max:365',
             'loan_number_prefix'            => ['nullable', 'string', 'max:10', 'regex:/^[A-Za-z0-9\-_]{1,10}$/'],
+            'receipt_terms_text'            => 'nullable|string|max:5000',
+            'closure_certificate_text'      => 'nullable|string|max:5000',
+            'sms_reminders_enabled'         => 'nullable|boolean',
+            'reminder_days_before_due'      => 'nullable|integer|min:1|max:30',
         ]);
 
-        $data['kyc_mandatory']        = $request->boolean('kyc_mandatory');
         $data['sms_reminders_enabled'] = $request->boolean('sms_reminders_enabled');
 
         $settings = DhiranSettings::getForShop($shopId);
@@ -997,19 +1028,20 @@ class DhiranController extends Controller
         // Filter by payment_date (the accounting date for the transaction),
         // NOT created_at. A back-dated payment recorded today belongs in the
         // fiscal period of payment_date.
-        $payments = DhiranPayment::where('shop_id', $shopId)
-            ->where('interest_component', '>', 0)
-            ->whereBetween('payment_date', [$from, $to])
+        // Payments that carried interest or penalty (the report's subject); the cards cover the whole period, not
+        // only the rows on this page.
+        $period = fn () => DhiranPayment::where('shop_id', $shopId)->whereBetween('payment_date', [$from, $to]);
+        $payments = $period()
+            ->where(fn ($q) => $q->where('interest_component', '>', 0)->orWhere('penalty_component', '>', 0))
             ->with(['loan', 'loan.customer'])
             ->latest('payment_date')
             ->paginate(20)
             ->withQueryString();
 
-        $totalInterest = (float) DhiranPayment::where('shop_id', $shopId)
-            ->whereBetween('payment_date', [$from, $to])
-            ->sum('interest_component');
+        $totalInterest = (float) $period()->sum('interest_component');
+        $totalPenalty  = (float) $period()->sum('penalty_component');
 
-        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'from', 'to'));
+        return view('dhiran.reports.interest', compact('payments', 'totalInterest', 'totalPenalty', 'from', 'to'));
     }
 
     public function reportForfeiture(Request $request)

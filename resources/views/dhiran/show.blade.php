@@ -18,6 +18,13 @@
                     {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                 </span>
             </p>
+            {{-- Renewal chain: the old loan keeps its figures as a record; its balance moved to the new loan. --}}
+            @if($loan->renewedFrom)
+                <p class="text-xs text-slate-500 mt-1">Renewed from <a href="{{ route('dhiran.show', $loan->renewedFrom) }}" class="font-semibold text-amber-700 hover:underline">{{ $loan->renewedFrom->loan_number }}</a></p>
+            @endif
+            @foreach($loan->renewals ?? [] as $renewal)
+                <p class="text-xs text-slate-500 mt-1">Renewed into <a href="{{ route('dhiran.show', $renewal) }}" class="font-semibold text-amber-700 hover:underline">{{ $renewal->loan_number }}</a>; its balance moved there.</p>
+            @endforeach
         </div>
         <div class="page-actions flex flex-wrap gap-2">
             @if($loan->status === 'active')
@@ -50,7 +57,7 @@
                 </button>
                 @endcan
                 @can('dhiran.forfeit')
-                @if(! $loan->forfeitureNoticeSent())
+                @if(! $loan->forfeitureNoticeSent() && $loan->forfeitureNoticeDue())
                 <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline" data-turbo-frame="_top">
                     @csrf
                     <button type="submit" class="btn btn-secondary btn-sm">
@@ -307,7 +314,7 @@
                         @forelse($loan->payments ?? [] as $payment)
                             <tr class="hover:bg-slate-50/70">
                                 <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->payment_date ? $payment->payment_date->format('d M Y') : '---' }}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ ucfirst($payment->type ?? '---') }}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $payment->type ? ucwords(str_replace('_', ' ', $payment->type)) : '---' }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->amount, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->principal_component ?? 0, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->interest_component ?? 0, 2) }}</td>
@@ -543,6 +550,20 @@
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Renew Loan</h3>
             <form method="POST" action="{{ route('dhiran.renew', $loan) }}" data-turbo-frame="_top">
                 @csrf
+                @php $renewDue = $loan->status === 'active' ? app(\App\Services\DhiranService::class)->renewalDue($loan) : 0; @endphp
+                @if($renewDue > 0)
+                    <p class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        To renew, collect {{ $currencySymbol ?? '₹' }}{{ number_format($renewDue, 2) }} now: interest and penalty due (at least the minimum interest), up to {{ \Illuminate\Support\Carbon::parse($loan->interest_accrued_through ?? $loan->loan_date)->format('d M Y') }}. Interest for any days since is added.
+                    </p>
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Paid by</label>
+                        <select name="payment_method" class="dh-form-control dh-native-select">
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                @endif
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">New Tenure (Months)</label>
                     <input type="number" name="tenure_months" required min="1" value="{{ $loan->tenure_months }}"

@@ -1092,7 +1092,18 @@ class DhiranService
      * satisfied by the original collateral valuation and we never re-value on
      * renewal. If market rates must be refreshed, close and re-issue instead.
      */
-    public function renewLoan(DhiranLoan $loan, ?int $newTenure = null, ?float $newRate = null): DhiranLoan
+    /**
+     * What renewing collects now: interest and penalty due, topped up to the minimum interest (same rule as
+     * renewLoan). Uses the loan's stored figures; renewLoan accrues today's interest first.
+     */
+    public function renewalDue(DhiranLoan $loan): float
+    {
+        $shortfall = max(0, $loan->minimumInterestAmount() - ((float) $loan->total_interest_collected + (float) $loan->outstanding_interest));
+
+        return round((float) $loan->outstanding_interest + (float) $loan->outstanding_penalty + $shortfall, 2);
+    }
+
+    public function renewLoan(DhiranLoan $loan, ?int $newTenure = null, ?float $newRate = null, string $method = 'cash'): DhiranLoan
     {
         if ($loan->status !== 'active') {
             throw new LogicException('Only active loans can be renewed.');
@@ -1101,7 +1112,7 @@ class DhiranService
         // Accrue interest up to today
         $this->accrueInterest($loan);
 
-        return DB::transaction(function () use ($loan, $newTenure, $newRate): DhiranLoan {
+        return DB::transaction(function () use ($loan, $newTenure, $newRate, $method): DhiranLoan {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
 
             // Enforce minimum interest on renewal (same rule as pre-close)
@@ -1157,7 +1168,7 @@ class DhiranService
                     'type'                       => 'renewal_interest',
                     'amount'                     => $interestAndPenalty,
                     'direction'                  => 'in',
-                    'payment_method'             => 'cash',
+                    'payment_method'             => $method,
                     'interest_component'         => round($interestComponent, 2),
                     'penalty_component'          => round($penaltyComponent, 2),
                     'principal_component'        => 0,
@@ -1177,7 +1188,7 @@ class DhiranService
                     'type'               => 'in',
                     'amount'             => $interestAndPenalty,
                     'source_type'        => 'interest_collection',
-                    'payment_method'     => 'cash',
+                    'payment_method'     => $method,
                     'description'        => "Renewal interest cleared: {$loan->loan_number}",
                     'created_by'         => $loan->created_by,
                 ]);
