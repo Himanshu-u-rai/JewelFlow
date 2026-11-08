@@ -2928,8 +2928,8 @@ body:has(.dh-auth-panel) {
 /* Links: blue on light surfaces. Row action buttons keep their own colours (the old "table a" rule painted the
    view icon the same colour as its button, so it vanished). */
 .dh-app table a:not(.jf-row-action):not(.btn),
-.dh-auth-link { color: var(--dh-link); }
-.dh-app table a:not(.jf-row-action):not(.btn):hover { color: var(--dh-link-hover); }
+.dh-auth-link { color: var(--dh-link) !important; } /* outranks the !important colour-class mappings */
+.dh-app table a:not(.jf-row-action):not(.btn):hover { color: var(--dh-link-hover) !important; }
 .dh-app .jf-row-action { color: var(--jf-ra-fg); }
 .dh-app .jf-row-action--view { --jf-ra-bg: var(--dh-accent); --jf-ra-line: var(--dh-accent); --jf-ra-fg: var(--dh-on-accent); }
 
@@ -3064,6 +3064,24 @@ body:has(.dh-auth-panel) {
 .dh-evidence-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--dh-line); }
 .dh-evidence-viewer-body { display: flex; justify-content: center; padding: 16px; background: var(--dh-muted-surface); }
 .dh-evidence-viewer-body img { max-width: 100%; max-height: calc(92dvh - 110px); object-fit: contain; border-radius: var(--dh-radius-sm); }
+
+/* The rest of the retail colour classes still used in Dhiran views, onto Dhiran tokens (a frontend test fails when a
+   view uses one that is not mapped here or above). */
+.dh-app :is(.text-slate-600, .text-slate-700, .text-gray-600, .text-gray-700) { color: var(--dh-ink-soft) !important; }
+.dh-app :is(.text-slate-800, .text-gray-800) { color: var(--dh-ink) !important; }
+.dh-app .border-slate-100 { border-color: var(--dh-line-soft) !important; }
+.dh-app .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dh-line-soft) !important; }
+.dh-app .bg-slate-400 { background-color: var(--dh-subtle) !important; }
+.dh-app :is(.text-red-600, .text-red-700, .text-red-800) { color: var(--dh-danger) !important; }
+.dh-app :is(.bg-red-50, .bg-red-100) { background-color: var(--dh-danger-soft) !important; }
+.dh-app .border-red-200 { border-color: var(--dh-danger-line) !important; }
+.dh-app .bg-red-500 { background-color: var(--dh-danger) !important; }
+.dh-app :is(.text-emerald-800, .text-green-800) { color: var(--dh-success) !important; }
+.dh-app :is(.bg-emerald-50, .bg-green-50) { background-color: var(--dh-success-soft) !important; }
+.dh-app :is(.border-emerald-200, .border-green-200) { border-color: var(--dh-success-line) !important; }
+.dh-app .bg-emerald-500 { background-color: var(--dh-success) !important; }
+.dh-app .text-sky-800 { color: var(--dh-accent) !important; }
+.dh-app .text-amber-800\/80 { color: color-mix(in srgb, var(--dh-warning-ink) 80%, transparent) !important; }
 
 /* New Loan: how much the pledged items allow, under Principal; a warning when the amount is outside the limits. */
 .dh-principal-limit { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--dh-muted); }

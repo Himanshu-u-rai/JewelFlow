@@ -110,6 +110,28 @@ test('phones: stacked tables become cards with column names', () => {
     assert.equal(decls(css, '.dh-app table.dh-stack', m)['min-width'], '0');
 });
 
+// Owner 2026-11-08 ("do not hard code any dhiran colors"): Dhiran views still use Tailwind colour classes from the
+// retail look. Each one used must be mapped to a Dhiran token in dhiran.css, or that spot shows retail's colour.
+test('every colour class a Dhiran view uses is mapped to a Dhiran token', async () => {
+    const { readdirSync } = await import('node:fs');
+    const root = new URL('../../resources/views/', import.meta.url);
+    const files = [
+        ...readdirSync(new URL('dhiran/', root), { recursive: true }).map(f => `dhiran/${f}`),
+        ...readdirSync(new URL('components/dhiran/', root), { recursive: true }).map(f => `components/dhiran/${f}`),
+        'components/dhiran-layout.blade.php',
+    ].filter(f => f.endsWith('.blade.php'));
+    const colour = /(?<![\w-])((?:hover:|focus:)?(?:text|bg|border|ring|divide)-(?:amber|slate|gray|emerald|red|sky|violet|blue|green|yellow|orange)-\d{2,3}(?:\/\d+)?)(?![\w-])/g;
+    const used = new Set(files.flatMap(f => [...readFileSync(new URL(f, root), 'utf8').matchAll(colour)].map(m => m[1])));
+    const css = read('dhiran.css');
+    const missing = [...used].filter(c => !css.includes('.' + c.replace(':', '\\:').replace('/', '\\/'))).sort();
+    assert.ok(used.size > 50, 'scanned the Dhiran views');
+    assert.deepEqual(missing, [], 'colour classes with no Dhiran mapping');
+    // Those mappings are !important; table links must stay blue whatever text class they carry.
+    let important = false;
+    postcss.parse(css).walkRules(r => { if (r.selectors.includes('.dh-app table a:not(.jf-row-action):not(.btn)')) r.walkDecls('color', d => { important ||= d.important; }); });
+    assert.ok(important, 'table link colour outranks the class mappings');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');
