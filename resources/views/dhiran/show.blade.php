@@ -321,7 +321,7 @@
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->penalty_component ?? 0, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
-                                        {{ ucfirst($payment->payment_method ?? 'cash') }}
+                                        {{ \App\Models\Dhiran\DhiranPayment::methodLabel($payment->payment_method) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
@@ -525,7 +525,9 @@
     <dialog id="precloseModal" class="dh-dialog">
         <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pre-Close Loan</h3>
-            <p class="text-sm text-slate-600 mb-4">This will close the loan and release all pledged items. Total outstanding: <strong>{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding ?? 0, 2) }}</strong></p>
+            {{-- Closing takes the principal plus interest and penalty due, at least the minimum interest (as preCloseLoan). --}}
+            @php $closeTakes = $loan->status === 'active' ? (float) $loan->outstanding_principal + app(\App\Services\DhiranService::class)->renewalDue($loan) : 0; @endphp
+            <p class="text-sm text-slate-600 mb-4">This will close the loan and release all pledged items. To close, collect <strong>{{ $currencySymbol ?? '₹' }}{{ number_format($closeTakes, 2) }}</strong>: the principal, plus interest and penalty due (at least the minimum interest), up to {{ \Illuminate\Support\Carbon::parse($loan->interest_accrued_through ?? $loan->loan_date)->format('d M Y') }}. Interest for any days since is added.</p>
             <form method="POST" action="{{ route('dhiran.pre-close', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">

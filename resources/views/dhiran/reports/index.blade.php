@@ -19,12 +19,12 @@
             <form method="GET" action="{{ route('dhiran.reports.index') }}" class="dh-filter-row">
                 <div class="dh-filter-field">
                     <label class="dh-label-upper block mb-2">From Date</label>
-                    <input type="date" name="from_date" value="{{ request('from_date', now()->startOfMonth()->toDateString()) }}"
+                    <input type="date" name="from" value="{{ request('from', now()->startOfMonth()->toDateString()) }}"
                            class="dh-form-control">
                 </div>
                 <div class="dh-filter-field">
                     <label class="dh-label-upper block mb-2">To Date</label>
-                    <input type="date" name="to_date" value="{{ request('to_date', now()->toDateString()) }}"
+                    <input type="date" name="to" value="{{ request('to', now()->toDateString()) }}"
                            class="dh-form-control">
                 </div>
                 <div class="dh-filter-field">

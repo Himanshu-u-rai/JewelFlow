@@ -37,7 +37,7 @@
                 <a href="{{ route('dhiran.show', $loan) }}#receipt" class="hidden"></a>
             @endif
             @if($borrower)
-                <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="btn btn-secondary btn-sm">Back to Borrower</a>
+                <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="btn btn-secondary btn-sm">Back to Customer</a>
             @endif
         </div>
     </x-dhiran.page-header>
@@ -132,11 +132,11 @@
                 {{-- 4. Linked borrower --}}
                 @if($borrower)
                 <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-                    <h3 class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-2">Borrower</h3>
+                    <h3 class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-2">Customer</h3>
                     <p class="text-sm font-semibold text-slate-800">{{ $borrower->name }}</p>
                     <p class="text-sm text-slate-500">{{ \App\Support\Mobile::forDisplay($borrower->mobile) ?: '—' }}</p>
                     <p class="text-xs text-slate-400 font-mono mt-0.5">{{ $borrower->customer_code }}</p>
-                    <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="inline-flex items-center mt-3 text-sm font-semibold text-amber-700 hover:text-amber-800">View borrower profile →</a>
+                    <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="inline-flex items-center mt-3 text-sm font-semibold text-amber-700 hover:text-amber-800">View customer profile →</a>
                 </div>
                 @endif
 

@@ -1445,16 +1445,20 @@ class DhiranService
             throw new LogicException('Loan is still within the grace period. Cannot send forfeiture notice yet.');
         }
 
+        // The notice quotes the balance, so bring interest and penalty up to today first (as release and renewal do).
+        $this->accrueInterest($loan);
+
         DB::transaction(function () use ($loan): void {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
 
             $settings = DhiranSettings::getForShop($loan->shop_id);
+            $rupees = fn ($v) => '₹' . number_format((float) $v, 2);
 
-            $noticeText = "FORFEITURE NOTICE\n\n"
-                . "Loan Number: {$loan->loan_number}\n"
+            // The printed page carries the "Forfeiture Notice" title; the saved text starts with the facts.
+            $noticeText = "Loan Number: {$loan->loan_number}\n"
                 . "Loan Date: {$loan->loan_date->format('d-M-Y')}\n"
-                . "Principal Amount: {$loan->principal_amount}\n"
-                . "Outstanding Balance: {$loan->totalOutstanding()}\n"
+                . 'Principal Amount: ' . $rupees($loan->principal_amount) . "\n"
+                . 'Outstanding Balance: ' . $rupees($loan->totalOutstanding()) . "\n"
                 . "Maturity Date: {$loan->maturity_date->format('d-M-Y')}\n"
                 . "Days Overdue: {$loan->daysOverdue()}\n\n"
                 . "This is to inform you that your gold loan is overdue. "

@@ -233,7 +233,7 @@ class DhiranLifecycleUiTest extends TestCase
         $history = substr($html, strpos($html, 'Payment History'), 4000);
 
         $this->assertStringContainsString(today()->subDays(120)->format('d M Y'), $history);
-        $this->assertStringContainsString('Upi', $history);
+        $this->assertStringContainsString('UPI', $history);
         $this->assertStringNotContainsString('---</td>', $history);
     }
 
@@ -522,6 +522,67 @@ class DhiranLifecycleUiTest extends TestCase
         }
     }
 
+    // Pre-Close said "Total outstanding" and then also took the minimum interest; methods printed as "Upi".
+    public function test_pre_close_dialog_states_what_closing_takes_and_methods_read_properly(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000088');
+        $loan = $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6, 'payment_method' => 'upi']);
+        $loan = $this->fresh($loan->id);
+        $takes = (float) $loan->outstanding_principal + TenantContext::runFor($shop->id, fn () => $this->service->renewalDue($loan));
+        $this->assertGreaterThan((float) $loan->outstanding_principal, $takes, 'test premise: the minimum interest applies');
+
+        $html = $this->renderShow($shop, $owner, $loan->id);
+        $this->assertStringContainsString('To close, collect ₹' . number_format($takes, 2), strip_tags($html));
+        $history = substr($html, strpos($html, 'Payment History'), 4000);
+        $this->assertMatchesRegularExpression('/>\s*UPI\s*</', $history);
+        $this->assertStringNotContainsString('Upi', $html);
+    }
+
+    // The sent notice printed raw amounts ("52582.5"), repeated the page's title, and quoted the balance without first
+    // bringing interest up to date.
+    public function test_forfeiture_notice_quotes_todays_balance_in_rupees(): void
+    {
+        [$shop] = $this->dhiranShopWithOwner('9390000089');
+        $loan = $this->makeLoan($shop); // 120 days old, 1-month tenure, no grace: notice is due, interest not yet accrued
+
+        TenantContext::runFor($shop->id, function () use ($loan) {
+            $this->service->sendForfeitureNotice($this->fresh($loan->id));
+            $sent = $this->fresh($loan->id);
+            $this->assertGreaterThan(0, (float) $sent->outstanding_interest, 'interest was not brought up to date');
+            $this->assertStringContainsString('Outstanding Balance: ₹' . number_format($sent->totalOutstanding(), 2), $sent->forfeiture_notice_text);
+            $this->assertStringContainsString('Principal Amount: ₹100,000.00', $sent->forfeiture_notice_text);
+            $this->assertStringStartsNotWith('FORFEITURE NOTICE', $sent->forfeiture_notice_text);
+        });
+    }
+
+    // The Reports page's "Generate Report" sent from_date/to_date; the reports read from/to, so the chosen dates were
+    // ignored and the report showed this month.
+    public function test_reports_hub_dates_reach_the_report(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000090');
+        $hub = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get('https://dhiran.jewelflows.com/dhiran/reports'))->assertOk()->getContent();
+        $this->assertStringContainsString('name="from"', $hub);
+        $this->assertStringContainsString('name="to"', $hub);
+
+        $report = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get('https://dhiran.jewelflows.com/dhiran/reports?type=interest&from=2026-01-01&to=2026-01-31'))->assertOk()->getContent();
+        $this->assertStringContainsString('value="2026-01-01"', $report);
+    }
+
+    // The pledged-item page said "Borrower" where the rest of Dhiran now says "Customer".
+    public function test_item_page_calls_the_person_a_customer(): void
+    {
+        [$shop, $owner] = $this->dhiranShopWithOwner('9390000091');
+        $loan = $this->makeLoan($shop);
+        $item = TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->items()->first());
+
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get("https://dhiran.jewelflows.com/dhiran/items/{$item->id}"))->assertOk()->getContent();
+        foreach (['Back to Borrower', 'View borrower profile', '>Borrower<'] as $old) {
+            $this->assertStringNotContainsString($old, $html);
+        }
+        $this->assertStringContainsString('Back to Customer', $html);
+    }
+
     // The cash book read source and method on each entry; DhiranCashEntry stores source_type and payment_method,
     // so both columns showed "-" for every entry.
     public function test_cash_book_shows_entry_source_and_method(): void
@@ -538,6 +599,6 @@ class DhiranLifecycleUiTest extends TestCase
         $rows = substr($html, strpos($html, '<tbody'), 3000);
 
         $this->assertStringContainsString('Disbursement', $rows);
-        $this->assertStringContainsString('Upi', $rows);
+        $this->assertStringContainsString('UPI', $rows);
     }
 }

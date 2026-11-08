@@ -86,7 +86,7 @@
                     </div>
                     <div class="meta-box">
                         <p class="meta-box-label">Method</p>
-                        <p class="meta-box-value">{{ ucfirst(str_replace('_', ' ', $payment->payment_method ?? 'cash')) }}</p>
+                        <p class="meta-box-value">{{ \App\Models\Dhiran\DhiranPayment::methodLabel($payment->payment_method ?? 'cash') }}</p>
                     </div>
                 </section>
 
