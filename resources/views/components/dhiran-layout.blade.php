@@ -58,7 +58,7 @@
                     </a>
                     <a href="{{ route('dhiran.borrowers.index') }}" class="dh-nav-link {{ request()->routeIs('dhiran.borrowers.*') ? 'active' : '' }}" @click="open = false">
                         <x-icon name="users" />
-                        <span class="dh-nav-text">Borrowers</span>
+                        <span class="dh-nav-text">Customers</span>
                     </a>
                     <a href="{{ route('dhiran.create') }}" class="dh-nav-link {{ request()->routeIs('dhiran.create') ? 'active' : '' }}" @click="open = false">
                         <x-icon name="plus" />

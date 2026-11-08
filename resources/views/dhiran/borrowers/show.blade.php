@@ -11,7 +11,7 @@
             </a>
             <a href="{{ route('dhiran.borrowers.index') }}" class="btn btn-secondary btn-sm">
                 <x-icon name="arrow-left" size="14" class="mr-1" />
-                Back to Borrowers
+                Back to Customers
             </a>
         </div>
     </x-dhiran.page-header>

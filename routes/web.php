@@ -1104,6 +1104,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
             // Inline borrower creation from the New Loan page (Dhiran-scoped).
             Route::post('/customers', [\App\Http\Controllers\DhiranController::class, 'storeCustomer'])->middleware('can:dhiran.create')->name('customers.store');
+            // Save a customer's details without a loan (declared before /borrowers/{customer}).
+            Route::get('/borrowers/create', [\App\Http\Controllers\DhiranController::class, 'createCustomer'])->middleware('can:dhiran.create')->name('borrowers.create');
 
             // Private evidence attachments (item photos, ID proof, loan documents).
             Route::post('/attachments', [\App\Http\Controllers\DhiranController::class, 'storeAttachment'])->middleware('can:dhiran.create')->name('attachments.store');

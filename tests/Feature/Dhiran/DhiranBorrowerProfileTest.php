@@ -91,7 +91,8 @@ class DhiranBorrowerProfileTest extends TestCase
             view()->share('errors', new \Illuminate\Support\ViewErrorBag);
             return app(DhiranController::class)->borrowers($req)->render();
         });
-        $this->assertStringContainsString('Borrowers', $html);
+        // Named "Customers" since 2026-11-08: it lists everyone, with or without a loan.
+        $this->assertStringContainsString('Customers', $html);
         $this->assertStringContainsString(route('dhiran.borrowers.index'), $html);
     }
 

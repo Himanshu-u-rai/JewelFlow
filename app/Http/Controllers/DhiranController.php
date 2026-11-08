@@ -159,6 +159,11 @@ class DhiranController extends Controller
         // were canonicalised is stored as typed, and an exact lookup would miss
         // them and hand this shop a second loan account for the same person.
         $existing = Customer::resolveByMobile($data['mobile']);
+        // The Add customer page (a plain form) lands on the customer's page; the New Loan dialog gets JSON.
+        if ($existing && ! $request->expectsJson()) {
+            return redirect()->route('dhiran.borrowers.show', $existing)
+                ->with('success', 'A customer with this mobile already exists — here are their details.');
+        }
         if ($existing) {
             return response()->json([
                 'ok'        => true,
@@ -191,6 +196,10 @@ class DhiranController extends Controller
 
         if (! empty($data['state_code'])) {
             $customer->forceFill(['state_code' => $data['state_code']])->save();
+        }
+
+        if (! $request->expectsJson()) {
+            return redirect()->route('dhiran.borrowers.show', $customer)->with('success', 'Customer saved.');
         }
 
         return response()->json([
@@ -732,13 +741,25 @@ class DhiranController extends Controller
      */
     public function borrowers(Request $request)
     {
-        $request->validate(['search' => 'nullable|string|max:100']);
+        $request->validate(['search' => 'nullable|string|max:100', 'show' => 'nullable|in:active,paid,none']);
         $shopId = (int) auth()->user()->shop_id;
 
-        $query = Customer::query()
-            ->whereHas('dhiranLoans', fn ($q) => $q->where('shop_id', $shopId))
+        // Everyone this shop has saved (owner decision 2026-11-08), filtered by where their loans stand.
+        $open = ['active', 'pending_evidence'];
+        $tabs = [
+            'active' => fn ($q) => $q->whereHas('dhiranLoans', fn ($l) => $l->whereIn('status', $open)),
+            'paid'   => fn ($q) => $q->whereHas('dhiranLoans', fn ($l) => $l->where('status', 'closed'))
+                ->whereDoesntHave('dhiranLoans', fn ($l) => $l->whereIn('status', $open)),
+            'none'   => fn ($q) => $q->whereDoesntHave('dhiranLoans'),
+        ];
+        $base = fn () => Customer::query()->where('shop_id', $shopId);
+        $tabCounts = ['all' => $base()->count()] + array_map(fn ($scope) => $scope($base())->count(), $tabs);
+        $show = $request->input('show');
+
+        $query = ($show ? $tabs[$show]($base()) : $base())
             ->with('profilePhoto')
             ->withCount([
+                'dhiranLoans as loans_count',
                 'dhiranLoans as active_loans_count'        => fn ($q) => $q->where('status', 'active'),
                 'dhiranLoans as pending_evidence_count'    => fn ($q) => $q->where('status', 'pending_evidence'),
                 'dhiranLoans as closed_loans_count'        => fn ($q) => $q->where('status', 'closed'),
@@ -765,7 +786,15 @@ class DhiranController extends Controller
                 ->sum(DB::raw('outstanding_principal + outstanding_interest + outstanding_penalty'));
         }
 
-        return view('dhiran.borrowers.index', compact('borrowers', 'outstanding'));
+        return view('dhiran.borrowers.index', compact('borrowers', 'outstanding', 'tabCounts', 'show'));
+    }
+
+    /** Save a customer's details without starting a loan. */
+    public function createCustomer()
+    {
+        abort_unless(DhiranSettings::getForShop(auth()->user()->shop_id)->is_enabled, 403, 'Dhiran module is not enabled.');
+
+        return view('dhiran.borrowers.create');
     }
 
     /**
