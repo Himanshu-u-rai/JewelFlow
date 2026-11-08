@@ -3059,6 +3059,7 @@ body:has(.dh-auth-panel) {
 .dh-evidence-thumb:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
 .dh-evidence-file { cursor: pointer; }
 .dh-evidence-title { font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--dh-ink-soft); overflow-wrap: anywhere; }
+.dh-evidence-owner { margin-top: -4px; font-size: 11px; line-height: 1.3; color: var(--dh-muted); overflow-wrap: anywhere; }
 .dh-dialog.dh-evidence-viewer { width: min(100% - 32px, 960px); max-height: 92dvh; }
 .dh-evidence-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--dh-line); }
 .dh-evidence-viewer-body { display: flex; justify-content: center; padding: 16px; background: var(--dh-muted-surface); }

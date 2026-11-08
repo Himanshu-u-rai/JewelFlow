@@ -55,6 +55,31 @@ class DhiranAttachment extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    /**
+     * What each attachment belongs to, for gallery captions: "Gold Chain · DGF000004" (pledged item and its loan),
+     * "Loan DGF000004", or "Customer". Two queries for the whole set, tenant-scoped like every Dhiran model.
+     *
+     * @param  iterable<self>  $attachments
+     * @return array<int, string> attachment id => label
+     */
+    public static function ownerLabels(iterable $attachments): array
+    {
+        $rows = collect($attachments);
+        $items = DhiranLoanItem::with('loan:id,loan_number')
+            ->whereIn('id', $rows->where('owner_type', self::OWNER_ITEM)->pluck('owner_id')->unique()->all() ?: [0])
+            ->get(['id', 'dhiran_loan_id', 'description'])->keyBy('id');
+        $loans = DhiranLoan::whereIn('id', $rows->where('owner_type', self::OWNER_LOAN)->pluck('owner_id')->unique()->all() ?: [0])
+            ->pluck('loan_number', 'id');
+
+        return $rows->mapWithKeys(fn (self $a) => [$a->id => match ($a->owner_type) {
+            self::OWNER_ITEM => ($item = $items->get($a->owner_id))
+                ? trim($item->description . ($item->loan ? ' · ' . $item->loan->loan_number : ''))
+                : 'Pledged item',
+            self::OWNER_LOAN => 'Loan ' . ($loans->get($a->owner_id) ?? ''),
+            default => 'Customer',
+        }])->all();
+    }
+
     /** Whether this attachment is an image (drives inline preview vs download). */
     public function isImage(): bool
     {

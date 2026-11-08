@@ -666,12 +666,14 @@ class DhiranController extends Controller
         $disk = \Illuminate\Support\Facades\Storage::disk($attachment->file_disk);
         abort_unless($disk->exists($attachment->file_path), 404);
 
-        return $disk->response(
-            $attachment->file_path,
-            $attachment->original_name,
-            ['Content-Type' => $attachment->mime_type ?: 'application/octet-stream'],
-            'inline'
-        );
+        // Gallery tiles ask for ?thumb=1: a small copy instead of an up-to-8 MB original.
+        $path = $attachment->file_path;
+        $mime = $attachment->mime_type ?: 'application/octet-stream';
+        if (request()->boolean('thumb') && ($thumb = app(\App\Services\Dhiran\DhiranAttachmentService::class)->thumbnail($attachment))) {
+            [$path, $mime] = [$thumb, 'image/jpeg'];
+        }
+
+        return $disk->response($path, $attachment->original_name, ['Content-Type' => $mime], 'inline');
     }
 
     /** Resolve+verify an attachment owner is in the current shop, or 404. */

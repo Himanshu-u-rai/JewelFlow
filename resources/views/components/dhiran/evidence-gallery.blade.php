@@ -10,18 +10,20 @@
 @if($attachments->isEmpty())
     <p class="text-sm text-slate-400 mb-4">{{ $empty }}</p>
 @else
+    @php $belongsTo = \App\Models\Dhiran\DhiranAttachment::ownerLabels($attachments); @endphp
     <div data-evidence-gallery x-data="{ src: '', title: '' }" class="mb-4">
         <ul class="dh-evidence-grid">
             @foreach($attachments as $att)
                 @php
                     $url = route('dhiran.attachments.show', $att);
                     $title = $titles[$att->document_type] ?? ucwords(str_replace('_', ' ', $att->document_type));
+                    $owner = $belongsTo[$att->id] ?? '';
                 @endphp
                 <li class="dh-evidence-tile">
                     @if($att->isImage())
-                        <button type="button" class="dh-evidence-thumb" data-evidence-open data-src="{{ $url }}" data-title="{{ $title }}"
+                        <button type="button" class="dh-evidence-thumb" data-evidence-open data-src="{{ $url }}" data-title="{{ $title }}{{ $owner ? ' · '.$owner : '' }}"
                                 @click="src = $el.dataset.src; title = $el.dataset.title; $refs.viewer.showModal()" aria-label="View {{ $title }} large">
-                            <img src="{{ $url }}" alt="{{ $title }}" loading="lazy">
+                            <img src="{{ route('dhiran.attachments.show', [$att, 'thumb' => 1]) }}" alt="{{ $title }}" loading="lazy">
                         </button>
                     @else
                         <a href="{{ $url }}" target="_blank" rel="noopener" class="dh-evidence-thumb dh-evidence-file" aria-label="Open {{ $title }}">
@@ -30,6 +32,7 @@
                         </a>
                     @endif
                     <span class="dh-evidence-title">{{ $title }}</span>
+                    @if($owner)<span class="dh-evidence-owner">{{ $owner }}</span>@endif
                 </li>
             @endforeach
         </ul>

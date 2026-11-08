@@ -96,6 +96,49 @@ class DhiranAttachmentService
         ]);
     }
 
+    /** Longest side of a gallery thumbnail, in pixels. */
+    public const THUMB_MAX = 320;
+
+    /**
+     * Path of a small JPEG copy of an image attachment, made on first request and kept next to the original
+     * (attachments are never edited in place, so it cannot go stale). Null for non-images or when GD cannot
+     * decode the file: the caller then serves the original. The original already passed GD at upload.
+     */
+    public function thumbnail(DhiranAttachment $attachment): ?string
+    {
+        if (! $attachment->isImage()) {
+            return null;
+        }
+        $disk = Storage::disk($attachment->file_disk);
+        $path = $attachment->file_path . '.thumb.jpg';
+        if ($disk->exists($path)) {
+            return $path;
+        }
+
+        $img = @imagecreatefromstring((string) $disk->get($attachment->file_path));
+        if ($img === false) {
+            return null;
+        }
+        [$w, $h] = [imagesx($img), imagesy($img)];
+        $scale = min(1, self::THUMB_MAX / max($w, $h));
+        [$tw, $th] = [max(1, (int) round($w * $scale)), max(1, (int) round($h * $scale))];
+        $thumb = imagecreatetruecolor($tw, $th);
+        imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255)); // transparent PNG areas become white
+        imagecopyresampled($thumb, $img, 0, 0, 0, 0, $tw, $th, $w, $h);
+        ob_start();
+        imagejpeg($thumb, null, 80);
+        $bytes = ob_get_clean();
+        imagedestroy($img);
+        imagedestroy($thumb);
+
+        if ($bytes === false || $bytes === '') {
+            return null;
+        }
+        $disk->put($path, $bytes);
+
+        return $path;
+    }
+
     /** Re-encode an image with GD to drop all metadata; returns the raw bytes. */
     private function stripImageMetadata(UploadedFile $file, string $mime): string
     {

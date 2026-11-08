@@ -84,20 +84,68 @@ class DhiranEvidenceGalleryTest extends TestCase
         $gallery = substr($loanPage, strpos($loanPage, 'data-evidence-gallery'));
         foreach ($photos as $title => $att) {
             $url = route('dhiran.attachments.show', $att);
-            $this->assertStringContainsString('<img src="' . $url . '"', $gallery, "{$title} thumbnail");
+            // Tiles load a small copy; the large view loads the original.
+            $this->assertStringContainsString('<img src="' . e(route('dhiran.attachments.show', [$att, 'thumb' => 1])) . '"', $gallery, "{$title} thumbnail");
             $this->assertStringContainsString($title, $gallery);
             $this->assertMatchesRegularExpression('/data-evidence-open[^>]*data-src="' . preg_quote($url, '/') . '"/', $gallery, "{$title} opens large");
         }
         // A PDF has no image to show: a titled tile that opens the file.
         $this->assertStringContainsString('Pledge agreement', $gallery);
-        $this->assertStringNotContainsString('<img src="' . route('dhiran.attachments.show', $pdf) . '"', $gallery);
+        $this->assertStringNotContainsString('<img src="' . route('dhiran.attachments.show', $pdf), $gallery);
         $this->assertStringContainsString('href="' . route('dhiran.attachments.show', $pdf) . '"', $gallery);
         $this->assertStringContainsString('<dialog', $gallery, 'one large viewer');
 
+        // Each tile says what it belongs to: the pledged item (and its loan), or the whole loan.
+        $this->assertStringContainsString('Gold Chain · ' . $loan->loan_number, $gallery);
+        $this->assertStringContainsString('Loan ' . $loan->loan_number, $gallery);
+
         // Same gallery on the customer profile and the item page.
         $profile = $this->as(fn () => app(DhiranController::class)->borrowerProfile(Customer::findOrFail($customer->id)));
-        $this->assertStringContainsString('<img src="' . route('dhiran.attachments.show', $photos['ID proof (front)']) . '"', $profile);
+        $this->assertStringContainsString('<img src="' . e(route('dhiran.attachments.show', [$photos['ID proof (front)'], 'thumb' => 1])) . '"', $profile);
+        $this->assertStringContainsString('Gold Chain · ' . $loan->loan_number, $profile);
         $itemPage = $this->as(fn () => app(DhiranController::class)->itemDetail($item));
-        $this->assertStringContainsString('<img src="' . route('dhiran.attachments.show', $photos['Pledged item photo']) . '"', $itemPage);
+        $this->assertStringContainsString('<img src="' . e(route('dhiran.attachments.show', [$photos['Pledged item photo'], 'thumb' => 1])) . '"', $itemPage);
+    }
+
+    // A tile asked for ?thumb=1 gets a small JPEG made once and kept next to the original; a PDF gets the file itself.
+    public function test_thumbnail_is_a_small_copy_made_once(): void
+    {
+        [$photo, $pdf] = TenantContext::runFor($this->shop->id, function () {
+            $c = Customer::create(['shop_id' => $this->shop->id, 'first_name' => 'Big', 'last_name' => 'Photo', 'mobile' => '9813330002']);
+            $photo = app(DhiranAttachmentService::class)->store(UploadedFile::fake()->image('big.jpg', 2400, 1600), $this->shop->id, DhiranAttachment::OWNER_CUSTOMER, $c->id, 'id_proof_front', $this->owner->id);
+            Storage::disk('local')->put('dhiran/x/terms.pdf', '%PDF-1.4 test');
+            $pdf = DhiranAttachment::create([
+                'shop_id' => $this->shop->id, 'owner_type' => DhiranAttachment::OWNER_CUSTOMER, 'owner_id' => $c->id,
+                'document_type' => 'signed_terms', 'file_disk' => 'local', 'file_path' => 'dhiran/x/terms.pdf',
+                'original_name' => 'terms.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => 13,
+            ]);
+
+            return [$photo, $pdf];
+        });
+
+        $get = function (DhiranAttachment $att, bool $thumb) {
+            return TenantContext::runFor($this->shop->id, function () use ($att, $thumb) {
+                $this->actingAs($this->owner);
+                $this->app->instance('request', \Illuminate\Http\Request::create('/dhiran/attachments/' . $att->id, 'GET', $thumb ? ['thumb' => 1] : []));
+                $response = app(DhiranController::class)->showAttachment($att);
+                ob_start();
+                $response->sendContent();
+
+                return [$response, ob_get_clean()];
+            });
+        };
+
+        [$res, $bytes] = $get($photo, true);
+        [$w, $h] = getimagesizefromstring($bytes);
+        $this->assertLessThanOrEqual(320, max($w, $h), 'thumbnail is small');
+        $this->assertSame('image/jpeg', $res->headers->get('Content-Type'));
+        $this->assertLessThan(strlen(Storage::disk('local')->get($photo->file_path)), strlen($bytes));
+        $this->assertTrue(Storage::disk('local')->exists($photo->file_path . '.thumb.jpg'), 'kept for the next visit');
+
+        [, $full] = $get($photo, false);
+        $this->assertSame(2400, getimagesizefromstring($full)[0], 'the large view still gets the original');
+
+        [, $pdfBytes] = $get($pdf, true);
+        $this->assertSame('%PDF-1.4 test', $pdfBytes);
     }
 }
