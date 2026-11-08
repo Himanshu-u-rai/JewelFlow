@@ -3043,3 +3043,23 @@ body:has(.dh-auth-panel) {
 /* Tinted panels (e.g. the green Net Profit card) matched shared and older 12px !important rules; same corners as
    every other Dhiran card. */
 .dh-app .content-inner :is(div, section, article):is(.rounded-lg, .rounded-xl, .rounded-2xl).border { border-radius: var(--dh-card-radius) !important; }
+
+/* Evidence & Documents: every file as a small titled tile in a row; photos open large (owner 2026-11-08). */
+.dh-evidence-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.dh-evidence-tile { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dh-evidence-thumb {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    aspect-ratio: 1; width: 100%; padding: 0; overflow: hidden; cursor: zoom-in;
+    border: 1px solid var(--dh-line); border-radius: var(--dh-radius-sm); background: var(--dh-muted-surface);
+    color: var(--dh-muted); font-size: 11px; font-weight: 700;
+    transition: border-color 150ms var(--dh-ease), box-shadow 150ms var(--dh-ease);
+}
+.dh-evidence-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.dh-evidence-thumb:hover { border-color: var(--dh-accent-line); box-shadow: var(--dh-shadow-soft); }
+.dh-evidence-thumb:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
+.dh-evidence-file { cursor: pointer; }
+.dh-evidence-title { font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--dh-ink-soft); overflow-wrap: anywhere; }
+.dh-dialog.dh-evidence-viewer { width: min(100% - 32px, 960px); max-height: 92dvh; }
+.dh-evidence-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--dh-line); }
+.dh-evidence-viewer-body { display: flex; justify-content: center; padding: 16px; background: var(--dh-muted-surface); }
+.dh-evidence-viewer-body img { max-width: 100%; max-height: calc(92dvh - 110px); object-fit: contain; border-radius: var(--dh-radius-sm); }

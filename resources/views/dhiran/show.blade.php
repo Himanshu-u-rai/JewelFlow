@@ -364,21 +364,7 @@
             <h2 class="text-lg font-semibold text-slate-900 mb-1">Evidence &amp; Documents</h2>
             <p class="text-xs text-slate-500 mb-4">Pledged-item photos, borrower ID proof, and loan documents. Files are private to your shop.</p>
 
-            @if(($attachments ?? collect())->isNotEmpty())
-                <ul class="divide-y divide-slate-100 mb-4">
-                    @foreach($attachments as $att)
-                        <li class="flex items-center justify-between gap-3 py-2.5">
-                            <div class="min-w-0">
-                                <span class="text-sm font-medium text-slate-800">{{ ucwords(str_replace('_', ' ', $att->document_type)) }}</span>
-                                <span class="text-xs text-slate-400 block truncate">{{ $att->original_name }} · {{ number_format(($att->size_bytes ?? 0) / 1024) }} KB</span>
-                            </div>
-                            <a href="{{ route('dhiran.attachments.show', $att) }}" target="_blank" rel="noopener" class="text-amber-700 hover:underline text-xs font-semibold shrink-0">View</a>
-                        </li>
-                    @endforeach
-                </ul>
-            @else
-                <p class="text-sm text-slate-400 mb-4">No documents uploaded yet.</p>
-            @endif
+            <x-dhiran.evidence-gallery :attachments="$attachments ?? collect()" />
 
             @can('dhiran.create')
             @if($errors->has('file'))

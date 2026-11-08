@@ -232,7 +232,7 @@ class DhiranEvidenceTest extends TestCase
 
         $this->assertStringContainsString('Evidence &amp; Documents', $html);
         $this->assertStringContainsString(route('dhiran.attachments.show', $att), $html);
-        $this->assertStringContainsString('Id Proof Front', $html);
+        $this->assertStringContainsString('ID proof (front)', $html); // same wording as the upload form's type list
     }
 
     // ── E5 collateral wording / limits ──────────────────────────

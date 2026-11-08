@@ -61,21 +61,7 @@
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
             <h2 class="text-base font-semibold text-slate-900 mb-1">Documents &amp; evidence</h2>
             <p class="text-xs text-slate-500 mb-4">ID proof, photos, and loan documents for this customer. Files are private to your shop.</p>
-            @if($attachments->isEmpty())
-                <p class="text-sm text-slate-400">No documents uploaded yet.</p>
-            @else
-                <ul class="divide-y divide-slate-100">
-                    @foreach($attachments as $att)
-                        <li class="flex items-center justify-between py-2.5">
-                            <div class="min-w-0">
-                                <span class="text-sm text-slate-800">{{ ucwords(str_replace('_', ' ', $att->document_type)) }}</span>
-                                <span class="text-xs text-slate-400 ml-2">{{ $att->original_name }}</span>
-                            </div>
-                            <a href="{{ route('dhiran.attachments.show', $att) }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800 whitespace-nowrap" target="_blank" rel="noopener">View</a>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
+            <x-dhiran.evidence-gallery :attachments="$attachments" />
         </div>
 
         {{-- 4. Loans table --}}
