@@ -62,6 +62,33 @@
             <h2 class="text-base font-semibold text-slate-900 mb-1">Documents &amp; evidence</h2>
             <p class="text-xs text-slate-500 mb-4">ID proof, photos, and loan documents for this customer. Files are private to your shop.</p>
             <x-dhiran.evidence-gallery :attachments="$attachments" />
+
+            {{-- The customer's own documents; an ID proof here counts for every loan of this customer. --}}
+            @can('dhiran.create')
+            @if($errors->has('file'))
+                <p class="text-sm text-red-600 mb-2">{{ $errors->first('file') }}</p>
+            @endif
+            <form method="POST" action="{{ route('dhiran.attachments.store') }}" enctype="multipart/form-data" data-turbo-frame="_top"
+                  class="dh-upload-form border-t border-slate-100 pt-4">
+                @csrf
+                <input type="hidden" name="owner_type" value="customer">
+                <input type="hidden" name="owner_id" value="{{ $customer->id }}">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Document type</label>
+                    <select name="document_type" required class="dh-form-control dh-native-select">
+                        <option value="id_proof_front">ID proof (front)</option>
+                        <option value="id_proof_back">ID proof (back)</option>
+                        <option value="address_proof">Address proof</option>
+                        <option value="borrower_photo">Borrower photo</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">File <span class="text-slate-400">(JPG/PNG/PDF, max 8 MB)</span></label>
+                    <input type="file" name="file" required accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" class="dh-file-input">
+                </div>
+                <button type="submit" class="btn btn-dark btn-sm shrink-0">Upload</button>
+            </form>
+            @endcan
         </div>
 
         {{-- 4. Loans table --}}

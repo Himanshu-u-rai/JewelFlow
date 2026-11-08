@@ -107,6 +107,31 @@ class DhiranEvidenceGalleryTest extends TestCase
         $this->assertStringContainsString('<img src="' . e(route('dhiran.attachments.show', [$photos['Pledged item photo'], 'thumb' => 1])) . '"', $itemPage);
     }
 
+    // Owner 2026-11-08: the customer profile had no upload box. It takes the customer's own documents (ID proof,
+    // address proof, photo); an ID proof saved there counts for every loan of that customer.
+    public function test_profile_uploads_the_customers_own_documents(): void
+    {
+        $c = TenantContext::runFor($this->shop->id, fn () => Customer::create(['shop_id' => $this->shop->id, 'first_name' => 'Up', 'last_name' => 'Loader', 'mobile' => '9813330003']));
+        $html = $this->as(fn () => app(DhiranController::class)->borrowerProfile(Customer::findOrFail($c->id)));
+        $form = substr($html, strpos($html, 'action="' . route('dhiran.attachments.store') . '"'));
+        $form = substr($form, 0, strpos($form, '</form>'));
+        $this->assertStringContainsString('name="owner_type" value="customer"', $form);
+        $this->assertStringContainsString('name="owner_id" value="' . $c->id . '"', $form);
+        foreach (['id_proof_front', 'id_proof_back', 'address_proof', 'borrower_photo'] as $type) {
+            $this->assertStringContainsString('value="' . $type . '"', $form);
+        }
+        $this->assertStringNotContainsString('value="item_photo"', $form, 'item photos belong to the loan or item');
+
+        TenantContext::runFor($this->shop->id, function () use ($c) {
+            $this->actingAs($this->owner);
+            $req = \Illuminate\Http\Request::create('/dhiran/attachments', 'POST', ['owner_type' => 'customer', 'owner_id' => $c->id, 'document_type' => 'id_proof_front'], [], ['file' => UploadedFile::fake()->image('aadhaar.jpg', 60, 60)]);
+            $this->app->instance('request', $req);
+            app(DhiranController::class)->storeAttachment($req);
+        });
+        $after = $this->as(fn () => app(DhiranController::class)->borrowerProfile(Customer::findOrFail($c->id)));
+        $this->assertStringContainsString('dh-evidence-owner">Customer<', $after);
+    }
+
     // A tile asked for ?thumb=1 gets a small JPEG made once and kept next to the original; a PDF gets the file itself.
     public function test_thumbnail_is_a_small_copy_made_once(): void
     {
