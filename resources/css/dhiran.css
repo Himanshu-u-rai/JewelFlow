@@ -835,6 +835,10 @@
     cursor: pointer;
 }
 .dh-main { flex: 1; min-width: 0; padding: 26px 30px; }
+/* Messages render before the page header in the markup; the header's negative top margin then slid it over the
+   message. Order the header first so it stays the top band and messages sit just below it. */
+.dh-main { display: flex; flex-direction: column; }
+.dh-main > .dh-page-header { order: -1; }
 .content-inner { max-width: 1180px; margin: 0 auto; width: 100%; }
 .dh-flash {
     border-radius: 12px;
