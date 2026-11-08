@@ -3018,7 +3018,8 @@ body:has(.dh-auth-panel) {
    at the window and scroll inside. The box clips its corners so the header band follows the rounding. */
 @media screen and (min-width: 1024px) and (min-height: 800px) {
     .dh-app [data-list-workspace][data-list-fit] [data-list-frame] { flex: 0 1 auto; }
-    .dh-app [data-list-workspace][data-list-fit] [data-list-scroll] { flex: 0 1 auto; min-height: 0; }
+    /* No reserved scrollbar strip: it left an empty gap right of the header band on lists that do not scroll. */
+    .dh-app [data-list-workspace][data-list-fit] [data-list-scroll] { flex: 0 1 auto; min-height: 0; scrollbar-gutter: auto; }
 }
 .dh-app [data-list-frame] { overflow: hidden; }
 /* app.css un-clips direct rounded children of .content-inner; table cards must clip so the header band follows the

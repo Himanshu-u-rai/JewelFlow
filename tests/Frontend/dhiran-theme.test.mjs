@@ -70,6 +70,8 @@ test('lists end at their last row and table headers stand out', () => {
     const media = 'screen and (min-width: 1024px) and (min-height: 800px)';
     assert.equal(decls(css, '.dh-app [data-list-workspace][data-list-fit] [data-list-frame]', media).flex, '0 1 auto');
     assert.equal(decls(css, '.dh-app [data-list-workspace][data-list-fit] [data-list-scroll]', media).flex, '0 1 auto');
+    // The shared "stable" gutter kept a 14px empty strip right of the header band on lists that do not scroll.
+    assert.equal(decls(css, '.dh-app [data-list-workspace][data-list-fit] [data-list-scroll]', media)['scrollbar-gutter'], 'auto');
     const th = decls(css, '.dh-app .dh-scroll table thead th'); // outranks the .dh-app .text-slate-500 class mapping
     assert.equal(th['background-color'], 'var(--dh-table-head)');
     assert.equal(th.color, 'var(--dh-ink-soft)');
