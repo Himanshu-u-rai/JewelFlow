@@ -2074,7 +2074,11 @@ body:has(.dh-auth-panel) {
 .dh-app .bg-green-100,
 .dh-app .bg-emerald-100 { background-color: var(--dh-success-soft) !important; }
 .dh-app table a { color: var(--dh-accent); }
-.dh-app table a:hover { text-decoration: underline; }
+/* Links show hover by colour, never an underline (owner 2026-11-08); 0,2,1 also beats Tailwind's hover:underline. */
+.dh-app a:hover { text-decoration-line: none; }
+.dh-app table a:not(.btn):not(.jf-row-action):hover { color: var(--dh-link-hover); }
+/* app.css `* { margin: 0 }` removes the browser's centring margin, which pinned dialogs to the top-left corner. */
+.dh-app dialog { margin: auto; }
 
 @media (max-width: 900px) {
     .dh-shell { flex-direction: column; }

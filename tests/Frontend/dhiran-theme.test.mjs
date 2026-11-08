@@ -90,6 +90,15 @@ test('table cards clip their header band to the round corners', () => {
     assert.equal(midCard['border-top-right-radius'], '0');
 });
 
+// Owner 2026-11-08: the customer photo dialog opened in the top-left corner (app.css `* { margin: 0 }` removes the
+// browser's centring margin; only .dh-dialog had put it back), and links underlined on hover looked untidy.
+test('every Dhiran dialog is centred and links do not underline', () => {
+    const css = read('dhiran.css');
+    assert.equal(decls(css, '.dh-app dialog').margin, 'auto');
+    assert.equal(decls(css, '.dh-app a:hover')['text-decoration-line'], 'none'); // 0,2,1 beats Tailwind hover:underline
+    assert.ok(!/underline/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'no rule in dhiran.css adds an underline');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');
