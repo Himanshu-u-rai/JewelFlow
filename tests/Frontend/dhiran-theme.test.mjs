@@ -43,6 +43,25 @@ test('navy sidebar, gold main action with navy text, navy other buttons, blue li
     assert.equal(decls(css, '.dh-app .jf-row-action').color, 'var(--jf-ra-fg)', 'row action icons keep their own colour');
 });
 
+// Owner 2026-11-08: detail pages stopped at 1180px (73% of a wide screen) while lists were full width, and cards came
+// in three looks (corner 12/14/16px, three border greys, two shadows). One width and one card style, from tokens.
+test('one content width and one card look, both from tokens', () => {
+    const css = read('dhiran.css');
+    const tokens = read('dhiran-tokens.css');
+    for (const t of ['--dh-content-max', '--dh-card-radius', '--dh-card-border', '--dh-card-shadow']) assert.match(tokens, new RegExp(`${t}:`));
+    assert.equal(decls(css, '.dh-app .content-inner')['max-width'], 'var(--dh-content-max)');
+    assert.equal(decls(css, '.dh-app .content-inner[data-list-workspace]')['max-width'], 'var(--dh-content-max)');
+    const card = decls(css, '.dh-app .dd-kpi-card');
+    assert.equal(card['border-radius'], 'var(--dh-card-radius)');
+    assert.equal(card['box-shadow'], 'var(--dh-card-shadow)');
+    assert.equal(decls(css, '.dh-app div.rounded-2xl.border')['border-radius'], 'var(--dh-card-radius)');
+    // app.css forces its card look with !important through these variables; inside Dhiran they must be the Dhiran card.
+    const app = decls(css, '.dh-app .content-inner');
+    assert.equal(app['--app-card-shadow'], 'var(--dh-card-shadow)');
+    assert.equal(app['--app-card-radius'], 'var(--dh-card-radius)');
+    assert.equal(app['--app-card-border'], 'var(--dh-card-border)');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');

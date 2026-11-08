@@ -2011,7 +2011,7 @@ body:has(.dh-auth-panel) {
 .dr-report-title { font-size: 15px; font-weight: 700; color: var(--dh-ink); }
 .dr-report-desc { font-size: 13px; line-height: 1.5; color: var(--dh-muted); margin-top: 4px; }
 
-.dh-app .shadow-sm { box-shadow: var(--dh-shadow) !important; }
+.dh-app .shadow-sm { box-shadow: var(--dh-card-shadow) !important; }
 .dh-app .rounded-lg { border-radius: 12px !important; }
 .dh-app .bg-white { background-color: var(--dh-card) !important; }
 .dh-app .border-gray-200,
@@ -2978,3 +2978,41 @@ body:has(.dh-auth-panel) {
     .dh-app .dh-scroll a:not(.btn):not(.jf-row-action) { display: inline-block; padding-block: 4px; }
     .dh-app .dhiran-create-form > .flex.justify-end { margin-inline: 0; padding-inline: 0; border-radius: var(--dh-radius-sm); }
 }
+
+/* Layout and cards (owner 2026-11-08). Detail pages stopped at 1180px (73% of a wide screen) while lists ran full
+   width, so page edges jumped; cards came in three looks (corners 12/14/16px, three border greys, two shadows).
+   Every page now shares one width and every panel, KPI tile and table card one look, all from tokens. */
+.dh-app .content-inner,
+.dh-app .content-inner[data-list-workspace] { max-width: var(--dh-content-max); }
+/* The shared app.css card rule (white bordered panels, !important) reads these, set on .content-inner; inside
+   Dhiran they are the Dhiran card. Scoped to .dh-app so retail keeps its own. */
+.dh-app .content-inner {
+    --app-card-shadow: var(--dh-card-shadow);
+    --app-card-radius: var(--dh-card-radius);
+    --app-card-border: var(--dh-card-border);
+}
+.dh-app .dhiran-settings-root > form { max-width: var(--dh-form-max); }
+.dh-app .dh-card,
+.dh-app .dd-kpi-card,
+.dh-app .ds-fin-card,
+.dh-app .dset-card,
+.dh-app .da-feature-card,
+.dh-app .dob-card,
+.dh-app .dp-plan-card,
+.dh-app .dr-report-card,
+.dh-app .dh-filter-card,
+.dh-app .dh-table-card,
+.dh-app .dh-mobile-card,
+.dh-app div.rounded-2xl.border,
+.dh-app div.rounded-xl.border.bg-white,
+.dh-app div.rounded-lg.bg-white.shadow-sm,
+.dh-app section.rounded-2xl.border,
+.dh-app article.rounded-2xl.border {
+    border: 1px solid var(--dh-card-border);
+    border-radius: var(--dh-card-radius);
+    box-shadow: var(--dh-card-shadow);
+}
+.dh-app .ds-fin-card-primary { border-color: var(--dh-accent); }
+/* Tinted panels (e.g. the green Net Profit card) matched shared and older 12px !important rules; same corners as
+   every other Dhiran card. */
+.dh-app .content-inner :is(div, section, article):is(.rounded-lg, .rounded-xl, .rounded-2xl).border { border-radius: var(--dh-card-radius) !important; }

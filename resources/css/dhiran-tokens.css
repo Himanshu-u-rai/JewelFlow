@@ -76,7 +76,14 @@
     --dh-shadow: 0 8px 22px color-mix(in srgb, var(--dh-shadow-tint) 6%, transparent);
     --dh-shadow-soft: 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 6%, transparent);
 
-    /* shape and motion (not colour) */
+    /* cards: one look for every panel, KPI tile and table card */
+    --dh-card-border: var(--dh-line);
+    --dh-card-shadow: 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 6%, transparent), 0 6px 16px color-mix(in srgb, var(--dh-shadow-tint) 5%, transparent);
+
+    /* layout, shape and motion (not colour) */
+    --dh-content-max: 1440px;   /* every Dhiran page, lists and detail pages alike */
+    --dh-form-max: 1100px;      /* long settings-style forms */
+    --dh-card-radius: 14px;
     --dh-radius: 14px;
     --dh-radius-sm: 10px;
     --dh-ease: cubic-bezier(0.23, 1, 0.32, 1);
