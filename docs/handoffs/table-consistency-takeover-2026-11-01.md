@@ -2,7 +2,115 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Retail Job Order detail and receipt entry, 2026-11-11
+## Latest checkpoint — Retail Karigar invoices and demo records, 2026-11-11
+
+Starting HEAD `50e1ccfe4d6c64593939cb3d65c9ad263b9ead19`, branch
+`feature/table-consistency`, worktree `ui-integration`. Owner requested the
+invoice register/create UI and then explicitly requested synthetic invoices.
+Local only; no push, staging, production, main merge, OTP, SMTP or mobile work.
+Claude's existing 13 tracked / 2 untracked Dhiran changes remain intact: tracked
+binary diff SHA256 `c15152a368261a7fb07e43b949c77b14f4e933e1b6d3499686fbf46829200938`;
+untracked pager/test hashes remain as recorded by the prior checkpoint checks.
+
+Register now uses compact Vault-style header metrics, the shared contained table
+workspace, indexed rows/mobile cards, named 44px View actions, rounded painted
+edges and pagination outside the records. Money-summary permission and page-only
+metric meanings retained. Filters use the existing responsive panel: centered
+desktop popup, phone bottom sheet, native selects and one visible Apply/Clear
+action. Row mouse navigation remains, but explicit row semantics and the real
+View anchor prevent the global inline-click upgrader from swallowing child-link
+keyboard activation or turning its surrounding cell into another button.
+
+Create/shared Edit partial now uses scoped external CSS, compact wrapping fields,
+native Karigar/Mode selects, grouped line totals and a semantic invoice summary.
+Summary sticks right only on wide/tall windows; short/mobile windows use normal
+flow. Existing upload route, names, constraints, handlers, advance selection and
+posting contract retained. The entire invoice calculation script is byte-for-byte
+identical to starting HEAD. No service/model/route/payment logic was changed.
+Impeccable guided the incumbent style; Ponytail kept existing components/no new
+dependencies. The create/Edit PHP prefill now retains an inactive linked workshop
+as a labelled option for existing job/receipt settlement; it is NOT added to
+standalone creation choices. A reviewer identified this native-select regression;
+its regression test was observed RED before the fix and source-review closure
+confirmed. Initial test setup incorrectly called a nonexistent archive method;
+corrected to the real archive PATCH before recording the meaningful RED result.
+
+Demo population uses a separate guarded local fixture helper, not an app seed or
+migration: `local-preview-20261101.U5Egtv/populate-karigar-invoices.php` under the
+external evidence root. The helper validates exact preview database, owner/shop,
+subscription and mutation permissions; calls the real Karigar/invoice controller
+store flows within a transaction and refuses partial duplicate batches. Retained
+26 invoices (IDs1–26, `DEMO-KI-261111-001` through `026`) across three new clearly
+labelled demo workshops (IDs2–4): Artisan Gold Works, Silverline Craft and Meena
+Jewellery Workshop. 13 purchase / 13 job-work, all unpaid, no attachments, advance
+application, payment posts, job links or stock movements. Dates Oct17–Nov11;
+totals ₹385.47–₹129,563.70. New invoices naturally contribute to new workshop/shop
+outstanding totals; this is not a claim that all aggregate totals are unchanged.
+Protected-record hashes and existing workshop balances matched before/after.
+First dry run named a nonexistent protected table and stopped before writes;
+corrected to `stock_purchase_items`. First successful apply's post-commit checker
+then used strict float/int comparison for zero and falsely errored. Corrected to
+0.0; idempotent re-run verified the same26 records without duplicate writes.
+Both initial and final logs retained. No deletion/reset of existing preview data.
+
+The real same-second demo batch exposed duplicate/missing bills across pages.
+Added a failing equal-time pagination test and the only controller change:
+`latest()->orderByDesc('id')`. Final actual browser page1 has25 distinct invoices,
+page2 has invoice001/index26, combined26 unique with no overlap. No dates or
+payment states were modified to hide the issue.
+
+Verification actually performed:
+
+- `node --test tests/Frontend/*.test.mjs`: **268 passed, 22 existing skips,
+  0 failed** (290 total). Three new tests run the actual invoice script for
+  net/rate/manual metal, local/interstate tax, mode switch, add/remove lines,
+  explicit advances and reset on workshop change, plus responsive contracts.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Tables/KarigarInvoiceUiTest.php
+  tests/Feature/Security/KarigarInvoiceAttachmentTest.php
+  tests/Feature/Security/KarigarInvoiceRelocationTest.php
+  tests/Feature/KarigarPaymentReversalTest.php
+  tests/Feature/Reporting/KarigarSettlementReportTest.php
+  tests/Feature/Masters/KarigarLifecycleTest.php
+  tests/Feature/Tables/JobOrderRecordsUiTest.php`: **68 tests / 309 assertions,
+  no skips/failures**. Pre-destructive guard enforces the disposable database,
+  never the preview :55432. Includes permissions/cross-shop, private attachments,
+  relocation, reversals, settlement, unchanged GET snapshots, stable pagination,
+  linked inactive workshop prefill and Edit GET compatibility.
+- `npm run build`: success84 modules (app-CB1Awrou.css / app-DwJboU5v.js).
+  Changed controller, three views and PHP test lint; guarded preview
+  `view:cache` then `view:clear`; `git diff --check` all passed. One Impeccable
+  scoped layout detector on the three views/new CSS returned `[]`.
+- Actual signed-in browser: register empty/populated, two pages, Unpaid filter,
+  workshop filter9 matching records, selected values retained, combined Clear,
+  desktop modal and phone bottom sheet (390wide, bottom844), visible 44px eye.
+  Desktop1440x1000: record region692px with1865px scroll content, sticky headings,
+  horizontal scroll contained, pagination bottom966.8 within viewport1000.
+  Create examined at320x700,390x844,768x1024,1024x600 and wide desktop; body width
+  equals viewport; summary normal flow except wide/tall. Unsaved real input:
+  gross12 minus stone2 => net10, rate1000 => total10300 with3% tax; interstate
+  switch and job-work250 =>257.50; add/remove returns one line. Cancel discarded
+  the review form; fixture creation is the only approved invoice submission.
+- Reviewer performed read-only source review and confirmed the inactive-workshop
+  and keyboard semantics fixes, no other concrete important regressions. Not an
+  independent rerun of tests or browser acceptance. Browser logs showed Electron
+  CSP warnings; a transient crashed tab was replaced with a fresh working tab.
+  Browser runtime key presses did not reliably advance focus/scroll: native Tab,
+  wheel, bottom-row traversal and Turbo Back/Forward remain unverified, as does
+  physical-phone acceptance. No full repository PHP suite/performance benchmark.
+
+Evidence: `/home/himanshu/jf-table-evidence/karigar-bills-20261111.g8xtik/` contains
+final frontend/PHP/build logs, RED logs, demo verification and four synthetic
+screenshots (`register-desktop.jpg`, `register-mobile.jpg`, `create-desktop.jpg`,
+`create-mobile.jpg`). Preview :8001 remains running with its original guarded
+configuration; no companion or other worktree process stopped. No migration or
+cleanup of retained demo financial records. Do not hard-delete bills/workshops
+to undo this fixture without a separately agreed cleanup procedure. Final commit
+SHA is recorded in the external progress ledger after commit. Ready for local
+visual review, not remote deployment approval.
+
+## Earlier checkpoint — Retail Job Order detail and receipt entry, 2026-11-11
 
 Starting HEAD `ac75529cc5e9df5bd061439fd19608f30e684df8`, branch
 `feature/table-consistency`, worktree `ui-integration`. Read Claude's intervening

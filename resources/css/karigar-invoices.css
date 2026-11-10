@@ -1,0 +1,142 @@
+/* Retail invoice register and shared create/edit form only. */
+.content-inner.karigar-invoices-index-page { min-width: 0; --cust-line: var(--jf-border); --cust-ink: var(--jf-text); }
+.karigar-invoices-index-page .ki-register { min-width: 0; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); box-shadow: 0 12px 22px -22px rgba(15, 23, 42, .68); overflow: visible; }
+.karigar-invoices-index-page .ki-register-head { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; min-width: 0; padding: 16px 18px; border-bottom: 1px solid var(--jf-border); border-radius: 16px 16px 0 0; background: var(--jf-surface); }
+.karigar-invoices-index-page .ki-register-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.karigar-invoices-index-page .ki-metrics { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.karigar-invoices-index-page .ki-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-width: 100%; margin: 0; padding: 6px 10px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface-soft); }
+.karigar-invoices-index-page .ki-metric dt { font-size: 12px; color: var(--jf-text-muted); overflow-wrap: anywhere; }
+.karigar-invoices-index-page .ki-metric dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.karigar-invoices-index-page .jf-filter-toggle { display: inline-flex; min-height: 44px; margin-left: auto; }
+.karigar-invoices-index-page .jf-filter-panel { color: var(--jf-text); }
+.karigar-invoices-index-page .ki-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.karigar-invoices-index-page .ki-filters > div { min-width: 0; }
+.karigar-invoices-index-page .ki-filter-label { display: block; margin-bottom: 6px; font-size: 12px; }
+.karigar-invoices-index-page .ki-filter-control { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); color: var(--jf-text); font-size: 14px; }
+.karigar-invoices-index-page .ki-filter-actions { display: flex; justify-content: end; gap: 8px; grid-column: 1 / -1; }
+.karigar-invoices-index-page .ki-filter-actions .btn { min-height: 44px; }
+.karigar-invoices-index-page .ki-records { position: relative; min-width: 0; border-radius: 0 0 16px 16px; }
+.karigar-invoices-index-page .ki-register-table { min-width: 1190px; }
+.karigar-invoices-index-page .ki-register-table tbody tr { cursor: pointer; }
+.karigar-invoices-index-page .ki-invoice-number { font-weight: 600; color: #b45309; overflow-wrap: anywhere; }
+.karigar-invoices-index-page .ki-invoice-number:hover { text-decoration: underline; text-underline-offset: 3px; }
+.karigar-invoices-index-page .ki-karigar-name { min-width: 150px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+.karigar-invoices-index-page .ki-date { white-space: nowrap; }
+.karigar-invoices-index-page .ki-status { display: inline-flex; max-width: 100%; padding: 3px 8px; border-radius: 999px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.karigar-invoices-index-page .ki-flags { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.karigar-invoices-index-page .ki-flags span { padding: 3px 6px; border-radius: 6px; background: #ffe4e6; color: #9f1239; overflow-wrap: anywhere; }
+.karigar-invoices-index-page .jf-row-action { width: 44px; height: 44px; }
+.karigar-invoices-index-page .ki-pagination { padding: 12px 18px; border-top: 1px solid var(--jf-border); border-radius: 0 0 16px 16px; background: var(--jf-surface); }
+.karigar-invoices-index-page .ki-empty { display: grid; justify-items: center; gap: 14px; padding: 32px 18px; color: var(--jf-text-muted); text-align: center; }
+.karigar-invoices-index-page .ki-empty p { margin: 0; }
+.karigar-invoices-index-page .ki-phone-list { display: none; }
+.content-inner.karigar-invoice-form-page { width: 100%; min-width: 0; max-width: none; }
+.karigar-invoice-form-page .ki-form-shell { min-width: 0; width: 100%; }
+.karigar-invoice-form-page .ki-form-grid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 18px; }
+.karigar-invoice-form-page .ki-form-main { display: grid; min-width: 0; gap: 18px; }
+.karigar-invoice-form-page .ki-card { min-width: 0; border: 1px solid #dbe4ef; border-radius: 16px; background: var(--jf-surface); box-shadow: 0 12px 22px -22px rgba(15, 23, 42, .68); }
+.karigar-invoice-form-page .ki-section { padding: 18px; }
+.karigar-invoice-form-page .ki-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; margin-bottom: 16px; }
+.karigar-invoice-form-page .ki-title { margin: 0; font-size: 16px; font-weight: 650; color: var(--jf-text); }
+.karigar-invoice-form-page .ki-field-grid { display: flex; flex-wrap: wrap; gap: 14px; min-width: 0; align-items: start; }
+.karigar-invoice-form-page .ki-field-grid > label { flex: 1 1 180px; min-width: 0; max-width: 100%; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-karigar { flex-basis: 230px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-date { flex: 0 1 168px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-state { flex: 0 1 90px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-mode { flex-basis: 270px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-job { flex: 1 1 150px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-tax { flex: 0 1 104px; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-wide { flex-basis: 100%; }
+.karigar-invoice-form-page .ki-field-grid > .ki-field-words { flex-basis: 240px; }
+.karigar-invoice-form-page .ki-label { display: block; margin-bottom: 6px; color: var(--jf-text); font-size: 12px; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+.karigar-invoice-form-page .ki-control { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); color: var(--jf-text); font-size: 14px; font-variant-numeric: tabular-nums; }
+.karigar-invoice-form-page .ki-control:disabled { background: var(--jf-surface-soft); color: var(--jf-text-muted); }
+.karigar-invoice-form-page select.ki-control { padding-right: 32px; }
+.karigar-invoice-form-page .ki-interstate { display: flex; align-items: center; align-self: end; gap: 10px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface-soft); font-size: 12px; line-height: 1.5; }
+.karigar-invoice-form-page .ki-interstate input { flex: none; }
+.karigar-invoice-form-page .ki-hint { display: block; margin-top: 6px; color: var(--jf-text-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.karigar-invoice-form-page .ki-hint a { color: #b45309; text-decoration: underline; text-underline-offset: 3px; }
+.karigar-invoice-form-page .ki-lines { display: grid; min-width: 0; gap: 14px; }
+.karigar-invoice-form-page .ki-line-card { min-width: 0; padding: 14px; border: 1px solid var(--jf-border); border-radius: 12px; background: var(--jf-surface-soft); }
+.karigar-invoice-form-page .ki-line-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--jf-border); }
+.karigar-invoice-form-page .ki-line-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.karigar-invoice-form-page .ki-line-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 0 auto; font-variant-numeric: tabular-nums; }
+.karigar-invoice-form-page .ki-line-total dt { font-size: 12px; color: var(--jf-text-muted); }
+.karigar-invoice-form-page .ki-line-total dd { margin: 0; font-size: 16px; font-weight: 650; overflow-wrap: anywhere; }
+.karigar-invoice-form-page .ki-line-grid { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; min-width: 0; }
+.karigar-invoice-form-page .ki-line-grid > label { min-width: 0; max-width: 100%; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-description { flex: 2 1 240px; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-code { flex: 0 1 96px; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-pieces { flex: 0 1 86px; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-weight { flex: 0 1 110px; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-amount { flex: 0 1 140px; }
+.karigar-invoice-form-page .ki-line-grid > .ki-line-note { flex: 1 1 260px; }
+.karigar-invoice-form-page .ki-summary { position: static; min-width: 0; }
+.karigar-invoice-form-page .ki-summary-head { padding: 16px; border-bottom: 1px solid var(--jf-border); border-radius: 16px 16px 0 0; }
+.karigar-invoice-form-page .ki-summary-body { padding: 4px 16px; }
+.karigar-invoice-form-page .ki-summary-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin: 0; padding: 12px 0; border-bottom: 1px solid var(--jf-border); }
+.karigar-invoice-form-page .ki-summary-row:last-child { border-bottom: 0; }
+.karigar-invoice-form-page .ki-summary-row dt { color: var(--jf-text-muted); font-size: 12px; }
+.karigar-invoice-form-page .ki-summary-row dd { min-width: 0; margin: 0; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.karigar-invoice-form-page .ki-grand-total dd { color: #b45309; font-size: 18px; }
+.karigar-invoice-form-page .ki-advance { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; padding: 12px; border: 1px solid var(--jf-border); border-radius: 10px; font-size: 13px; overflow-wrap: anywhere; }
+.karigar-invoice-form-page .ki-advances { display: grid; gap: 8px; }
+.karigar-invoice-form-page .ki-form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.karigar-invoice-form-page .btn { min-height: 44px; }
+.karigar-invoice-form-page :is(.ki-submit, .ki-cancel) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--jf-border-strong); border-radius: 10px; color: var(--jf-text); background: var(--jf-surface); font-size: 14px; font-weight: 600; }
+.karigar-invoice-form-page .ki-submit { border-color: #b45309; background: #b45309; color: #fff; }
+.karigar-invoice-form-page .jf-row-action { width: 44px; height: 44px; }
+:is(.karigar-invoice-form-page, .karigar-invoices-index-page) :is(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+
+@media screen and (min-width: 769px) {
+    .karigar-invoices-index-page .jf-filter-panel[data-ready] { position: fixed; inset: 0; width: min(560px, calc(100vw - 32px)); height: fit-content; max-height: calc(100dvh - 32px); margin: auto; padding: 18px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); box-shadow: 0 20px 48px -24px rgba(15, 23, 42, .5); }
+    .karigar-invoices-index-page .jf-filter-panel[data-ready]:not(:modal) { display: none; }
+    .karigar-invoices-index-page .jf-filter-panel[data-ready]:modal { display: block; }
+    .karigar-invoices-index-page .jf-filter-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .karigar-invoices-index-page .jf-filter-panel-head h3 { margin: 0; font-size: 16px; }
+    .karigar-invoices-index-page .jf-filter-panel-head button { min-width: 44px; min-height: 44px; }
+}
+@media screen and (min-width: 1200px) and (min-height: 700px) {
+    .karigar-invoice-form-page .ki-form-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+    .karigar-invoice-form-page .ki-summary { position: sticky; top: 100px; max-height: calc(100dvh - 116px); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media screen and (max-width: 1023px) {
+    .karigar-invoices-index-page .ki-records { display: none; }
+    .karigar-invoices-index-page .ki-phone-list { display: grid; gap: 12px; padding: 12px; }
+    .karigar-invoices-index-page .ki-phone-card { min-width: 0; padding: 12px; border: 1px solid var(--jf-border); border-radius: 12px; background: var(--jf-surface); }
+    .karigar-invoices-index-page .ki-phone-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 8px; }
+    .karigar-invoices-index-page .ki-phone-index { margin-right: 6px; color: var(--jf-text-muted); font-size: 12px; }
+    .karigar-invoices-index-page .ki-phone-karigar { margin: 12px 0; font-size: 14px; overflow-wrap: anywhere; }
+    .karigar-invoices-index-page .ki-phone-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .karigar-invoices-index-page .ki-phone-meta dt { margin-bottom: 4px; color: var(--jf-text-muted); font-size: 12px; }
+    .karigar-invoices-index-page .ki-phone-meta dd { margin: 0; font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .karigar-invoices-index-page .ki-phone-actions { display: flex; justify-content: end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--jf-border); }
+}
+@media screen and (max-width: 768px) {
+    .karigar-invoices-index-page .ki-register-head { gap: 12px; padding: 12px; }
+    .karigar-invoices-index-page .ki-metrics { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .karigar-invoices-index-page .ki-filters { grid-template-columns: minmax(0, 1fr); }
+    .karigar-invoices-index-page .ki-filter-control { font-size: 16px; }
+    .karigar-invoice-form-page .ki-section { padding: 14px; }
+    .karigar-invoice-form-page .ki-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .karigar-invoice-form-page .ki-field-grid > :is(.ki-field-karigar, .ki-field-mode, .ki-field-wide, .ki-field-words, .ki-interstate) { grid-column: 1 / -1; }
+    .karigar-invoice-form-page .ki-control { font-size: 16px; }
+    .karigar-invoice-form-page .ki-line-card { padding: 12px; }
+    .karigar-invoice-form-page .ki-line-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .karigar-invoice-form-page .ki-line-grid > :is(.ki-line-description, .ki-line-note) { grid-column: 1 / -1; }
+    .karigar-invoice-form-page .ki-form-actions > :is(a, button) { flex: 1 1 auto; min-height: 44px; }
+    body.app-shell .content-header.ki-page-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 44px; align-items: center; gap: 8px 6px; padding: 12px; position: static; }
+    body.app-shell .content-header.ki-page-header:has(> .notice-bell) { padding-right: 12px !important; }
+    body.app-shell .ki-page-header .content-header-nav { grid-column: 1; grid-row: 1; }
+    body.app-shell .ki-page-header > .min-w-0 { grid-column: 2; grid-row: 1; }
+    body.app-shell .ki-page-header .page-title { margin: 0; font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+    body.app-shell .ki-page-header .page-subtitle { display: none; }
+    body.app-shell .ki-page-header .page-actions { grid-column: 3; grid-row: 1; width: auto; }
+    body.app-shell .ki-page-header :is(.mobile-menu-btn, .ki-header-action, .notice-bell-toggle) { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; }
+    body.app-shell .ki-page-header .ki-header-action-label { display: none; }
+    body.app-shell .ki-page-header > .notice-bell { position: relative; grid-column: 4; grid-row: 1; top: auto; right: auto; }
+}
+@media screen and (max-width: 360px) {
+    .karigar-invoice-form-page .ki-field-grid { grid-template-columns: minmax(0, 1fr); }
+    .karigar-invoices-index-page .ki-metrics { grid-template-columns: minmax(0, 1fr); }
+}

@@ -48,550 +48,75 @@
     $initialMode = $isEdit ? $invoice->mode : 'purchase';
     $modeLabel = $initialMode === 'job_work' ? 'Job Work (making + wastage only)' : 'Purchase (full metal + making)';
     $selectedKarigarId = (string) ($jobOrder?->karigar_id ?? $receipt?->jobOrder?->karigar_id ?? '');
-    $selectedKarigar = $karigars->firstWhere('id', (int) $selectedKarigarId);
+    $selectedKarigar = $karigars->firstWhere('id', (int) $selectedKarigarId) ?? $jobOrder?->karigar ?? $receipt?->jobOrder?->karigar;
 @endphp
 
-<style>
-    [x-cloak] {
-        display: none !important;
-    }
-
-    .ki-form-shell {
-        --ki-gold: #b45309;
-        --ki-gold-hover: #92400e;
-        --ki-line-soft: #e2e8f0;
-        --ki-line: #cbd5e1;
-        --ki-ink: #1f2430;
-        --ki-text: #4a4334;
-        --ki-muted: #64748b;
-        --ki-focus: rgba(245, 158, 11, .2);
-        max-width: 1280px;
-    }
-
-    .ki-form-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 340px;
-        gap: 18px;
-        align-items: start;
-    }
-
-    .ki-card {
-        border: 1px solid var(--ki-line-soft);
-        border-radius: 14px;
-        background: #ffffff;
-        box-shadow: none;
-    }
-
-    .ki-section {
-        padding: 18px;
-        border-bottom: 1px solid var(--ki-line-soft);
-    }
-
-    .ki-section:last-child {
-        border-bottom: 0;
-    }
-
-    .ki-section-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-        margin-bottom: 16px;
-    }
-
-    .ki-title {
-        margin: 0;
-        color: var(--ki-ink);
-        font-size: 17px;
-        font-weight: 700;
-        letter-spacing: 0;
-    }
-
-    .ki-copy {
-        margin-top: 3px;
-        color: var(--ki-muted);
-        font-size: 13px;
-        font-weight: 400;
-        line-height: 1.45;
-    }
-
-    .ki-field-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-    }
-
-    .ki-field-full {
-        grid-column: 1 / -1;
-    }
-
-    .ki-label {
-        display: block;
-        margin-bottom: 6px;
-        color: var(--ki-muted);
-        font-size: 11.5px;
-        font-weight: 500;
-    }
-
-    .ki-control {
-        width: 100%;
-        min-height: 40px;
-        border: 1px solid var(--ki-line);
-        border-radius: 10px;
-        background: #ffffff;
-        color: var(--ki-ink);
-        font-size: 14px;
-        font-weight: 400;
-        box-shadow: none;
-    }
-
-    .ki-control:focus {
-        border-color: var(--ki-gold);
-        box-shadow: 0 0 0 3px var(--ki-focus);
-    }
-
-    .ki-combobox {
-        position: relative;
-    }
-
-    .ki-combobox-trigger {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        width: 100%;
-        min-height: 40px;
-        border: 1px solid var(--ki-line);
-        border-radius: 10px;
-        background: #ffffff;
-        padding: 10px 12px;
-        color: var(--ki-ink);
-        font-size: 14px;
-        font-weight: 400;
-        text-align: left;
-        box-shadow: none;
-    }
-
-    .ki-combobox-trigger:focus {
-        outline: none;
-        border-color: var(--ki-gold);
-        box-shadow: 0 0 0 3px var(--ki-focus);
-    }
-
-    .ki-combobox-placeholder {
-        color: #64748b;
-    }
-
-    .ki-combobox-menu {
-        position: absolute;
-        z-index: 40;
-        top: calc(100% + 8px);
-        left: 0;
-        right: 0;
-        overflow: hidden;
-        border: 1px solid var(--ki-line-soft);
-        border-radius: 12px;
-        background: #ffffff;
-        box-shadow: none;
-    }
-
-    .ki-combobox-list {
-        max-height: 240px;
-        overflow-y: auto;
-        padding: 6px;
-    }
-
-    .ki-combobox-option {
-        display: block;
-        width: 100%;
-        border-radius: 10px;
-        padding: 10px 11px;
-        color: var(--ki-ink);
-        font-size: 14px;
-        font-weight: 500;
-        text-align: left;
-    }
-
-    .ki-combobox-option:hover,
-    .ki-combobox-option-selected {
-        background: #fff7ed;
-        color: var(--ki-gold);
-    }
-
-    .ki-line-card {
-        border: 1px solid var(--ki-line-soft);
-        border-radius: 12px;
-        background: #ffffff;
-        padding: 14px;
-    }
-
-    .ki-line-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .ki-add-line {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        min-height: 34px;
-        border: 1px solid #f3dcb6;
-        border-radius: 999px;
-        background: #fff7ed;
-        padding: 7px 12px;
-        color: var(--ki-gold-hover);
-        font-size: 12px;
-        font-weight: 700;
-        box-shadow: none;
-    }
-
-    .ki-remove-line {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 36px;
-        border-radius: 12px;
-        border: 1px solid #fecdd3;
-        background: #fff1f2;
-        padding: 8px 12px;
-        color: #be123c;
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .ki-summary {
-        position: sticky;
-        top: 92px;
-    }
-
-    .ki-summary-head,
-    .ki-summary-body {
-        padding: 16px;
-    }
-
-    .ki-summary-head {
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    .ki-summary-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        border-bottom: 1px solid #edf2f7;
-        padding: 11px 0;
-    }
-
-    .ki-summary-row:first-child {
-        padding-top: 0;
-    }
-
-    .ki-summary-row:last-child {
-        border-bottom: 0;
-        padding-bottom: 0;
-    }
-
-    .ki-summary-label {
-        color: var(--ki-muted);
-        font-size: 12px;
-        font-weight: 500;
-    }
-
-    .ki-summary-value {
-        color: var(--ki-ink);
-        font-size: 15px;
-        font-weight: 700;
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .ki-advance-box {
-        border: 1px solid var(--ki-line-soft);
-        border-radius: 12px;
-        background: #f8fafc;
-        padding: 14px;
-    }
-
-    .ki-form-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 18px;
-    }
-
-    .ki-submit {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        border-radius: 10px;
-        border: 1px solid var(--ki-gold);
-        background: var(--ki-gold);
-        padding: 10px 16px;
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 700;
-        box-shadow: none;
-    }
-
-    .ki-submit:hover {
-        border-color: var(--ki-gold-hover);
-        background: var(--ki-gold-hover);
-    }
-
-    .ki-cancel:hover {
-        border-color: #f3dcb6;
-        background: #fff7ed;
-        color: var(--ki-gold-hover);
-    }
-
-    .ki-cancel {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        border-radius: 10px;
-        border: 1px solid var(--ki-line);
-        background: #ffffff;
-        padding: 10px 15px;
-        color: #475569;
-        font-size: 14px;
-        font-weight: 700;
-    }
-
-    @media (max-width: 1120px) {
-        .ki-form-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .ki-summary {
-            position: static;
-        }
-    }
-
-    @media (max-width: 760px) {
-        .ki-form-shell {
-            padding-inline: 10px;
-        }
-
-        .ki-form-grid {
-            gap: 12px;
-        }
-
-        .ki-card {
-            border-radius: 16px;
-        }
-
-        .ki-section,
-        .ki-summary-head,
-        .ki-summary-body {
-            padding: 14px;
-        }
-
-        .ki-section-head {
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .ki-copy {
-            display: none;
-        }
-
-        .ki-field-grid,
-        .ki-line-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .ki-control,
-        .ki-combobox-trigger {
-            min-height: 40px;
-            border-radius: 11px;
-        }
-
-        .ki-label {
-            margin-bottom: 5px;
-            font-size: 11px;
-        }
-
-            .ki-combobox-menu {
-                position: fixed;
-                top: auto;
-                right: 14px;
-                bottom: 16px;
-                left: 14px;
-                max-height: 55vh;
-                border: 1px solid var(--ki-line-soft);
-                border-radius: 16px;
-                box-shadow: none;
-        }
-
-        .ki-combobox-list {
-            max-height: 55vh;
-            padding: 8px;
-        }
-
-        .ki-combobox-option {
-            border: 1px solid #e2e8f0;
-            margin-bottom: 7px;
-            background: #ffffff;
-        }
-
-        .ki-combobox-option:last-child {
-            margin-bottom: 0;
-        }
-
-        .ki-combobox-option:hover,
-        .ki-combobox-option-selected {
-                border-color: #f3dcb6;
-                background: #fff7ed;
-            }
-
-        .ki-summary-body {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .ki-summary-row {
-            display: block;
-            border: 1px solid #edf2f7;
-            border-radius: 12px;
-            padding: 9px;
-        }
-
-        .ki-summary-row:first-child,
-        .ki-summary-row:last-child {
-            padding: 9px;
-        }
-
-        .ki-summary-value {
-            display: block;
-            margin-top: 4px;
-            text-align: left;
-            font-size: 13px;
-        }
-
-        .ki-form-actions {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .ki-submit,
-        .ki-cancel,
-        .ki-add-line {
-            width: 100%;
-        }
-    }
-
-    @media (max-width: 380px) {
-        .ki-field-grid,
-        .ki-line-grid,
-        .ki-summary-body {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-<div x-data='invoiceForm(@json($prefillLines), @json($initialMode), @json(json_decode($advancesByKarigar ?? "[]")), @json($selectedKarigarId), @json($selectedKarigar?->name ?? ""), @json($modeLabel))'
+<div class="ki-form-workspace" x-data='invoiceForm(@json($prefillLines), @json($initialMode), @json(json_decode($advancesByKarigar ?? "[]")), @json($selectedKarigarId), @json($selectedKarigar?->name ?? ""), @json($modeLabel))'
      @keydown.escape.window="closeDropdowns()">
     <div class="ki-form-grid">
-        <div class="ki-card">
-            <section class="ki-section">
-                <div class="ki-section-head">
-                    <div>
-                        <h2 class="ki-title">Invoice Details</h2>
-                        <p class="ki-copy">Capture the karigar invoice identity, tax mode, and reference information.</p>
-                    </div>
-                </div>
-
+        <div class="ki-form-main">
+            <section class="ki-card ki-section" aria-labelledby="ki-details-title">
+                <header class="ki-section-head"><h2 id="ki-details-title" class="ki-title">Invoice Details</h2></header>
                 <div class="ki-field-grid">
-                    @if(! $isEdit)
-                        <div class="ki-field-full ki-combobox" @click.outside="karigarOpen = false">
+                    @if(!$isEdit)
+                        <label class="ki-field-karigar">
                             <span class="ki-label">Karigar *</span>
-                            <input type="hidden" name="karigar_id" x-model="selectedKarigarId">
-                            <button type="button" class="ki-combobox-trigger" @click="karigarOpen = ! karigarOpen" :aria-expanded="karigarOpen.toString()">
-                                <span :class="selectedKarigarName ? '' : 'ki-combobox-placeholder'" x-text="selectedKarigarName || 'Select karigar...'">Select karigar...</span>
-                                <x-icon name="chevron-down" size="16" stroke-width="2.25" />
-                            </button>
-                            <div class="ki-combobox-menu" x-show="karigarOpen" x-transition.origin.top x-cloak>
-                                <div class="ki-combobox-list">
-                                    <button type="button" class="ki-combobox-option" @click="onKarigarSelect('', 'Select karigar...')">Select karigar...</button>
-                                    @foreach($karigars as $k)
-                                        <button type="button"
-                                                class="ki-combobox-option"
-                                                :class="String(selectedKarigarId) === '{{ $k->id }}' ? 'ki-combobox-option-selected' : ''"
-                                                @click='onKarigarSelect(@json((string) $k->id), @json($k->name))'>{{ $k->name }}</button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-
-                        <label class="ki-field-full">
-                            <span class="ki-label">Linked Job Order</span>
-                            <input type="hidden" name="job_order_id" value="{{ $jobOrder?->id ?? $receipt?->job_order_id }}">
-                            <input type="text" disabled value="{{ ($jobOrder?->job_order_number) ?? ($receipt?->jobOrder?->job_order_number) ?? 'None' }}" class="ki-control">
+                            <select name="karigar_id" required class="ki-control" x-model="selectedKarigarId" @change="onKarigarSelect($event.target.value, $event.target.selectedOptions[0].text)">
+                                <option value="">Select karigar…</option>
+                                @foreach($karigars as $k)
+                                    <option value="{{ $k->id }}">{{ $k->name }}</option>
+                                @endforeach
+                                @if($selectedKarigar && !$karigars->contains('id', (int) $selectedKarigarId))
+                                    <option value="{{ $selectedKarigarId }}">{{ $selectedKarigar->name }} (inactive — linked job)</option>
+                                @endif
+                            </select>
                         </label>
                     @endif
-
-                    <div class="ki-combobox" @click.outside="modeOpen = false">
-                        <span class="ki-label">Mode *</span>
-                        <input type="hidden" name="mode" x-model="mode">
-                        <button type="button" class="ki-combobox-trigger" @click="modeOpen = ! modeOpen" :aria-expanded="modeOpen.toString()">
-                            <span x-text="modeName">Purchase (full metal + making)</span>
-                            <x-icon name="chevron-down" size="16" stroke-width="2.25" />
-                        </button>
-                        <div class="ki-combobox-menu" x-show="modeOpen" x-transition.origin.top x-cloak>
-                            <div class="ki-combobox-list">
-                                <button type="button" class="ki-combobox-option" :class="mode === 'purchase' ? 'ki-combobox-option-selected' : ''" @click="onModeSelect('purchase', 'Purchase (full metal + making)')">Purchase (full metal + making)</button>
-                                <button type="button" class="ki-combobox-option" :class="mode === 'job_work' ? 'ki-combobox-option-selected' : ''" @click="onModeSelect('job_work', 'Job Work (making + wastage only)')">Job Work (making + wastage only)</button>
-                            </div>
-                        </div>
-                    </div>
-
                     <label>
                         <span class="ki-label">Karigar's Invoice # *</span>
-                        <input type="text" name="karigar_invoice_number" required value="{{ $invoice->karigar_invoice_number ?? '' }}" class="ki-control font-mono">
+                        <input type="text" name="karigar_invoice_number" required value="{{ $invoice->karigar_invoice_number ?? '' }}" class="ki-control">
                     </label>
-
-                    <label>
+                    <label class="ki-field-date">
                         <span class="ki-label">Invoice Date *</span>
                         <input type="date" name="karigar_invoice_date" required value="{{ ($invoice->karigar_invoice_date ?? now())->toDateString() }}" class="ki-control">
                     </label>
-
-                    <label>
+                    <label class="ki-field-state">
                         <span class="ki-label">State Code</span>
-                        <input type="text" name="state_code" maxlength="5" value="{{ $invoice->state_code ?? '24' }}" class="ki-control font-mono">
+                        <input type="text" name="state_code" maxlength="5" value="{{ $invoice->state_code ?? '24' }}" class="ki-control">
                     </label>
-
-                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <label class="ki-field-mode">
+                        <span class="ki-label">Mode *</span>
+                        <select name="mode" class="ki-control" x-model="mode" @change="onModeSelect($event.target.value, $event.target.selectedOptions[0].text)">
+                            <option value="purchase">Purchase (full metal + making)</option>
+                            <option value="job_work">Job Work (making + wastage only)</option>
+                        </select>
+                    </label>
+                    @if(!$isEdit)
+                        <label class="ki-field-job">
+                            <span class="ki-label">Linked Job Order</span>
+                            <input type="hidden" name="job_order_id" value="{{ $jobOrder?->id ?? $receipt?->job_order_id }}">
+                            <input type="text" disabled value="{{ $jobOrder?->job_order_number ?? $receipt?->jobOrder?->job_order_number ?? 'None' }}" class="ki-control">
+                        </label>
+                    @endif
+                    <label class="ki-interstate">
                         <input type="checkbox" name="is_interstate" value="1" {{ ($invoice->is_interstate ?? false) ? 'checked' : '' }} x-model="isInterstate" class="rounded border-gray-300">
-                        <span class="text-xs font-semibold text-gray-700">Inter-state invoice. Use IGST instead of CGST + SGST.</span>
+                        <span>Inter-state invoice. Use IGST instead of CGST + SGST.</span>
                     </label>
                 </div>
             </section>
 
-            <section class="ki-section">
-                <div class="ki-section-head">
-                    <div>
-                        <h2 class="ki-title">Tax & Payment Reference</h2>
-                        <p class="ki-copy">Rates update the live summary on the right.</p>
-                    </div>
-                </div>
-
+            <section class="ki-card ki-section" aria-labelledby="ki-reference-title">
+                <header class="ki-section-head"><h2 id="ki-reference-title" class="ki-title">Tax & Payment Reference</h2></header>
                 <div class="ki-field-grid">
-                    <label>
+                    <label class="ki-field-tax">
                         <span class="ki-label">CGST Rate (%)</span>
                         <input type="number" step="0.01" min="0" max="50" name="cgst_rate" value="{{ $invoice->cgst_rate ?? '1.5' }}" x-model.number="cgstRate" :disabled="isInterstate" class="ki-control">
                     </label>
-                    <label>
+                    <label class="ki-field-tax">
                         <span class="ki-label">SGST Rate (%)</span>
                         <input type="number" step="0.01" min="0" max="50" name="sgst_rate" value="{{ $invoice->sgst_rate ?? '1.5' }}" x-model.number="sgstRate" :disabled="isInterstate" class="ki-control">
                     </label>
-                    <label>
+                    <label class="ki-field-tax">
                         <span class="ki-label">IGST Rate (%)</span>
                         <input type="number" step="0.01" min="0" max="50" name="igst_rate" value="{{ $invoice->igst_rate ?? '0' }}" x-model.number="igstRate" :disabled="!isInterstate" class="ki-control">
                     </label>
@@ -599,158 +124,130 @@
                         <span class="ki-label">Jurisdiction</span>
                         <input type="text" name="jurisdiction" value="{{ $invoice->jurisdiction ?? '' }}" placeholder="e.g. Mandvi-Kutch" class="ki-control">
                     </label>
-                    <label class="ki-field-full">
+                    <label class="ki-field-wide">
                         <span class="ki-label">Payment Terms / Bank Reference</span>
                         <input type="text" name="payment_terms" value="{{ $invoice->payment_terms ?? '' }}" placeholder="e.g. RTGS, 11/09/25; Bank: 430640" class="ki-control">
                     </label>
-                    <label>
+                    <label class="ki-field-words">
                         <span class="ki-label">Amount in Words</span>
                         <input type="text" name="amount_in_words" value="{{ $invoice->amount_in_words ?? '' }}" class="ki-control">
                     </label>
-                    <label>
+                    <label class="ki-field-words">
                         <span class="ki-label">Tax Amount in Words</span>
                         <input type="text" name="tax_amount_in_words" value="{{ $invoice->tax_amount_in_words ?? '' }}" class="ki-control">
                     </label>
-                    <label class="ki-field-full">
+                    <label class="ki-field-wide">
                         <span class="ki-label">Upload Original Invoice (PDF/JPG/PNG)</span>
-                        <input type="file" name="invoice_file" accept=".pdf,.jpg,.jpeg,.png" class="ki-control bg-white p-2">
+                        <input type="file" name="invoice_file" accept=".pdf,.jpg,.jpeg,.png" class="ki-control">
                         @if($isEdit && $invoice->invoice_file_path)
-                            <p class="mt-1 text-[11px] text-gray-500">Current: <a href="{{ $invoice->attachmentUrl() }}" target="_blank" class="text-amber-700 underline">view</a>. Uploading replaces it.</p>
+                            <span class="ki-hint">Current: <a href="{{ $invoice->attachmentUrl() }}" target="_blank" rel="noopener">view</a>. Uploading replaces it.</span>
                         @endif
                     </label>
                 </div>
             </section>
 
-            <section class="ki-section">
-                <div class="ki-section-head">
-                    <div>
-                        <h2 class="ki-title">Line Items</h2>
-                        <p class="ki-copy">Responsive item cards replace the old wide table while keeping the same submitted fields.</p>
-                    </div>
-                    <button type="button" @click="addLine" class="ki-add-line">+ Add line</button>
-                </div>
-
-                <div class="space-y-3">
+            <section class="ki-card ki-section" aria-labelledby="ki-lines-title">
+                <header class="ki-section-head">
+                    <h2 id="ki-lines-title" class="ki-title">Line Items</h2>
+                    <button type="button" @click="addLine" class="btn btn-secondary btn-sm ki-add-line"><x-icon name="plus" size="16" />Add Line</button>
+                </header>
+                <div class="ki-lines">
                     <template x-for="(line, idx) in lines" :key="idx">
-                        <div class="ki-line-card">
+                        <section class="ki-line-card" data-turbo-temporary :aria-label="'Item line ' + (idx + 1)">
                             <input type="hidden" :name="'lines[' + idx + '][linked_receipt_item_id]'" :value="line.linked_receipt_item_id || ''">
+                            <header class="ki-line-head">
+                                <h3>Item <span x-text="idx + 1"></span></h3>
+                                <dl class="ki-line-total"><dt>Line Total</dt><dd x-text="formatRupees(lineTotal(line))"></dd></dl>
+                                <button type="button" x-show="lines.length > 1" @click="removeLine(idx)" class="jf-row-action jf-row-action--danger" data-tip="Remove line" :aria-label="'Remove item line ' + (idx + 1)"><x-icon name="trash-2" size="16" /></button>
+                            </header>
                             <div class="ki-line-grid">
-                                <label class="ki-field-full">
+                                <label class="ki-line-description">
                                     <span class="ki-label">Description *</span>
-                                    <input type="text" :name="'lines[' + idx + '][description]'" required x-model="line.description" class="ki-control">
+                                    <input type="text" :name="'lines[' + idx + '][description]'" required x-model="line.description" class="ki-control" :aria-label="'Description, item line ' + (idx + 1)">
                                 </label>
-                                <label>
+                                <label class="ki-line-code">
                                     <span class="ki-label">HSN</span>
-                                    <input type="text" :name="'lines[' + idx + '][hsn_code]'" x-model="line.hsn_code" class="ki-control">
+                                    <input type="text" :name="'lines[' + idx + '][hsn_code]'" x-model="line.hsn_code" class="ki-control" :aria-label="'HSN, item line ' + (idx + 1)">
                                 </label>
-                                <label>
+                                <label class="ki-line-pieces">
                                     <span class="ki-label">Pieces *</span>
-                                    <input type="number" min="1" :name="'lines[' + idx + '][pieces]'" required x-model.number="line.pieces" class="ki-control text-right">
+                                    <input type="number" min="1" :name="'lines[' + idx + '][pieces]'" required x-model.number="line.pieces" class="ki-control text-right" :aria-label="'Pieces, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Gross *</span>
-                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][gross_weight]'" required x-model.number="line.gross_weight" @input="recompute(idx)" class="ki-control text-right">
+                                <label class="ki-line-weight">
+                                    <span class="ki-label">Gross (g) *</span>
+                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][gross_weight]'" required x-model.number="line.gross_weight" @input="recompute(idx)" class="ki-control text-right" :aria-label="'Gross weight in grams, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Stone</span>
-                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][stone_weight]'" x-model.number="line.stone_weight" @input="recompute(idx)" class="ki-control text-right">
+                                <label class="ki-line-weight">
+                                    <span class="ki-label">Stone (g)</span>
+                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][stone_weight]'" x-model.number="line.stone_weight" @input="recompute(idx)" class="ki-control text-right" :aria-label="'Stone weight in grams, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Net *</span>
-                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][net_weight]'" required x-model.number="line.net_weight" @input="recompute(idx)" class="ki-control text-right font-semibold">
+                                <label class="ki-line-weight">
+                                    <span class="ki-label">Net (g) *</span>
+                                    <input type="number" step="0.001" min="0" :name="'lines[' + idx + '][net_weight]'" required x-model.number="line.net_weight" @input="recompute(idx)" class="ki-control text-right" :aria-label="'Net weight in grams, item line ' + (idx + 1)">
                                 </label>
-                                <label>
+                                <label class="ki-line-code">
                                     <span class="ki-label">Purity</span>
-                                    <input type="number" step="0.01" min="0" max="1000" :name="'lines[' + idx + '][purity]'" x-model.number="line.purity" class="ki-control text-right">
+                                    <input type="number" step="0.01" min="0" max="1000" :name="'lines[' + idx + '][purity]'" x-model.number="line.purity" class="ki-control text-right" :aria-label="'Purity, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Rate/g</span>
-                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][rate_per_gram]'" x-model.number="line.rate_per_gram" @input="recompute(idx)" class="ki-control text-right">
+                                <label class="ki-line-amount">
+                                    <span class="ki-label">Rate/g (₹)</span>
+                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][rate_per_gram]'" x-model.number="line.rate_per_gram" @input="recompute(idx)" class="ki-control text-right" :aria-label="'Rate per gram, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Metal ₹</span>
-                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][metal_amount]'" x-model.number="line.metal_amount" @input="recomputeTotal(idx)" class="ki-control text-right">
+                                <label class="ki-line-amount">
+                                    <span class="ki-label">Metal (₹)</span>
+                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][metal_amount]'" x-model.number="line.metal_amount" @input="recomputeTotal(idx)" class="ki-control text-right" :aria-label="'Metal amount, item line ' + (idx + 1)">
                                 </label>
-                                <label x-show="mode === 'job_work'">
-                                    <span class="ki-label">Making</span>
-                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][making_charge]'" x-model.number="line.making_charge" @input="recomputeTotal(idx)" class="ki-control text-right">
+                                <label class="ki-line-amount" x-show="mode === 'job_work'">
+                                    <span class="ki-label">Making (₹)</span>
+                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][making_charge]'" x-model.number="line.making_charge" @input="recomputeTotal(idx)" class="ki-control text-right" :aria-label="'Making charge, item line ' + (idx + 1)">
                                 </label>
-                                <label x-show="mode === 'job_work'">
-                                    <span class="ki-label">Wastage</span>
-                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][wastage_charge]'" x-model.number="line.wastage_charge" @input="recomputeTotal(idx)" class="ki-control text-right">
+                                <label class="ki-line-amount" x-show="mode === 'job_work'">
+                                    <span class="ki-label">Wastage (₹)</span>
+                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][wastage_charge]'" x-model.number="line.wastage_charge" @input="recomputeTotal(idx)" class="ki-control text-right" :aria-label="'Wastage charge, item line ' + (idx + 1)">
                                 </label>
-                                <label>
-                                    <span class="ki-label">Extra</span>
-                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][extra_amount]'" x-model.number="line.extra_amount" @input="recomputeTotal(idx)" class="ki-control text-right">
+                                <label class="ki-line-amount">
+                                    <span class="ki-label">Extra (₹)</span>
+                                    <input type="number" step="0.01" min="0" :name="'lines[' + idx + '][extra_amount]'" x-model.number="line.extra_amount" @input="recomputeTotal(idx)" class="ki-control text-right" :aria-label="'Extra amount, item line ' + (idx + 1)">
                                 </label>
-                                <label class="ki-field-full">
+                                <label class="ki-line-note">
                                     <span class="ki-label">Note</span>
-                                    <input type="text" :name="'lines[' + idx + '][note]'" x-model="line.note" class="ki-control">
+                                    <input type="text" :name="'lines[' + idx + '][note]'" x-model="line.note" class="ki-control" :aria-label="'Note, item line ' + (idx + 1)">
                                 </label>
-                                <div class="ki-field-full flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                    <span class="text-xs font-bold text-amber-700">Line Total</span>
-                                    <span class="font-semibold text-amber-800" x-text="formatRupees(lineTotal(line))"></span>
-                                </div>
-                                <button type="button" x-show="lines.length > 1" @click="removeLine(idx)" class="ki-remove-line">Remove line</button>
                             </div>
-                        </div>
+                        </section>
                     </template>
                 </div>
             </section>
 
-            @if(! $isEdit)
-            <section x-show="karigarAdvances.length > 0" x-cloak class="ki-section">
-                <div class="ki-advance-box">
-                    <div class="mb-2 text-xs font-semibold text-slate-600">
-                        Advances Already Given
-                        <span class="ml-1 font-normal text-slate-500">select payments to apply to this invoice</span>
-                    </div>
-                    <div class="space-y-2">
+            @if(!$isEdit)
+                <section class="ki-card ki-section" x-show="karigarAdvances.length > 0" x-cloak aria-labelledby="ki-advances-title">
+                    <header class="ki-section-head">
+                        <div><h2 id="ki-advances-title" class="ki-title">Advances Already Given</h2><p class="ki-hint">Select payments to apply to this invoice.</p></div>
+                    </header>
+                    <div class="ki-advances">
                         <template x-for="adv in karigarAdvances" :key="adv.id">
-                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-amber-300">
+                            <label class="ki-advance" data-turbo-temporary>
                                 <input type="checkbox" :name="'advance_payment_ids[]'" :value="adv.id" :checked="checkedAdvanceIds.includes(adv.id)" @change="toggleAdvance(adv.id)" class="rounded border-gray-300 text-amber-600">
-                                <span class="font-semibold text-slate-800" x-text="formatRupees(adv.amount)"></span>
-                                <span class="text-xs text-gray-500" x-text="adv.paid_on"></span>
-                                <span class="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold capitalize text-amber-700" x-text="adv.mode"></span>
-                                <span class="text-xs text-gray-400" x-text="adv.reference || ''"></span>
+                                <strong x-text="formatRupees(adv.amount)"></strong>
+                                <span x-text="adv.paid_on"></span>
+                                <span x-text="adv.mode"></span>
+                                <span x-text="adv.reference || ''"></span>
                             </label>
                         </template>
                     </div>
-                    <div class="mt-2 text-xs text-slate-600">
-                        Total selected: <span class="font-semibold" x-text="formatRupees(selectedAdvanceTotal)"></span>
-                        &nbsp;·&nbsp; Remaining due: <span class="font-semibold" x-text="formatRupees(Math.max(0, grandTotal - selectedAdvanceTotal))"></span>
-                    </div>
-                </div>
-            </section>
+                    <p class="ki-hint">Total selected: <strong x-text="formatRupees(selectedAdvanceTotal)"></strong> · Remaining due: <strong x-text="formatRupees(Math.max(0, grandTotal - selectedAdvanceTotal))"></strong></p>
+                </section>
             @endif
         </div>
 
-        <aside class="ki-card ki-summary">
-            <div class="ki-summary-head">
-                <h2 class="ki-title">Invoice Summary</h2>
-                <p class="ki-copy">Live totals before saving.</p>
-            </div>
+        <aside class="ki-card ki-summary jf-scrollbar" aria-label="Invoice summary">
+            <header class="ki-summary-head"><h2 class="ki-title">Invoice Summary</h2><p class="ki-hint">Live totals before saving.</p></header>
             <div class="ki-summary-body">
-                <div class="ki-summary-row">
-                    <span class="ki-summary-label">Subtotal</span>
-                    <span class="ki-summary-value" x-text="formatRupees(subtotal)"></span>
-                </div>
-                <div class="ki-summary-row">
-                    <span class="ki-summary-label">Tax</span>
-                    <span class="ki-summary-value" x-text="formatRupees(tax)"></span>
-                </div>
-                <div class="ki-summary-row">
-                    <span class="ki-summary-label">Grand Total</span>
-                    <span class="ki-summary-value text-amber-700" x-text="formatRupees(grandTotal)"></span>
-                </div>
-                <div class="ki-summary-row">
-                    <span class="ki-summary-label">Total Net Wt</span>
-                    <span class="ki-summary-value" x-text="totalNet.toFixed(3) + 'g'"></span>
-                </div>
-                <div class="ki-summary-row">
-                    <span class="ki-summary-label">Lines</span>
-                    <span class="ki-summary-value" x-text="lines.length"></span>
-                </div>
+                <dl class="ki-summary-row"><dt>Subtotal</dt><dd x-text="formatRupees(subtotal)"></dd></dl>
+                <dl class="ki-summary-row"><dt>Tax</dt><dd x-text="formatRupees(tax)"></dd></dl>
+                <dl class="ki-summary-row ki-grand-total"><dt>Grand Total</dt><dd x-text="formatRupees(grandTotal)"></dd></dl>
+                <dl class="ki-summary-row"><dt>Total Net Wt</dt><dd x-text="totalNet.toFixed(3) + 'g'"></dd></dl>
+                <dl class="ki-summary-row"><dt>Lines</dt><dd x-text="lines.length"></dd></dl>
             </div>
         </aside>
     </div>

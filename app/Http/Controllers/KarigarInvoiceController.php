@@ -19,7 +19,7 @@ class KarigarInvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = KarigarInvoice::query()->with(['karigar', 'jobOrder'])->latest();
+        $query = KarigarInvoice::query()->with(['karigar', 'jobOrder'])->latest()->orderByDesc('id');
 
         if ($status = $request->input('payment_status')) {
             $query->where('payment_status', $status);

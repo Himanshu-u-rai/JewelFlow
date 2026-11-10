@@ -11,6 +11,7 @@
 @import "./job-orders-directory.css";
 @import "./job-order-create.css";
 @import "./job-order-records.css";
+@import "./karigar-invoices.css";
 @import "./indian-address.css";
 
 @tailwind base;
