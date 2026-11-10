@@ -2,7 +2,96 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Wastage label stays on one desktop line
+## Latest checkpoint — Retail Job Order detail and receipt entry, 2026-11-11
+
+Starting HEAD `ac75529cc5e9df5bd061439fd19608f30e684df8`, branch
+`feature/table-consistency`, worktree `ui-integration`. Read Claude's intervening
+commits before proceeding. His existing 13 tracked / 2 untracked Dhiran changes
+remain outside this work; before/after hashes match exactly. Nothing in Dhiran,
+Job Order create, controllers, services, models, routes or financial posting was
+edited. No migrations, reseeding, password resets, pushes or deployments.
+
+Owner requested the local shop running first, then only `/job-orders/1` and
+`/job-orders/1/receive`. Restarted the existing guarded preview and its private
+PostgreSQL (:55432, `jewelflow_mobile_demo`); HTTP :8001 is available. Its first
+server session ended during checks; restarted the same guarded service in a PTY
+session, without resetting data. Companion :8000 was absent and untouched.
+
+Detail: recent Vault-style compact weight tiles, existing status colors,
+independently contained/indexed shared tables, wrap-safe receipt headers, clear
+empty states, readable 44px actions and rounded painted card edges. Important
+posting actions retain text and original confirmations. Receive/Add Invoice links
+now obey their existing backend permissions. Corrected silver purity display from
+K to per-mille; values unchanged. Receipt entry retains its editable `.jf-grid`
+(not a list table), with usable named inputs, contained horizontal scroll, compact
+date/notes/retained fields, readable totals and existing warning/retained meaning.
+Existing themed calendar reused. No new dependencies or application JavaScript.
+The original receive calculation script is byte-for-byte identical to starting
+HEAD; field names, constraints, routes, CSRF and net-weight editability retained.
+Impeccable guided incumbent-mode density; Ponytail kept existing components.
+
+Verification actually performed:
+
+- `node --test tests/Frontend/*.test.mjs`: **265 passed, 22 existing skips,
+  0 failures**. Three new tests exercise the actual receive script (gold/silver,
+  manual net, multiple lines, partial returns/tolerance boundary) and scoped UI
+  contracts. The skips are photo-browser tests lacking their optional runtime.
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Tables/JobOrderRecordsUiTest.php
+  tests/Feature/Tables/JobOrderRefusedIssueTest.php
+  tests/Feature/Manufacture/JobOrderAccessAndIsolationTest.php
+  tests/Feature/Material/JobOrderControllerSourceTest.php
+  tests/Feature/Material/JobOrderReviewFixesTest.php
+  tests/Feature/Material/JobOrderRetainedMetalTest.php
+  tests/Feature/Material/JobOrderMetalSourceTest.php
+  tests/Feature/Material/JobOrderTransferTest.php`: **43 tests / 180 assertions,
+  no failures or skips**, using the pre-destructive disposable database guard.
+  New rendered tests contribute 4 tests / 50 assertions: exact values, receipts,
+  invoices, silver units, view-only/closed/cross-shop restrictions and unchanged
+  snapshots of nine metal/stock/financial tables after both GET requests.
+- `npm run build`: 84 modules, success. Both views and new PHP test linted;
+  guarded preview `view:cache` / `view:clear` and `git diff --check` passed.
+  Impeccable's single scoped layout detector returned `[]`; this source scan is
+  supplementary, not a substitute for the rendered browser checks below.
+- Actual authenticated in-app browser: both requested demo pages; desktop,
+  320x700, 390x844, 768x1024 and short 1024x600 layouts. Headers/actions remain
+  within viewport; tables scroll independently. Actual unsaved input checks:
+  23g gross minus 1g stone = 22g net, 22K fine = 20.167g, 1000 pieces; manual
+  net edits, add/remove line, warning on/off, themed calendar opening and Cancel.
+  Repeated normal page-link navigation rendered one receipt row, not duplicates.
+  No Save Receipt, Credit Vault, Reassign, Acknowledge or Cancel Job Order posted.
+- Browser found a hidden Actions heading absolutely positioned outside the scroll
+  container: root width 1001 at viewport390. Added a failing regression assertion,
+  then scoped `position:relative` on the scroll wrapper. Final root/body widths
+  equal viewport at all tested sizes (receipt table remains1040px inside it).
+  Focused Remove action measured44x44; floating label stayed within viewport.
+  No application errors observed; browser logs included Electron's CSP warning.
+
+Initial PHP run exposed an unsupported icon (500) and an overbroad test selector
+counting layout logout forms. Corrected icon and test scoping; final results above.
+Final read-only reviewer found a source-traced Turbo-restoration risk in the new
+reassign-select enhancement opt-in (cached wrapper is skipped by reinitialization).
+Removed that opt-in, retaining the styled native select and original submission
+contract rather than changing shared JavaScript. A new rendered regression was
+observed RED before the fix; final focused PHP/frontend suites passed afterward.
+Reviewer verified closure, with no other concrete critical/important regressions.
+This was source review, not a browser Back/Forward reproduction. Screenshots remain
+representative: demo job1 has no alternative karigar and therefore no reassign UI.
+Physical phone, native wheel/Tab traversal, browser Back/Forward, populated
+receipt/invoice browser views and actual posting confirmation journeys remain
+unrun; automated disposable fixtures cover populated records and posting logic.
+Locator-directed focus checks are not claimed as full keyboard traversal. Full
+repository PHP suite/performance benchmarking not run for this scoped UI change.
+
+Evidence directory (local only):
+`/home/himanshu/jf-table-evidence/job-order-records-20261111.hkXWhP/`:
+frontend/PHP/regression logs, four synthetic demo screenshots (`detail-desktop.jpg`,
+`detail-mobile.jpg`, `receive-desktop.jpg`, `receive-mobile.jpg`). Final commit is
+recorded in the separate external progress ledger after commit. Local preview
+business records were not changed. OTP/staging/production/mobile remain untouched.
+
+## Earlier checkpoint — Wastage label stays on one desktop line
 
 Clean start `136033a56a5bb4d618119465b50314ca539820f5`. Fixed132px label slot
 could wrap Allowed Wastage % *. Replaced its shrinking flex basis with intrinsic,

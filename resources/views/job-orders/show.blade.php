@@ -1,279 +1,220 @@
 <x-app-layout>
-    <style>
-        .job-order-show-page {
-            --job-border: #e2e8f0;
-        }
-
-        .job-order-show-page .shadow-sm {
-            box-shadow: none;
-        }
-
-        .job-order-show-page .rounded-xl {
-            border-radius: 16px;
-        }
-
-        .job-order-show-page :is(div, section):has(> table) {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .job-order-show-page table {
-            min-width: 720px;
-        }
-
-        .job-order-show-page .job-show-kpi-grid {
-            align-items: stretch;
-        }
-
-        .job-order-show-page .job-show-kpi-grid > div {
-            min-width: 0;
-            border-color: var(--job-border);
-        }
-
-        .job-order-show-page .job-show-kpi-grid .text-2xl {
-            overflow-wrap: anywhere;
-            font-size: clamp(18px, 2.4vw, 24px);
-            line-height: 1.1;
-        }
-
-        @media (max-width: 640px) {
-            .job-order-show-page {
-                padding-inline: 10px;
-            }
-
-            .job-order-show-page .job-show-kpi-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-
-            .job-order-show-page .job-show-kpi-grid > div {
-                padding: 12px;
-            }
-
-            .job-order-show-page table {
-                min-width: 680px;
-                font-size: 12px;
-            }
-
-            .job-order-show-page form.flex {
-                flex-direction: column;
-                align-items: stretch;
-                width: 100%;
-            }
-
-            .job-order-show-page form.flex input,
-            .job-order-show-page form.flex select,
-            .job-order-show-page form.flex button {
-                width: 100% !important;
-            }
-        }
-    </style>
-
-    <x-page-header :title="'Job Order ' . $jobOrder->job_order_number" :subtitle="'Karigar: ' . ($jobOrder->karigar?->name ?? '—') . ' · DC: ' . $jobOrder->challan_number">
+    <x-page-header :title="'Job Order ' . $jobOrder->job_order_number" :subtitle="'Karigar: ' . ($jobOrder->karigar?->name ?? '—') . ' · DC: ' . $jobOrder->challan_number" class="job-record-header">
         <x-slot:actions>
-            <a href="{{ route('job-orders.challan', $jobOrder) }}" target="_blank" class="btn btn-secondary btn-sm">Print Challan</a>
+            <a href="{{ route('job-orders.index') }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-left" size="16" />Job Orders</a>
+            <a href="{{ route('job-orders.challan', $jobOrder) }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm"><x-icon name="printer" size="16" />Print Challan</a>
             @if($jobOrder->isOpen())
-                <a href="{{ route('job-orders.receive.form', $jobOrder) }}" class="btn btn-primary btn-sm">Receive Items</a>
+                @can('job_order.manage')
+                    <a href="{{ route('job-orders.receive.form', $jobOrder) }}" class="btn btn-primary btn-sm"><x-icon name="square-check-big" size="16" />Receive Items</a>
+                @endcan
             @endif
             @if($jobOrder->returned_fine_weight > 0 || $jobOrder->status === 'completed')
-                <a href="{{ route('job-orders.return-doc', $jobOrder) }}" target="_blank" class="btn btn-secondary btn-sm">Return Doc</a>
+                <a href="{{ route('job-orders.return-doc', $jobOrder) }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Return Doc</a>
             @endif
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner job-order-show-page">
-
-        <div class="job-show-kpi-grid grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-4">
-                <div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Issued (fine)</div>
-                <div class="text-2xl font-bold text-amber-800 mt-1">{{ number_format($jobOrder->issued_fine_weight, 3) }}<span class="text-xs font-normal ml-1">g</span></div>
-                <div class="text-[11px] text-gray-500 mt-1">{{ number_format($jobOrder->issued_gross_weight, 3) }}g gross</div>
+    <div class="content-inner job-order-show-page job-record-page">
+        <section class="job-record-surface" aria-label="Job order position">
+            <div class="job-record-metrics">
+                <dl class="job-record-metric" data-job-position="issued">
+                    <dt>Issued (fine)</dt><dd>{{ number_format($jobOrder->issued_fine_weight, 3) }}g</dd>
+                    <small>{{ number_format($jobOrder->issued_gross_weight, 3) }}g gross</small>
+                </dl>
+                <dl class="job-record-metric" data-job-position="returned">
+                    <dt>Returned (fine)</dt><dd>{{ number_format($jobOrder->returned_fine_weight, 3) }}g</dd>
+                    <small>{{ number_format($jobOrder->returned_gross_weight, 3) }}g gross</small>
+                </dl>
+                <dl class="job-record-metric" data-job-position="wastage">
+                    <dt>Wastage</dt><dd>{{ number_format($jobOrder->actual_wastage_fine, 3) }}g</dd>
+                    <small>Allowed: {{ number_format($jobOrder->allowed_wastage_fine, 3) }}g ({{ $jobOrder->allowed_wastage_percent }}%)</small>
+                </dl>
+                <dl class="job-record-metric" data-job-position="status">
+                    <dt>Status</dt>
+                    <dd><span class="job-record-status {{ $jobOrder->status === 'completed' ? 'bg-emerald-100 text-emerald-800' : ($jobOrder->status === 'cancelled' ? 'bg-gray-200 text-gray-600' : ($jobOrder->status === 'partial_return' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')) }}">{{ str_replace('_', ' ', $jobOrder->status) }}</span></dd>
+                    <small>Issued: {{ $jobOrder->issue_date->format('d M Y') }}</small>
+                </dl>
             </div>
-            <div class="bg-white rounded-xl border border-emerald-200 shadow-sm p-4">
-                <div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">Returned (fine)</div>
-                <div class="text-2xl font-bold text-emerald-800 mt-1">{{ number_format($jobOrder->returned_fine_weight, 3) }}<span class="text-xs font-normal ml-1">g</span></div>
-                <div class="text-[11px] text-gray-500 mt-1">{{ number_format($jobOrder->returned_gross_weight, 3) }}g gross</div>
-            </div>
-            <div class="bg-white rounded-xl border border-blue-200 shadow-sm p-4">
-                <div class="text-[10px] uppercase tracking-wide text-blue-700 font-semibold">Wastage</div>
-                <div class="text-2xl font-bold text-blue-800 mt-1">{{ number_format($jobOrder->actual_wastage_fine, 3) }}<span class="text-xs font-normal ml-1">g</span></div>
-                <div class="text-[11px] text-gray-500 mt-1">Allowed: {{ number_format($jobOrder->allowed_wastage_fine, 3) }}g ({{ $jobOrder->allowed_wastage_percent }}%)</div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <div class="text-[10px] uppercase tracking-wide text-slate-700 font-semibold">Status</div>
-                <div class="mt-1">
-                    <span class="inline-block px-2.5 py-1 rounded-full text-sm font-bold {{ $jobOrder->status === 'completed' ? 'bg-emerald-100 text-emerald-800' : ($jobOrder->status === 'cancelled' ? 'bg-gray-200 text-gray-600' : ($jobOrder->status === 'partial_return' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')) }}">{{ str_replace('_', ' ', $jobOrder->status) }}</span>
-                </div>
-                <div class="text-[11px] text-gray-500 mt-2">Issued: {{ $jobOrder->issue_date->format('d M Y') }}</div>
-            </div>
-        </div>
+        </section>
 
         @if(!empty($jobOrder->discrepancy_flags))
-            <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4 flex items-start gap-3">
-                <x-icon name="triangle-alert" size="22" class="flex-none mt-0.5" stroke="#b42318" />
-                <div class="flex-1">
-                    <p class="text-sm font-bold text-rose-800 mb-1">Weight mismatch — needs review on this job order</p>
-                    <div class="flex flex-wrap gap-2">
+            <section class="job-record-warning" aria-label="Weight discrepancy review">
+                <x-icon name="triangle-alert" size="22" class="flex-none" />
+                <div>
+                    <p>Weight mismatch — needs review on this job order</p>
+                    <div class="job-record-flags">
                         @foreach($jobOrder->discrepancy_flags as $flag)
-                            <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-rose-200 text-rose-900">{{ str_replace('_', ' ', $flag) }}</span>
+                            <span>{{ str_replace('_', ' ', $flag) }}</span>
                         @endforeach
                     </div>
                     @if(!$jobOrder->discrepancy_acknowledged && $jobOrder->isOpen())
                         @can('job_order.manage')
-                        <form method="POST" action="{{ route('job-orders.acknowledge', $jobOrder) }}" class="mt-3" onsubmit="return confirm('Acknowledge discrepancies and mark this job order completed?');">
-                            @csrf
-                            <button type="submit" class="text-xs px-3 py-1 rounded-lg bg-rose-700 text-white hover:bg-rose-800">Acknowledge & Complete</button>
-                        </form>
+                            <form method="POST" action="{{ route('job-orders.acknowledge', $jobOrder) }}" onsubmit="return confirm('Acknowledge discrepancies and mark this job order completed?');">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary btn-sm">Acknowledge & Complete</button>
+                            </form>
                         @endcan
                     @endif
                 </div>
-            </div>
+            </section>
         @endif
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
-            <div class="px-5 py-3 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-800">Issuance Lines</h3></div>
-            <table class="w-full text-sm jf-table">
-                <thead>
-                    <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                        <th class="px-4 py-2 text-left font-semibold">Lot</th>
-                        <th class="px-4 py-2 text-left font-semibold">Purity</th>
-                        <th class="px-4 py-2 text-right font-semibold">Gross Wt</th>
-                        <th class="px-4 py-2 text-right font-semibold">Fine Wt</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($jobOrder->issuances as $iss)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-2 font-mono text-xs">Lot #{{ $iss->metalLot?->lot_number ?? $iss->metal_lot_id }}</td>
-                            <td class="px-4 py-2 text-gray-600">{{ rtrim(rtrim(number_format($iss->purity, 2), '0'), '.') }}K</td>
-                            <td class="px-4 py-2 text-right font-mono">{{ number_format($iss->gross_weight, 3) }}g</td>
-                            <td class="px-4 py-2 text-right font-mono">{{ number_format($iss->fine_weight, 3) }}g</td>
+        <section class="job-record-surface" aria-labelledby="job-issuances-title">
+            <header class="job-record-head"><h2 id="job-issuances-title">Issuance Lines</h2></header>
+            <div class="job-record-scroll jf-table-wrap jf-scrollbar" tabindex="0" role="region" aria-label="Bullion issuance lines">
+                <table class="jf-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="jf-table-index">#</th>
+                            <th scope="col" class="text-left">Lot</th>
+                            <th scope="col" class="text-left">Purity</th>
+                            <th scope="col" class="text-right">Gross (g)</th>
+                            <th scope="col" class="text-right">Fine (g)</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
-            <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-800">Receipts ({{ $jobOrder->receipts->count() }})</h3>
-                @if($jobOrder->isOpen())
-                    <a href="{{ route('job-orders.receive.form', $jobOrder) }}" class="text-xs text-amber-700 hover:underline">+ Receive items</a>
-                @endif
+                    </thead>
+                    <tbody>
+                        @forelse($jobOrder->issuances as $iss)
+                            <tr>
+                                <td class="jf-table-index">{{ $loop->iteration }}</td>
+                                <td>Lot #{{ $iss->metalLot?->lot_number ?? $iss->metal_lot_id }}</td>
+                                <td>{{ rtrim(rtrim(number_format($iss->purity, 2), '0'), '.') }}{{ $jobOrder->metal_type === 'silver' ? '‰' : 'K' }}</td>
+                                <td class="text-right">{{ number_format($iss->gross_weight, 3) }}g</td>
+                                <td class="text-right">{{ number_format($iss->fine_weight, 3) }}g</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="jf-table-empty">No vault issuance lines recorded for this job.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-            @if($jobOrder->receipts->isEmpty())
-                <div class="py-8 text-center text-gray-400 text-sm">No receipts yet.</div>
-            @else
-                @foreach($jobOrder->receipts as $rcpt)
-                    <div class="border-t border-gray-100 first:border-t-0 px-5 py-3">
-                        <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <span class="font-mono text-sm text-gray-800">{{ $rcpt->receipt_number }}</span>
-                                <span class="text-xs text-gray-400 ml-2">{{ $rcpt->receipt_date->format('d M Y') }}</span>
-                            </div>
-                            <div class="text-xs text-gray-600">{{ $rcpt->total_pieces }} pcs · {{ number_format($rcpt->total_net_weight, 3) }}g net · {{ number_format($rcpt->total_fine_weight, 3) }}g fine</div>
-                        </div>
-                        <table class="w-full text-xs jf-table">
+        </section>
+
+        <section class="job-record-surface" aria-labelledby="job-receipts-title">
+            <header class="job-record-head">
+                <h2 id="job-receipts-title">Receipts ({{ $jobOrder->receipts->count() }})</h2>
+                @if($jobOrder->isOpen())
+                    @can('job_order.manage')
+                        <a href="{{ route('job-orders.receive.form', $jobOrder) }}" class="btn btn-secondary btn-sm"><x-icon name="plus" size="16" />Receive Items</a>
+                    @endcan
+                @endif
+            </header>
+            @forelse($jobOrder->receipts as $rcpt)
+                <section class="job-record-receipt" aria-label="Receipt {{ $rcpt->receipt_number }}">
+                    <div class="job-record-receipt-head">
+                        <div><strong>{{ $rcpt->receipt_number }}</strong><time>{{ $rcpt->receipt_date->format('d M Y') }}</time></div>
+                        <span>{{ $rcpt->total_pieces }} pcs · {{ number_format($rcpt->total_net_weight, 3) }}g net · {{ number_format($rcpt->total_fine_weight, 3) }}g fine</span>
+                    </div>
+                    <div class="job-record-scroll jf-table-wrap jf-scrollbar" tabindex="0" role="region" aria-label="Items in receipt {{ $rcpt->receipt_number }}">
+                        <table class="jf-table">
                             <thead>
-                                <tr class="text-gray-500">
-                                    <th class="text-left font-semibold py-1">Description</th>
-                                    <th class="text-left font-semibold py-1">HSN</th>
-                                    <th class="text-right font-semibold py-1">Pcs</th>
-                                    <th class="text-right font-semibold py-1">Gross</th>
-                                    <th class="text-right font-semibold py-1">Stone</th>
-                                    <th class="text-right font-semibold py-1">Net</th>
-                                    <th class="text-right font-semibold py-1">Purity</th>
+                                <tr>
+                                    <th scope="col" class="jf-table-index">#</th>
+                                    <th scope="col" class="text-left">Description</th>
+                                    <th scope="col" class="text-left">HSN</th>
+                                    <th scope="col" class="text-right">Pcs</th>
+                                    <th scope="col" class="text-right">Gross (g)</th>
+                                    <th scope="col" class="text-right">Stone (g)</th>
+                                    <th scope="col" class="text-right">Net (g)</th>
+                                    <th scope="col" class="text-right">Purity</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($rcpt->items as $i)
                                     <tr>
-                                        <td class="py-1">{{ $i->description }}</td>
-                                        <td class="py-1 text-gray-500">{{ $i->hsn_code }}</td>
-                                        <td class="py-1 text-right font-mono">{{ $i->pieces }}</td>
-                                        <td class="py-1 text-right font-mono">{{ number_format($i->gross_weight, 3) }}</td>
-                                        <td class="py-1 text-right font-mono">{{ number_format($i->stone_weight, 3) }}</td>
-                                        <td class="py-1 text-right font-mono">{{ number_format($i->net_weight, 3) }}</td>
-                                        <td class="py-1 text-right">{{ rtrim(rtrim(number_format($i->purity, 2), '0'), '.') }}K</td>
+                                        <td class="jf-table-index">{{ $loop->iteration }}</td>
+                                        <td class="job-record-description">{{ $i->description }}</td>
+                                        <td>{{ $i->hsn_code }}</td>
+                                        <td class="text-right">{{ $i->pieces }}</td>
+                                        <td class="text-right">{{ number_format($i->gross_weight, 3) }}</td>
+                                        <td class="text-right">{{ number_format($i->stone_weight, 3) }}</td>
+                                        <td class="text-right">{{ number_format($i->net_weight, 3) }}</td>
+                                        <td class="text-right">{{ rtrim(rtrim(number_format($i->purity, 2), '0'), '.') }}{{ $jobOrder->metal_type === 'silver' ? '‰' : 'K' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-                @endforeach
-            @endif
-        </div>
+                </section>
+            @empty
+                <p class="job-record-empty">No receipts yet.</p>
+            @endforelse
+        </section>
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
-            <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-800">Karigar Invoices ({{ $jobOrder->invoices->count() }})</h3>
-                <a href="{{ route('karigar-invoices.create') }}?job_order={{ $jobOrder->id }}" class="text-xs text-amber-700 hover:underline">+ Add Invoice</a>
-            </div>
+        <section class="job-record-surface" aria-labelledby="job-invoices-title">
+            <header class="job-record-head">
+                <h2 id="job-invoices-title">Karigar Invoices ({{ $jobOrder->invoices->count() }})</h2>
+                @can('karigar_invoice.manage')
+                    <a href="{{ route('karigar-invoices.create') }}?job_order={{ $jobOrder->id }}" class="btn btn-secondary btn-sm"><x-icon name="plus" size="16" />Add Invoice</a>
+                @endcan
+            </header>
             @if($jobOrder->invoices->isEmpty())
-                <div class="py-8 text-center text-gray-400 text-sm">No karigar invoice attached yet.</div>
+                <p class="job-record-empty">No karigar invoice attached yet.</p>
             @else
-                <table class="w-full text-sm jf-table">
-                    <thead>
-                        <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                            <th class="px-4 py-2 text-left font-semibold">Invoice #</th>
-                            <th class="px-4 py-2 text-left font-semibold">Date</th>
-                            <th class="px-4 py-2 text-left font-semibold">Mode</th>
-                            <th class="px-4 py-2 text-right font-semibold">Total</th>
-                            <th class="px-4 py-2 text-center font-semibold">Payment</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach($jobOrder->invoices as $inv)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2"><a href="{{ route('karigar-invoices.show', $inv) }}" class="text-amber-700 hover:underline font-mono">{{ $inv->karigar_invoice_number }}</a></td>
-                                <td class="px-4 py-2 text-gray-500">{{ $inv->karigar_invoice_date->format('d M Y') }}</td>
-                                <td class="px-4 py-2"><span class="text-[10px] uppercase font-semibold text-gray-700">{{ str_replace('_', ' ', $inv->mode) }}</span></td>
-                                <td class="px-4 py-2 text-right font-mono">₹{{ number_format($inv->total_after_tax, 2) }}</td>
-                                <td class="px-4 py-2 text-center"><span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $inv->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ $inv->payment_status }}</span></td>
+                <div class="job-record-scroll jf-table-wrap jf-scrollbar" tabindex="0" role="region" aria-label="Karigar invoices">
+                    <table class="jf-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="jf-table-index">#</th>
+                                <th scope="col" class="text-left">Invoice #</th>
+                                <th scope="col" class="text-left">Date</th>
+                                <th scope="col" class="text-left">Mode</th>
+                                <th scope="col" class="text-right">Total</th>
+                                <th scope="col" class="text-center">Payment</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach($jobOrder->invoices as $inv)
+                                <tr>
+                                    <td class="jf-table-index">{{ $loop->iteration }}</td>
+                                    <td><a href="{{ route('karigar-invoices.show', $inv) }}">{{ $inv->karigar_invoice_number }}</a></td>
+                                    <td>{{ $inv->karigar_invoice_date->format('d M Y') }}</td>
+                                    <td>{{ str_replace('_', ' ', $inv->mode) }}</td>
+                                    <td class="text-right">₹{{ number_format($inv->total_after_tax, 2) }}</td>
+                                    <td class="text-center"><span class="job-record-status {{ $inv->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ $inv->payment_status }}</span></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
-        </div>
+        </section>
 
         @if($jobOrder->isOpen())
             @can('job_order.manage')
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <h3 class="text-sm font-semibold text-gray-800 mb-3">Other Actions</h3>
-                <div class="flex flex-wrap gap-3">
-                    <form method="POST" action="{{ route('job-orders.leftover', $jobOrder) }}" class="flex items-end gap-2">
-                        @csrf
-                        <div>
-                            <label class="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Record Leftover Bullion (fine g)</label>
-                            <input type="number" step="0.001" min="0.001" name="fine_weight" required class="rounded-md border-gray-300 text-sm" style="width:160px;">
-                        </div>
-                        <button type="submit" class="btn btn-secondary btn-sm">Credit Vault</button>
-                    </form>
-                    @if(isset($otherKarigars) && $otherKarigars->isNotEmpty())
-                        <form method="POST" action="{{ route('job-orders.reassign', $jobOrder) }}" class="flex items-end gap-2"
-                              onsubmit="return confirm('Give this job (and its metal) to the chosen karigar?');">
+                <section class="job-record-surface" aria-labelledby="job-operations-title">
+                    <header class="job-record-head"><h2 id="job-operations-title">Other Actions</h2></header>
+                    <div class="job-record-operations">
+                        <form method="POST" action="{{ route('job-orders.leftover', $jobOrder) }}" class="job-record-operation">
                             @csrf
                             <div>
-                                <label class="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Give job to another karigar</label>
-                                <select name="to_karigar_id" required class="rounded-md border-gray-300 text-sm" style="width:200px;">
-                                    <option value="" disabled selected>— Select karigar —</option>
-                                    @foreach($otherKarigars as $k)
-                                        <option value="{{ $k->id }}">{{ $k->name }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="job-record-label" for="job-leftover">Record Leftover Bullion (fine g)</label>
+                                <input id="job-leftover" type="number" step="0.001" min="0.001" name="fine_weight" required class="job-record-control">
                             </div>
-                            <button type="submit" class="btn btn-secondary btn-sm">Reassign</button>
+                            <button type="submit" class="btn btn-secondary btn-sm">Credit Vault</button>
                         </form>
-                    @endif
-                    @if($jobOrder->status === 'issued')
-                        <form method="POST" action="{{ route('job-orders.cancel', $jobOrder) }}" onsubmit="return confirm('Cancel job order? This will return all bullion to the source lot.');">
-                            @csrf
-                            <button type="submit" class="text-xs px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100">Cancel Job Order</button>
-                        </form>
-                    @endif
-                </div>
-            </div>
+                        @if(isset($otherKarigars) && $otherKarigars->isNotEmpty())
+                            <form method="POST" action="{{ route('job-orders.reassign', $jobOrder) }}" class="job-record-operation" onsubmit="return confirm('Give this job (and its metal) to the chosen karigar?');">
+                                @csrf
+                                <div>
+                                    <label class="job-record-label" for="job-reassign">Give job to another karigar</label>
+                                    <select id="job-reassign" name="to_karigar_id" required class="job-record-control">
+                                        <option value="" disabled selected>— Select karigar —</option>
+                                        @foreach($otherKarigars as $k)
+                                            <option value="{{ $k->id }}">{{ $k->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-secondary btn-sm">Reassign</button>
+                            </form>
+                        @endif
+                        @if($jobOrder->status === 'issued')
+                            <form method="POST" action="{{ route('job-orders.cancel', $jobOrder) }}" onsubmit="return confirm('Cancel job order? This will return all bullion to the source lot.');">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary btn-sm job-record-danger">Cancel Job Order</button>
+                            </form>
+                        @endif
+                    </div>
+                </section>
             @endcan
         @endif
     </div>
