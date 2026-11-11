@@ -2,7 +2,45 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Repairs scroll-responsive intake, 2026-11-11
+## Latest checkpoint — Smooth Repairs intake motion, 2026-11-11
+
+Base `19df25c473e188c671167240e4e5bcbccbacd583`. Owner requested smooth closing,
+then reported whole-page shaking during the live iteration. Added one bounded
+native Web Animations height transition (220ms close,260ms open), temporary
+clipping/inert on closing fields, and arrow rotation. Reduced-motion preference
+or unavailable animation API uses immediate final state. Required-field invalid
+events reveal immediately; rapid reversal cancels stale finish callbacks; Turbo
+disposal clears animation/clipping/inert; viewport resize settles current target.
+Native summary border ResizeObserver notification must not cancel its own
+opening animation (observed RED/GREEN regression). Original draft nodes retained.
+
+Actual browser tracing identified shake: at closing completion the vertical
+scrollbar disappeared before table fitting restored it. Scroller width1079→1074
+shifted the whole page5px sideways. Repairs-only scrollbar-gutter:stable fixes it:
+expanded/before-fit/after-fit all1074px, computed gutter stable. Temporary
+diagnostic logging removed. No global body overflow change or other-page gutter.
+
+Verification: `node --test tests/Frontend/*.test.mjs`:287passed/22existing skips/
+0failed, including17intake controller tests; motion and observer regressions
+observed RED first. `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1
+DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+tests/Feature/Repair/RepairWorkspaceTest.php
+tests/Feature/Repair/RepairPageRevisitTest.php`:5tests/53assertions,0failures/skips,
+guarded disposable DB only. `npm run build`:85modules,app-DwhbCU7c.js and unchanged
+app-l0N-yk7K.css. Blade lint/diff checks pass. Previous70test repair run remains
+prior-batch evidence, not a rerun here. No financial/controller mutation change.
+Live desktop1339x925 closing animation flag observed active, final closed height
+82.34px and footer892.8within925; reopening returns top. Phone390x844 collapse and
+upward reopening checked, footer within viewport. Reduced-motion/rapid reversal/
+native invalid/navigation cleanup verified in controller tests; full physical
+phone and screen-reader acceptance unrun. No independent-review sign-off claimed.
+
+Evidence/logs: `/home/himanshu/jf-table-evidence/repair-intake-motion-20261111.P1tWeM/`,
+including SCROLLBAR-SHIFT.md with actual before/after measurements. Existing
+synthetic repairs untouched. Claude's Dhiran preservation hashes unchanged.
+Local only: no push/merge/deployment/OTP/SMTP/native-app changes.
+
+## Previous checkpoint — Repairs scroll-responsive intake, 2026-11-11
 
 Base `3b39832b3f79102e2322e493574376dc9bf7839e`; same branch/worktree.
 Owner requested the intake open at page top, collapsing while browsing, with a

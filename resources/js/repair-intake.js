@@ -11,6 +11,14 @@ export function createRepairIntake(root, doc = document, win = window) {
     const position = () => shell === win ? win.scrollY : shell.scrollTop;
     const scrollTo = top => shell.scrollTo({ top, behavior: 'instant' });
     let frame = 0, active = true, upwardIntent = false, upwardPane = null, touchY = 0;
+    let animation = null, expanded = details.open;
+
+    const stopMotion = () => {
+        if (animation) { animation.onfinish = null; animation.cancel(); animation = null; }
+        details.removeAttribute('data-intake-animating');
+        details.removeAttribute('data-intake-closing');
+        form.inert = false;
+    };
 
     const resetFit = () => {
         root.removeAttribute('data-repair-fit');
@@ -27,29 +35,45 @@ export function createRepairIntake(root, doc = document, win = window) {
         const pane = panes.find(p => p.getClientRects().length);
         if (!pane || pane.clientHeight < 180) resetFit();
     };
-    const open = () => {
+    const change = (next, immediate = false) => {
+        const from = details.getBoundingClientRect().height;
+        stopMotion();
+        expanded = next;
         upwardIntent = false;
         details.open = true;
         resetFit();
-        for (const pane of panes) pane.scrollTop = 0;
-        scrollTo(0);
+        if (next) for (const pane of panes) pane.scrollTop = 0;
+        scrollTo(next ? 0 : 1);
+        const finish = () => {
+            details.open = next;
+            if (!next) { fit(); scrollTo(1); }
+        };
+        if (immediate || !details.animate || win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return finish();
+        const border = win.getComputedStyle(details);
+        const to = next ? details.getBoundingClientRect().height : summary.getBoundingClientRect().height
+            + (parseFloat(border.borderTopWidth) || 0) + (parseFloat(border.borderBottomWidth) || 0);
+        details.setAttribute('data-intake-animating', '');
+        if (!next) details.setAttribute('data-intake-closing', '');
+        form.inert = !next;
+        // One bounded layout transition lets the table rise naturally without scaling text.
+        animation = details.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+            duration: next ? 260 : 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both',
+        });
+        animation.onfinish = () => { stopMotion(); finish(); };
     };
-    const close = () => {
-        upwardIntent = false;
-        details.open = false;
-        fit();
-        scrollTo(1);
-    };
+    const open = () => change(true);
+    const close = () => change(false);
+    const revealInvalid = () => change(true, true);
     const measure = () => {
         frame = 0;
-        if (!active || !root.isConnected) return;
+        if (!active || !root.isConnected || animation) return;
         const current = position();
         if (details.open && current > 24 && !form.contains(doc.activeElement) && root.dataset.intakeErrors !== 'true') close();
         else if (!details.open && current <= 1 && upwardIntent && (!upwardPane || upwardPane.scrollTop === 0)) open();
     };
     const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };
-    const toggle = event => { event.preventDefault(); details.open ? close() : open(); };
-    const resize = () => { if (!details.open) fit(); };
+    const toggle = event => { event.preventDefault(); expanded ? close() : open(); };
+    const resize = () => { if (animation) change(expanded, true); else if (!details.open) fit(); };
     // Focus/scrollIntoView can move the one-pixel return path before a summary click.
     // Only a browsing gesture may auto-open; otherwise that click would close it again.
     const intent = (up, event) => {
@@ -67,18 +91,20 @@ export function createRepairIntake(root, doc = document, win = window) {
     for (const [type, handler] of gestures) shell.addEventListener(type, handler, { passive: true });
     shell.addEventListener('scroll', schedule, { passive: true });
     summary.addEventListener('click', toggle);
-    form.addEventListener('invalid', open, true);
+    form.addEventListener('invalid', revealInvalid, true);
     win.addEventListener('resize', resize);
-    const observer = win.ResizeObserver ? new win.ResizeObserver(resize) : null;
+    // The native summary itself gains/loses its bottom border when opened.
+    const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation && !details.open) fit(); }) : null;
     for (const el of root.querySelectorAll('[data-repair-measure], summary')) observer?.observe(el);
     schedule();
     return () => {
         active = false;
         win.cancelAnimationFrame(frame);
+        stopMotion();
         shell.removeEventListener('scroll', schedule);
         for (const [type, handler] of gestures) shell.removeEventListener(type, handler);
         summary.removeEventListener('click', toggle);
-        form.removeEventListener('invalid', open, true);
+        form.removeEventListener('invalid', revealInvalid, true);
         win.removeEventListener('resize', resize);
         observer?.disconnect();
         details.open = true;

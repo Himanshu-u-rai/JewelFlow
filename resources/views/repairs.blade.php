@@ -1,5 +1,7 @@
 <x-app-layout>
     <style>
+        /* Keep the page width stable while the intake crosses the scroll threshold. */
+        .content-body:has(.repairs-management-page) { scrollbar-gutter: stable; }
         :root {
             --r-ink: #111827;
             --r-ink-soft: #334155;
@@ -421,12 +423,14 @@
             container: repair-intake / inline-size;
             overflow: visible !important;
         }
+        .repairs-form-card[data-intake-animating] { overflow: clip !important; }
         .repairs-intake-summary { list-style: none; cursor: pointer; border-radius: 12px 12px 0 0; }
         .repairs-intake-summary::-webkit-details-marker { display: none; }
         .repairs-intake-summary:focus-visible { outline: 2px solid var(--r-accent); outline-offset: -3px; }
         .repairs-intake-arrow { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; color: var(--r-accent-dark); border: 1px solid var(--r-border-soft); border-radius: 8px; }
-        .repairs-intake-arrow svg { width: 18px; height: 18px; }
-        details[open] > .repairs-intake-summary .repairs-intake-arrow svg { transform: rotate(180deg); }
+        .repairs-intake-arrow svg { width: 18px; height: 18px; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+        details[open]:not([data-intake-closing]) > .repairs-intake-summary .repairs-intake-arrow svg { transform: rotate(180deg); }
+        @media (prefers-reduced-motion: reduce) { .repairs-intake-arrow svg { transition: none; } }
         details:not([open]) > .repairs-intake-summary { border-bottom: 0; border-radius: 12px; }
         .repairs-management-page[data-repair-fit] { height: var(--repair-workspace-height); min-height: 0; overflow-anchor: none; }
         [data-repair-fit] .repairs-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }

@@ -5,7 +5,7 @@ import test from 'node:test';
 const source = new URL('../../resources/js/repair-intake.js', import.meta.url);
 const controller = existsSync(source) ? await import(source) : {};
 
-function fixture({ room = 400, height = 925, errors = false } = {}) {
+function fixture({ room = 400, height = 925, errors = false, animated = false, reducedMotion = false } = {}) {
     assert.equal(typeof controller.createRepairIntake, 'function', 'The repair intake scroll controller must exist');
     const listeners = new Map(), frames = new Map(), attrs = new Map(), styles = new Map();
     let serial = 0;
@@ -20,6 +20,16 @@ function fixture({ room = 400, height = 925, errors = false } = {}) {
     const summary = { ...target(), key: 'summary' };
     const form = { ...target(), key: 'form', draft: 'Unsaved repair description', contains: node => node === form };
     const details = { open: true, querySelector: s => s === 'summary' ? summary : form };
+    const motions = [];
+    details.getBoundingClientRect = () => ({ height: details.open ? 460 : 80 });
+    summary.getBoundingClientRect = () => ({ height: 80 });
+    details.setAttribute = (k, v) => attrs.set(k, v);
+    details.removeAttribute = k => attrs.delete(k);
+    if (animated) details.animate = (keyframes, options) => {
+        const motion = { keyframes, options, cancel() { this.cancelled = true; }, finish() { this.onfinish?.(); } };
+        motions.push(motion);
+        return motion;
+    };
     const pane = { clientHeight: room, scrollTop: 0, getClientRects: () => [{}] };
     const root = {
         parentElement: shell, dataset: { intakeErrors: String(errors) }, isConnected: true,
@@ -33,6 +43,7 @@ function fixture({ room = 400, height = 925, errors = false } = {}) {
     const observers = [];
     const win = {
         ...target(), key: 'win', innerHeight: height, scrollY: 0,
+        matchMedia: () => ({ matches: reducedMotion }),
         getComputedStyle: () => ({ overflowY: 'auto' }),
         requestAnimationFrame(fn) { frames.set(++serial, fn); return serial; },
         cancelAnimationFrame: id => frames.delete(id),
@@ -42,8 +53,71 @@ function fixture({ room = 400, height = 925, errors = false } = {}) {
     const send = (key, type, extras = {}) => { listeners.get(`${key}:${type}`)?.({ preventDefault() {}, ...extras }); flush(); };
     const dispose = controller.createRepairIntake(root, doc, win);
     flush();
-    return { root, shell, summary, form, details, pane, attrs, styles, doc, win, frames, observers, listeners, dispose, send, flush };
+    return { root, shell, summary, form, details, pane, attrs, styles, doc, win, frames, observers, listeners, motions, dispose, send, flush };
 }
+
+test('closing slides to the summary before hiding content and fitting the register', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click');
+    assert.equal(f.motions.length, 1);
+    assert.equal(f.details.open, true, 'Native details must remain open until its closing animation finishes');
+    assert.equal(f.form.inert, true, 'Fields being hidden cannot receive focus');
+    assert.equal(f.attrs.has('data-repair-fit'), false);
+    assert.deepEqual(f.motions[0].keyframes, [{ height: '460px' }, { height: '80px' }]);
+    f.motions[0].finish();
+    assert.equal(f.details.open, false);
+    assert.equal(f.form.inert, false);
+    assert.equal(f.attrs.has('data-repair-fit'), true);
+    f.send('summary', 'click');
+    assert.equal(f.motions.length, 2);
+    assert.equal(f.details.open, true);
+    f.motions[1].finish();
+    assert.equal(f.form.draft, 'Unsaved repair description');
+});
+
+test('reduced motion applies the final state immediately without spatial animation', () => {
+    const f = fixture({ animated: true, reducedMotion: true });
+    f.send('summary', 'click');
+    assert.equal(f.motions.length, 0);
+    assert.equal(f.details.open, false);
+    assert.equal(f.attrs.has('data-repair-fit'), true);
+});
+
+test('rapid reversal cancels the old animation and invalid fields are revealed immediately', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click');
+    f.send('summary', 'click');
+    assert.equal(f.motions[0].cancelled, true);
+    assert.equal(f.motions.length, 2);
+    f.motions[0].finish();
+    assert.equal(f.details.open, true, 'A superseded close must not hide a newer open');
+    f.send('form', 'invalid');
+    assert.equal(f.motions[1].cancelled, true);
+    assert.equal(f.details.open, true);
+    assert.equal(f.form.inert, false);
+});
+
+test('navigation cancels in-flight animation and removes temporary clipping and inert state', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click');
+    f.dispose();
+    assert.equal(f.motions[0].cancelled, true);
+    assert.equal(f.form.inert, false);
+    assert.equal(f.attrs.size, 0);
+    f.motions[0].finish();
+    assert.equal(f.details.open, true);
+});
+
+test('the summary border resize cannot cancel reopening, while a real viewport resize settles it safely', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click'); f.motions[0].finish();
+    f.send('summary', 'click');
+    f.observers[0].fn();
+    assert.notEqual(f.motions[1].cancelled, true, 'The native open summary gains a border during its own animation');
+    f.send('win', 'resize');
+    assert.equal(f.motions[1].cancelled, true);
+    assert.equal(f.details.open, true);
+});
 
 test('starts expanded, collapses on page scroll and gives the register remaining viewport space', () => {
     const f = fixture();
