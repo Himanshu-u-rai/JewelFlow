@@ -2,7 +2,37 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stable Repairs main scroll track, 2026-11-11
+## Latest checkpoint — Vendors directory compact treatment, 2026-11-11
+
+Owner approved working through the remaining Retail UI backlog in order, with
+POS explicitly excluded. First batch: Vendors directory only. Add/edit/detail
+screens remain next before Catalog. Also excludes Admin/Dhiran; no data changes.
+
+Replaced991 lines of legacy directory styles/markup with scoped compiled CSS,
+Vault-style wrapping header KPI tiles, one shared filter form, mobile bottom
+sheet, shared icon actions and table workspace. Pagination remains15; permissions,
+queries and global/search-scoped counts unchanged. Correct filtered-empty copy,
+always-present external footer, continuous desktop/mobile row indices. Archive
+confirmation now reuses the existing delegated confirm component; browser tested
+Cancel only. No archive/save made. Search suggestions retained.
+
+Owner rejected the initial expandable search toggle: final search is always
+visible,220px desktop,decorative non-interactive internal icon,full-width inside
+mobile sheet. No searchOpen state or separate search button. Apply/Clear share
+one visible slot; editing restores Apply. Header93.890625px at1440×900; tall-screen
+footer866.796875px within900,normal short-window fallback retained. Phone390×844:
+no horizontal overflow,44px row actions,bottom-aligned filters and16px inputs.
+
+Checks:311frontend passed/22existing skips/0failed;17guarded disposable PHP tests,
+48assertions (directory plus purchase/vendor access);build85modules,
+app-B0h8ASZf.css/app-COPJHm1f.js;layout detector[];diffcheckpass. PHP pagination
+uses31synthetic vendors in tests only; live preview retains its1existing vendor.
+Evidence `/home/himanshu/jf-table-evidence/vendors-directory-20261111.qWjTbR/`.
+Physical phone/full keyboard acceptance unrun. Caveman/Ponytail requested by
+owner; reuse existing components/no dependency added. POS/Admin/Dhiran files
+unchanged. No push/deploy/OTP/SMTP/native-mobile changes.
+
+## Previous checkpoint — Stable Repairs main scroll track, 2026-11-11
 
 Base `2ba648d23a79480e42144de40d790014f4e6c786`. Reproduced the main scrollbar
 range shrinking385px→0 and scrollTop resetting to0 whenever intake closed.

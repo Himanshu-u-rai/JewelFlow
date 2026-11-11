@@ -1,1004 +1,79 @@
 @php
-    $hasFilters = request()->hasAny(['search', 'status']);
-    $vendorTotal = method_exists($vendors, 'total') ? $vendors->total() : $vendors->count();
-    $vendorStartIndex = method_exists($vendors, 'firstItem') && $vendors->firstItem() ? $vendors->firstItem() - 1 : 0;
+    $hasFilters = filled($search) || $status !== 'active';
+    $vendorTotal = $vendors->total();
+    $vendorStartIndex = ($vendors->firstItem() ?? 1) - 1;
 @endphp
 
 <x-app-layout>
-    <style>
-        .vendors-index-page {
-            --vendors-border: #e2e8f0;
-            --vendors-border-strong: #cbd5e1;
-            --vendors-surface: #ffffff;
-            --vendors-surface-soft: #f8fafc;
-            --vendors-text: #0f172a;
-            --vendors-text-soft: #64748b;
-            --vendors-accent: #b45309;
-            --vendors-accent-hover: #92400e;
-            --vendors-accent-soft: #fff7ed;
-            --vendors-success: #12926a;
-            --vendors-success-soft: rgba(18, 146, 106, 0.12);
-            --vendors-shadow: none;
-        }
-
-        .vendors-index-page .vendors-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .vendors-index-page .vendors-stat-card,
-        .vendors-index-page .vendors-toolbar-card,
-        .vendors-index-page .vendors-list-card,
-        .vendors-index-page .vendor-mobile-card {
-            border: 1px solid var(--vendors-border);
-            border-radius: 16px;
-            background: var(--vendors-surface);
-            box-shadow: var(--vendors-shadow);
-        }
-
-        .vendors-index-page .vendors-stat-card {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 18px;
-        }
-
-        .vendors-index-page .vendors-stat-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            border: 1px solid #f3dcb6;
-            background: #fff7ed;
-            color: var(--vendors-accent);
-            flex-shrink: 0;
-        }
-
-        .vendors-index-page .vendors-stat-icon--success {
-            border-color: #bbf7d0;
-            background: #f0fdf4;
-            color: var(--vendors-success);
-        }
-
-        .vendors-index-page .vendors-stat-label {
-            margin: 0 0 6px;
-            color: var(--vendors-text-soft);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-        }
-
-        .vendors-index-page .vendors-stat-value {
-            margin: 0;
-            color: var(--vendors-text);
-            font-size: 30px;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        .vendors-index-page .vendors-stat-note {
-            margin: 6px 0 0;
-            color: var(--vendors-text-soft);
-            font-size: 13px;
-        }
-
-        .vendors-index-page .vendors-toolbar-card {
-            padding: 18px;
-            margin-bottom: 20px;
-        }
-
-        .vendors-index-page .vendors-toolbar-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 14px;
-        }
-
-        .vendors-index-page .vendors-toolbar-kicker {
-            margin: 0 0 6px;
-            color: var(--vendors-text-soft);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-        }
-
-        .vendors-index-page .vendors-toolbar-title {
-            margin: 0;
-            color: var(--vendors-text);
-            font-size: 20px;
-            font-weight: 700;
-            line-height: 1.15;
-        }
-
-        .vendors-index-page .vendors-toolbar-meta {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-
-        .vendors-index-page .vendors-meta-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 34px;
-            padding: 0 12px;
-            border-radius: 999px;
-            border: 1px solid var(--vendors-border);
-            background: var(--vendors-surface-soft);
-            color: var(--vendors-text);
-            font-size: 12px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendors-meta-pill--accent {
-            border-color: rgba(245, 158, 11, 0.22);
-            background: var(--vendors-accent-soft);
-            color: var(--vendors-accent);
-        }
-
-        .vendors-index-page .vendors-filter-form {
-            display: grid;
-            grid-template-columns: minmax(0, 1.7fr) minmax(180px, 220px) auto;
-            gap: 12px;
-            align-items: end;
-        }
-
-        .vendors-index-page .vendors-field-label {
-            display: block;
-            margin-bottom: 7px;
-            color: var(--vendors-text-soft);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-        }
-
-        .vendors-index-page .vendors-search-wrap {
-            position: relative;
-            display: block;
-        }
-
-        .vendors-index-page .vendors-search-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #b7791f;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        .vendors-index-page .vendors-search-icon svg {
-            display: block;
-        }
-
-        .vendors-index-page .vendors-search-input,
-        .vendors-index-page .vendors-status-select {
-            width: 100%;
-            min-height: 48px;
-            border-radius: 12px;
-            border: 1px solid var(--vendors-border-strong);
-            background: #fbfcfe;
-            color: var(--vendors-text);
-            font-size: 14px;
-            box-shadow: none;
-            transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
-        }
-
-        .vendors-index-page .vendors-search-input {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 0 16px 0 46px;
-        }
-
-        .vendors-index-page .vendors-status-select {
-            padding: 0 14px;
-        }
-
-        .vendors-index-page .vendors-search-input::placeholder {
-            color: #8a9ab3;
-        }
-
-        .vendors-index-page .vendors-search-input:focus,
-        .vendors-index-page .vendors-status-select:focus {
-            border-color: rgba(245, 158, 11, 0.45);
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
-            outline: none;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
-            min-height: 48px;
-            border-radius: 12px;
-            border-color: var(--vendors-border-strong);
-            background: #fbfcfe;
-            padding: 0 14px;
-            font-size: 14px;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-trigger:hover {
-            background: #fff;
-            border-color: #c5d1e2;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-trigger.is-open,
-        .vendors-index-page .vendors-status-field .ui-filter-select-trigger:focus-visible {
-            border-color: rgba(245, 158, 11, 0.45);
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
-            background: #fff;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-trigger-text {
-            font-weight: 600;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-menu {
-            margin-top: 2px;
-            border-radius: 16px;
-            padding: 6px;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-option {
-            border-radius: 10px;
-            padding: 11px 12px;
-        }
-
-        .vendors-index-page .vendors-status-field .ui-filter-select-option.is-selected {
-            background: #fff7ed;
-            color: var(--vendors-accent);
-        }
-
-        .vendors-index-page .vendors-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            justify-self: end;
-        }
-
-        .vendors-index-page .vendors-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 48px;
-            padding: 0 16px;
-            border-radius: 12px;
-            border: 1px solid var(--vendors-border);
-            font-size: 14px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendors-btn:hover {
-            transform: none;
-        }
-
-        .vendors-index-page .vendors-btn--primary {
-            border-color: var(--vendors-accent);
-            background: var(--vendors-accent);
-            color: #fff;
-            box-shadow: none;
-        }
-
-        .vendors-index-page .vendors-btn--primary:hover {
-            border-color: var(--vendors-accent-hover);
-            background: var(--vendors-accent-hover);
-        }
-
-        .vendors-index-page .vendors-btn--ghost {
-            background: #fff;
-            color: var(--vendors-text);
-        }
-
-        .vendors-index-page .vendors-btn--ghost:hover {
-            border-color: #f3dcb6;
-            background: #fff7ed;
-            color: var(--vendors-accent-hover);
-        }
-
-        .vendors-index-page .vendors-list-card {
-            overflow: hidden;
-        }
-
-        .vendors-index-page .vendors-list-head {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 22px 24px 18px;
-            border-bottom: 1px solid var(--vendors-border);
-        }
-
-        .vendors-index-page .vendors-list-titleblock {
-            min-width: 0;
-        }
-
-        .vendors-index-page .vendors-list-head .vendors-filter-form {
-            width: min(100%, 760px);
-            flex: 1 1 620px;
-        }
-
-        .vendors-index-page .vendors-list-title {
-            margin: 0;
-            color: var(--vendors-text);
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .vendors-index-page .vendors-list-copy {
-            margin: 6px 0 0;
-            color: var(--vendors-text-soft);
-            font-size: 14px;
-        }
-
-        .vendors-index-page .vendors-inline-filter-note {
-            display: inline-flex;
-            align-items: center;
-            margin-left: 8px;
-            color: #92400e;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendors-count-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 38px;
-            padding: 0 14px;
-            border-radius: 999px;
-            border: 1px solid var(--vendors-border);
-            background: var(--vendors-surface-soft);
-            color: var(--vendors-text);
-            font-size: 13px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendors-table-wrap {
-            overflow-x: auto;
-        }
-
-        /* header, cells, separators and hover come from the shared .jf-table pattern (tables.css) */
-        .vendors-index-page .vendors-table {
-            min-width: 820px;
-        }
-
-        .vendors-index-page .vendors-index-cell {
-            width: 62px;
-            color: var(--vendors-text-soft);
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendors-name {
-            margin: 0;
-            color: var(--vendors-text);
-            font-size: 15px;
-            font-weight: 700;
-        }
-
-        .vendors-index-page .vendors-subtext {
-            margin: 4px 0 0;
-            color: var(--vendors-text-soft);
-            font-size: 13px;
-        }
-
-        .vendors-index-page .vendors-muted {
-            color: var(--vendors-text-soft);
-            font-size: 14px;
-        }
-
-        .vendors-index-page .vendors-status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 86px;
-            min-height: 32px;
-            padding: 0 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .vendors-index-page .vendors-status-badge--active {
-            background: var(--vendors-success-soft);
-            color: #0f7b59;
-        }
-
-        .vendors-index-page .vendors-status-badge--inactive {
-            background: #eef2f7;
-            color: #5f6f8a;
-        }
-
-        .vendors-index-page .vendors-table-actions {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .vendors-index-page .vendors-link-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-height: 34px;
-            padding: 0 12px;
-            border-radius: 12px;
-            border: 1px solid var(--vendors-border);
-            background: #fff;
-            color: var(--vendors-text);
-            font-size: 12px;
-            font-weight: 700;
-            text-decoration: none;
-            /* The class is now also used on <button> (Archive / Reactivate),
-               which does not inherit the page font or show a pointer by default. */
-            font-family: inherit;
-            cursor: pointer;
-            transition: background-color 0.18s ease, border-color 0.18s ease;
-        }
-
-        .vendors-index-page .vendors-link-btn:hover {
-            background: var(--vendors-surface-soft);
-        }
-
-        .vendors-index-page .vendors-link-btn--primary {
-            border-color: rgba(15, 23, 42, 0.14);
-            background: #f8fafc;
-        }
-
-        .vendors-index-page .vendors-mobile-list {
-            display: none;
-            padding: 0 16px 16px;
-        }
-
-        .vendors-index-page .vendor-mobile-card {
-            padding: 16px;
-        }
-
-        .vendors-index-page .vendor-mobile-card + .vendor-mobile-card {
-            margin-top: 12px;
-        }
-
-        .vendors-index-page .vendor-mobile-top {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
-        .vendors-index-page .vendor-mobile-name {
-            display: inline-block;
-            color: var(--vendors-text);
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.3;
-            text-decoration: none;
-        }
-
-        .vendors-index-page .vendor-mobile-heading {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-            min-width: 0;
-        }
-
-        .vendors-index-page .vendor-mobile-index {
-            color: var(--vendors-accent);
-            font-size: 12px;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-
-        .vendors-index-page .vendor-mobile-name:hover {
-            color: var(--vendors-accent-hover);
-        }
-
-        .vendors-index-page .vendor-mobile-location {
-            margin: 4px 0 0;
-            color: var(--vendors-text-soft);
-            font-size: 13px;
-        }
-
-        .vendors-index-page .vendor-mobile-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-            margin: 0;
-        }
-
-        .vendors-index-page .vendor-mobile-grid > div {
-            border: 1px solid #e8eef7;
-            border-radius: 12px;
-            background: #fbfcff;
-            padding: 12px;
-        }
-
-        .vendors-index-page .vendor-mobile-grid dt {
-            margin: 0 0 4px;
-            color: var(--vendors-text-soft);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-        }
-
-        .vendors-index-page .vendor-mobile-grid dd {
-            margin: 0;
-            color: var(--vendors-text);
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-
-        .vendors-index-page .vendor-mobile-actions {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        /* MASTERS PART 3: the Archive / Reactivate action is a POST, so it is
-           wrapped in a form. The form must stretch like the sibling links, and
-           the touch target is raised to the 44px minimum. */
-        .vendors-index-page .vendor-mobile-actions form {
-            width: 100%;
-        }
-
-        .vendors-index-page .vendor-mobile-actions .vendors-link-btn {
-            width: 100%;
-            min-height: 44px;
-        }
-
-        .vendors-index-page .vendors-empty {
-            padding: 48px 24px;
-            text-align: center;
-        }
-
-        .vendors-index-page .vendors-empty-title {
-            margin: 0 0 6px;
-            color: var(--vendors-text);
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .vendors-index-page .vendors-empty-copy {
-            margin: 0;
-            color: var(--vendors-text-soft);
-            font-size: 14px;
-        }
-
-        .vendors-index-page .vendors-pagination {
-            padding: 18px 24px 24px;
-            border-top: 1px solid var(--vendors-border);
-        }
-
-        @media (max-width: 1024px) {
-            .vendors-index-page .vendors-list-head {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .vendors-index-page .vendors-list-head .vendors-filter-form {
-                width: 100%;
-                flex-basis: auto;
-            }
-
-            .vendors-index-page .vendors-filter-form {
-                grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto;
-            }
-
-            .vendors-index-page .vendors-search-field {
-                grid-column: 1 / -1;
-            }
-
-            .vendors-index-page .vendors-status-field {
-                grid-column: 1 / 2;
-            }
-
-            .vendors-index-page .vendors-actions {
-                grid-column: 2 / 4;
-            }
-        }
-
-        @media (max-width: 767px) {
-            .vendors-page-header .page-subtitle {
-                display: none;
-            }
-
-            .vendors-page-header .vendors-add-label-full {
-                display: none !important;
-            }
-
-            .vendors-page-header .vendors-add-label-short {
-                display: inline !important;
-            }
-
-            .vendors-index-page .vendors-stats-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 8px;
-            }
-
-            .vendors-index-page .vendors-stats-grid .vendors-stat-card:last-child {
-                grid-column: auto;
-            }
-
-            .vendors-index-page .vendors-stat-card {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 10px;
-                gap: 8px;
-                border-radius: 14px;
-            }
-
-            .vendors-index-page .vendors-stat-icon {
-                width: 30px;
-                height: 30px;
-                border-radius: 10px;
-            }
-
-            .vendors-index-page .vendors-stat-value {
-                font-size: 20px;
-            }
-
-            .vendors-index-page .vendors-stat-note {
-                display: none;
-            }
-
-            .vendors-index-page .vendors-toolbar-card,
-            .vendors-index-page .vendors-list-head {
-                padding-left: 16px;
-                padding-right: 16px;
-            }
-
-            .vendors-index-page .vendors-toolbar-card {
-                padding-top: 18px;
-                padding-bottom: 18px;
-                border-radius: 20px;
-            }
-
-            .vendors-index-page .vendors-toolbar-head {
-                flex-direction: row;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 10px;
-                margin-bottom: 14px;
-                flex-wrap: nowrap;
-            }
-
-            .vendors-index-page .vendors-toolbar-title {
-                font-size: 18px;
-            }
-
-            .vendors-index-page .vendors-toolbar-meta {
-                justify-content: flex-end;
-                margin-left: auto;
-                flex-shrink: 0;
-            }
-
-            .vendors-index-page .vendors-filter-form {
-                grid-template-columns: minmax(0, 1fr) max-content;
-                gap: 8px;
-            }
-
-            .vendors-index-page .vendors-search-field {
-                grid-column: 1 / -1;
-            }
-
-            .vendors-index-page .vendors-status-field {
-                grid-column: 1 / 2;
-                min-width: 0;
-            }
-
-            .vendors-index-page .vendors-actions {
-                grid-column: 2 / 3;
-            }
-
-            .vendors-index-page .vendors-field-label {
-                display: none;
-            }
-
-            .vendors-index-page .vendors-search-input,
-            .vendors-index-page .vendors-status-select,
-            .vendors-index-page .vendors-status-field .ui-filter-select-trigger,
-            .vendors-index-page .vendors-btn {
-                min-height: 40px;
-                border-radius: 14px;
-                font-size: 12px;
-            }
-
-            .vendors-index-page .vendors-search-input {
-                padding-left: 34px !important;
-                padding-right: 12px;
-            }
-
-            .vendors-index-page .vendors-search-input::placeholder {
-                font-size: 12px;
-            }
-
-            .vendors-index-page .vendors-search-icon {
-                left: 13px;
-            }
-
-            .vendors-index-page .vendors-search-icon svg {
-                width: 13px;
-                height: 13px;
-            }
-
-            .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
-                min-width: 0;
-                padding: 0 11px;
-                gap: 8px;
-            }
-
-            .vendors-index-page .vendors-actions {
-                display: flex;
-                align-items: center;
-                justify-self: end;
-                gap: 6px;
-                justify-content: flex-end;
-                flex-wrap: nowrap;
-            }
-
-            .vendors-index-page .vendors-btn {
-                gap: 6px;
-                padding: 0 10px;
-            }
-
-            .vendors-index-page .vendors-btn svg {
-                width: 12px;
-                height: 12px;
-            }
-
-            .vendors-index-page .vendors-list-head {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-                padding-top: 18px;
-                padding-bottom: 16px;
-            }
-
-            .vendors-index-page .vendors-list-title {
-                font-size: 18px;
-            }
-
-            .vendors-index-page .vendors-list-copy {
-                font-size: 13px;
-            }
-
-            .vendors-index-page .vendor-mobile-name {
-                font-size: 18px;
-                line-height: 1.25;
-            }
-
-            .vendors-index-page .vendors-count-badge {
-                min-height: 34px;
-                padding: 0 12px;
-                font-size: 12px;
-            }
-
-            .vendors-index-page .vendors-table-wrap {
-                display: none;
-            }
-
-            .vendors-index-page .vendors-mobile-list {
-                display: block;
-            }
-
-            .vendors-index-page .vendors-pagination {
-                padding: 16px;
-            }
-        }
-
-        @media (max-width: 420px) {
-            .vendors-index-page .vendors-toolbar-title {
-                font-size: 17px;
-            }
-
-            .vendors-index-page .vendors-meta-pill {
-                min-height: 30px;
-                padding: 0 10px;
-                font-size: 11px;
-            }
-
-            .vendors-index-page .vendors-filter-form {
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 8px;
-            }
-
-            .vendors-index-page .vendors-status-field {
-                grid-column: 1 / 2;
-            }
-
-            .vendors-index-page .vendors-actions {
-                grid-column: 2 / 3;
-            }
-
-            .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
-                min-width: 0;
-                padding: 0 10px;
-            }
-
-            .vendors-index-page .vendors-btn {
-                padding: 0 10px;
-            }
-
-            .vendors-index-page .vendors-btn svg {
-                display: none;
-            }
-
-            .vendors-index-page .vendor-mobile-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 767px) {
-            .vendors-index-page .vendors-stats-grid {
-                display: grid !important;
-                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                gap: 6px !important;
-            }
-
-            .vendors-index-page .vendors-stats-grid .vendors-stat-card,
-            .vendors-index-page .vendors-stats-grid .vendors-stat-card:last-child {
-                grid-column: auto !important;
-                min-width: 0 !important;
-                padding: 8px !important;
-            }
-
-            .vendors-index-page .vendors-stat-icon {
-                width: 28px !important;
-                height: 28px !important;
-                flex: 0 0 28px !important;
-            }
-
-            .vendors-index-page .vendors-stat-label {
-                font-size: 10.5px !important;
-                line-height: 1.15 !important;
-            }
-
-            .vendors-index-page .vendors-stat-value {
-                font-size: clamp(17px, 5vw, 21px) !important;
-                line-height: 1.05 !important;
-            }
-        }
-    </style>
-
-    <x-page-header class="vendors-page-header ops-treatment-header" title="Vendors / Suppliers" subtitle="Manage your jewellery suppliers and vendors">
+    <x-page-header class="vendors-page-header" title="Vendors / Suppliers" subtitle="Manage your jewellery suppliers and vendors">
         <x-slot:actions>
             @can('vendors.manage')
-            <a href="{{ route('vendors.create') }}" class="btn btn-success btn-sm vendors-add-btn">
-                <x-icon name="plus" class="w-4 h-4 mr-2" />
-                <span class="vendors-add-label-full">Add Vendor</span>
-                <span class="vendors-add-label-short">Add</span>
+            <a href="{{ route('vendors.create') }}" class="btn btn-primary btn-sm vendors-add-btn" aria-label="Add Vendor" title="Add Vendor">
+                <x-icon name="plus" size="16" />
+                <span class="vendors-add-label">Add Vendor</span>
             </a>
             @endcan
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner ops-treatment-page vendors-index-page" data-list-workspace>
-
+    <div class="content-inner vendor-directory" data-list-workspace>
         @unless(auth()->user()->can('vendors.manage'))
             @include('partials.view-only-banner', ['permission' => 'vendors.manage', 'message' => 'vendor management'])
         @endunless
-<div class="vendors-stats-grid">
-            <div class="vendors-stat-card">
-                <div class="vendors-stat-icon">
-                    <x-icon name="building-2" class="h-5 w-5" />
-                </div>
-                <div>
-                    <p class="vendors-stat-label">Total Vendors</p>
-                    <p class="vendors-stat-value">{{ number_format($stats->total_count ?? 0) }}</p>
-                    <p class="vendors-stat-note">Suppliers available in your directory.</p>
-                </div>
-            </div>
 
-            <div class="vendors-stat-card">
-                <div class="vendors-stat-icon vendors-stat-icon--success">
-                    <x-icon name="badge-check" class="h-5 w-5" />
-                </div>
-                <div>
-                    <p class="vendors-stat-label">Active</p>
-                    <p class="vendors-stat-value">{{ number_format($stats->active_count ?? 0) }}</p>
-                    <p class="vendors-stat-note">Currently enabled for purchasing and stock flow.</p>
-                </div>
-            </div>
-
-            <div class="vendors-stat-card">
-                <div class="vendors-stat-icon">
-                    <x-icon name="file-chart-column" class="h-5 w-5" />
-                </div>
-                <div>
-                    <p class="vendors-stat-label">GST Registered</p>
-                    <p class="vendors-stat-value">{{ number_format($stats->gst_count ?? 0) }}</p>
-                    <p class="vendors-stat-note">Vendors with GST details already captured.</p>
-                </div>
-            </div>
-        </div>
-
-        <section class="vendors-list-card ui-filter-enhanced-wrap" data-list-frame>
-            <div class="vendors-list-head">
+        <section class="vendors-list-card" data-list-frame aria-labelledby="vendor-directory-title">
+            <header class="vendors-list-head" data-vendor-register-head>
                 <div class="vendors-list-titleblock">
-                    <h3 class="vendors-list-title">Vendor Directory</h3>
-                    <p class="vendors-list-copy">
-                        {{ number_format($vendorTotal) }} total vendors
-                        @if($hasFilters)
-                            <span class="vendors-inline-filter-note">Filtered view</span>
-                        @endif
-                    </p>
+                    <h2 id="vendor-directory-title">Vendor Directory</h2>
+                    <dl class="vendors-summary" aria-label="Vendor summary">
+                        <div class="vendors-metric"><dt>Total Vendors</dt><dd>{{ number_format($stats->total_count ?? 0) }}</dd></div>
+                        <div class="vendors-metric"><dt>Active</dt><dd>{{ number_format($stats->active_count ?? 0) }}</dd></div>
+                        <div class="vendors-metric"><dt>GST Registered</dt><dd>{{ number_format($stats->gst_count ?? 0) }}</dd></div>
+                    </dl>
                 </div>
 
-                <form method="GET" action="{{ route('vendors.index') }}" class="vendors-filter-form" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                    <div class="vendors-search-field">
-                        <label class="vendors-field-label" for="vendors-search">Search</label>
-                        <div class="vendors-search-wrap">
-                            <span class="vendors-search-icon">
-                                <x-icon name="search" size="16" />
-                            </span>
-                            <input
-                                id="vendors-search"
-                                type="text"
-                                name="search"
-                                value="{{ request('search') }}"
-                                placeholder="Search vendor or GST"
-                                class="vendors-search-input"
-                                data-suggest="vendors"
-                                autocomplete="off"
-                            >
+                <x-responsive-filter-panel id="vendors-filter-panel" label="Vendor filters">
+                    <form method="GET" action="{{ route('vendors.index') }}" class="vendors-filter-form"
+                          data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
+                          x-data="{ dirty: false, hasFilters: @js($hasFilters) }"
+                          @input="dirty = true" @change="dirty = true">
+                        <div class="vendors-search-field">
+                            <label for="vendors-search" class="jf-sr-only vendors-search-label">Search vendors</label>
+                            <span class="vendors-search-icon" aria-hidden="true"><x-icon name="search" size="16" /></span>
+                            <input id="vendors-search" class="vendors-filter-input" type="search" name="search"
+                                   value="{{ $search }}" placeholder="Name, mobile or GST…" data-suggest="vendors" autocomplete="off">
                         </div>
-                    </div>
-
-                    <div class="vendors-status-field">
-                        <label class="vendors-field-label" for="vendors-status">Status</label>
-                        {{-- MASTERS PART 3: counts come from the controller and carry
-                             the same search filter as the list, so the number on an
-                             option always matches what selecting it shows. --}}
-                        <select id="vendors-status" name="status" class="vendors-status-select">
-                            <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
-                            <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
-                            <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
-                        </select>
-                    </div>
-
-                    <div class="vendors-actions">
-                        <button type="submit" class="vendors-btn vendors-btn--primary">
-                            <x-icon name="funnel" size="14" />
-                            Filter
-                        </button>
-                        @if($hasFilters)
-                            <a href="{{ route('vendors.index') }}" class="vendors-btn vendors-btn--ghost">Clear</a>
-                        @endif
-                    </div>
-                </form>
-            </div>
+                        <div class="vendors-status-field">
+                            <label for="vendors-status" class="jf-sr-only vendors-status-label">Vendor status</label>
+                            <select id="vendors-status" name="status" class="vendors-filter-input">
+                                {{-- Search-scoped option counts remain separate from global KPI totals. --}}
+                                <option value="active" @selected($status === 'active')>Active ({{ (int) $statusCounts->active_count }})</option>
+                                <option value="archived" @selected($status === 'archived')>Archived ({{ (int) $statusCounts->archived_count }})</option>
+                                <option value="all" @selected($status === 'all')>All ({{ (int) $statusCounts->all_count }})</option>
+                            </select>
+                        </div>
+                        <div class="vendors-filter-actions">
+                            <button type="submit" class="btn btn-primary btn-sm" data-vendor-filter-apply x-show="dirty || !hasFilters">Apply</button>
+                            <a href="{{ route('vendors.index') }}" class="btn btn-primary btn-sm" data-vendor-filter-clear x-show="!dirty && hasFilters" x-cloak>Clear</a>
+                            @if($hasFilters)
+                                <noscript><a href="{{ route('vendors.index') }}" class="btn btn-secondary btn-sm">Clear</a></noscript>
+                            @endif
+                        </div>
+                    </form>
+                </x-responsive-filter-panel>
+            </header>
 
             @if($vendors->count())
                 <div class="vendors-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Vendor records">
                     <table class="vendors-table jf-table">
                         <thead>
                             <tr>
-                                <th class="text-left vendors-index-cell">#</th>
-                                <th class="text-left">Vendor</th>
-                                <th class="text-left">Contact</th>
-                                <th class="text-left">GST</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-left">Actions</th>
+                                <th scope="col" class="text-left vendors-index-cell">#</th>
+                                <th scope="col" class="text-left">Vendor</th>
+                                <th scope="col" class="text-left">Contact</th>
+                                <th scope="col" class="text-left">GST</th>
+                                <th scope="col" class="text-center">Status</th>
+                                <th scope="col" class="text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1006,14 +81,14 @@
                                 <tr>
                                     <td class="vendors-index-cell">{{ $vendorStartIndex + $loop->iteration }}</td>
                                     <td>
-                                        <p class="vendors-name">{{ $vendor->name }}</p>
+                                        <a href="{{ route('vendors.show', $vendor) }}" class="vendors-name vendors-name-link">{{ $vendor->name }}</a>
                                         <p class="vendors-subtext">{{ $vendor->city ? $vendor->city . ($vendor->state ? ', ' . $vendor->state : '') : 'Location not added' }}</p>
                                     </td>
                                     <td>
                                         <p class="vendors-name text-[14px]">{{ $vendor->contact_person ?: 'Not added' }}</p>
                                         <p class="vendors-subtext">{{ \App\Support\Mobile::forDisplay($vendor->mobile) ?: 'No mobile number' }}</p>
                                     </td>
-                                    <td class="vendors-muted">{{ $vendor->gst_number ?: 'Not available' }}</td>
+                                    <td class="vendors-muted vendors-gst">{{ $vendor->gst_number ?: 'Not available' }}</td>
                                     <td class="text-center">
                                         <span class="vendors-status-badge {{ $vendor->is_active ? 'vendors-status-badge--active' : 'vendors-status-badge--inactive' }}">
                                             {{ $vendor->is_active ? 'Active' : 'Archived' }}
@@ -1021,14 +96,14 @@
                                     </td>
                                     <td class="text-left">
                                         <div class="vendors-table-actions">
-                                            <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
+                                            <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View" aria-label="View {{ $vendor->name }}"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @can('vendors.manage')
-                                            <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                            <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                             {{-- MASTERS PART 3: explicit lifecycle action, right where
                                                  the status badge is, so it is never mistaken for an edit. --}}
                                             @if($vendor->is_active)
                                                 <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
-                                                      onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
+                                                      data-confirm-message="Archive {{ $vendor->name }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.">
                                                     @csrf
                                                     @method('PATCH')
                                                     <button type="submit" aria-label="Archive this vendor" class="jf-row-action jf-row-action--danger" data-tip="Archive"><x-icon name="archive" size="16" /><span class="jf-sr-only">Archive</span></button>
@@ -1085,21 +160,21 @@
                             </dl>
 
                             <div class="vendor-mobile-actions">
-                                <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">View Vendor</a>
+                                <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View" aria-label="View {{ $vendor->name }}"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                 @can('vendors.manage')
-                                <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">Edit Details</a>
+                                <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                 @if($vendor->is_active)
                                     <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
-                                          onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
+                                          data-confirm-message="Archive {{ $vendor->name }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="vendors-link-btn vendors-link-btn--archive" aria-label="Archive this vendor">Archive</button>
+                                        <button type="submit" class="jf-row-action jf-row-action--danger" data-tip="Archive" aria-label="Archive {{ $vendor->name }}"><x-icon name="archive" size="16" /><span class="jf-sr-only">Archive</span></button>
                                     </form>
                                 @else
                                     <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="vendors-link-btn vendors-link-btn--reactivate" aria-label="Reactivate this vendor">Reactivate</button>
+                                        <button type="submit" class="jf-row-action jf-row-action--success" data-tip="Reactivate" aria-label="Reactivate {{ $vendor->name }}"><x-icon name="rotate-ccw" size="16" /><span class="jf-sr-only">Reactivate</span></button>
                                     </form>
                                 @endif
                                 @endcan
@@ -1109,14 +184,28 @@
                 </div>
             @else
                 <div class="vendors-empty">
-                    <p class="vendors-empty-title">No vendors found</p>
-                    <p class="vendors-empty-copy">Add your first vendor to start managing supplier records here.</p>
+                    @if($hasFilters)
+                        <p class="vendors-empty-title">No vendors match these filters.</p>
+                        <p class="vendors-empty-copy">Try another name, contact, mobile number or GST number.</p>
+                        <a href="{{ route('vendors.index') }}" class="btn btn-secondary btn-sm">Clear filters</a>
+                    @elseif($status === 'archived')
+                        <p class="vendors-empty-title">No archived vendors.</p>
+                    @else
+                        <p class="vendors-empty-title">No vendors yet.</p>
+                        @can('vendors.manage')
+                        <a href="{{ route('vendors.create') }}" class="btn btn-primary btn-sm">Add your first vendor</a>
+                        @endcan
+                    @endif
                 </div>
             @endif
 
-            @if($vendors->hasPages())
-                <div class="vendors-pagination">{{ $vendors->links() }}</div>
-            @endif
+            <footer class="vendors-pagination">
+                @if($vendors->hasPages())
+                    {{ $vendors->links() }}
+                @else
+                    <p>{{ number_format($vendorTotal) }} {{ $vendorTotal === 1 ? 'vendor' : 'vendors' }}{{ $hasFilters ? ' matching filters' : '' }}</p>
+                @endif
+            </footer>
         </section>
     </div>
 </x-app-layout>
