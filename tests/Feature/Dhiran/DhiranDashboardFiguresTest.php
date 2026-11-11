@@ -75,19 +75,25 @@ class DhiranDashboardFiguresTest extends TestCase
         $this->assertSame('₹' . \App\Support\IndianNumber::format($interestPart), $fig('interest-month'));
         $this->assertSame('₹' . \App\Support\IndianNumber::format($interestPart), $fig('interest-fy'));
         $this->assertSame('2', $fig('overdue-count'));
-        $this->assertSame('1', $fig('overdue-1-30'));
-        $this->assertSame('1', $fig('overdue-31-90'));
         $this->assertSame('0', $fig('overdue-90+'));
         $this->assertSame('1', $fig('maturing-7'));
         $this->assertSame('1', $fig('maturing-30'));
+        $this->assertSame('0', $fig('pending'));
         $this->assertSame('183.333 g', $fig('fine-gold'), '4 open gold loans × 50 g of 22K');
         $this->assertSame('4,625.000 g', $fig('fine-silver'));
 
         // Each figure opens the list behind it, with the same filter.
-        foreach (['overdue=31-90', 'overdue=1-30', 'overdue=90%2B', 'maturing=7', 'maturing=30', 'status=active'] as $q) {
+        foreach (['overdue=90%2B', 'maturing=7', 'maturing=30', 'status=active', 'status=pending_evidence'] as $q) {
             $this->assertStringContainsString(e(route('dhiran.loans') . '?' . $q), $html, "links to {$q}");
         }
         $this->assertStringContainsString(e(route('dhiran.reports.interest') . '?period=this_fy'), $html);
         $this->assertStringContainsString('View all loans', $html);
+
+        // Owner 2026-11-11: small, simple figures in one strip, not big KPI cards, icons, bars or panels.
+        $this->assertStringContainsString('data-dash-glance', $html);
+        $this->assertSame(12, preg_match_all('/class="dd-stat[ "]/', $html), 'twelve small figures');
+        foreach (['dd-kpi-card', 'dd-bar', 'dd-panel', 'dd-kpi-icon'] as $gone) {
+            $this->assertStringNotContainsString($gone, $html);
+        }
     }
 }

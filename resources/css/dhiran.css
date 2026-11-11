@@ -3197,43 +3197,25 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
 }
 .dh-fopt input:checked + span .dh-fopt-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
 
-/* Dashboard figures (owner 2026-11-11): tiles and rows are links to the list behind each number. */
-.dh-app .dd-alert {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 12px 16px; border-radius: var(--dh-card-radius);
-    background: var(--dh-warning-soft); border: 1px solid var(--dh-warning-line); color: var(--dh-warning-ink); font-size: 14px; text-decoration: none;
+/* Dashboard "at a glance" (owner 2026-11-11: small, simple, informative; no big cards, icons, bars or panels):
+   one card of small label + number cells, each a link to the list behind it. 6 a row wide, 3 on tablets, 2 on phones. */
+.dh-app .dd-glance {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 20px; overflow: hidden;
+    border: 1px solid var(--dh-card-border); border-radius: var(--dh-card-radius); background: var(--dh-card); box-shadow: var(--dh-card-shadow);
 }
-.dh-app .dd-alert span { flex: 1; }
-.dh-app .dd-kpi-grid .dd-kpi-card { display: flex; flex-direction: column; gap: 4px; padding: 16px 16px 14px; text-decoration: none; color: inherit; }
-.dh-app .dd-kpi-grid .dd-kpi-icon { position: absolute; top: 14px; right: 14px; }
-.dh-app .dd-kpi-grid .dd-kpi-label { padding-right: 44px; }
-.dh-app .dd-kpi-grid .dd-kpi-value { margin-top: 2px; font-size: 26px; }
-.dh-app .dd-kpi-sub { font-size: 12px; color: var(--dh-muted); }
-.dh-app a.dd-kpi-link, .dh-app a.dd-row { transition: border-color 150ms var(--dh-ease), box-shadow 150ms var(--dh-ease), background-color 150ms var(--dh-ease); }
-.dh-app a.dd-kpi-link:hover { border-color: var(--dh-accent-line); box-shadow: var(--dh-shadow); }
-.dh-app .dd-kpi-card.is-alert .dd-kpi-value { color: var(--dh-danger); }
-.dh-app a.dd-kpi-labellink, .dh-app a.dd-kpi-sublink { text-decoration: none; }
-.dh-app a.dd-kpi-labellink:hover, .dh-app a.dd-kpi-sublink:hover { color: var(--dh-link); }
-.dh-app :is(a.dd-kpi-link, a.dd-row, a.dd-alert, a.dd-kpi-labellink, a.dd-kpi-sublink):focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
-.dh-app .dd-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 20px; }
-.dh-app .dd-panel {
-    padding: 16px; border: 1px solid var(--dh-card-border); border-radius: var(--dh-card-radius);
-    background: var(--dh-card); box-shadow: var(--dh-card-shadow);
+.dh-app a.dd-stat {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 12px 16px;
+    border-right: 1px solid var(--dh-line-soft); border-bottom: 1px solid var(--dh-line-soft);
+    color: inherit; text-decoration: none; transition: background-color 150ms var(--dh-ease);
 }
-.dh-app .dd-panel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: var(--dh-ink); }
-.dh-app .dd-panel-title svg { color: var(--dh-accent); }
-.dh-app a.dd-row {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 14px;
-    margin: 0 -8px; padding: 9px 8px; border-radius: 10px; text-decoration: none; color: var(--dh-ink-soft); font-size: 13px;
-}
-.dh-app a.dd-row:hover { background: var(--dh-row-hover); }
-.dh-app .dd-row-count { font-weight: 700; color: var(--dh-ink); font-variant-numeric: tabular-nums; text-align: right; }
-.dh-app .dd-row-amount { min-width: 92px; text-align: right; color: var(--dh-muted); font-variant-numeric: tabular-nums; }
-.dh-app .dd-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--dh-muted-surface); overflow: hidden; }
-.dh-app .dd-bar-fill { display: block; height: 100%; border-radius: inherit; background: var(--dh-warning-line); }
-.dh-app .dd-bar-fill--1 { background: var(--dh-highlight); }
-.dh-app .dd-bar-fill--2 { background: var(--dh-danger); }
-.dh-app .dd-panel-note { margin-top: 6px; font-size: 11px; color: var(--dh-muted); }
-@media (min-width: 1024px) { .dh-app .dd-panels { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.dh-app a.dd-stat:hover { background: var(--dh-row-hover); }
+.dh-app a.dd-stat:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: -2px; }
+.dh-app .dd-stat-label { font-size: 12px; font-weight: 600; color: var(--dh-muted); }
+.dh-app .dd-stat-value { font-size: 17px; font-weight: 700; color: var(--dh-ink); font-variant-numeric: tabular-nums; }
+.dh-app .dd-stat-sub { font-size: 12px; color: var(--dh-muted); font-variant-numeric: tabular-nums; }
+.dh-app .dd-stat.is-flagged .dd-stat-value { color: var(--dh-danger); }
+@media (min-width: 720px) { .dh-app .dd-glance { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .dh-app .dd-glance { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
 /* Settings (owner 2026-11-11): cards two to a row, fields two to a row inside each card, compact inputs, and the
    Save bar stays in reach at the bottom. One card per row on phones. */
