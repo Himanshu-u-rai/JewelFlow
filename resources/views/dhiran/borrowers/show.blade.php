@@ -91,15 +91,25 @@
             @endcan
         </div>
 
-        {{-- 4. Loans table --}}
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Loans</h2></div>
+        {{-- 4. Loans: status chips with counts, 10 a page --}}
+        <div id="loans" data-profile-section class="dh-profile-section rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
+            <div class="dh-section-head">
+                <h2 class="text-base font-semibold text-slate-900">Loans</h2>
+                @if($loans->isNotEmpty())
+                    <x-dhiran.segment param="loan_status" page-name="loans_page" fragment="loans" label="Filter loans by status" :current="$loanStatus"
+                        :options="['' => ['All', $loans->count()]] + collect(\App\Services\Dhiran\DhiranListFilters::STATUSES)
+                            ->filter(fn ($l, $s) => ($summary[$s] ?? 0) > 0 || $loanStatus === $s)
+                            ->map(fn ($l, $s) => [$l, $summary[$s] ?? 0])->all()" />
+                @endif
+            </div>
             @if($loans->isEmpty())
                 <div class="px-6 py-12 text-center">
                     <p class="text-base font-semibold text-slate-700 mb-1">No loans yet</p>
                     <p class="text-sm text-slate-500 mb-4">This customer has no pledge loans with your shop.</p>
                     <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-primary btn-sm">Create loan for this customer</a>
                 </div>
+            @elseif($loanList->isEmpty())
+                <p class="px-6 py-10 text-center text-sm text-slate-500">No {{ strtolower(\App\Services\Dhiran\DhiranListFilters::STATUSES[$loanStatus] ?? '') }} loans for this customer.</p>
             @else
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[760px] jf-table dh-stack">
@@ -125,9 +135,9 @@
                                     'forfeited' => 'bg-red-100 text-red-800',
                                 ];
                             @endphp
-                            @foreach($loans as $loan)
+                            @foreach($loanList as $loan)
                                 <tr class="hover:bg-slate-50/70">
-                                    <x-dhiran.sno :rows="null" :n="$loop->iteration" />
+                                    <x-dhiran.sno :rows="$loanList" :n="$loop->iteration" />
                                     <td data-label="Loan #" class="pl-6 pr-4 py-4"><a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
                                     <td data-label="Status" class="px-4 py-4 text-center">
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
@@ -144,13 +154,38 @@
                         </tbody>
                     </table>
                 </div>
+                <x-dhiran.pager :paginator="$loanList" noun="loans" :sizes="[]" />
             @endif
         </div>
 
-        {{-- 5. Payments history --}}
-        @if($payments->isNotEmpty())
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Recent payments</h2></div>
+        {{-- 5. Payments: the full history, 10 a page, by type and by loan --}}
+        @if($hasPayments)
+        <div id="payments" data-profile-section class="dh-profile-section rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
+            <div class="dh-section-head">
+                <h2 class="text-base font-semibold text-slate-900">Payments</h2>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'payments', 'payments_page' => null]) }}" class="btn btn-secondary btn-sm" data-turbo="false" download>
+                    <x-icon name="download" size="14" /> Export CSV
+                </a>
+            </div>
+            <div class="dh-section-filters">
+                <x-dhiran.segment param="payment_type" page-name="payments_page" fragment="payments" label="Filter payments by type" :current="$paymentType"
+                    :options="['' => ['All', array_sum($paymentTypeCounts)]] + collect($paymentTypes)
+                        ->filter(fn ($def, $key) => $paymentTypeCounts[$key] > 0 || $paymentType === $key)
+                        ->map(fn ($def, $key) => [$def[0], $paymentTypeCounts[$key]])->all()" />
+                @if($loans->count() > 1)
+                    <x-dhiran.segment param="payment_loan" page-name="payments_page" fragment="payments" label="Filter payments by loan" :current="$paymentLoan"
+                        :options="['' => ['All loans', null]] + $loans->mapWithKeys(fn ($l) => [$l->id => [$l->loan_number, null]])->all()" />
+                @endif
+                <p class="dh-section-summary" data-payments-summary>
+                    {{ $payments->total() }} {{ \Illuminate\Support\Str::plural('payment', $payments->total()) }}
+                    · <strong>₹{{ number_format($paymentSummary['received'], 2) }}</strong> received
+                    · <strong>₹{{ number_format($paymentSummary['interest'], 2) }}</strong> interest
+                    @if($paymentSummary['penalty'] > 0) · <strong>₹{{ number_format($paymentSummary['penalty'], 2) }}</strong> penalty @endif
+                </p>
+            </div>
+            @if($payments->isEmpty())
+                <p class="px-6 py-10 text-center text-sm text-slate-500">No payments match these filters.</p>
+            @else
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[760px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
@@ -169,7 +204,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($payments as $p)
                             <tr class="hover:bg-slate-50/70">
-                                <x-dhiran.sno :rows="null" :n="$loop->iteration" />
+                                <x-dhiran.sno :rows="$payments" :n="$loop->iteration" />
                                 <td data-label="Date" class="pl-6 pr-4 py-3 text-sm text-slate-500 whitespace-nowrap">{{ optional($p->payment_date)->format('d M Y') ?? $p->created_at->format('d M Y') }}</td>
                                 <td data-label="Loan" class="px-4 py-3 text-sm font-mono text-slate-600">
                                     @if($p->loan)<a href="{{ route('dhiran.show', $p->loan) }}" class="hover:text-amber-700">{{ $p->loan->loan_number }}</a>@else — @endif
@@ -187,13 +222,15 @@
                     </tbody>
                 </table>
             </div>
+            <x-dhiran.pager :paginator="$payments" noun="payments" :sizes="[]" />
+            @endif
         </div>
         @endif
 
         {{-- 6. Pledged items history --}}
         @php $allItems = $loans->flatMap(fn ($l) => $l->items->map(fn ($i) => [$i, $l])); @endphp
         @if($allItems->isNotEmpty())
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
+        <div id="items" data-profile-section class="dh-profile-section rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-base font-semibold text-slate-900">Pledged items</h2></div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[820px] jf-table dh-stack">

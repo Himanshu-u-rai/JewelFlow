@@ -814,6 +814,15 @@ class DhiranController extends Controller
      * Borrower profile — full Dhiran-scoped view of one borrower: details, KYC
      * documents, loan summary + table, recent payments, pledged-item history.
      */
+    /** Payment type chips on the customer profile: key => [label, stored types]. */
+    private const PROFILE_PAYMENT_TYPES = [
+        'disbursement' => ['Payout', ['disbursement']],
+        'interest'     => ['Interest', ['interest_payment', 'renewal_interest']],
+        'repayment'    => ['Repayment', ['principal_repayment']],
+        'closure'      => ['Pre-closure', ['pre_closure']],
+        'fee'          => ['Processing fee', ['processing_fee']],
+    ];
+
     public function borrowerProfile(Customer $customer)
     {
         // Route binding is tenant-scoped via BelongsToShop; this is the explicit
@@ -841,13 +850,46 @@ class DhiranController extends Controller
             'total_collected'       => (float) $loans->sum(fn ($l) => (float) $l->total_principal_collected + (float) $l->total_interest_collected),
         ];
 
-        // Recent payments across this borrower's loans (this shop only).
-        $payments = DhiranPayment::whereIn('dhiran_loan_id', $loanIds ?: [0])
+        // Owner 2026-11-11: loans filter by status and page; payments are the full history (not the last 25), in
+        // pages, filtered by type and by loan. Each list has its own page parameter and lands back on its section.
+        $paymentTypes = self::PROFILE_PAYMENT_TYPES;
+        $request = request();
+        $request->validate([
+            'loan_status'  => ['nullable', Rule::in(array_keys(\App\Services\Dhiran\DhiranListFilters::STATUSES))],
+            'payment_type' => ['nullable', Rule::in(array_keys($paymentTypes))],
+            'payment_loan' => ['nullable', 'integer', Rule::in($loanIds)],
+        ]);
+        $loanStatus = $request->query('loan_status');
+        $loanList = DhiranLoan::where('customer_id', $customer->id)
+            ->when($loanStatus, fn ($q, $s) => $q->where('status', $s))
+            ->latest()->orderByDesc('id')
+            ->paginate(10, ['*'], 'loans_page')->withQueryString()->fragment('loans');
+
+        $paymentLoan = $request->query('payment_loan');
+        $paymentType = $request->query('payment_type');
+        $paymentsOf = fn () => DhiranPayment::whereIn('dhiran_loan_id', $loanIds ?: [0])
+            ->when($paymentLoan, fn ($q, $id) => $q->where('dhiran_loan_id', $id));
+        $filteredPayments = fn () => $paymentsOf()->when($paymentType, fn ($q, $t) => $q->whereIn('type', $paymentTypes[$t][1]));
+
+        if ($request->query('export') === 'payments') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->payments(
+                $filteredPayments()->latest('payment_date')->orderByDesc('id'),
+                'payments-' . ($customer->customer_code ?: $customer->id) . '-' . now()->toDateString()
+            );
+        }
+
+        $typeCounts = $paymentsOf()->toBase()->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $paymentTypeCounts = array_map(fn ($def) => (int) collect($def[1])->sum(fn ($t) => $typeCounts[$t] ?? 0), $paymentTypes);
+        $paymentSummary = (array) $filteredPayments()->toBase()->selectRaw(
+            "coalesce(sum(case when type = 'disbursement' then 0 else amount end), 0) as received,"
+            . ' coalesce(sum(interest_component), 0) as interest, coalesce(sum(penalty_component), 0) as penalty'
+        )->first();
+        $hasPayments = array_sum($paymentTypeCounts) > 0;
+        $payments = $filteredPayments()
             ->with('loan:id,loan_number')
             ->latest('payment_date')
-            ->latest('id')
-            ->limit(25)
-            ->get();
+            ->orderByDesc('id')
+            ->paginate(10, ['*'], 'payments_page')->withQueryString()->fragment('payments');
 
         // KYC / evidence documents: borrower-owned + this borrower's loans + items.
         $attachments = \App\Models\Dhiran\DhiranAttachment::query()
@@ -871,7 +913,8 @@ class DhiranController extends Controller
         $kycPan     = $loans->pluck('kyc_pan')->filter()->first();
 
         return view('dhiran.borrowers.show', compact(
-            'customer', 'loans', 'summary', 'payments', 'attachments', 'itemsWithPhoto', 'kycAadhaar', 'kycPan'
+            'customer', 'loans', 'summary', 'payments', 'attachments', 'itemsWithPhoto', 'kycAadhaar', 'kycPan',
+            'loanList', 'loanStatus', 'paymentTypes', 'paymentTypeCounts', 'paymentType', 'paymentLoan', 'paymentSummary', 'hasPayments'
         ));
     }
 

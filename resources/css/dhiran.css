@@ -3189,6 +3189,37 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     .dh-app dialog.dh-fpanel, .dh-fpanel::backdrop { animation: none; }
 }
 
+/* Profile sections with their own filters: title + action on one line, link chips, a one-line summary. */
+.dh-profile-section { scroll-margin-top: 16px; }
+.dh-section-head {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+    padding: 14px 20px; border-bottom: 1px solid var(--dh-line-soft);
+}
+.dh-section-filters { display: flex; flex-direction: column; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--dh-line-soft); }
+.dh-section-summary { font-size: 13px; color: var(--dh-muted); }
+.dh-section-summary strong { color: var(--dh-ink); font-weight: 700; }
+.dh-segment { display: flex; flex-wrap: wrap; gap: 6px; }
+.dh-app .dh-segment-chip {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--dh-field-border); background: var(--dh-card); color: var(--dh-ink-soft);
+    font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    transition: border-color 150ms var(--dh-ease), background-color 150ms var(--dh-ease);
+}
+.dh-app .dh-segment-chip:hover { border-color: var(--dh-accent); }
+.dh-app .dh-segment-chip.is-on { background: var(--dh-accent); border-color: var(--dh-accent); color: var(--dh-on-accent); }
+.dh-app .dh-segment-chip:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
+.dh-segment-count {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px;
+    border-radius: 999px; background: var(--dh-muted-surface); color: var(--dh-ink); font-size: 11px; font-weight: 700;
+}
+.dh-segment-chip.is-on .dh-segment-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
+@media (max-width: 720px) {
+    /* Chips scroll sideways in one line instead of stacking into a tall block. */
+    .dh-segment { flex-wrap: nowrap; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+    .dh-segment::-webkit-scrollbar { display: none; }
+    .dh-app .dh-segment-chip { min-height: 36px; }
+}
+
 /* Row numbers (#): a narrow, quiet first column; numbering continues across pages. */
 .dh-app .dh-sno-th { width: 56px; padding-left: 20px !important; padding-right: 8px !important; text-align: left; }
 .dh-app td.dh-sno {
