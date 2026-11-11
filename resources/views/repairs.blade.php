@@ -433,6 +433,8 @@
         @media (prefers-reduced-motion: reduce) { .repairs-intake-arrow svg { transition: none; } }
         details:not([open]) > .repairs-intake-summary { border-bottom-color: transparent; border-radius: 12px; }
         .repairs-management-page[data-repair-fit] { height: var(--repair-workspace-height); min-height: 0; overflow-anchor: none; }
+        [data-repair-intake-pin] .repairs-layout { display: flex; flex-direction: column; }
+        [data-repair-intake-pin] .repairs-form-column { position: sticky; top: var(--repair-intake-top); z-index: 2; flex: none; }
         [data-repair-fit] .repairs-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         [data-repair-fit] .repairs-form-column { flex: none; }
         [data-repair-fit] .repairs-register-column { flex: 1; min-height: 0; }

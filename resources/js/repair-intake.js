@@ -24,8 +24,10 @@ export function createRepairIntake(root, doc = document, win = window) {
     const resetFit = () => {
         root.removeAttribute('data-repair-fit');
         root.removeAttribute('data-repair-table-fit');
+        root.removeAttribute('data-repair-intake-pin');
         root.style.removeProperty('--repair-workspace-height');
         root.style.removeProperty('--repair-table-height');
+        root.style.removeProperty('--repair-intake-top');
     };
     const fit = () => {
         resetFit();
@@ -46,6 +48,12 @@ export function createRepairIntake(root, doc = document, win = window) {
         root.setAttribute('data-repair-table-fit', '');
         const pane = panes.find(p => p.getClientRects().length);
         if (!pane || pane.clientHeight < 180) return resetFit();
+        // Keep a fully visible intake still during the scroll preceding collapse.
+        if (details.getBoundingClientRect().height <= available - number(padding.paddingTop) - number(padding.paddingBottom)) {
+            const origin = shell === win ? 0 : shell.getBoundingClientRect().top;
+            root.style.setProperty('--repair-intake-top', `${top + number(padding.paddingTop) - origin}px`);
+            root.setAttribute('data-repair-intake-pin', '');
+        }
         if (!details.open) {
             // One pixel retains the native scroll-back-to-top path.
             root.style.setProperty('--repair-workspace-height', `${available}px`);
@@ -111,7 +119,7 @@ export function createRepairIntake(root, doc = document, win = window) {
     win.addEventListener('resize', resize);
     // Ignore our own in-flight layout changes; a real viewport resize still settles motion.
     const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation) fit(); }) : null;
-    for (const el of root.querySelectorAll('[data-repair-measure], summary')) observer?.observe(el);
+    for (const el of [...root.querySelectorAll('[data-repair-measure], summary'), body]) observer?.observe(el);
     fit();
     schedule();
     return () => {

@@ -2,7 +2,37 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Stationary intake heading / body-only reveal, 2026-11-11
+## Latest checkpoint — Anchor before scroll-collapse threshold, 2026-11-11
+
+Base `42f904f14aacc12138b9899c4c568a6334cae35d`. Owner's screenshots exposed
+the missing pre-animation case: the entire page scrolls 20px before the 24px
+collapse threshold. Reproduced live at1280x720: summary top122.796875→102.796875,
+still open and not animating. Prior body-only fix did not address this interval.
+Now a fully fitting intake uses a local sticky column in the existing vertical
+layout, anchored to its unscrolled position. Body still animates independently.
+Anchor is removed if the form does not fit, row space is insufficient or the
+viewport is short. Observe body size so content growth updates eligibility;
+Turbo disposal clears the anchor attribute/custom property too. No input-event
+suppression, global overflow rule, financial/controller or record edits.
+
+Actual live after fix: at1280x720, scroll0 and scroll20 both summary y122.796875,
+height81.34375;30 further samples through collapse keep the identical heading
+rectangle and table463.65625px. At1920x960, same y122.796875 at0/20px scroll and
+table703.65625px. At390x844, full intake1204.21875px exceeds available space:
+pin=false, normal page scroll retained, no horizontal overflow. At1024x500,
+pin=false/table-fit=false. Phone testing is emulation, not a physical device.
+
+`node --test tests/Frontend/repair-intake.test.mjs`:23passed; new anchor regression
+observed RED before fix. `node --test tests/Frontend/*.test.mjs`:293passed,
+22existing skips,0failed. Build85modules; Blade lint/diff checks pass. Focused
+PHP5tests53assertions are evidence from immediate parent42f904f, not rerun for
+this JS/CSS-only anchor change. Evidence: `/home/himanshu/jf-table-evidence/repair-intake-anchor-20261111.JTePxm/`,
+including desktop-top.jpg/desktop-scroll20.jpg and test/build logs. Original
+user tab at Returns preserved; used a separate preview tab. No deployment/push,
+OTP, SMTP, native mobile or Dhiran changes. Full native keyboard/screenreader
+and physical-phone acceptance not claimed.
+
+## Previous checkpoint — Stationary intake heading / body-only reveal, 2026-11-11
 
 Base `45cc0195c58a3c9a4448850970548f51d0ef431e`. Owner requested the Receive
 New Repair heading/subtitle stay outside the animation. Added a plain body

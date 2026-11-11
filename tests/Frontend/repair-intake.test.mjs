@@ -5,7 +5,7 @@ import test from 'node:test';
 const source = new URL('../../resources/js/repair-intake.js', import.meta.url);
 const controller = existsSync(source) ? await import(source) : {};
 
-function fixture({ room = 400, height = 925, errors = false, animated = false, reducedMotion = false } = {}) {
+function fixture({ room = 400, height = 925, cardHeight = 460, errors = false, animated = false, reducedMotion = false } = {}) {
     assert.equal(typeof controller.createRepairIntake, 'function', 'The repair intake scroll controller must exist');
     const listeners = new Map(), frames = new Map(), attrs = new Map(), styles = new Map();
     let serial = 0;
@@ -14,7 +14,7 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
         removeEventListener(type) { listeners.delete([this.key, type].join(':')); },
     });
     const shell = { ...target(), key: 'shell', scrollTop: 0,
-        getBoundingClientRect: () => ({ bottom: height }),
+        getBoundingClientRect: () => ({ top: 0, bottom: height }),
         scrollTo({ top }) { this.scrollTop = top; },
     };
     const summary = { ...target(), key: 'summary' };
@@ -22,7 +22,7 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
     const body = {};
     const details = { open: true, querySelector: s => s === 'summary' ? summary : s === '[data-repair-intake-body]' ? body : form };
     const motions = [];
-    details.getBoundingClientRect = () => ({ height: details.open ? 460 : 80 });
+    details.getBoundingClientRect = () => ({ height: details.open ? cardHeight : 80 });
     summary.getBoundingClientRect = () => ({ height: 80 });
     details.setAttribute = (k, v) => attrs.set(k, v);
     details.removeAttribute = k => attrs.delete(k);
@@ -78,6 +78,29 @@ test('manual closing does not nudge the page down before animating the form', ()
     assert.equal(f.shell.scrollTop, 0);
     f.motions[0].finish();
     assert.equal(f.shell.scrollTop, 0);
+});
+
+test('a fitting intake is anchored at its original position before the scroll-collapse threshold', () => {
+    const f = fixture();
+    assert.equal(f.attrs.has('data-repair-intake-pin'), true);
+    assert.equal(f.styles.get('--repair-intake-top'), '122px');
+    f.shell.scrollTop = 20; f.send('shell', 'scroll');
+    assert.equal(f.details.open, true, 'The screenshot case is before the 24px threshold');
+    f.observers[0].fn();
+    assert.equal(f.styles.get('--repair-intake-top'), '122px', 'Scroll offset must not move the anchor');
+    f.dispose();
+    assert.equal(f.attrs.has('data-repair-intake-pin'), false);
+    assert.equal(f.styles.has('--repair-intake-top'), false);
+});
+
+test('an intake taller than the viewport remains normally scrollable and resizing removes its anchor', () => {
+    const tall = fixture({ cardHeight: 1200 });
+    assert.equal(tall.attrs.has('data-repair-intake-pin'), false);
+    const f = fixture();
+    assert.equal(f.attrs.has('data-repair-intake-pin'), true);
+    f.win.innerHeight = 500; f.send('win', 'resize');
+    assert.equal(f.attrs.has('data-repair-intake-pin'), false);
+    assert.equal(f.styles.has('--repair-intake-top'), false);
 });
 
 test('the table starts at its full responsive height and never grows on collapse or reopening', () => {
