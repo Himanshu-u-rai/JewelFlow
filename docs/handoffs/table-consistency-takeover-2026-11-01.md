@@ -2,7 +2,46 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Vendor popup forms and Karigar navigation, 2026-11-11
+## Latest checkpoint — Retail Catalog workspace, 2026-11-11
+
+Refined `/catalog` (`retailer-reports/whatsapp.blade.php`) in the established
+Retail theme. Kept product-image cards rather than forcing an image-sharing
+workflow into a directory table. Removed the legacy inline stylesheet (over 900
+lines); compiled styles are scoped in `catalog-workspace.css`. Shared surfaces,
+compact matching-item KPI, wrapping toolbar, always-visible small desktop search,
+one Apply/Clear slot, shared enhanced selects and mobile bottom-sheet filters.
+Message styles, customer number and Select All remain separate from query filters.
+Normal gallery/page scrolling is intentional; no fixed-height table workspace.
+
+Cards have readable measurements, price, category and 44px actions/selection
+labels; real images retain aspect ratio, missing images say No photo. Silver
+purity uses the existing Item purity label instead of appending K to 925. Custom
+message editing uses a native dialog, with focus return, sticky close/actions,
+phone sheet sizing and the existing thin orange scrollbar. Selection persistence,
+message templates, existing endpoints and public catalog pages remain intact.
+
+Fixed a pre-existing Select All mismatch: collection requests now send every
+selected ID, including other pagination pages, not just rendered cards. Existing
+server-side shop/status validation remains authoritative. Collection error text
+now survives button-state reset; clipboard failures report recoverable feedback.
+No backend, schema, stock price/calculation, public storefront or POS changes.
+
+Browser checks: 1440×900, 1280×720, 980×700, 390×844 and 320×568; no page horizontal
+overflow. Exercised category/search filtering, empty state, Apply/Clear, individual
+selection, Select All/Clear, template pressed state and live message preview;
+verified message editor focus return and wheel scrolling with pinned controls at
+320×568. Mobile filter sheet ends at the viewport bottom. Live preview has 16
+in-stock rows without product photos. No live collection created or WhatsApp sent.
+
+Checks: 320 frontend passed / 22 existing skips; 17 targeted Catalog/public-access
+PHP tests / 58 assertions. Disposable tests cover 23 matching items across pages,
+filtered pagination, off-page collection persistence, shop isolation and access
+gate. Build passed (85 modules), layout detector [], diff check clean. Evidence:
+`/home/himanshu/jf-table-evidence/catalog-workspace-20261111.PWNL3I/`.
+Physical phones, full keyboard traversal, real image loading and live collection
+sending remain unverified. POS/Admin/Dhiran untouched; local only. No dependencies.
+
+## Previous checkpoint — Vendor popup forms and Karigar navigation, 2026-11-11
 
 Owner clarified navigation: Vendors stays in Masters, with no sidebar shortcut.
 Karigars now also lives only in Masters (its permission-aware Parties link already

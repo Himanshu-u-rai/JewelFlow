@@ -3,946 +3,11 @@
         $shop = auth()->user()->shop;
         $shopName = $shop->name ?? 'Your Jewellery Store';
         $shopPhone = $shop->phone ?? '';
+        $hasFilters = request()->anyFilled(['search', 'category', 'sub_category']);
     @endphp
 
-    <style>
-        .wa-catalog-root {
-            --wa-bg-1: #f6f7f9;
-            --wa-bg-2: #ffffff;
-            --wa-accent: #0f766e;
-            --wa-accent-dark: #115e59;
-            --wa-ink: #0f172a;
-            --wa-muted: #475569;
-            --wa-olive: #b45309;
-            --wa-border: #cbd5e1;
-            --wa-soft-border: #e2e8f0;
-        }
-        .wa-hero {
-            border: 1px solid var(--wa-soft-border);
-            border-radius: 12px;
-            padding: 16px 18px;
-            background: #fff;
-            margin-bottom: 18px;
-            display: grid;
-            gap: 12px;
-        }
-        .wa-hero-copy {
-            min-width: 0;
-            max-width: 760px;
-        }
-        .wa-hero-title {
-            font-size: 1.22rem;
-            font-weight: 600;
-            color: var(--wa-ink);
-            letter-spacing: 0;
-        }
-        .wa-hero-sub {
-            margin-top: 4px;
-            color: var(--wa-muted);
-            font-size: 0.93rem;
-        }
-        .wa-chip-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 2px;
-        }
-        .wa-template-chip {
-            border: 1px solid var(--wa-border);
-            background: #fff;
-            color: #1f2937;
-            padding: 7px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-            min-height: 32px;
-            white-space: nowrap;
-            flex: 0 0 auto;
-        }
-        .wa-template-chip.active {
-            background: var(--wa-olive);
-            border-color: var(--wa-olive);
-            color: #fff;
-        }
-        .wa-tools {
-            display: grid;
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 14px;
-            align-items: end;
-        }
-        .wa-custom-grid {
-            display: grid;
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            gap: 10px;
-        }
-        .wa-custom-field {
-            grid-column: span 12;
-        }
-        .wa-custom-hint {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #475569;
-            line-height: 1.5;
-        }
-        .wa-textarea {
-            width: 100%;
-            border: 1px solid var(--wa-border);
-            border-radius: 10px;
-            padding: 9px 11px;
-            font-size: 13px;
-            color: #0f172a;
-            background: #fff;
-            min-height: 124px;
-            resize: vertical;
-            outline: none;
-            font-family: inherit;
-        }
-        .wa-textarea:focus {
-            border-color: #111827;
-            box-shadow: 0 0 0 3px rgba(17, 24, 39, .10);
-        }
-        @media (min-width: 768px) {
-            .wa-custom-field.header { grid-column: span 6; }
-            .wa-custom-field.footer { grid-column: span 6; }
-            .wa-custom-field.body { grid-column: span 12; }
-        }
-        .wa-field {
-            grid-column: span 12;
-        }
-        .wa-field-actions {
-            display: flex;
-            justify-content: flex-end;
-            align-items: end;
-            gap: 8px;
-        }
-        .wa-filter-btn {
-            width: 100%;
-            max-width: 170px;
-        }
-        .wa-filter-btn-clear {
-            background: #475569;
-        }
-        .wa-field label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-        }
-        .wa-input, .wa-select {
-            width: 100%;
-            border: 1px solid var(--wa-border);
-            border-radius: 10px;
-            padding: 9px 11px;
-            font-size: 14px;
-            color: #0f172a;
-            background: #fff;
-            outline: none;
-        }
-        .wa-input:focus, .wa-select:focus {
-            border-color: #111827;
-            box-shadow: 0 0 0 3px rgba(17, 24, 39, .10);
-        }
-        .wa-select-all-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #334155;
-            background: #f8fafc;
-            border: 1px solid var(--wa-border);
-            padding: 8px 12px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-            white-space: nowrap;
-            height: 38px;
-        }
-        .wa-select-all-label:hover {
-            border-color: #94a3b8;
-            background: #fff;
-        }
-        .wa-select-all-label.all-selected {
-            background: var(--wa-olive);
-            border-color: var(--wa-olive);
-            color: #fff;
-        }
-        .wa-select-all-checkbox {
-            accent-color: var(--wa-accent);
-            width: 16px;
-            height: 16px;
-        }
-        @media (min-width: 640px) {
-            .wa-field.search { grid-column: span 6; }
-            .wa-field.category { grid-column: span 6; }
-            .wa-field.phone { grid-column: span 6; }
-            .wa-field-select-all { grid-column: span 6; }
-            .wa-field-actions { grid-column: span 12; }
-        }
-        @media (min-width: 900px) {
-            .wa-field.search { grid-column: span 5; }
-            .wa-field.category { grid-column: span 3; }
-            .wa-field.phone { grid-column: span 4; }
-            .wa-field-select-all { grid-column: span 7; }
-            .wa-field-actions { grid-column: span 5; }
-        }
-        @media (min-width: 1200px) {
-            .wa-tools {
-                grid-template-columns:
-                    minmax(260px, 1.35fr)
-                    minmax(148px, .72fr)
-                    minmax(160px, .78fr)
-                    minmax(145px, .68fr)
-                    minmax(150px, auto)
-                    minmax(116px, auto);
-                align-items: end;
-            }
-            .wa-field.search,
-            .wa-field.category,
-            .wa-field.phone,
-            .wa-field-select-all,
-            .wa-field-actions {
-                grid-column: auto;
-            }
-            .wa-field-actions {
-                display: flex;
-                justify-content: stretch;
-            }
-            .wa-filter-btn {
-                min-width: 120px;
-                max-width: none;
-            }
-        }
-        .wa-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 12px;
-        }
-        @media (min-width: 1200px) {
-            .wa-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-        @media (max-width: 767px) {
-            .wa-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .wa-item-card {
-            border: 1px solid var(--wa-soft-border);
-            border-radius: 12px;
-            background: #fff;
-            box-shadow: none;
-            padding: 0;
-            position: relative;
-            overflow: visible;
-        }
-        .wa-item-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            min-height: 248px;
-            border-radius: inherit;
-            overflow: hidden;
-        }
-        .wa-media-pane {
-            position: relative;
-            min-height: 100%;
-            border-right: 1px solid var(--wa-soft-border);
-            background: #f8fafc;
-        }
-        .wa-content-pane {
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 38px 12px 12px;
-        }
-        .wa-item-top {
-            min-width: 0;
-        }
-        .wa-thumb, .wa-thumb-empty {
-            width: 100%;
-            height: 100%;
-            border-radius: 0;
-            overflow: hidden;
-            border: 0;
-            background: #f1f5f9;
-        }
-        .wa-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .wa-thumb-empty {
-            display: grid;
-            place-items: center;
-            color: #64748b;
-            font-weight: 600;
-            font-size: 18px;
-            letter-spacing: .08em;
-        }
-        .wa-name {
-            font-size: 15px;
-            font-weight: 600;
-            color: #0f172a;
-            line-height: 1.25;
-            letter-spacing: 0;
-        }
-        .wa-code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 12px;
-            color: #334155;
-            margin-top: 2px;
-        }
-        .wa-badges {
-            margin-top: 6px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .wa-badge {
-            font-size: 11px;
-            font-weight: 600;
-            border-radius: 9999px;
-            padding: 4px 8px;
-            border: 1px solid #d8dee6;
-            color: #334155;
-            background: #f8fafc;
-        }
-        .wa-badge.gold {
-            background: #fff7ed;
-            color: #9a3412;
-            border-color: #fed7aa;
-        }
-        .wa-badge.green {
-            background: #ecfdf5;
-            color: #166534;
-            border-color: #bbf7d0;
-        }
-        .wa-metrics {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
-        }
-        .wa-metric {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            background: #f8fafc;
-            padding: 8px 9px;
-        }
-        .wa-metric:last-child {
-            grid-column: 1 / -1;
-        }
-        .wa-metric-label {
-            font-size: 10px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            font-weight: 600;
-        }
-        .wa-metric-value {
-            margin-top: 2px;
-            font-weight: 600;
-            color: #0f172a;
-            font-size: 13px;
-        }
-        .wa-preview {
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 9px;
-            font-size: 12px;
-            line-height: 1.45;
-            color: #0f172a;
-            max-height: 138px;
-            overflow: auto;
-            white-space: pre-wrap;
-        }
-        .wa-actions {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 8px;
-            align-items: start;
-            margin-top: auto;
-        }
-        .wa-actions .wa-btn {
-            white-space: nowrap;
-        }
-        @media (min-width: 1200px) {
-            .wa-actions {
-                gap: 6px;
-            }
-            .wa-actions .wa-btn {
-                padding-inline: 8px;
-                font-size: 11px;
-            }
-        }
-        .wa-item-select-wrap {
-            display: flex;
-            justify-content: flex-end;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 4;
-        }
-        .wa-item-select {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: #334155;
-            background: #f8fafc;
-            border: 1px solid var(--wa-border);
-            padding: 5px 6px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .wa-item-select input {
-            accent-color: #0f766e;
-            margin: 0;
-        }
-        .wa-item-card.selected {
-            border-color: var(--wa-olive);
-            box-shadow: none;
-        }
-        .wa-selection-shell[hidden] {
-            display: none !important;
-        }
-        .wa-selection-shell {
-            margin: 0 0 14px;
-        }
-        .wa-selection-bar {
-            border: 1px solid var(--wa-soft-border);
-            background: #fff;
-            padding: 12px 14px;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .wa-selection-meta {
-            min-width: 0;
-        }
-        .wa-selection-count {
-            font-size: 13px;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        .wa-selection-note {
-            margin-top: 4px;
-            font-size: 12px;
-            color: #475569;
-            line-height: 1.5;
-        }
-        .wa-selection-actions {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 8px;
-            width: 100%;
-        }
-        .wa-selection-actions .wa-btn {
-            width: 100%;
-            min-width: 0;
-            padding: 8px 10px;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .wa-selection-link {
-            display: none;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-            font-size: 12px;
-            color: #475569;
-        }
-        .wa-selection-link.active {
-            display: flex;
-        }
-        .wa-selection-link a {
-            color: #0f766e;
-            font-weight: 700;
-            text-decoration: none;
-        }
-        .wa-selection-url {
-            max-width: 420px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        @media (min-width: 900px) {
-            .wa-selection-bar {
-                flex-direction: row;
-                align-items: flex-start;
-                justify-content: space-between;
-            }
-            .wa-selection-meta {
-                min-width: 0;
-                flex: 1 1 auto;
-            }
-            .wa-selection-actions {
-                flex: 0 0 auto;
-                width: auto;
-                grid-template-columns: repeat(3, minmax(126px, max-content));
-                justify-content: end;
-            }
-            .wa-selection-actions .wa-btn {
-                min-width: 126px;
-                white-space: nowrap;
-            }
-        }
-        .wa-btn {
-            border: 0;
-            border-radius: 10px;
-            padding: 9px 11px;
-            font-weight: 600;
-            font-size: 12px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            text-decoration: none;
-            transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
-        }
-        .wa-btn:active { opacity: .9; }
-        .wa-btn-share {
-            flex: 1;
-            background: #15803d;
-            color: #fff;
-        }
-        .wa-btn-page {
-            flex: 1;
-            background: #0f172a;
-            color: #fff;
-        }
-        .wa-btn-copy {
-            flex: 1;
-            background: #1e293b;
-            color: #fff;
-        }
-        .wa-btn-menu {
-            width: 100%;
-            min-width: 0;
-            background: #fff;
-            color: #0f172a;
-            border: 1px solid var(--wa-border);
-            padding-inline: 0;
-            font-size: 16px;
-            line-height: 1;
-        }
-        .wa-menu-wrap {
-            position: relative;
-            grid-column: 1 / -1;
-            z-index: 10;
-        }
-        .wa-menu {
-            position: absolute;
-            top: auto;
-            bottom: calc(100% + 6px);
-            right: 0;
-            min-width: 180px;
-            display: none;
-            background: #fff;
-            border: 1px solid var(--wa-border);
-            box-shadow: none;
-            z-index: 60;
-        }
-        .wa-menu.open {
-            display: block;
-        }
-        .wa-menu button {
-            width: 100%;
-            text-align: left;
-            border: 0;
-            background: #fff;
-            color: #0f172a;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 11px 12px;
-            cursor: pointer;
-        }
-        .wa-menu button + button {
-            border-top: 1px solid #edf2f7;
-        }
-        .wa-menu button:hover {
-            background: #f8fafc;
-        }
-        .wa-empty {
-            border: 1px dashed #cbd5e1;
-            border-radius: 16px;
-            background: #fff;
-            padding: 34px 20px;
-            text-align: center;
-            color: #64748b;
-        }
 
-        @media (max-width: 768px) {
-            .wa-catalog-root {
-                gap: 10px;
-            }
-
-            .wa-hero-copy {
-                max-width: none;
-            }
-
-            .wa-selection-bar {
-                padding: 10px;
-                gap: 10px;
-            }
-
-            .wa-selection-count {
-                font-size: 12px;
-            }
-
-            .wa-selection-note {
-                font-size: 11px;
-                line-height: 1.35;
-            }
-
-            .wa-selection-link {
-                font-size: 11px;
-                gap: 6px;
-            }
-
-            .wa-selection-url {
-                max-width: 100%;
-                white-space: normal;
-                overflow-wrap: anywhere;
-            }
-
-            .wa-selection-actions {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 6px;
-            }
-
-            .wa-selection-actions .wa-btn {
-                min-height: 32px;
-                padding: 7px 8px;
-                font-size: 11px;
-            }
-
-            .wa-selection-actions .wa-btn:last-child {
-                grid-column: 1 / -1;
-            }
-
-            .wa-item-layout {
-                grid-template-columns: minmax(0, 44%) minmax(0, 56%);
-                min-height: 186px;
-            }
-
-            .wa-media-pane {
-                border-right: 1px solid var(--wa-soft-border);
-            }
-
-            .wa-content-pane {
-                padding: 34px 8px 8px;
-                gap: 6px;
-            }
-
-            .wa-name {
-                font-size: 12.5px;
-                line-height: 1.2;
-            }
-
-            .wa-code {
-                font-size: 10px;
-            }
-
-            .wa-badges {
-                margin-top: 4px;
-                gap: 4px;
-            }
-
-            .wa-badge {
-                font-size: 9.5px;
-                padding: 3px 5px;
-            }
-
-            .wa-metrics {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 4px;
-            }
-
-            .wa-metric {
-                padding: 5px 5px;
-                border-radius: 7px;
-            }
-
-            .wa-metric:last-child {
-                grid-column: auto;
-            }
-
-            .wa-metric-label {
-                font-size: 8.5px;
-            }
-
-            .wa-metric-value {
-                margin-top: 1px;
-                font-size: 10.5px;
-            }
-
-            .wa-actions {
-                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px;
-                gap: 4px;
-            }
-
-            .wa-menu-wrap {
-                grid-column: auto;
-            }
-
-            .wa-btn {
-                min-height: 28px;
-                padding: 0 6px;
-                font-size: 10px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .wa-btn-menu {
-                width: 34px;
-                min-width: 34px;
-                font-size: 14px;
-            }
-
-            .wa-hero {
-                border-radius: 12px;
-                padding: 10px;
-                margin-bottom: 10px;
-                background: #fff;
-            }
-
-            .wa-hero-title {
-                font-size: 1.05rem;
-                line-height: 1.2;
-            }
-
-            .wa-hero-sub {
-                display: none;
-            }
-
-            .wa-chip-row {
-                margin-top: 8px;
-                gap: 6px;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding-bottom: 2px;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-
-            .wa-chip-row::-webkit-scrollbar {
-                display: none;
-            }
-
-            .wa-template-chip {
-                padding: 5px 9px;
-                border-radius: 7px;
-                font-size: 10.5px;
-            }
-
-            .wa-tools {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 7px;
-                margin-top: 8px;
-                padding: 8px;
-                border: 1px solid var(--wa-soft-border);
-                border-radius: 10px;
-                background: #f8fafc;
-            }
-
-            .wa-field.search {
-                grid-column: 1 / -1;
-            }
-
-            .wa-field.category {
-                grid-column: auto;
-            }
-
-            .wa-field.phone {
-                grid-column: 1;
-            }
-
-            .wa-field-select-all {
-                grid-column: 2;
-            }
-
-            .wa-field label {
-                font-size: 10px;
-                margin-bottom: 3px;
-            }
-
-            .wa-input,
-            .wa-select {
-                border-radius: 10px;
-                padding: 7px 8px;
-                font-size: 12px;
-                line-height: 1.25;
-            }
-
-            .wa-field-actions {
-                grid-column: 1 / -1;
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                justify-content: stretch;
-                gap: 6px;
-            }
-
-            .wa-field-actions .wa-filter-btn:only-child {
-                grid-column: 1 / -1;
-            }
-
-            .wa-filter-btn {
-                min-height: 32px;
-                max-width: none;
-                padding: 0 10px;
-                font-size: 11px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .wa-tools {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 7px;
-                padding: 7px;
-            }
-
-            .wa-field.search,
-            .wa-field-actions {
-                grid-column: 1 / -1;
-            }
-
-            .wa-field.category,
-            .wa-field.phone,
-            .wa-field-select-all {
-                grid-column: auto;
-            }
-
-            .wa-field-actions {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                justify-content: stretch;
-            }
-
-            .wa-filter-btn {
-                max-width: none;
-                width: 100%;
-            }
-
-            .wa-selection-actions {
-                grid-template-columns: 1fr;
-            }
-
-            .wa-selection-actions .wa-btn:last-child {
-                grid-column: auto;
-            }
-
-            .wa-selection-actions .wa-btn {
-                min-height: 30px;
-                font-size: 10.5px;
-            }
-
-            .wa-item-layout {
-                grid-template-columns: minmax(0, 40%) minmax(0, 60%);
-                min-height: 176px;
-            }
-
-            .wa-content-pane {
-                padding: 32px 7px 7px;
-            }
-
-            .wa-name {
-                font-size: 11.5px;
-            }
-
-            .wa-badge {
-                font-size: 9px;
-                padding: 2px 5px;
-            }
-
-            .wa-metrics {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 4px;
-            }
-
-            .wa-metric:last-child {
-                grid-column: 1 / -1;
-            }
-
-            .wa-metric-label {
-                font-size: 8px;
-            }
-
-            .wa-metric-value {
-                font-size: 10px;
-            }
-
-            .wa-actions {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 4px;
-            }
-
-            .wa-menu-wrap {
-                grid-column: 1 / -1;
-            }
-
-            .wa-btn {
-                min-height: 27px;
-                font-size: 9.5px;
-            }
-
-            .wa-btn-menu {
-                width: 100%;
-                min-width: 0;
-                font-size: 13px;
-            }
-
-            .wa-thumb-empty {
-                font-size: 15px;
-            }
-
-            .wa-hero {
-                padding: 10px;
-            }
-
-            .wa-hero-title {
-                font-size: 1rem;
-            }
-
-            .wa-tools {
-                gap: 7px;
-            }
-
-            .wa-template-chip {
-                padding: 4px 8px;
-                font-size: 10px;
-            }
-
-            .wa-filter-btn {
-                min-height: 30px;
-                font-size: 10.5px;
-            }
-
-            .wa-input,
-            .wa-select {
-                padding: 6px 8px;
-                font-size: 11px;
-            }
-        }
-    </style>
-
-    <x-page-header>
+    <x-page-header class="catalog-page-header">
         <div>
             <h1 class="page-title">Catalog</h1>
         </div>
@@ -954,19 +19,16 @@
          data-collection-endpoint="{{ route('catalog.collections.store') }}"
          data-all-matching-ids="{{ json_encode($allMatchingIds) }}">
 
-        <section class="wa-hero">
-            <div class="wa-hero-copy">
-                <div class="wa-hero-title">Catalog sharing</div>
-                <div class="wa-hero-sub">Filter items, choose a message style, and share product links without changing the catalog data.</div>
+        <section class="wa-workspace" aria-labelledby="wa-workspace-title">
+          <header class="wa-workspace-head">
+            <div class="wa-workspace-heading">
+                <h2 id="wa-workspace-title">Catalog sharing</h2>
+                <dl class="wa-summary"><div><dt>Matching items</dt><dd>{{ number_format($items->total()) }}</dd></div></dl>
             </div>
-
-            <div class="wa-chip-row">
-                <button type="button" class="wa-template-chip active" data-template="premium">Premium Pitch</button>
-                <button type="button" class="wa-template-chip" data-template="quick">Quick Quote</button>
-                <button type="button" class="wa-template-chip" data-template="newdrop">New Arrival</button>
-            </div>
-
-            <form method="GET" action="{{ route('catalog.index') }}" class="wa-tools">
+            <x-responsive-filter-panel id="catalog-filter-panel" label="Catalog filters">
+            <form method="GET" action="{{ route('catalog.index') }}" class="wa-tools"
+                  data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
+                  x-data="{ dirty: false, hasFilters: @js($hasFilters) }" @input="dirty = true" @change="dirty = true">
                 <div class="wa-field search">
                     <label for="search">Search</label>
                     <input id="search" name="search" type="text" class="wa-input"
@@ -975,7 +37,7 @@
                 </div>
                 <div class="wa-field category">
                     <label for="category">Category</label>
-                    <select id="category" name="category" class="wa-select" onchange="document.getElementById('sub_category').value=''; this.form.submit()">
+                    <select id="category" name="category" class="wa-select" @change="document.getElementById('sub_category').value = ''">
                         <option value="">All Categories</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
@@ -984,38 +46,50 @@
                 </div>
                 <div class="wa-field category">
                     <label for="sub_category">Sub Category</label>
-                    <select id="sub_category" name="sub_category" class="wa-select" onchange="this.form.submit()">
+                    <select id="sub_category" name="sub_category" class="wa-select">
                         <option value="">All Sub Categories</option>
                         @foreach($subCategories as $subCategory)
                             <option value="{{ $subCategory }}" {{ request('sub_category') === $subCategory ? 'selected' : '' }}>{{ $subCategory }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="wa-field phone">
-                    <label for="wa-phone">Customer Number (optional)</label>
-                    <input id="wa-phone" type="text" class="wa-input" value="{{ $shopPhone }}" placeholder="e.g. 9198XXXXXX">
-                </div>
-                <div class="wa-field wa-field-select-all">
-                    <label>&nbsp;</label>
-                    <label class="wa-select-all-label" id="wa-select-all-label">
-                        <input type="checkbox" id="wa-select-all" class="wa-select-all-checkbox">
-                        <span id="wa-select-all-text">Select All ({{ count($allMatchingIds) }})</span>
-                    </label>
-                </div>
                 <div class="wa-field wa-field-actions">
-                    <button type="submit" class="wa-btn wa-btn-copy wa-filter-btn">Apply</button>
-                    @if(request()->hasAny(['search', 'category', 'sub_category']))
-                        <a href="{{ route('catalog.index') }}" class="wa-btn wa-btn-copy wa-filter-btn wa-filter-btn-clear">Clear</a>
+                    <button type="submit" class="btn btn-primary btn-sm" x-show="dirty || !hasFilters">Apply</button>
+                    <a href="{{ route('catalog.index') }}" class="btn btn-primary btn-sm" x-show="!dirty && hasFilters" x-cloak>Clear</a>
+                    @if($hasFilters)
+                        <noscript><a href="{{ route('catalog.index') }}" class="btn btn-secondary btn-sm">Clear</a></noscript>
                     @endif
                 </div>
             </form>
+            </x-responsive-filter-panel>
+          </header>
+          <div class="wa-sharing-tools">
+            <div class="wa-message-style">
+                <span id="wa-style-label">Message style</span>
+                <div class="wa-chip-row" role="group" aria-labelledby="wa-style-label">
+                    <button type="button" class="wa-template-chip active" data-template="premium" aria-pressed="true">Premium Pitch</button>
+                    <button type="button" class="wa-template-chip" data-template="quick" aria-pressed="false">Quick Quote</button>
+                    <button type="button" class="wa-template-chip" data-template="newdrop" aria-pressed="false">New Arrival</button>
+                </div>
+            </div>
+            <div class="wa-field phone">
+                <label for="wa-phone">Customer number <span>(optional)</span></label>
+                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
+            </div>
+            <div class="wa-selection-tools">
+            <label class="wa-select-all-label" id="wa-select-all-label">
+                <input type="checkbox" id="wa-select-all" class="wa-select-all-checkbox" @disabled(count($allMatchingIds) === 0)>
+                <span id="wa-select-all-text">Select All ({{ count($allMatchingIds) }})</span>
+            </label>
+            </div>
+          </div>
         </section>
 
         <section class="wa-selection-shell" id="wa-selection-shell" hidden>
             <div class="wa-selection-bar">
                 <div class="wa-selection-meta">
                     <div class="wa-selection-count"><span id="wa-selected-count">0</span> selected</div>
-                    <div class="wa-selection-note" id="wa-bulk-note">Create one clean collection page for these selected products, then send that collection on WhatsApp.</div>
+                    <div class="wa-selection-note" id="wa-bulk-note" role="status">Create one clean collection page for these selected products, then send that collection on WhatsApp.</div>
                     <div class="wa-selection-link" id="wa-collection-row">
                         <span>Collection ready:</span>
                         <a href="#" id="wa-view-collection" target="_blank" rel="noopener noreferrer">Open collection</a>
@@ -1023,9 +97,9 @@
                     </div>
                 </div>
                 <div class="wa-selection-actions">
-                    <button type="button" id="wa-create-collection" class="wa-btn wa-btn-copy" style="background:#0f766e;">Create Collection</button>
+                    <button type="button" id="wa-create-collection" class="wa-btn wa-btn-primary">Create Collection</button>
                     <button type="button" id="wa-share-selected" class="wa-btn wa-btn-share">Send on WhatsApp</button>
-                    <button type="button" id="wa-clear-selected" class="wa-btn wa-btn-copy" style="background:#475569;">Clear</button>
+                    <button type="button" id="wa-clear-selected" class="wa-btn wa-btn-copy">Clear selection</button>
                 </div>
             </div>
         </section>
@@ -1034,7 +108,7 @@
             @forelse($items as $item)
                 @php
                     $displayName = $item->design ?: trim(($item->category ?? 'Jewellery') . ' ' . ($item->sub_category ?? ''));
-                    $displayPurity = $item->purity ? rtrim(rtrim(number_format((float) $item->purity, 2, '.', ''), '0'), '.') . 'K' : '—';
+                    $displayPurity = $item->purity_label ?: '—';
                     $displayWeight = number_format((float) ($item->gross_weight ?? 0), 3, '.', '');
                     $displayPrice = number_format((float) ($item->selling_price ?? 0), 2, '.', '');
                     $displayImage = null;
@@ -1050,7 +124,6 @@
                             $displayImage = request()->getSchemeAndHttpHost() . $storagePathOnly;
                         }
                     }
-                    $fallback = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', (string) ($item->barcode ?? 'NA')), 0, 2)) ?: 'NA';
                 @endphp
                 <article class="wa-item-card"
                          data-item-id="{{ $item->id }}"
@@ -1071,14 +144,14 @@
                     <div class="wa-item-layout">
                         <div class="wa-media-pane">
                             @if($displayImage)
-                                <div class="wa-thumb"><img src="{{ $displayImage }}" alt="{{ $displayName }}"></div>
+                                <div class="wa-thumb"><img src="{{ $displayImage }}" alt="{{ $displayName }}" loading="lazy" decoding="async"></div>
                             @else
-                                <div class="wa-thumb-empty">{{ $fallback }}</div>
+                                <div class="wa-thumb-empty"><x-icon name="image" size="32" /><span>No photo</span></div>
                             @endif
                         </div>
                         <div class="wa-content-pane">
                             <div class="wa-item-top">
-                                <div class="wa-name">{{ $displayName }}</div>
+                                <h3 class="wa-name">{{ $displayName }}</h3>
                                 <div class="wa-code">{{ $item->barcode }}</div>
                                 <div class="wa-badges">
                                     <span class="wa-badge gold">{{ $displayPurity }}</span>
@@ -1108,8 +181,8 @@
                                 <a class="wa-btn wa-btn-share js-wa-share" target="_blank" rel="noopener noreferrer" href="#">WhatsApp</a>
                                 <a class="wa-btn wa-btn-page js-item-page" target="_blank" rel="noopener noreferrer" href="#">Public Page</a>
                                 <div class="wa-menu-wrap">
-                                    <button type="button" class="wa-btn wa-btn-menu js-item-menu-toggle" aria-expanded="false" aria-label="More actions">⋯</button>
-                                    <div class="wa-menu js-item-menu">
+                                    <button type="button" class="wa-btn wa-btn-menu js-item-menu-toggle" aria-expanded="false" aria-controls="wa-item-actions-{{ $item->id }}" aria-label="More actions for {{ $displayName }}"><x-icon name="chevron-down" size="18" /></button>
+                                    <div class="wa-menu js-item-menu" id="wa-item-actions-{{ $item->id }}">
                                         <button type="button" class="js-link-copy">Copy Public Link</button>
                                         <button type="button" class="js-custom-msg">Custom Message</button>
                                     </div>
@@ -1119,7 +192,7 @@
                     </div>
                 </article>
             @empty
-                <div class="wa-empty" style="grid-column: 1 / -1;">
+                <div class="wa-empty">
                     <div style="font-size:15px;font-weight:700;color:#334155;">No in-stock items found.</div>
                     <div style="font-size:13px;margin-top:4px;">
                         {{ request()->hasAny(['search', 'category', 'sub_category']) ? 'Try clearing filters or search text.' : 'Add stock items first, then share catalog messages.' }}
@@ -1128,15 +201,19 @@
             @endforelse
         </section>
 
-        @if($items->hasPages())
-            <div class="mt-4">
+        <footer class="wa-pagination">
+            <p>{{ number_format($items->total()) }} matching {{ \Illuminate\Support\Str::plural('item', $items->total()) }}</p>
+            @if($items->hasPages())
                 {{ $items->withQueryString()->links() }}
-            </div>
-        @endif
+            @endif
+        </footer>
 
-        <div id="wa-custom-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15,23,42,0.5);">
-            <div style="background-color: #f8fafc; margin: 5% auto; padding: 20px; border: 1px solid #dbe5e2; width: 90%; max-width: 700px; border-radius: 14px; box-shadow: 0 10px 24px rgba(15,23,42,0.1);">
-                <h3 id="modal-title" class="wa-hero-title" style="margin-bottom: 1rem; font-size: 1.2rem;">Custom Message for...</h3>
+        <dialog id="wa-custom-modal" class="wa-custom-modal jf-scrollbar" aria-labelledby="modal-title">
+            <header class="wa-custom-head">
+                <h2 id="modal-title">Custom Message</h2>
+                <button type="button" id="modal-dismiss" class="wa-btn wa-btn-menu" aria-label="Close message editor"><x-icon name="x" size="18" /></button>
+            </header>
+            <div class="wa-custom-content">
 
                 <div class="wa-custom-grid">
                     <div class="wa-custom-field header">
@@ -1166,15 +243,16 @@ Price: ₹{price}
                 <div style="margin-top: 1rem;">
                   <label class="wa-metric-label">Live Preview</label>
                   <pre id="modal-preview" class="wa-preview" style="margin-top: 4px; max-height: 150px;"></pre>
+                  <p id="wa-copy-status" role="status"></p>
                 </div>
 
-                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;">
+            </div>
+                <footer class="wa-custom-actions">
                     <a id="modal-wa-share" class="wa-btn wa-btn-share" target="_blank" rel="noopener noreferrer" href="#">Open WhatsApp</a>
                     <button type="button" id="modal-wa-copy" class="wa-btn wa-btn-copy">Copy Message</button>
-                    <button type="button" id="modal-close" class="wa-btn wa-btn-copy" style="background:#64748b;">Close</button>
-                </div>
-            </div>
-        </div>
+                    <button type="button" id="modal-close" class="wa-btn wa-btn-copy">Close</button>
+                </footer>
+        </dialog>
     </div>
 
     <script>
@@ -1217,6 +295,7 @@ Price: ₹{price}
 
             const modalState = {
                 itemData: null,
+                opener: null,
             };
 
             const STORAGE_KEY = 'wa_catalog_selected';
@@ -1278,9 +357,6 @@ Price: ₹{price}
                     .join('\n')
                     .trim();
 
-            const getSelectedCards = () =>
-                cards.filter((card) => selectedIds.has(String(card.dataset.itemId || '')));
-
             const currentSelectionKey = () =>
                 Array.from(selectedIds)
                     .map((id) => String(id))
@@ -1318,6 +394,8 @@ Price: ₹{price}
                         buttonEl.textContent = old;
                     }, 1200);
                 } catch (_) {
+                    if (modal.open) document.getElementById('wa-copy-status').textContent = 'Copy failed. Please try again.';
+                    else window.showToast?.('Copy failed. Please try again.', 'error');
                     setBulkNote('Copy failed. Please try again.', true);
                 }
             }
@@ -1546,18 +624,24 @@ Price: ₹{price}
                 modalShareBtn.href = waPhone ? `https://wa.me/${waPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
             };
 
-            const openModal = (itemCard) => {
+            const openModal = (itemCard, opener) => {
+                modalState.opener = opener;
                 modalState.itemData = { ...itemCard.dataset };
+                document.getElementById('wa-copy-status').textContent = '';
                 modalTitle.textContent = `Custom Message for ${modalState.itemData.design || 'Item'}`;
                 renderModalPreview();
                 closeAllMenus();
-                modal.style.display = 'block';
+                modal.showModal();
+                modalHeaderInput.focus();
             };
 
             const closeModal = () => {
-                modal.style.display = 'none';
+                modal.close();
                 modalState.itemData = null;
+                modalState.opener?.focus();
             };
+            modal.addEventListener('close', () => { modalState.itemData = null; modalState.opener?.focus(); });
+            document.addEventListener('turbo:before-cache', () => { modal.close(); closeAllMenus(); }, { once: true });
 
             const createOrReuseCollectionLink = async () => {
                 const selectionKey = currentSelectionKey();
@@ -1573,10 +657,9 @@ Price: ₹{price}
                     throw new Error('Collection endpoint is unavailable.');
                 }
 
-                const selectedCards = getSelectedCards();
-                const itemIds = selectedCards
-                    .map((card) => Number(card.dataset.itemId || 0))
-                    .filter((id) => id > 0);
+                const itemIds = Array.from(selectedIds)
+                    .map(Number)
+                    .filter((id) => Number.isInteger(id) && id > 0);
 
                 const response = await fetch(collectionEndpoint, {
                     method: 'POST',
@@ -1611,7 +694,10 @@ Price: ₹{price}
             templateButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     state.template = button.dataset.template || 'premium';
-                    templateButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
+                    templateButtons.forEach((btn) => {
+                        btn.classList.toggle('active', btn === button);
+                        btn.setAttribute('aria-pressed', String(btn === button));
+                    });
                     renderGlobal();
                 });
             });
@@ -1630,8 +716,8 @@ Price: ₹{price}
                     closeAllMenus();
                 });
 
-                card.querySelector('.js-custom-msg')?.addEventListener('click', () => {
-                    openModal(card);
+                card.querySelector('.js-custom-msg')?.addEventListener('click', (event) => {
+                    openModal(card, event.currentTarget.closest('.wa-menu-wrap').querySelector('.js-item-menu-toggle'));
                 });
 
                 card.querySelector('.js-item-select')?.addEventListener('change', (event) => {
@@ -1702,6 +788,7 @@ Price: ₹{price}
                 }
 
                 const oldLabel = button.textContent;
+                let errorMessage = '';
                 button.disabled = true;
                 button.textContent = 'Creating...';
 
@@ -1709,11 +796,12 @@ Price: ₹{price}
                     await createOrReuseCollectionLink();
                     setBulkNote(`Collection created for ${selectedIds.size} selected product${selectedIds.size > 1 ? 's' : ''}.`);
                 } catch (error) {
-                    setBulkNote(error.message || 'Could not create collection link.', true);
+                    errorMessage = error.message || 'Could not create collection link.';
                 } finally {
                     button.disabled = false;
                     updateSelectionUI();
                     button.textContent = createCollectionBtn?.textContent || oldLabel;
+                    if (errorMessage) setBulkNote(errorMessage, true);
                 }
             });
 
@@ -1739,6 +827,7 @@ Price: ₹{price}
             });
 
             modalCloseBtn?.addEventListener('click', closeModal);
+            document.getElementById('modal-dismiss')?.addEventListener('click', closeModal);
             modalCopyBtn?.addEventListener('click', (event) => {
                 copyToClipboard(event.currentTarget.dataset.message, event.currentTarget);
             });
@@ -1759,10 +848,8 @@ Price: ₹{price}
 
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
+                    root.querySelector('.js-item-menu.open')?.previousElementSibling?.focus();
                     closeAllMenus();
-                    if (modal?.style.display === 'block') {
-                        closeModal();
-                    }
                 }
             });
 

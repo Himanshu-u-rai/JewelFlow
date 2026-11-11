@@ -9,6 +9,7 @@
 @import "./vault-workspace.css";
 @import "./karigars-directory.css";
 @import "./vendors-directory.css";
+@import "./catalog-workspace.css";
 @import "./job-orders-directory.css";
 @import "./job-order-create.css";
 @import "./job-order-records.css";
