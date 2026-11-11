@@ -52,8 +52,8 @@ class RepairController extends Controller
             });
         }
 
-        // Keep the companion JSON contract; five web rows fit the collapsed intake workspace.
-        $repairs = $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate($request->expectsJson() ? 25 : 5)->withQueryString();
+        // Web rows scroll inside the register; keep the companion JSON page size unchanged.
+        $repairs = $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate($request->expectsJson() ? 25 : 15)->withQueryString();
 
         if ($request->expectsJson()) {
             $repairs->setCollection(

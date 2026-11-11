@@ -36,30 +36,30 @@ class RepairWorkspaceTest extends TestCase
             ->assertOk()->assertDontSee('<details', false);
     }
 
-    public function test_five_row_web_pages_have_stable_continuing_indices_without_changing_json_page_size(): void
+    public function test_fifteen_row_web_pages_have_stable_continuing_indices_without_changing_json_page_size(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $customer = $this->createCustomer($shop->id);
         $this->travelTo(now()->startOfSecond());
         $ids = TenantContext::runFor($shop->id, function () use ($customer) {
             $ids = [];
-            for ($i = 1; $i <= 12; $i++) {
+            for ($i = 1; $i <= 31; $i++) {
                 $ids[] = Repair::create(['customer_id' => $customer->id, 'item_description' => 'Synthetic repair '.$i,
                     'gross_weight' => 2, 'status' => 'received'])->id;
             }
             return $ids;
         });
         $seen = [];
-        foreach ([1 => range(1, 5), 2 => range(6, 10), 3 => range(11, 12)] as $page => $indices) {
+        foreach ([1 => range(1, 15), 2 => range(16, 30), 3 => [31]] as $page => $indices) {
             $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(route('repairs.index', ['page' => $page])))->assertOk();
             $paginator = $response->viewData('repairs');
-            $this->assertSame(5, $paginator->perPage());
+            $this->assertSame(15, $paginator->perPage());
             $this->assertSame($indices, range($paginator->firstItem(), $paginator->lastItem()));
             $seen = [...$seen, ...$paginator->pluck('id')->all()];
         }
         $this->assertSame(array_reverse($ids), $seen, 'Same-second intakes must not repeat or disappear across pages');
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->getJson(route('repairs.index')))
-            ->assertOk()->assertJsonPath('per_page', 25)->assertJsonCount(12, 'data');
+            ->assertOk()->assertJsonPath('per_page', 25)->assertJsonPath('total', 31)->assertJsonCount(25, 'data');
         $this->travelBack();
     }
 }

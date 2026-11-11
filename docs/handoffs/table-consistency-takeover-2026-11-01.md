@@ -2,7 +2,34 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Anchor before scroll-collapse threshold, 2026-11-11
+## Latest checkpoint — 15 Repairs per web page, 2026-11-11
+
+Base `ecb52e94f4166167631ff3aae2d2ab62d82ebf65`. Owner approved15records per
+page with internal row scrolling. Changed only RepairController's web pagination
+5→15; JSON remains25. Existing responsive frame, sticky columns, outside footer,
+intake anchoring and short-window fallback remain untouched. No record mutations.
+
+Regression now creates31synthetic test records and checks15/15/1pages, continuing
+indices1–31, stable tie ordering, JSON25records/total31. Observed RED with old
+5limit, then GREEN. Guarded disposable command:
+`APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+tests/Feature/Repair/RepairWorkspaceTest.php
+tests/Feature/Repair/RepairPageRevisitTest.php`:5tests54assertions passed.
+Controller lint/diffcheck pass. No assets changed or rebuilt; frontend293pass/
+22existing skips belongs to parent anchor checkpoint, not rerun for PHP-only limit.
+
+Actual authenticated preview still has22synthetic records: page1has15visible
+rows, page2has7 with indices16–22. Desktop1280x720: table463.65625px remains
+fixed; internal row scroll1491 reachesrow15 bottom607.984375 insidepane618.796875;
+column headings stay at307.484375, paginationbottom687.796875within720.
+Phone-width390x844:15cards; internal scroll4478 reacheslastcardbottom747.734375
+insidepane760.15625; footer830within844, no horizontal overflow. Emulation only,
+not physical-phone acceptance. Evidence screenshots/red+green logs:
+`/home/himanshu/jf-table-evidence/repair-15-rows-20261111.VMHsCJ/`.
+No Dhiran, production, staging, OTP, SMTP, API/native-app changes, push or merge.
+
+## Previous checkpoint — Anchor before scroll-collapse threshold, 2026-11-11
 
 Base `42f904f14aacc12138b9899c4c568a6334cae35d`. Owner's screenshots exposed
 the missing pre-animation case: the entire page scrolls 20px before the 24px
