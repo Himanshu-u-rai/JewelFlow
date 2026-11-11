@@ -27,12 +27,15 @@ test('Select All collection payload contains off-page selections, not just rende
     assert.deepEqual(ids, [1, 2, 23, 42]);
 });
 
-test('Message editor uses native modal focus and cleanup; template state is announced', () => {
+test('Message editor uses native modal focus and cleanup; message style is a real dropdown', () => {
     assert.match(view, /<dialog id="wa-custom-modal"[^>]*aria-labelledby="modal-title"/);
     assert.match(view, /modal.showModal\(\)/);
     assert.match(view, /modal.close\(\)/);
     assert.match(view, /turbo:before-cache/);
-    assert.match(view, /setAttribute\('aria-pressed'/);
+    assert.match(view, /<select id="wa-message-style"/);
+    assert.doesNotMatch(view, /wa-template-chip|Catalog sharing|wa-sharing-tools/);
+    assert.match(view, /templateSelect\?\.addEventListener\('change'/);
+    assert.match(view, /state.template = templateSelect.value/);
     assert.match(view, /aria-controls="wa-item-actions-/);
 });
 

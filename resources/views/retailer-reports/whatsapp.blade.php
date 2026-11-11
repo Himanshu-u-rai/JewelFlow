@@ -19,11 +19,26 @@
          data-collection-endpoint="{{ route('catalog.collections.store') }}"
          data-all-matching-ids="{{ json_encode($allMatchingIds) }}">
 
-        <section class="wa-workspace" aria-labelledby="wa-workspace-title">
+        <section class="wa-workspace" aria-label="Catalog tools">
           <header class="wa-workspace-head">
-            <div class="wa-workspace-heading">
-                <h2 id="wa-workspace-title">Catalog sharing</h2>
-                <dl class="wa-summary"><div><dt>Matching items</dt><dd>{{ number_format($items->total()) }}</dd></div></dl>
+            <dl class="wa-summary" aria-label="Matching items"><div><dt>Items</dt><dd>{{ number_format($items->total()) }}</dd></div></dl>
+            <div class="wa-field wa-message-style" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                <label for="wa-message-style">Message style</label>
+                <select id="wa-message-style" class="wa-select">
+                    <option value="premium">Premium Pitch</option>
+                    <option value="quick">Quick Quote</option>
+                    <option value="newdrop">New Arrival</option>
+                </select>
+            </div>
+            <div class="wa-field phone">
+                <label for="wa-phone">Customer number <span>(optional)</span></label>
+                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
+            </div>
+            <div class="wa-selection-tools">
+                <label class="wa-select-all-label" id="wa-select-all-label">
+                    <input type="checkbox" id="wa-select-all" class="wa-select-all-checkbox" @disabled(count($allMatchingIds) === 0)>
+                    <span id="wa-select-all-text">Select All ({{ count($allMatchingIds) }})</span>
+                </label>
             </div>
             <x-responsive-filter-panel id="catalog-filter-panel" label="Catalog filters">
             <form method="GET" action="{{ route('catalog.index') }}" class="wa-tools"
@@ -63,26 +78,6 @@
             </form>
             </x-responsive-filter-panel>
           </header>
-          <div class="wa-sharing-tools">
-            <div class="wa-message-style">
-                <span id="wa-style-label">Message style</span>
-                <div class="wa-chip-row" role="group" aria-labelledby="wa-style-label">
-                    <button type="button" class="wa-template-chip active" data-template="premium" aria-pressed="true">Premium Pitch</button>
-                    <button type="button" class="wa-template-chip" data-template="quick" aria-pressed="false">Quick Quote</button>
-                    <button type="button" class="wa-template-chip" data-template="newdrop" aria-pressed="false">New Arrival</button>
-                </div>
-            </div>
-            <div class="wa-field phone">
-                <label for="wa-phone">Customer number <span>(optional)</span></label>
-                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
-            </div>
-            <div class="wa-selection-tools">
-            <label class="wa-select-all-label" id="wa-select-all-label">
-                <input type="checkbox" id="wa-select-all" class="wa-select-all-checkbox" @disabled(count($allMatchingIds) === 0)>
-                <span id="wa-select-all-text">Select All ({{ count($allMatchingIds) }})</span>
-            </label>
-            </div>
-          </div>
         </section>
 
         <section class="wa-selection-shell" id="wa-selection-shell" hidden>
@@ -260,7 +255,7 @@ Price: ₹{price}
             const root = document.getElementById('wa-catalog-root');
             if (!root) return;
 
-            const templateButtons = Array.from(root.querySelectorAll('.wa-template-chip'));
+            const templateSelect = root.querySelector('#wa-message-style');
             const cards = Array.from(root.querySelectorAll('.wa-item-card'));
             const phoneInput = root.querySelector('#wa-phone');
             const offerInput = root.querySelector('#wa-offer');
@@ -691,15 +686,9 @@ Price: ₹{price}
                 return latestCollectionLink;
             };
 
-            templateButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    state.template = button.dataset.template || 'premium';
-                    templateButtons.forEach((btn) => {
-                        btn.classList.toggle('active', btn === button);
-                        btn.setAttribute('aria-pressed', String(btn === button));
-                    });
-                    renderGlobal();
-                });
+            templateSelect?.addEventListener('change', () => {
+                state.template = templateSelect.value;
+                renderGlobal();
             });
 
             if (offerInput) {

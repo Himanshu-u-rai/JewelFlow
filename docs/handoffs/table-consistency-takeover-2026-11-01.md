@@ -4,6 +4,17 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Retail Catalog workspace, 2026-11-11
 
+Owner follow-up: removed the Catalog sharing heading and merged the two control
+rows into one toolbar. Message style is now the existing themed searchable select
+(Premium Pitch / Quick Quote / New Arrival); changing it updates the same message
+state and links. Customer number and Select All sit in that same toolbar. At wide
+desktop widths all query filters remain inline; at 769–1550px they use the shared
+Filters popup to prevent cramping. Mobile retains its bottom sheet and a compact
+two-column control row. All toolbar controls have a 44px minimum height. Verified
+single desktop row at 1920 and 1280, style changes, selection, desktop popup and
+390px bottom sheet; no horizontal overflow. Frontend suite 320 passed/22 existing
+skips, targeted Catalog workspace PHP 2 tests/18 assertions, build passed.
+
 Refined `/catalog` (`retailer-reports/whatsapp.blade.php`) in the established
 Retail theme. Kept product-image cards rather than forcing an image-sharing
 workflow into a directory table. Removed the legacy inline stylesheet (over 900
