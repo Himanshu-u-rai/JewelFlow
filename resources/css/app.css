@@ -12,6 +12,7 @@
 @import "./job-order-create.css";
 @import "./job-order-records.css";
 @import "./karigar-invoices.css";
+@import "./cashbook.css";
 @import "./indian-address.css";
 
 @tailwind base;

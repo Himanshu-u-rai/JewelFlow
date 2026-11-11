@@ -29,7 +29,7 @@ class CashBookController extends Controller
 
         $query = CashTransaction::where('shop_id', $shopId)
             ->with('invoice')
-            ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc')->orderByDesc('id');
 
         // Date filtering — validated above.
         if ($fromDate) {
@@ -86,7 +86,8 @@ class CashBookController extends Controller
         // via the canonical reporting balance engine (LedgerService) — computed
         // from immutable cash_transactions, never stored. When no dates are
         // filtered, defaults to the current month (matches the month framing).
-        $perMode = $ledger->cashFlowByMode($shopId, ReportPeriod::range($fromDate, $toDate));
+        $balancePeriod = ReportPeriod::range($fromDate, $toDate);
+        $perMode = $ledger->cashFlowByMode($shopId, $balancePeriod);
 
         // Today's computed cash-in-hand — the figure to count the drawer against.
         $expectedCashToday = round((float) $ledger
@@ -106,7 +107,7 @@ class CashBookController extends Controller
 
         return view('cashbook.index', compact(
             'transactions', 'stats', 'perMode', 'modeFilter',
-            'expectedCashToday', 'recentDrawerChecks', 'accounts', 'dayTotals'
+            'expectedCashToday', 'recentDrawerChecks', 'accounts', 'dayTotals', 'balancePeriod'
         ));
     }
 

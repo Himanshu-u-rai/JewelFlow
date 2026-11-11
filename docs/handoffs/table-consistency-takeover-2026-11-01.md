@@ -2,7 +2,100 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Retail Karigar invoices and demo records, 2026-11-11
+## Latest checkpoint — Cash Book clarity; visual acceptance pending, 2026-11-11
+
+Base `2ec96b3de0ce8d73d414db5c0ae162b914b2719d`, same
+`feature/table-consistency` / `ui-integration` worktree. Owner approved the
+specific layout proposal and emphasized readability/unchanged calculations.
+This is a local implementation checkpoint, NOT completed visual acceptance.
+No push, main merge, staging/production deployment, OTP, SMTP or mobile changes.
+Claude's 13 tracked / 2 untracked Dhiran files are untouched; tracked diff hash
+remains `c15152a368261a7fb07e43b949c77b14f4e933e1b6d3499686fbf46829200938`.
+
+Cash Book index now has three distinct information levels: compact Today/Month
+activity across ALL modes (opening balances excluded), balances by payment mode
+with opening/in/out/closing and exact reporting dates, and a filtered indexed
+transaction register. Non-date filters explicitly do not alter balance totals;
+daily entry totals explicitly exclude opening balances and include matching rows
+on other pages. Date filters set the balance period. Cash / UPI / bank labels
+no longer imply every inflow is physical cash. Each balance column uses the
+existing reporting DTO directly; no new financial arithmetic or stored balance.
+Account labels retain their historical snapshot in entries. Empty-filter query
+parameters no longer falsely label an unfiltered view as filtered.
+
+Uses existing shared table workspace (responsive remaining-height sizing, sticky
+column headings, independent scroll, external pagination, normal scrolling on
+short/phone windows). Mobile entry cards and wrapped balance rows retain all
+values. The filter component provides desktop popup/mobile bottom panel and one
+visible Apply/Clear action; native selects reuse the existing account/mode script
+byte-for-byte. Scoped `resources/css/cashbook.css` replaces the1709-line inline
+view styling; no shared component/global behavior redesign. Shared themed date
+picker remains; aria-labels ensure its visible alternative inputs remain named.
+Drawer matching is a separate native dialog with Escape/focus boundary, Turbo
+close hooks, counted-cash/note validation reopening and original POST/CSRF.
+It explains that expected cash is TODAY's amount, not a historical/filter total,
+and saving a count does not adjust the cash ledger. Its server logic is unchanged.
+The separate Add Entry page is unchanged.
+
+Controller changes are read-only presentation support only: existing ReportPeriod
+is assigned once and passed to the view so displayed dates match the exact engine
+period; added descending ID tie-break after created_at for stable same-second
+pagination. No financial models, reporting engine, mutation services, schema,
+routes or server permissions changed. No demo financial records or drawer counts
+were added/modified in the preview during this batch.
+
+Verification actually performed:
+
+- New rendered regression tests were observed RED against the original UI.
+  Final `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Tables/CashbookUiTest.php tests/Feature/CashBook
+  tests/Feature/Security/CashbookWriteAtomicityTest.php`:
+  **44 tests /263 assertions, no failures/skips**. The existing pre-destructive
+  database guard restricts these to disposable5432/jewelflow_testing, never the
+  persistent preview55432. Includes real mode math, opening balances, day totals,
+  account filters, drawer snapshot integrity, permission/tenant isolation,
+  append-only ledger and write atomicity. New3tests check exact rendered values
+  across filters, every balance cell and historical periods, current drawer vs
+  historical balances, unchanged8-table GET snapshots and30distinct records
+  across25+5 pagination. Fixed a test setup expecting an Account select without
+  configuring an account, then reran with an explicit synthetic payment method.
+- `node --test tests/Frontend/*.test.mjs`: **268 passed /22 existing skips /
+  0 failed**. No application JS changed. Existing skips are optional photo tests.
+- `npm run build`: success84modules, app-DYYRjHrT.css / app-DwJboU5v.js.
+  Changed PHP controller/view/test lint, guarded preview `view:cache` followed by
+  `view:clear`, and `git diff --check` passed. Impeccable's one scoped layout
+  detector on the view/CSS returned `[]`; this is source evidence, not a render.
+- Independent read-only source reviewer found no calculation, permission or
+  mutation regression. Identified date-picker accessible names and two misleading
+  scope notes; date-name test observed RED, fixes applied and reviewer confirmed
+  all3 closed at SOURCE scope. No visual ship verdict or independent DB rerun.
+
+Browser blocker: initial local navigation failed because preview processes had
+stopped. Inspected ports; neither8001 nor55432 was occupied, companion8000 absent.
+Restarted the SAME guarded preview with
+`bash /home/himanshu/jf-table-evidence/local-preview-20261101.U5Egtv/start-preview.sh`
+in a PTY (session69978), without recreating/migrating/resetting data. Direct
+script execution first failed because it was not executable; invoking bash used
+the existing launcher unchanged. Preview's local/database identity guards passed;
+login health returns HTTP200. Browser reload then explicitly hit a browser URL
+security-policy denial. STOPPED browser interaction; no alternate browser/CDP/
+automation/screenshot workaround. User asked asynchronously to open the local
+Cash Book and supply desktop/mobile screenshots. No updated screenshots exist.
+
+Still required: actual desktop/tablet/phone render, populated horizontal/vertical
+scrolling, sticky header alignment, large amounts, footer/bottom row reachability,
+filter popup/bottom-sheet bounds, themed calendar, native keyboard traversal,
+drawer focus restoration, validation display, and repeated Turbo Back/Forward.
+Do not claim readable/no-overflow/full acceptance from source tests alone.
+Physical-phone acceptance also unrun. Full repository PHP suite/performance tests
+not run for this scoped UI task. No new data was added to manufacture results.
+Evidence logs: `/home/himanshu/jf-table-evidence/cashbook-20261111.3o39aI/`.
+Final local checkpoint SHA is recorded in the external progress ledger.
+Impeccable guided the approved existing theme; Ponytail reused current components.
+No system design tokens or durable visual identity were replaced.
+
+## Earlier checkpoint — Retail Karigar invoices and demo records, 2026-11-11
 
 Starting HEAD `50e1ccfe4d6c64593939cb3d65c9ad263b9ead19`, branch
 `feature/table-consistency`, worktree `ui-integration`. Owner requested the
