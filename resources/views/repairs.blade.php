@@ -423,7 +423,7 @@
             container: repair-intake / inline-size;
             overflow: visible !important;
         }
-        .repairs-form-card[data-intake-animating] { overflow: clip !important; }
+        .repairs-form-card[data-intake-animating] > [data-repair-intake-body] { overflow: clip; }
         .repairs-intake-summary { list-style: none; cursor: pointer; border-radius: 12px 12px 0 0; }
         .repairs-intake-summary::-webkit-details-marker { display: none; }
         .repairs-intake-summary:focus-visible { outline: 2px solid var(--r-accent); outline-offset: -3px; }
@@ -431,7 +431,7 @@
         .repairs-intake-arrow svg { width: 18px; height: 18px; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
         details[open]:not([data-intake-closing]) > .repairs-intake-summary .repairs-intake-arrow svg { transform: rotate(180deg); }
         @media (prefers-reduced-motion: reduce) { .repairs-intake-arrow svg { transition: none; } }
-        details:not([open]) > .repairs-intake-summary { border-bottom: 0; border-radius: 12px; }
+        details:not([open]) > .repairs-intake-summary { border-bottom-color: transparent; border-radius: 12px; }
         .repairs-management-page[data-repair-fit] { height: var(--repair-workspace-height); min-height: 0; overflow-anchor: none; }
         [data-repair-fit] .repairs-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         [data-repair-fit] .repairs-form-column { flex: none; }
@@ -811,6 +811,7 @@
                         <span class="repairs-intake-arrow" aria-hidden="true"><x-icon name="chevron-down" /></span>
                     </summary>
                     
+                    <div data-repair-intake-body>
                     <form id="repair-intake-form" method="POST" action="{{ route('repairs.store') }}" class="repairs-form" enctype="multipart/form-data">
                         @csrf
                         
@@ -998,6 +999,7 @@
                             </button>
                         </div>
                     </form>
+                    </div>
                 </details>
             </div>
             @endcan

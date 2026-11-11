@@ -19,14 +19,16 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
     };
     const summary = { ...target(), key: 'summary' };
     const form = { ...target(), key: 'form', draft: 'Unsaved repair description', contains: node => node === form };
-    const details = { open: true, querySelector: s => s === 'summary' ? summary : form };
+    const body = {};
+    const details = { open: true, querySelector: s => s === 'summary' ? summary : s === '[data-repair-intake-body]' ? body : form };
     const motions = [];
     details.getBoundingClientRect = () => ({ height: details.open ? 460 : 80 });
     summary.getBoundingClientRect = () => ({ height: 80 });
     details.setAttribute = (k, v) => attrs.set(k, v);
     details.removeAttribute = k => attrs.delete(k);
-    if (animated) details.animate = (keyframes, options) => {
-        const motion = { keyframes, options, cancel() { this.cancelled = true; }, finish() { this.onfinish?.(); } };
+    body.getBoundingClientRect = () => ({ height: details.open ? 380 : 0 });
+    if (animated) for (const element of [details, body]) element.animate = (keyframes, options) => {
+        const motion = { target: element, keyframes, options, cancel() { this.cancelled = true; }, finish() { this.onfinish?.(); } };
         motions.push(motion);
         return motion;
     };
@@ -55,8 +57,28 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
     const send = (key, type, extras = {}) => { listeners.get(`${key}:${type}`)?.({ preventDefault() {}, ...extras }); flush(); };
     const dispose = controller.createRepairIntake(root, doc, win);
     flush();
-    return { root, shell, summary, form, details, pane, attrs, styles, doc, win, frames, observers, listeners, motions, dispose, send, flush };
+    return { root, shell, summary, form, details, body, pane, attrs, styles, doc, win, frames, observers, listeners, motions, dispose, send, flush };
 }
+
+test('only the form body animates, leaving the Receive New Repair heading outside the moving region', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click');
+    assert.equal(f.motions[0].target, f.body);
+    assert.deepEqual(f.motions[0].keyframes, [{ height: '380px' }, { height: '0px' }]);
+    f.motions[0].finish();
+    f.send('shell', 'wheel', { deltaY: -100 });
+    assert.equal(f.motions[1].target, f.body);
+    assert.deepEqual(f.motions[1].keyframes, [{ height: '0px' }, { height: '380px' }]);
+    assert.equal(f.shell.scrollTop, 0);
+});
+
+test('manual closing does not nudge the page down before animating the form', () => {
+    const f = fixture({ animated: true });
+    f.send('summary', 'click');
+    assert.equal(f.shell.scrollTop, 0);
+    f.motions[0].finish();
+    assert.equal(f.shell.scrollTop, 0);
+});
 
 test('the table starts at its full responsive height and never grows on collapse or reopening', () => {
     const f = fixture();
@@ -89,7 +111,7 @@ test('closing slides to the summary before hiding content and fitting the regist
     assert.equal(f.details.open, true, 'Native details must remain open until its closing animation finishes');
     assert.equal(f.form.inert, true, 'Fields being hidden cannot receive focus');
     assert.equal(f.attrs.has('data-repair-fit'), false);
-    assert.deepEqual(f.motions[0].keyframes, [{ height: '460px' }, { height: '80px' }]);
+    assert.deepEqual(f.motions[0].keyframes, [{ height: '380px' }, { height: '0px' }]);
     f.motions[0].finish();
     assert.equal(f.details.open, false);
     assert.equal(f.form.inert, false);
@@ -152,7 +174,7 @@ test('starts expanded, collapses on page scroll and gives the register remaining
     assert.equal(f.details.open, false);
     assert.equal(f.attrs.has('data-repair-fit'), true);
     assert.equal(f.styles.get('--repair-workspace-height'), '836px');
-    assert.equal(f.shell.scrollTop, 1, 'A one-pixel return path prevents collapse/reopen scroll-clamping loops');
+    assert.equal(f.shell.scrollTop, 0, 'The heading uses the same page origin in both states');
     f.send('shell', 'scroll');
     assert.equal(f.details.open, false, 'Layout-induced scroll must not reopen the intake');
 });

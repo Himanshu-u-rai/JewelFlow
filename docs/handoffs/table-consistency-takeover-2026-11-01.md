@@ -2,7 +2,44 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Constant Repairs table frame, 2026-11-11
+## Latest checkpoint — Stationary intake heading / body-only reveal, 2026-11-11
+
+Base `45cc0195c58a3c9a4448850970548f51d0ef431e`. Owner requested the Receive
+New Repair heading/subtitle stay outside the animation. Added a plain body
+wrapper around the original form; only that wrapper's height animates. Native
+details, original inputs/files, form submission, reversal, inert closing fields,
+reduced-motion and Turbo cleanup remain. Summary border retains its geometry
+when closed (transparent, not removed). Removed the forced one-pixel page nudge
+on collapse; upward intent can already reopen at zero. Table budget includes the
+now-stable heading border. No controller, database or financial changes.
+
+Two actual-controller regressions observed RED then GREEN: animation targets
+the body, never the heading/container; closing does not nudge the scroll origin.
+`node --test tests/Frontend/*.test.mjs`: 291 passed, 22 existing skips, 0 failed
+(313 total; 21 intake tests). `APP_ENV=testing DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=jewelflow_testing php8.2
+vendor/bin/phpunit tests/Feature/Repair/RepairWorkspaceTest.php
+tests/Feature/Repair/RepairPageRevisitTest.php`: 5 tests / 53 assertions passed.
+Read and confirmed TestDatabaseGuard runs before RefreshDatabase; no suite ran
+against preview storage/database. Build 85 modules, `app-BktH0dJt.js`; Blade lint
+and diff checks passed.
+
+Live authenticated desktop 1339x925: heading x293/y122.796875, width1008,
+height81.34375 unchanged across 18 scroll-open samples; body 0→380.875px toward
+385px, table constant668.65625px. Phone-width emulation390x844: heading x13/y78,
+width359/height76.484375 unchanged across 25 scroll-open samples; body
+0→1124.921875px toward1125.734375px, table constant661.515625px. Closed phone
+heading has identical geometry and scrollTop0. Original draft survived manual
+close/reopen; no horizontal overflow. Evidence/logs in
+`/home/himanshu/jf-table-evidence/repair-body-reveal-20261111.H3DG27/`.
+Phone closing capture is transitional, not a settled-state golden. User navigated
+to Returns during final screenshot collection; did not take over that navigation.
+No physical-phone, full native keyboard or screen-reader acceptance claimed.
+Claude's tracked Dhiran diff hash remains
+`c15152a368261a7fb07e43b949c77b14f4e933e1b6d3499686fbf46829200938`.
+No push, merge, deployment, OTP, SMTP or mobile changes.
+
+## Previous checkpoint — Constant Repairs table frame, 2026-11-11
 
 Base `13c1a0410dd92a2aeb8fe8a67a90577b6e8183c7`. Owner requested the table start
 at its full size rather than expand on scroll. Decoupled the table frame budget

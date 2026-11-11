@@ -4,6 +4,7 @@ export function createRepairIntake(root, doc = document, win = window) {
     if (!details) return () => {};
     const summary = details.querySelector('summary');
     const form = details.querySelector('form');
+    const body = details.querySelector('[data-repair-intake-body]');
     const panes = [...root.querySelectorAll('[data-repair-rows]')];
     let shell = root.parentElement;
     while (shell && shell !== doc.body && !/auto|scroll/.test(win.getComputedStyle(shell).overflowY)) shell = shell.parentElement;
@@ -34,10 +35,9 @@ export function createRepairIntake(root, doc = document, win = window) {
         const available = Math.floor(bottom - top + 1);
         const padding = win.getComputedStyle(root);
         const gap = win.getComputedStyle(root.querySelector('.repairs-layout'));
-        const heading = win.getComputedStyle(summary);
         const border = win.getComputedStyle(details);
         const number = value => Number.parseFloat(value) || 0;
-        const collapsedIntake = summary.getBoundingClientRect().height - number(heading.borderBottomWidth)
+        const collapsedIntake = summary.getBoundingClientRect().height
             + number(border.borderTopWidth) + number(border.borderBottomWidth);
         // Budget against the collapsed heading once, even while the form is open.
         const height = available - number(padding.paddingTop) - number(padding.paddingBottom)
@@ -53,28 +53,26 @@ export function createRepairIntake(root, doc = document, win = window) {
         }
     };
     const change = (next, immediate = false) => {
-        const from = details.getBoundingClientRect().height;
+        const from = details.open ? body.getBoundingClientRect().height : 0;
         stopMotion();
         expanded = next;
         upwardIntent = false;
         details.open = true;
         root.removeAttribute('data-repair-fit');
         if (next) for (const pane of panes) pane.scrollTop = 0;
-        scrollTo(next ? 0 : 1);
+        scrollTo(0);
         const finish = () => {
             details.open = next;
             fit();
-            if (!next) scrollTo(1);
+            if (!next) scrollTo(0);
         };
-        if (immediate || !details.animate || win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return finish();
-        const border = win.getComputedStyle(details);
-        const to = next ? details.getBoundingClientRect().height : summary.getBoundingClientRect().height
-            + (parseFloat(border.borderTopWidth) || 0) + (parseFloat(border.borderBottomWidth) || 0);
+        if (immediate || !body.animate || win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return finish();
+        const to = next ? body.getBoundingClientRect().height : 0;
         details.setAttribute('data-intake-animating', '');
         if (!next) details.setAttribute('data-intake-closing', '');
         form.inert = !next;
-        // One bounded layout transition lets the table rise naturally without scaling text.
-        animation = details.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+        // The heading stays outside the reveal, including its border and padding.
+        animation = body.animate([{ height: `${from}px` }, { height: `${to}px` }], {
             duration: next ? 260 : 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both',
         });
         animation.onfinish = () => { stopMotion(); finish(); };
@@ -111,7 +109,7 @@ export function createRepairIntake(root, doc = document, win = window) {
     summary.addEventListener('click', toggle);
     form.addEventListener('invalid', revealInvalid, true);
     win.addEventListener('resize', resize);
-    // The native summary itself gains/loses its bottom border when opened.
+    // Ignore our own in-flight layout changes; a real viewport resize still settles motion.
     const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation) fit(); }) : null;
     for (const el of root.querySelectorAll('[data-repair-measure], summary')) observer?.observe(el);
     fit();
