@@ -96,17 +96,18 @@
                         <h2 class="rh-section-title" id="{{ $sectionId($heading) }}-title">{{ $heading }}</h2>
                         <span class="rh-section-count">{{ $visible->count() }} {{ Str::plural('report', $visible->count()) }}</span>
                     </div>
-                    <div class="rh-grid">
+                    <ul class="rh-grid" aria-labelledby="{{ $sectionId($heading) }}-title">
                         @foreach($visible as $c)
-                            <a href="{{ route($c[2]) }}" class="rh-card">
+                            @php($reportId = 'report-link-'.Str::slug($c[2]))
+                            <li><a href="{{ route($c[2]) }}" class="rh-card" aria-labelledby="{{ $reportId }}" aria-describedby="{{ $reportId }}-description">
                                 <div class="rh-card-top">
-                                    <h3 class="rh-card-title">{{ $c[0] }}</h3>
+                                    <h3 class="rh-card-title" id="{{ $reportId }}">{{ $c[0] }}</h3>
                                     <x-icon name="chevron-right" class="rh-card-arrow" />
                                 </div>
-                                <p class="rh-card-desc">{{ $c[1] }}</p>
-                            </a>
+                                <p class="rh-card-desc" id="{{ $reportId }}-description">{{ $c[1] }}</p>
+                            </a></li>
                         @endforeach
-                    </div>
+                    </ul>
                 </section>
             @endforeach
         </div>
@@ -115,22 +116,21 @@
     <style>
         /* Reports hub: flat JewelFlows ERP directory, scoped to this page. */
         .rh-page {
-            --rh-border: #cbd5e1;
-            --rh-border-soft: #e2e8f0;
-            --rh-surface: #ffffff;
-            --rh-muted-surface: #f8fafc;
-            --rh-ink: #0f172a;
-            --rh-muted: #475569;
-            --rh-soft: #64748b;
-            --rh-gold: #b45309;
-            --rh-gold-soft: #fff7ed;
+            --rh-border: var(--jf-border-strong, #cbd5e1);
+            --rh-border-soft: var(--jf-border, #e2e8f0);
+            --rh-surface: var(--jf-surface, #fff);
+            --rh-muted-surface: var(--jf-surface-muted, #f8fafc);
+            --rh-ink: var(--jf-ink, #0f172a);
+            --rh-muted: var(--jf-text-muted, #475569);
+            --rh-soft: var(--jf-text-muted, #64748b);
+            --rh-gold: var(--jf-primary, #b45309);
             max-width: none;
         }
 
         .rh-flow {
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 24px;
         }
 
         .reports-hub-header .page-title {
@@ -144,23 +144,22 @@
 
         /* Section shortcuts: one per section shown below, in the same order. */
         .rh-jump {
-            display: grid;
-            grid-template-columns: repeat(var(--rh-jump-count, 4), minmax(0, 1fr));
-            gap: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .rh-jump-link {
             display: flex;
             align-items: center;
             gap: 10px;
-            min-height: 48px;
-            padding: 9px 12px;
-            border: 1px solid var(--rh-border-soft);
-            border-radius: 10px;
-            background: var(--rh-surface);
+            min-height: 44px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: transparent;
             color: var(--rh-ink);
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 500;
             line-height: 1.25;
             text-decoration: none;
             transition: background-color .14s ease, border-color .14s ease;
@@ -172,7 +171,7 @@
         }
 
         .rh-jump-link:focus-visible {
-            outline: 2px solid #111827;
+            outline: 2px solid var(--rh-gold);
             outline-offset: 2px;
         }
 
@@ -180,13 +179,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
             flex-shrink: 0;
-            border-radius: 8px;
-            background: var(--rh-gold-soft);
             color: var(--rh-gold);
-            border: 1px solid #fed7aa;
         }
 
         .rh-jump-icon svg { width: 15px; height: 15px; }
@@ -206,9 +200,10 @@
 
         .rh-section {
             border: 1px solid var(--rh-border-soft);
-            border-radius: 12px;
+            border-radius: 16px;
             background: var(--rh-surface);
-            overflow: hidden;
+            min-width: 0;
+            box-shadow: 0 12px 22px -22px rgba(15, 23, 42, .68);
             /* A shortcut lands the section below the sticky page header, not under it. */
             scroll-margin-top: 104px;
         }
@@ -217,8 +212,9 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 14px 16px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--rh-border-soft);
+            border-radius: 16px 16px 0 0;
             background: var(--rh-surface);
         }
 
@@ -226,13 +222,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 30px;
             flex-shrink: 0;
-            border-radius: 8px;
-            background: var(--rh-gold-soft);
             color: var(--rh-gold);
-            border: 1px solid #fed7aa;
         }
 
         .rh-section-icon svg { width: 16px; height: 16px; }
@@ -240,7 +231,7 @@
         .rh-section-title {
             margin: 0;
             color: var(--rh-ink);
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             letter-spacing: 0;
         }
@@ -255,21 +246,24 @@
 
         .rh-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
-            gap: 10px;
-            padding: 12px;
-            background: #f8fafc;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+            gap: 0 24px;
+            margin: 0;
+            padding: 0 20px 4px;
+            list-style: none;
         }
+
+        .rh-grid > li { min-width: 0; border-bottom: 1px solid var(--rh-border-soft); }
+        .rh-grid > li:last-child { border-bottom: 0; }
 
         .rh-card {
             display: flex;
             flex-direction: column;
             gap: 5px;
-            min-height: 94px;
-            padding: 14px 16px;
-            border: 1px solid var(--rh-border-soft);
-            border-radius: 10px;
-            background: #ffffff;
+            min-height: 88px;
+            padding: 16px 8px;
+            border-radius: 8px;
+            background: transparent;
             box-shadow: none;
             text-decoration: none;
             transition: background-color .14s ease, color .14s ease;
@@ -280,7 +274,7 @@
         }
 
         .rh-card:focus-visible {
-            outline: 2px solid #111827;
+            outline: 2px solid var(--rh-gold);
             outline-offset: -2px;
         }
 
@@ -294,9 +288,9 @@
         .rh-card-title {
             margin: 0;
             color: var(--rh-ink);
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 600;
-            line-height: 1.3;
+            line-height: 1.5;
             letter-spacing: 0;
         }
 
@@ -305,7 +299,7 @@
             height: 16px;
             flex-shrink: 0;
             margin-top: 1px;
-            color: #94a3b8;
+            color: var(--rh-soft);
             transition: color .14s ease;
         }
 
@@ -316,26 +310,17 @@
         .rh-card-desc {
             margin: 0;
             color: var(--rh-muted);
-            font-size: 12px;
-            line-height: 1.45;
-        }
-
-        @media (min-width: 1280px) {
-            .rh-grid {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-            }
-        }
-
-        /* Narrower than four one-line shortcuts: two by two. */
-        @media (max-width: 1279px) {
-            .rh-jump {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 70ch;
+            overflow-wrap: anywhere;
         }
 
         @media (max-width: 767px) {
             .rh-jump {
-                gap: 8px;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 4px;
             }
 
             .rh-jump-link {
@@ -343,12 +328,6 @@
                 padding: 8px 10px;
                 gap: 8px;
                 font-size: 12.5px;
-            }
-
-            .rh-jump-icon {
-                width: 24px;
-                height: 24px;
-                border-radius: 7px;
             }
 
             .rh-jump-icon svg { width: 13px; height: 13px; }
@@ -385,49 +364,36 @@
                 gap: 14px;
             }
 
-            .rh-section {
-                border-radius: 10px;
-            }
-
             .rh-section-head {
-                padding: 11px 12px;
+                padding: 14px;
                 gap: 8px;
             }
 
-            .rh-section-icon {
-                width: 28px;
-                height: 28px;
-            }
-
             .rh-section-title {
-                font-size: 13px;
-                line-height: 1.2;
+                font-size: 15px;
+                line-height: 1.5;
             }
 
             .rh-section-count {
                 font-size: 11px;
             }
 
-            .rh-grid { grid-template-columns: 1fr; }
+            .rh-grid { grid-template-columns: 1fr; padding-inline: 8px; }
 
             .rh-card {
-                min-height: 72px;
-                padding: 11px 12px;
+                min-height: 76px;
+                padding: 14px 8px;
                 gap: 3px;
                 border-radius: 8px;
             }
 
             .rh-card-title {
-                font-size: 13px;
+                font-size: 14px;
             }
 
             .rh-card-desc {
-                display: -webkit-box;
-                overflow: hidden;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                font-size: 11.5px;
-                line-height: 1.4;
+                font-size: 13px;
+                line-height: 1.5;
             }
         }
     </style>

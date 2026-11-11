@@ -2,7 +2,56 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Cash Book entry popup and signed-in browser checks, 2026-11-11
+## Latest checkpoint — Reports directory consistency, 2026-11-11
+
+Base `a58f7f0213fca538febce3110dacf1d562e98ce9`; same branch/worktree.
+Owner approved a focused Reports hub consistency pass, not a table or report-engine
+redesign. `resources/views/reports/hub.blade.php` retains its original report data,
+order, route/edition/RouteAccess filtering and section shortcut destinations.
+The fixed four-column boxed-card layout becomes flexible directory rows within
+rounded section surfaces; no nested card borders. Shared Retail colour tokens,
+subtle incumbent shadow, clearer16px group headings,14px report names and13px
+unclamped descriptions. Compact section shortcuts remain useful on long phone
+pages. Each group is a named list; each report has a distinct accessible title
+and associated description. No new JavaScript, dependency, controller or route.
+
+Checks actually performed:
+
+- New rendered accessible-list regression observed RED (missing named list), then
+  GREEN. Exact focused command:
+  `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Reporting/ReportsHubSectionShortcutsTest.php
+  tests/Feature/Reporting/ReportsAccessGateTest.php
+  tests/Feature/Rbac/ShopMoneyReportsTest.php`:
+  **16 tests /311 assertions, no failures/skips**. Existing pre-destructive test
+  guard confirmed; only disposable5432/jewelflow_testing used for tests, not
+  preview55432. Includes both-edition shortcuts, guest/restricted permissions
+  and the reports.money gate. No full repository PHP run (scoped UI-only change).
+- `node --test tests/Frontend/*.test.mjs`:270passed,22existing skips,0failed.
+  `npm run build`: success84modules, unchanged app-l0N-yk7K.css/app-DwJboU5v.js
+  (hub CSS remains page-scoped inline). PHP/Blade lint and git diff checks pass.
+  Guarded preview `view:cache`/`view:clear` pass. Scoped Impeccable layout scans
+  before/after returned no findings; these are not proof of visual acceptance.
+- Actual signed-in in-app browser: all9visible report titles/descriptions/hrefs
+  compared exactly equal before/after. Gold Balances link opens the correct
+  report, Back returns to Reports. Section shortcut lands below header.
+  Desktop1339x925/1920x925,tablet768x1024,phone390x844 and320x700 checked.
+  No horizontal overflow at measured widths; smallest shortcut/report target44px.
+  Phone descriptions wrap fully instead of being clamped. Desktop sparse groups
+  expand to use available width, not leave fixed empty card slots.
+
+Evidence: `/home/himanshu/jf-table-evidence/reports-directory-20261111.ScHgvC/`
+contains desktop/tablet/phone JPEGs and RED,PHP,frontend,build logs.
+Independent scoped reviewer inspected both changed source/test files and all
+three screenshots: no Important/Critical findings; ship at that evidence scope.
+Physical phone, screen-reader and full keyboard traversal not performed.
+No synthetic records created or financial forms submitted. No individual report
+screen, report calculation, export or permission logic changed. Claude's Dhiran
+tracked/untracked preservation hashes unchanged. All work local; no push, merge,
+staging/production deployment, OTP, SMTP or mobile-app changes.
+
+## Previous checkpoint — Cash Book entry popup and signed-in browser checks, 2026-11-11
 
 Base `1592dfc809660593bc154b17941bb8e8dde6f889`, same branch/worktree.
 Add Entry now opens a compact native on-page dialog, matching Match Drawer.

@@ -46,4 +46,35 @@ class ReportsHubSectionShortcutsTest extends TestCase
             $this->assertLessThan(strpos($html, '<section class="rh-section"'), strpos($html, 'class="rh-jump"'), "{$edition}: shortcuts are not at the top");
         }
     }
+
+    public function test_directory_links_have_distinct_names_and_descriptions_in_their_section_list(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+        $html = $this->actingAs($owner)->get(route('report.hub'))->assertOk()->getContent();
+        $dom = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xp = new \DOMXPath($dom);
+        $sections = $xp->query('//section[@class="rh-section"]');
+        $this->assertGreaterThan(0, $sections->length);
+        $destinations = [];
+        foreach ($sections as $section) {
+            $list = $xp->query('./ul[@aria-labelledby="'.$section->getAttribute('aria-labelledby').'"]', $section);
+            $this->assertSame(1, $list->length, 'Each group exposes one named list, not disconnected cards');
+            foreach ($xp->query('./li/a', $list->item(0)) as $link) {
+                foreach (['aria-labelledby' => 'h3', 'aria-describedby' => 'p'] as $attribute => $tag) {
+                    $id = $link->getAttribute($attribute);
+                    $this->assertNotEmpty($id);
+                    $this->assertSame(1, $xp->query('//*[@id="'.$id.'"]')->length, 'Link labels must resolve uniquely');
+                    $this->assertNotEmpty(trim($xp->evaluate('string(.//'.$tag.'[@id="'.$id.'"])', $link)));
+                }
+                $destinations[] = $link->getAttribute('href');
+            }
+        }
+        $this->assertContains(route('report.gold'), $destinations);
+        $this->assertContains(route('cashbook.index'), $destinations);
+        $this->assertSame($destinations, array_values(array_unique($destinations)));
+    }
 }
