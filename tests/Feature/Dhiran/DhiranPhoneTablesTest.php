@@ -58,6 +58,8 @@ class DhiranPhoneTablesTest extends TestCase
                 'dashboard' => $ctl->dashboard()->render(),
                 'cashbook' => $ctl->reportCashbook($req('/dhiran/reports/cashbook'))->render(),
                 'active report' => $ctl->reportActive($req('/dhiran/reports/active'))->render(),
+                'loans list' => $ctl->loans($req('/dhiran/loans'))->render(),
+                'customers list' => $ctl->borrowers($req('/dhiran/borrowers'))->render(),
             ];
         });
 

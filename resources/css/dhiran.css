@@ -1793,21 +1793,7 @@ body.dh-modal-open {
 .dh-table-wrap { overflow-x: auto; }
 .dh-table { width: 100%; border-collapse: collapse; }
 .dh-table tr:last-child td { border-bottom: 0; }
-.dh-mobile-list { display: none; }
-.dh-mobile-card {
-    border: 1px solid var(--dh-line);
-    background: var(--dh-card);
-    border-radius: 13px;
-    padding: 14px;
-    box-shadow: var(--dh-shadow);
-}
-.dh-mobile-card + .dh-mobile-card { margin-top: 12px; }
-.dh-mobile-title { font-size: 14px; font-weight: 700; color: var(--dh-ink); }
-.dh-mobile-meta { font-size: 12px; color: var(--dh-muted); margin-top: 2px; }
-.dh-mobile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-.dh-mobile-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dh-muted); }
-.dh-mobile-value { font-size: 13px; font-weight: 600; color: var(--dh-ink); margin-top: 2px; }
-.dh-mobile-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+/* Phones: every Dhiran table stacks with the dh-stack layout (field left, value right); no separate card copies. */
 
 .ds-fin-grid {
     display: grid;
@@ -2316,9 +2302,6 @@ body:has(.dh-auth-panel) {
     .dh-upload-form .btn { width: 100%; }
     .dh-filter-actions .btn,
     .dh-upload-form .btn { flex: 1; width: 100%; }
-    .dh-table-wrap { display: none; }
-    .dh-mobile-list { display: block; }
-    .dh-mobile-grid { grid-template-columns: 1fr; }
     .dh-kpi-grid { grid-template-columns: 1fr; gap: 10px; }
     .dd-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3220,7 +3203,6 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     width: 56px; padding-left: 20px; padding-right: 8px; text-align: left;
     font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--dh-muted); white-space: nowrap;
 }
-.dh-mobile-sno { display: block; margin-bottom: 2px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--dh-muted); }
 @media (max-width: 720px) {
     /* Stacked cards: the number is a small tag in the card's corner, not a whole label row. */
     .dh-app table.dh-stack tbody tr { position: relative; }

@@ -132,6 +132,25 @@ test('every colour class a Dhiran view uses is mapped to a Dhiran token', async 
     assert.ok(important, 'table link colour outranks the class mappings');
 });
 
+// Owner 2026-11-11: on phones every Dhiran table shows each row as a card with the field name on the left and the
+// value on the right (the dh-stack layout), and future tables must do the same. Printed documents are paper, not
+// screen tables, and keep their print layout.
+test('every Dhiran screen table uses the stacked phone layout', async () => {
+    const { readdirSync } = await import('node:fs');
+    const root = new URL('../../resources/views/', import.meta.url);
+    const printed = ['dhiran/receipt.blade.php', 'dhiran/closure-certificate.blade.php', 'dhiran/forfeiture-notice.blade.php', 'dhiran/payment-receipt.blade.php'];
+    const files = [
+        ...readdirSync(new URL('dhiran/', root), { recursive: true }).map(f => `dhiran/${f}`),
+        ...readdirSync(new URL('components/dhiran/', root), { recursive: true }).map(f => `components/dhiran/${f}`),
+    ].filter(f => f.endsWith('.blade.php') && !printed.includes(f));
+    const missing = files.flatMap(f => [...readFileSync(new URL(f, root), 'utf8').matchAll(/<table\b[^>]*>/g)]
+        .filter(m => !/class="[^"]*\bdh-stack\b/.test(m[0])).map(m => `${f}: ${m[0]}`));
+    assert.deepEqual(missing, []);
+    // No second, phone-only copy of a table: one table, one layout.
+    const copies = files.filter(f => /dh-mobile-list/.test(readFileSync(new URL(f, root), 'utf8')));
+    assert.deepEqual(copies, []);
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');

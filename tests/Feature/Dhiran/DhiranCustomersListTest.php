@@ -98,20 +98,20 @@ class DhiranCustomersListTest extends TestCase
         }
     }
 
-    // On a phone the table needed a sideways swipe to reach Profile / New Loan; like the Loans list, phones get cards.
+    // On a phone the table needed a sideways swipe to reach Profile / New Loan. Owner 2026-11-11: like every Dhiran
+    // table, the rows stack into cards (field name left, value right) and keep their actions; no separate card copy.
     public function test_phones_get_customer_cards_with_their_actions(): void
     {
         $customer = $this->customer('Cardy', '9811120011', 'active');
         $html = $this->list();
 
-        $this->assertStringContainsString('class="dh-table-wrap"', $html, 'the table hides on phones');
-        $cards = substr($html, strpos($html, 'class="dh-mobile-list'));
-        $this->assertStringContainsString('Cardy K', $cards);
-        $this->assertStringContainsString(route('dhiran.borrowers.show', $customer), $cards);
-        $this->assertStringContainsString(route('dhiran.create', ['customer_id' => $customer->id]), $cards);
+        $this->assertMatchesRegularExpression('/<table class="[^"]*\bdh-stack\b/', $html);
+        $this->assertStringNotContainsString('dh-mobile-list', $html);
+        $table = substr($html, strpos($html, '<table'));
+        $this->assertStringContainsString('Cardy K', $table);
+        $this->assertStringContainsString(route('dhiran.borrowers.show', $customer), $table);
 
         // The row's New Loan was a pale tag-like pill; it is the theme's main-action button, like the header one.
-        $table = substr($html, 0, strpos($html, 'class="dh-mobile-list'));
         $this->assertStringContainsString('href="' . route('dhiran.create', ['customer_id' => $customer->id]) . '" class="btn btn-primary btn-sm', $table);
     }
 
