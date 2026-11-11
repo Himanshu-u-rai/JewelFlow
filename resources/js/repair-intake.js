@@ -34,7 +34,7 @@ export function createRepairIntake(root, doc = document, win = window) {
         if (win.innerHeight < 560) return;
         const bottom = shell === win ? win.innerHeight : Math.min(win.innerHeight, shell.getBoundingClientRect().bottom);
         const top = root.getBoundingClientRect().top + position();
-        const available = Math.floor(bottom - top + 1);
+        const available = Math.floor(bottom - top);
         const padding = win.getComputedStyle(root);
         const gap = win.getComputedStyle(root.querySelector('.repairs-layout'));
         const border = win.getComputedStyle(details);
@@ -55,7 +55,6 @@ export function createRepairIntake(root, doc = document, win = window) {
             root.setAttribute('data-repair-intake-pin', '');
         }
         if (!details.open) {
-            // One pixel retains the native scroll-back-to-top path.
             root.style.setProperty('--repair-workspace-height', `${available}px`);
             root.setAttribute('data-repair-fit', '');
         }
@@ -98,7 +97,7 @@ export function createRepairIntake(root, doc = document, win = window) {
     const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };
     const toggle = event => { event.preventDefault(); expanded ? close() : open(); };
     const resize = () => { if (animation) change(expanded, true); else fit(); };
-    // Focus/scrollIntoView can move the one-pixel return path before a summary click.
+    // Focus/scrollIntoView can move the page before a summary click.
     // Only a browsing gesture may auto-open; otherwise that click would close it again.
     const intent = (up, event) => {
         upwardIntent = up;

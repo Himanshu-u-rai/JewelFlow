@@ -2,7 +2,57 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — 15 Repairs per web page, 2026-11-11
+## Latest checkpoint — Retail orange scrollbars, 2026-11-11
+
+Base `2099327760f99e771aa4966867f1f9fb9a23657d`. Owner explicitly excluded both
+Dhiran and admin. Added `retail-scrollbars.css` via app.css, scoped to
+`body.app-shell` (and its document only). Orange#b45309, light#f1f5f9 track,
+3px corners,14px page/table/popup bars. Latest owner refinement: main sidebar
+only8px with transparent track; Firefox fallback uses thin there. Hidden mobile
+nav strips, carousels and hidden customer/status dropdown bars remain hidden.
+Forced-color fallback uses system colors. No dependency or layout redesign.
+
+Removed stale thin/grey/teal/faded overrides from the Retail dashboard, Repairs,
+Settings, POS/customer-entry views, onboarding and generic reporting screen.
+Shared address/suggestion helpers retain their other-shell styles; narrowly
+override their thin/grey declarations only inside Retail. Admin/Dhiran selectors,
+views and tokens unchanged. Existing Dhiran dirty diff hash still
+`c15152a368261a7fb07e43b949c77b14f4e933e1b6d3499686fbf46829200938`.
+
+The wider bar exposed Repairs' old artificial1px collapsed overflow. Removed
+that pixel (one-line available-height correction), with RED/GREEN regression
+proving upward reopening still works at zero. Phone390x844 now outer
+scrollHeight/clientHeight both844; rows retain4859px internal content, lastrow
+reachable atscroll4479,footer829within844. No repair record/controller changes.
+
+Checks: source inventory of scrollbar declarations throughout resources; live
+28Retail URLs (27in audit.json plus initial Repairs), including6restricted URLs
+where only the shell could render. Restricted: quick-bills,quick-bills/create,
+schemes,report/cash,report/gst,report/day-book. Their source styles were reviewed;
+did not change permissions or pretend their protected content was browser-tested.
+Remaining visited screens plus dashboard search, Karigar editor/State menu,
+Cash Book drawer and customer dropdowns had orange bars/no mismatches. Customer
+hidden dropdown still has scrollbar-width:none/display:none. Phone-width
+Customers,Stock Items,Settings,Repairs have no content horizontal overflow; Stock
+nav bar remains hidden. Final sidebar measured8px orange; wheel moved it0→400.
+No admin or Dhiran browser visits. Original user Returns tab preserved.
+
+`node --test tests/Frontend/*.test.mjs`:297passed,22existing skips,0failed;
+includes3new CSS scoping/hidden-bar safety/import contracts and24intake tests.
+Theme missing/import regression and phantom-pixel regression both observed RED
+before implementation. `npm run build`:85modules,app-C4KD2Q1J.css/app-Dgr0aUZm.js.
+Super-admin/Dhiran dedicated CSS asset hashes unchanged. Eight edited Blade
+files lint/diff checks passed. No PHP/database suite rerun for this style/1px
+client-sizing change. Native Firefox, forced-colors runtime, full keyboard,
+physical-phone and OS-native select popup appearance not claimed.
+
+Evidence: `/home/himanshu/jf-table-evidence/retail-scrollbars-20261111.3DKIMv/`
+has audit.json, screenshots and logs. audit.json records the initial14px sidebar
+pass before the owner's thin-sidebar refinement; final8px screenshot is
+settings-sidebar-thin.jpg. Local only; no data writes/push/merge/deployment/OTP/
+SMTP/native-mobile work.
+
+## Previous checkpoint — 15 Repairs per web page, 2026-11-11
 
 Base `ecb52e94f4166167631ff3aae2d2ab62d82ebf65`. Owner approved15records per
 page with internal row scrolling. Changed only RepairController's web pagination

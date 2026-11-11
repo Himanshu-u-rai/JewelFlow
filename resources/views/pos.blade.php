@@ -744,7 +744,7 @@
         border: 1.5px solid #e2e8f0; border-radius: 12px;
         max-height: 240px; overflow-y: auto; z-index: 20;
         box-shadow: 0 12px 32px rgba(15,23,42,.12), 0 4px 8px rgba(15,23,42,.06);
-        display: none; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
+        display: none;
     }
     .cust-dropdown.active { display: block; animation: cust-dd-in .15s ease-out; }
     .cust-dropdown.drop-up {

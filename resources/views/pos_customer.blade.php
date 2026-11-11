@@ -221,8 +221,6 @@
         z-index: 200;
         max-height: 280px;
         overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: #cbd5e1 transparent;
     }
 
     .barcode-wrap.drop-up .barcode-suggestions {

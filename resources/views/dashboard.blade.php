@@ -338,23 +338,6 @@
             list-style: none;
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 252, 255, 0.96) 100%);
-            scrollbar-width: thin;
-            scrollbar-color: #cfd8e4 transparent;
-        }
-
-        .dash-command-results::-webkit-scrollbar {
-            width: 9px;
-        }
-
-        .dash-command-results::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .dash-command-results::-webkit-scrollbar-thumb {
-            border: 2px solid transparent;
-            border-radius: 9999px;
-            background: #cfdae6;
-            background-clip: padding-box;
         }
 
         .dash-command-item {

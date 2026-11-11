@@ -1,0 +1,48 @@
+/* Retail only. Keep hidden bars hidden and leave scrolling/layout to each component. */
+html:has(> body.app-shell),
+body.app-shell {
+    --sb-track-color: #f1f5f9;
+    --sb-thumb-color: #b45309;
+    --sb-size: 14px;
+}
+
+body.app-shell .sidebar-nav { --sb-track-color: transparent; --sb-size: 8px; }
+
+html:has(> body.app-shell)::-webkit-scrollbar,
+body.app-shell::-webkit-scrollbar,
+body.app-shell *::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+
+html:has(> body.app-shell)::-webkit-scrollbar-track,
+html:has(> body.app-shell)::-webkit-scrollbar-corner,
+body.app-shell::-webkit-scrollbar-track,
+body.app-shell::-webkit-scrollbar-corner,
+body.app-shell *::-webkit-scrollbar-track,
+body.app-shell *::-webkit-scrollbar-corner { background: var(--sb-track-color); border-radius: 3px; }
+
+html:has(> body.app-shell)::-webkit-scrollbar-thumb,
+body.app-shell::-webkit-scrollbar-thumb,
+body.app-shell *::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border: 0;
+    border-radius: 3px;
+    background-clip: border-box;
+}
+
+/* These helpers are shared with other shells; override their legacy thin/grey style only here. */
+body.app-shell :is(.jf-state-menu, .jf-suggest) { scrollbar-width: auto; }
+@supports selector(::-webkit-scrollbar) {
+    body.app-shell .jf-suggest { scrollbar-color: auto; }
+}
+@supports not selector(::-webkit-scrollbar) {
+    html:has(> body.app-shell), body.app-shell, body.app-shell * {
+        scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+    }
+    body.app-shell .sidebar-nav { scrollbar-width: thin; }
+}
+@media (forced-colors: active) {
+    html:has(> body.app-shell), body.app-shell, body.app-shell * {
+        --sb-thumb-color: ButtonText;
+        --sb-track-color: Canvas;
+        scrollbar-color: auto;
+    }
+}

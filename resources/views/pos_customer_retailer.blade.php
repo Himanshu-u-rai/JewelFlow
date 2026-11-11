@@ -492,7 +492,6 @@
     .items-table-scroll {
         height: var(--items-table-height);
         overflow: auto;
-        scrollbar-width: thin;
         scrollbar-gutter: stable both-edges;
     }
     .items-table {
@@ -641,7 +640,6 @@
     .items-tablet-scroll {
         height: 430px;
         overflow: auto;
-        scrollbar-width: thin;
         scrollbar-gutter: stable both-edges;
     }
     .items-tablet-table {

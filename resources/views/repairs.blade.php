@@ -222,16 +222,6 @@
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-x: contain;
             max-width: 100%;
-            scrollbar-width: thin;
-            scrollbar-color: var(--r-border) transparent;
-        }
-        .repairs-table-shell::-webkit-scrollbar { width: 8px; height: 8px; }
-        .repairs-table-shell::-webkit-scrollbar-track { background: transparent; }
-        .repairs-table-shell::-webkit-scrollbar-thumb {
-            border: 2px solid transparent;
-            border-radius: 8px;
-            background: var(--r-border);
-            background-clip: padding-box;
         }
 
         .repairs-table {

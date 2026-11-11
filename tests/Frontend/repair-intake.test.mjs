@@ -80,6 +80,15 @@ test('manual closing does not nudge the page down before animating the form', ()
     assert.equal(f.shell.scrollTop, 0);
 });
 
+test('a collapsed workspace fits without a phantom scrollbar and still reopens on upward intent at zero', () => {
+    const f = fixture();
+    f.send('summary', 'click');
+    assert.equal(f.styles.get('--repair-workspace-height'), '835px', '925px viewport minus the 90px header');
+    f.send('shell', 'wheel', { deltaY: -50 });
+    assert.equal(f.details.open, true);
+    assert.equal(f.shell.scrollTop, 0);
+});
+
 test('a fitting intake is anchored at its original position before the scroll-collapse threshold', () => {
     const f = fixture();
     assert.equal(f.attrs.has('data-repair-intake-pin'), true);
@@ -105,12 +114,12 @@ test('an intake taller than the viewport remains normally scrollable and resizin
 
 test('the table starts at its full responsive height and never grows on collapse or reopening', () => {
     const f = fixture();
-    assert.equal(f.styles.get('--repair-table-height'), '672px');
+    assert.equal(f.styles.get('--repair-table-height'), '671px');
     assert.equal(f.attrs.has('data-repair-table-fit'), true);
     f.shell.scrollTop = 40; f.send('shell', 'scroll');
-    assert.equal(f.styles.get('--repair-table-height'), '672px');
+    assert.equal(f.styles.get('--repair-table-height'), '671px');
     f.send('summary', 'click');
-    assert.equal(f.styles.get('--repair-table-height'), '672px');
+    assert.equal(f.styles.get('--repair-table-height'), '671px');
 });
 
 test('the table height stays unchanged throughout the form animation, not just at its endpoints', () => {
@@ -196,7 +205,7 @@ test('starts expanded, collapses on page scroll and gives the register remaining
     f.shell.scrollTop = 40; f.send('shell', 'scroll');
     assert.equal(f.details.open, false);
     assert.equal(f.attrs.has('data-repair-fit'), true);
-    assert.equal(f.styles.get('--repair-workspace-height'), '836px');
+    assert.equal(f.styles.get('--repair-workspace-height'), '835px');
     assert.equal(f.shell.scrollTop, 0, 'The heading uses the same page origin in both states');
     f.send('shell', 'scroll');
     assert.equal(f.details.open, false, 'Layout-induced scroll must not reopen the intake');

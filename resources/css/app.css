@@ -14,6 +14,7 @@
 @import "./karigar-invoices.css";
 @import "./cashbook.css";
 @import "./indian-address.css";
+@import "./retail-scrollbars.css";
 
 @tailwind base;
 @tailwind components;

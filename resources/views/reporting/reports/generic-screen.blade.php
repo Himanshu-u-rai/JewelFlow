@@ -1355,8 +1355,6 @@
 
             .cash-report-table-wrap {
                 overflow-x: auto;
-                scrollbar-color: #cbd5e1 #f8fafc;
-                scrollbar-width: thin;
             }
             .cash-report-table {
                 width: 100%;
@@ -2607,8 +2605,6 @@
             }
             .gst-report-table-wrap {
                 overflow-x: auto;
-                scrollbar-color: #cbd5e1 #f8fafc;
-                scrollbar-width: thin;
             }
             .gst-report-table {
                 width: 100%;
@@ -3280,8 +3276,6 @@
 
             .report-register-table-wrap {
                 overflow-x: auto;
-                scrollbar-color: #cbd5e1 #f8fafc;
-                scrollbar-width: thin;
             }
             .report-register-table {
                 width: 100%;
