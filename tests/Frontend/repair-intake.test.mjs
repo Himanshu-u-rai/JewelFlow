@@ -5,7 +5,7 @@ import test from 'node:test';
 const source = new URL('../../resources/js/repair-intake.js', import.meta.url);
 const controller = existsSync(source) ? await import(source) : {};
 
-function fixture({ room = 400, height = 925, cardHeight = 460, errors = false, animated = false, reducedMotion = false } = {}) {
+function fixture({ room = 400, height = 925, width = 0, cardHeight = 460, errors = false, animated = false, reducedMotion = false } = {}) {
     assert.equal(typeof controller.createRepairIntake, 'function', 'The repair intake scroll controller must exist');
     const listeners = new Map(), frames = new Map(), attrs = new Map(), styles = new Map();
     let serial = 0;
@@ -26,9 +26,12 @@ function fixture({ room = 400, height = 925, cardHeight = 460, errors = false, a
     summary.getBoundingClientRect = () => ({ height: 80 });
     details.setAttribute = (k, v) => attrs.set(k, v);
     details.removeAttribute = k => attrs.delete(k);
-    body.getBoundingClientRect = () => ({ height: details.open ? 380 : 0 });
+    body.getBoundingClientRect = () => ({ height: !details.open ? 0 :
+        motions.at(-1) && !motions.at(-1).cancelled ? motions.at(-1).renderedHeight :
+            attrs.has('data-repair-steady') ? 380 - Number.parseFloat(styles.get('--repair-scroll-offset') || '0') : 380 });
     if (animated) for (const element of [details, body]) element.animate = (keyframes, options) => {
-        const motion = { target: element, keyframes, options, cancel() { this.cancelled = true; }, finish() { this.onfinish?.(); } };
+        const motion = { target: element, keyframes, options, renderedHeight: Number.parseFloat(keyframes[0].height),
+            cancel() { this.cancelled = true; }, finish() { this.renderedHeight = Number.parseFloat(keyframes.at(-1).height); this.onfinish?.(); } };
         motions.push(motion);
         return motion;
     };
@@ -45,7 +48,7 @@ function fixture({ room = 400, height = 925, cardHeight = 460, errors = false, a
     const doc = { body: {}, activeElement: null };
     const observers = [];
     const win = {
-        ...target(), key: 'win', innerHeight: height, scrollY: 0,
+        ...target(), key: 'win', innerHeight: height, innerWidth: width, scrollY: 0,
         matchMedia: () => ({ matches: reducedMotion }),
         getComputedStyle: e => ({ overflowY: 'auto', paddingTop: e === root ? '32px' : '0px',
             paddingBottom: e === root ? '32px' : '0px', rowGap: e === layout ? '20px' : '0px' }),
@@ -59,6 +62,95 @@ function fixture({ room = 400, height = 925, cardHeight = 460, errors = false, a
     flush();
     return { root, shell, summary, form, details, body, pane, attrs, styles, doc, win, frames, observers, listeners, motions, dispose, send, flush };
 }
+
+test('desktop keeps the same meaningful page scroll range when intake closes and reopens', () => {
+    const f = fixture({ width: 1364, animated: true });
+    assert.equal(f.attrs.has('data-repair-steady'), true);
+    assert.equal(f.styles.get('--repair-scroll-range'), '380px');
+    const table = f.styles.get('--repair-table-height');
+    f.send('summary', 'click'); f.motions[0].finish();
+    assert.equal(f.details.open, false);
+    assert.equal(f.shell.scrollTop, 380, 'Closed is the bottom of the same track, not a reset to zero');
+    assert.equal(f.styles.get('--repair-scroll-range'), '380px');
+    assert.equal(f.styles.get('--repair-table-height'), table);
+    f.send('summary', 'click'); f.motions[1].finish();
+    assert.equal(f.shell.scrollTop, 0);
+    assert.equal(f.styles.get('--repair-scroll-range'), '380px');
+});
+
+test('desktop animation synchronizes scroll and reveal compensation instead of shrinking the scrollbar track', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.send('summary', 'click');
+    f.motions[0].renderedHeight = 200; f.flush();
+    assert.equal(f.styles.get('--repair-scroll-offset'), '180px');
+    assert.equal(f.shell.scrollTop, 180);
+    assert.equal(f.styles.get('--repair-scroll-range'), '380px');
+    f.dispose();
+    assert.equal(f.frames.size, 0);
+    assert.equal(f.attrs.size, 0);
+    assert.equal(f.styles.size, 0);
+});
+
+test('native page scrolling can close and reopen a desktop intake on the same track', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    assert.equal(f.details.open, false);
+    assert.equal(f.shell.scrollTop, 380);
+    f.shell.scrollTop = 300; f.send('shell', 'scroll');
+    assert.equal(f.details.open, true);
+    assert.deepEqual(f.motions[0].keyframes, [{ height: '80px' }, { height: '380px' }]);
+    assert.equal(f.shell.scrollTop, 300, 'Upward scrolling must not jump back to the closed endpoint');
+    f.motions[0].finish();
+    assert.equal(f.shell.scrollTop, 0);
+});
+
+test('desktop compensation uses the same whole pixels as the native scroll position', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.send('summary', 'click');
+    f.motions[0].renderedHeight = 200.4; f.flush();
+    assert.equal(f.styles.get('--repair-scroll-offset'), '180px');
+    assert.equal(f.shell.scrollTop, 180);
+});
+
+test('desktop reversals, observer callbacks and resizing cannot let stale motion change the new state', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.send('summary', 'click');
+    f.motions[0].renderedHeight = 200; f.flush();
+    f.send('summary', 'click');
+    assert.equal(f.motions[0].cancelled, true);
+    assert.deepEqual(f.motions[1].keyframes, [{ height: '200px' }, { height: '380px' }]);
+    f.observers[0].fn();
+    assert.notEqual(f.motions[1].cancelled, true);
+    f.motions[0].finish();
+    assert.equal(f.details.open, true);
+    f.win.innerHeight = 500; f.send('win', 'resize');
+    assert.equal(f.motions[1].cancelled, true);
+    assert.equal(f.attrs.has('data-repair-steady'), false);
+    assert.equal(f.details.open, true);
+    assert.equal(f.form.inert, false);
+});
+
+test('editing, server errors, phones and short windows retain ordinary page flow', () => {
+    const f = fixture({ width: 1364 });
+    f.doc.activeElement = f.form; f.send('form', 'focusin');
+    assert.equal(f.attrs.has('data-repair-steady'), false);
+    assert.equal(f.form.draft, 'Unsaved repair description');
+    f.doc.activeElement = null; f.send('form', 'focusout');
+    assert.equal(f.attrs.has('data-repair-steady'), true);
+    for (const options of [{ width: 390 }, { width: 1364, height: 500 }, { width: 1364, errors: true }, { width: 1364, cardHeight: 1200 }]) {
+        assert.equal(fixture(options).attrs.has('data-repair-steady'), false);
+    }
+});
+
+test('reduced-motion desktop toggles retain the track without animating or losing drafts', () => {
+    const f = fixture({ width: 1364, animated: true, reducedMotion: true });
+    f.send('summary', 'click');
+    assert.equal(f.motions.length, 0);
+    assert.equal(f.shell.scrollTop, 380);
+    f.shell.scrollTop = 0; f.send('shell', 'scroll');
+    assert.equal(f.details.open, true);
+    assert.equal(f.form.draft, 'Unsaved repair description');
+});
 
 test('only the form body animates, leaving the Receive New Repair heading outside the moving region', () => {
     const f = fixture({ animated: true });
@@ -166,6 +258,7 @@ test('reduced motion applies the final state immediately without spatial animati
 test('rapid reversal cancels the old animation and invalid fields are revealed immediately', () => {
     const f = fixture({ animated: true });
     f.send('summary', 'click');
+    f.motions[0].renderedHeight = 200;
     f.send('summary', 'click');
     assert.equal(f.motions[0].cancelled, true);
     assert.equal(f.motions.length, 2);

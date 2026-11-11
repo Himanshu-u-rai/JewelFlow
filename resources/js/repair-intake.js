@@ -12,9 +12,21 @@ export function createRepairIntake(root, doc = document, win = window) {
     const position = () => shell === win ? win.scrollY : shell.scrollTop;
     const scrollTo = top => shell.scrollTo({ top, behavior: 'instant' });
     let frame = 0, active = true, upwardIntent = false, upwardPane = null, touchY = 0;
-    let animation = null, expanded = details.open;
+    let animation = null, expanded = details.open, steady = null, motionFrame = 0, needsFit = false;
+
+    const offset = (value, syncScroll = false) => {
+        if (!steady) return;
+        // Match native scrollTop's pixel rounding so the heading cannot shimmer.
+        steady.offset = Math.max(0, Math.min(steady.height, Math.round(value)));
+        root.style.setProperty('--repair-scroll-offset', `${steady.offset}px`);
+        if (steady.offset) root.setAttribute('data-repair-scrolled', '');
+        else root.removeAttribute('data-repair-scrolled');
+        if (syncScroll) scrollTo(steady.offset);
+    };
 
     const stopMotion = () => {
+        win.cancelAnimationFrame(motionFrame);
+        motionFrame = 0;
         if (animation) { animation.onfinish = null; animation.cancel(); animation = null; }
         details.removeAttribute('data-intake-animating');
         details.removeAttribute('data-intake-closing');
@@ -25,12 +37,20 @@ export function createRepairIntake(root, doc = document, win = window) {
         root.removeAttribute('data-repair-fit');
         root.removeAttribute('data-repair-table-fit');
         root.removeAttribute('data-repair-intake-pin');
+        root.removeAttribute('data-repair-steady');
+        root.removeAttribute('data-repair-scrolled');
         root.style.removeProperty('--repair-workspace-height');
         root.style.removeProperty('--repair-table-height');
         root.style.removeProperty('--repair-intake-top');
+        root.style.removeProperty('--repair-scroll-range');
+        root.style.removeProperty('--repair-base-padding');
+        root.style.removeProperty('--repair-scroll-offset');
     };
     const fit = () => {
+        const previous = steady;
+        const current = position();
         resetFit();
+        steady = null;
         if (win.innerHeight < 560) return;
         const bottom = shell === win ? win.innerHeight : Math.min(win.innerHeight, shell.getBoundingClientRect().bottom);
         const top = root.getBoundingClientRect().top + position();
@@ -41,6 +61,11 @@ export function createRepairIntake(root, doc = document, win = window) {
         const number = value => Number.parseFloat(value) || 0;
         const collapsedIntake = summary.getBoundingClientRect().height
             + number(border.borderTopWidth) + number(border.borderBottomWidth);
+        const wasOpen = details.open;
+        details.open = true;
+        const fullHeight = details.getBoundingClientRect().height;
+        const bodyHeight = body.getBoundingClientRect().height;
+        details.open = wasOpen;
         // Budget against the collapsed heading once, even while the form is open.
         const height = available - number(padding.paddingTop) - number(padding.paddingBottom)
             - number(gap.rowGap) - collapsedIntake;
@@ -49,10 +74,23 @@ export function createRepairIntake(root, doc = document, win = window) {
         const pane = panes.find(p => p.getClientRects().length);
         if (!pane || pane.clientHeight < 180) return resetFit();
         // Keep a fully visible intake still during the scroll preceding collapse.
-        if (details.getBoundingClientRect().height <= available - number(padding.paddingTop) - number(padding.paddingBottom)) {
+        const intakeFits = fullHeight <= available - number(padding.paddingTop) - number(padding.paddingBottom);
+        if (intakeFits) {
             const origin = shell === win ? 0 : shell.getBoundingClientRect().top;
             root.style.setProperty('--repair-intake-top', `${top + number(padding.paddingTop) - origin}px`);
             root.setAttribute('data-repair-intake-pin', '');
+        }
+        if (win.innerWidth >= 1024 && intakeFits && bodyHeight > 0
+            && root.dataset.intakeErrors !== 'true' && !form.contains(doc.activeElement)) {
+            // One stable native track: padding replaces the revealed body as it closes.
+            steady = { height: bodyHeight, offset: previous ? current : expanded ? 0 : bodyHeight };
+            root.style.setProperty('--repair-workspace-height', `${available}px`);
+            root.style.setProperty('--repair-scroll-range', `${bodyHeight}px`);
+            root.style.setProperty('--repair-base-padding', `${number(padding.paddingTop)}px`);
+            root.setAttribute('data-repair-steady', '');
+            offset(steady.offset, true);
+            details.open = steady.offset < steady.height;
+            return;
         }
         if (!details.open) {
             root.style.setProperty('--repair-workspace-height', `${available}px`);
@@ -60,21 +98,26 @@ export function createRepairIntake(root, doc = document, win = window) {
         }
     };
     const change = (next, immediate = false) => {
-        const from = details.open ? body.getBoundingClientRect().height : 0;
+        const from = steady ? steady.height - Math.min(steady.height, Math.max(0, position()))
+            : details.open ? body.getBoundingClientRect().height : 0;
         stopMotion();
         expanded = next;
         upwardIntent = false;
         details.open = true;
         root.removeAttribute('data-repair-fit');
         if (next) for (const pane of panes) pane.scrollTop = 0;
-        scrollTo(0);
+        if (steady) offset(steady.height - from);
+        else scrollTo(0);
         const finish = () => {
+            if (steady) offset(next ? 0 : steady.height, true);
+            stopMotion();
             details.open = next;
             fit();
-            if (!next) scrollTo(0);
+            if (!steady && !next) scrollTo(0);
         };
         if (immediate || !body.animate || win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return finish();
-        const to = next ? body.getBoundingClientRect().height : 0;
+        const to = next ? steady?.height ?? body.getBoundingClientRect().height : 0;
+        if (Math.abs(to - from) < 1) return finish();
         details.setAttribute('data-intake-animating', '');
         if (!next) details.setAttribute('data-intake-closing', '');
         form.inert = !next;
@@ -82,7 +125,15 @@ export function createRepairIntake(root, doc = document, win = window) {
         animation = body.animate([{ height: `${from}px` }, { height: `${to}px` }], {
             duration: next ? 260 : 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both',
         });
-        animation.onfinish = () => { stopMotion(); finish(); };
+        animation.onfinish = finish;
+        if (steady) {
+            const follow = () => {
+                if (!active || !animation || !steady) return;
+                offset(steady.height - body.getBoundingClientRect().height, true);
+                motionFrame = win.requestAnimationFrame(follow);
+            };
+            motionFrame = win.requestAnimationFrame(follow);
+        }
     };
     const open = () => change(true);
     const close = () => change(false);
@@ -90,13 +141,17 @@ export function createRepairIntake(root, doc = document, win = window) {
     const measure = () => {
         frame = 0;
         if (!active || !root.isConnected || animation) return;
+        if (needsFit) { needsFit = false; fit(); }
         const current = position();
+        if (steady) offset(current);
         if (details.open && current > 24 && !form.contains(doc.activeElement) && root.dataset.intakeErrors !== 'true') close();
+        else if (steady && !details.open && current < steady.height - 1) open();
         else if (!details.open && current <= 1 && upwardIntent && (!upwardPane || upwardPane.scrollTop === 0)) open();
     };
     const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };
     const toggle = event => { event.preventDefault(); expanded ? close() : open(); };
     const resize = () => { if (animation) change(expanded, true); else fit(); };
+    const refit = () => { needsFit = true; schedule(); };
     // Focus/scrollIntoView can move the page before a summary click.
     // Only a browsing gesture may auto-open; otherwise that click would close it again.
     const intent = (up, event) => {
@@ -115,6 +170,8 @@ export function createRepairIntake(root, doc = document, win = window) {
     shell.addEventListener('scroll', schedule, { passive: true });
     summary.addEventListener('click', toggle);
     form.addEventListener('invalid', revealInvalid, true);
+    form.addEventListener('focusin', refit);
+    form.addEventListener('focusout', refit);
     win.addEventListener('resize', resize);
     // Ignore our own in-flight layout changes; a real viewport resize still settles motion.
     const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation) fit(); }) : null;
@@ -129,6 +186,8 @@ export function createRepairIntake(root, doc = document, win = window) {
         for (const [type, handler] of gestures) shell.removeEventListener(type, handler);
         summary.removeEventListener('click', toggle);
         form.removeEventListener('invalid', revealInvalid, true);
+        form.removeEventListener('focusin', refit);
+        form.removeEventListener('focusout', refit);
         win.removeEventListener('resize', resize);
         observer?.disconnect();
         details.open = true;

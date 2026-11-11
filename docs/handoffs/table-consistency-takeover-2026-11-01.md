@@ -2,7 +2,38 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — All Retail bars thin, 2026-11-11
+## Latest checkpoint — Stable Repairs main scroll track, 2026-11-11
+
+Base `2ba648d23a79480e42144de40d790014f4e6c786`. Reproduced the main scrollbar
+range shrinking385px→0 and scrollTop resetting to0 whenever intake closed.
+On fitting desktop workspaces, keep one fixed responsive scroll range equal to
+the natural form body height. Compensating top padding replaces the shrinking
+body; synchronize it with native scrollTop during body-only animation. Closing
+ends at the bottom of this track, reopening at its top. Round compensation to
+native scroll pixels so the summary does not shimmer. Existing table sizing,
+15-row pagination, original form nodes and orange8px theme are retained.
+
+Ordinary flow remains on phones, short windows, oversized forms, validation
+errors and during field editing. Motion/RAF cleanup, quick reversal, viewport
+resize, reduced motion and focus transitions have regression coverage. Seven
+new regressions plus more realistic animation doubles:305frontend passed,
+22existing skips,0failed(327total). Build85modules, app-COPJHm1f.js,
+app-DInTk4zm.css; diffcheck passed. No finance/controller/data changes or PHP
+database suite rerun. Admin/Dhiran untouched; tracked/untracked hashes preserved.
+
+Live desktop1567×925: range385px throughout close/open, heading top122.796875
+on every final-build sample, table667.65625px unchanged, collapsed footer891.796875
+within925. Row15 accessible with sticky aligned headings and independent row
+scroll561px. Page2 indices16–22; local and submitted search verified. Draft text
+survives toggles. Phone390×844 has no horizontal overflow and expanded page
+range1126px;1280×500 uses ordinary page scrolling, no forced table fit.
+Evidence `/home/himanshu/jf-table-evidence/repair-main-track-20261111.kdyTB4/`.
+Native scrollbar dragging, physical phone, full keyboard and screen reader
+acceptance unrun. Existing Electron CSP/Alpine duplicate-init warnings observed;
+no new application errors during these checks. Local only; original Returns
+tab left untouched. No push/deploy/OTP/SMTP/native-mobile work.
+
+## Previous checkpoint — All Retail bars thin, 2026-11-11
 
 Base `16ab15dab77865aaeb38be984a7e35023ae5ef4c`. Owner extended the sidebar's
 8px size to all visible Retail scrollbars. Set8px on the Retail document/body
