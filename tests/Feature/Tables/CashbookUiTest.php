@@ -124,7 +124,54 @@ class CashbookUiTest extends TestCase
         $response->assertDontSee('Foreign confidential cash')->assertDontSee('₹98,765.00');
         $xp = $this->xpath($response->getContent());
         $this->assertSame(0, $xp->query('//dialog[@id="cashbook-drawer"]')->length);
+        $this->assertSame(0, $xp->query('//dialog[@id="cashbook-entry"]')->length);
         $this->assertSame(0, $xp->query('//a[@href="'.route('cashbook.create').'"]')->length);
         TenantContext::runFor($shop->id, fn () => $this->post(route('cashbook.drawer-check'), ['counted_cash' => 100]))->assertForbidden();
+    }
+
+    public function test_entry_popup_and_direct_page_share_one_complete_form_without_changing_money(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        TenantContext::runFor($shop->id, fn () => ShopPaymentMethod::create(['shop_id' => $shop->id, 'type' => 'bank', 'name' => 'Synthetic entry bank', 'is_active' => true]));
+        $this->withoutVite();
+        $before = $this->snapshot();
+        foreach (['cashbook.index', 'cashbook.create'] as $route) {
+            $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(route($route)))->assertOk();
+            $xp = $this->xpath($response->getContent());
+            $this->assertSame(1, $xp->query('//form[@data-cashbook-entry-form and @action="'.route('cashbook.store').'" and @method="POST"]')->length);
+            $this->assertSame(1, $xp->query('//form[@data-cashbook-entry-form]//input[@name="_token"]')->length);
+            foreach (['amount', 'source_type', 'payment_mode', 'payment_method_id', 'description'] as $name) {
+                $this->assertSame(1, $xp->query('//form[@data-cashbook-entry-form]//*[@name="'.$name.'"]')->length);
+            }
+            $this->assertSame(2, $xp->query('//form[@data-cashbook-entry-form]//input[@name="type"]')->length);
+            $this->assertSame(1, $xp->query('//textarea[@name="description" and @maxlength="500"]')->length);
+            $this->assertSame(1, $xp->query('//input[@id="custom_source" and @aria-label]')->length);
+            $response->assertSee('Synthetic entry bank');
+            if ($route === 'cashbook.index') {
+                $this->assertSame(1, $xp->query('//dialog[@id="cashbook-entry" and @data-open-on-error="false"]//form[@data-cashbook-entry-form]')->length);
+                $this->assertSame(1, $xp->query('//a[@aria-controls="cashbook-entry" and @aria-haspopup="dialog"]')->length);
+            }
+        }
+        $this->assertSame($before, $this->snapshot(), 'Opening either entry form must never post a transaction');
+    }
+
+    public function test_invalid_popup_submission_retains_values_and_reopens_only_entry_dialog(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->withoutVite();
+        $index = route('cashbook.index', ['type' => 'out']);
+        $before = $this->snapshot();
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->from($index)->post(route('cashbook.store'), [
+            'type' => 'out', 'amount' => -5, 'source_type' => 'Synthetic custom reason',
+            'payment_mode' => 'cash', 'description' => 'Synthetic unsaved entry note',
+        ]))->assertRedirect($index)->assertSessionHasErrors('amount');
+        $response = TenantContext::runFor($shop->id, fn () => $this->get($index))->assertOk();
+        $xp = $this->xpath($response->getContent());
+        $this->assertSame(1, $xp->query('//dialog[@id="cashbook-entry" and @data-open-on-error="true"]')->length);
+        $this->assertSame('-5', $xp->evaluate('string(//input[@name="amount"]/@value)'));
+        $this->assertSame('Synthetic custom reason', $xp->evaluate('string(//input[@id="custom_source"]/@value)'));
+        $this->assertSame('Synthetic unsaved entry note', $xp->evaluate('string(//textarea[@name="description"])'));
+        $this->assertSame(1, $xp->query('//input[@name="type" and @value="out" and @checked]')->length);
+        $this->assertSame($before, $this->snapshot(), 'Rejected entries must not alter any financial records');
     }
 }

@@ -2,7 +2,69 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Cash Book clarity; visual acceptance pending, 2026-11-11
+## Latest checkpoint — Cash Book entry popup and signed-in browser checks, 2026-11-11
+
+Base `1592dfc809660593bc154b17941bb8e8dde6f889`, same branch/worktree.
+Add Entry now opens a compact native on-page dialog, matching Match Drawer.
+The direct `/cashbook/create` fallback remains usable; both render the same
+`cashbook/_entry-form.blade.php`. Two-column desktop / one-column phone layout,
+named direction choices, themed scroll, visible focus and reachable footer.
+Cancel/reopen preserves unsaved input. Entry validation errors reopen the entry
+dialog with old values; drawer errors stay separate. Turbo hooks close dialogs
+before caching/rendering. Original entry helper script is byte-identical to base;
+POST action, CSRF, fields, payment/account selection and permissions preserved.
+No controller, financial calculation, service, route, schema or dependency change.
+
+Verification actually performed for this increment:
+
+- Regression tests observed RED in `/tmp/jf-cashbook-entry-red.log`, then GREEN.
+  `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Tables/CashbookUiTest.php tests/Feature/CashBook
+  tests/Feature/Security/CashbookWriteAtomicityTest.php`:
+  **46 tests /302 assertions, no failures/skips**. Disposable database guard
+  confirmed; no suite against persistent preview55432. Includes unchanged
+  eight-table GET snapshots and invalid POST retaining input without ledger writes.
+- `node --test tests/Frontend/*.test.mjs`: **270 passed /22 existing skips /
+  0 failed**. Two new VM tests execute the actual preserved helper script:
+  custom/known reason transitions and cash/bank/UPI account requirements.
+- `npm run build`: success,84modules; app-l0N-yk7K.css / app-DwJboU5v.js.
+  PHP/Blade lint, guarded preview Blade cache/clear, diff checks passed.
+  One scoped Impeccable detector returned no findings. No full repository PHP run.
+- Source reviewer found no Critical/Important regression. Fresh Impeccable
+  reviewer opened all four captures and returned **ship, screenshot scope only**;
+  this is not native-keyboard, posting or full-product acceptance.
+
+User signed into the in-app browser; normal existing-tab claim then worked.
+This supersedes the previous runtime-access blocker, without any browser-policy
+bypass. Actual application checks, no form or drawer count submitted:
+
+- Add Entry opens without changing URL; Cancel returns focus to Add Entry;
+  reopen retains draft input. Cash hides/disables account, bank requires/selects
+  the existing account. Negative amount native constraint detected. Direct
+  create fallback renders and returns to the register; no duplicate entry forms.
+- Actual desktop1920x925, phone-width390x844, narrow320x700, tablet768x1024,
+  short1024x600 checked. No body/form horizontal overflow. At320px the dialog
+  wheel-scrolls internally and its footer remains reachable. Removed duplicate
+  blue/orange input focus ring, rebuilt and verified visible orange focus remains.
+- Register wheel-scroll, sticky headings and reachable last row checked.
+  Pagination page2 indices26–50; summary money unchanged. No-match search shows
+  empty state without changing summaries; Clear restores60entries. Mobile
+  cards readable; filter panel opens from bottom. No app errors in sampled logs.
+- Native Escape/Tab and robust Turbo Back/Forward remain unverified: browser
+  key simulation was inconclusive, grouped history check raced navigation.
+  Physical phone not tested. Server validation path covered in disposable tests,
+  not a live browser POST. No financial acceptance claimed from screenshots.
+
+Evidence: `/home/himanshu/jf-table-evidence/cashbook-entry-20261111.s1Fk2C/`:
+`entry-desktop.jpg`, `entry-mobile.jpg`, `register-desktop.jpg`,
+`register-mobile.jpg`, and copied test/build logs. All form drafts synthetic and
+unsaved. Original user form selections restored; popup closed, default viewport.
+Preview processes/config/database untouched in this increment, no data writes.
+Claude's13tracked/2untracked Dhiran changes retain the prior preservation hashes.
+No push, merge, remote deployment, production, OTP, SMTP or native-app change.
+
+## Previous checkpoint — Cash Book clarity; visual acceptance pending, 2026-11-11
 
 Base `2ec96b3de0ce8d73d414db5c0ae162b914b2719d`, same
 `feature/table-consistency` / `ui-integration` worktree. Owner approved the

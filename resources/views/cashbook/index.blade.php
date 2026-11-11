@@ -6,7 +6,8 @@
                     <button type="button" class="btn btn-secondary btn-sm cb-header-action" @click="$refs.drawer.showModal()" aria-haspopup="dialog" aria-controls="cashbook-drawer" aria-label="Match your drawer">
                         <x-icon name="wallet" size="16" /><span>Match drawer</span>
                     </button>
-                    <a href="{{ route('cashbook.create') }}" class="btn btn-primary btn-sm cb-header-action" aria-label="Add entry"><x-icon name="plus" size="16" /><span>Add entry</span></a>
+                    <a href="{{ route('cashbook.create') }}" class="btn btn-primary btn-sm cb-header-action" aria-label="Add entry" aria-haspopup="dialog" aria-controls="cashbook-entry" data-turbo-prefetch="false"
+                       @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey) { $event.preventDefault(); $refs.entry.showModal(); }"><x-icon name="plus" size="16" /><span>Add entry</span></a>
                 @endcan
                 <a href="{{ route('report.cash') }}" class="btn btn-secondary btn-sm cb-header-action" aria-label="Open cash flow dashboard"><x-icon name="trending-up" size="16" /><span>Cash flow</span></a>
             </x-slot:actions>
@@ -205,6 +206,13 @@
         </div>
 
         @can('cash.create')
+            <dialog id="cashbook-entry" class="cb-drawer cb-entry-editor jf-scrollbar" x-ref="entry" aria-labelledby="cashbook-entry-title"
+                    data-open-on-error="{{ $errors->hasAny(['type', 'amount', 'source_type', 'payment_mode', 'payment_method_id', 'description']) ? 'true' : 'false' }}"
+                    x-init="if ($el.dataset.openOnError === 'true') $nextTick(() => $el.showModal())"
+                    @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()">
+                <header><div><h2 id="cashbook-entry-title">Add entry</h2><p>Record money received or paid. Required fields marked *.</p></div><button type="button" class="btn btn-secondary btn-sm" aria-label="Close entry form" @click="$refs.entry.close()"><x-icon name="x" size="18" /></button></header>
+                @include('cashbook._entry-form', ['entryModal' => true])
+            </dialog>
             <dialog id="cashbook-drawer" class="cb-drawer jf-scrollbar" x-ref="drawer" aria-labelledby="cashbook-drawer-title"
                     @turbo:before-cache.document="$el.close()" @turbo:before-render.document="$el.close()"
                     @if($errors->has('counted_cash') || $errors->has('note')) x-init="$nextTick(() => $el.showModal())" @endif>
