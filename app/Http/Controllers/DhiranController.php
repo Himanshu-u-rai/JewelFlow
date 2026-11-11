@@ -75,7 +75,49 @@ class DhiranController extends Controller
             'month_interest'    => $thisMonthInterest,
         ];
 
-        return view('dhiran.dashboard', compact('settings', 'stats', 'recentLoans'));
+        // Owner 2026-11-11: the figures a lender runs the day on. Overdue and due-soon counts use the Loans list's own
+        // filters, so each figure's number matches the list its link opens.
+        $open = ['active', 'pending_evidence'];
+        $owedSql = 'coalesce(sum(coalesce(outstanding_principal, 0) + coalesce(outstanding_interest, 0) + coalesce(outstanding_penalty, 0)), 0)';
+        $openSums = DhiranLoan::where('shop_id', $shopId)->whereIn('status', $open)->toBase()
+            ->selectRaw("count(*) as n, coalesce(sum(outstanding_principal), 0) as principal, {$owedSql} as owed")->first();
+        $byFilter = function (array $query) use ($shopId, $owedSql) {
+            $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest(Request::create('/', 'GET', $query));
+            $row = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId), null)->toBase()
+                ->selectRaw("count(*) as n, {$owedSql} as owed")->first();
+
+            return ['n' => (int) $row->n, 'owed' => (float) $row->owed, 'url' => route('dhiran.loans', $query)];
+        };
+        $overdueBands = [];
+        foreach (array_keys(\App\Services\Dhiran\DhiranListFilters::OVERDUE) as $band) {
+            $overdueBands[$band] = $byFilter(['overdue' => $band]);
+        }
+        $fy = (new \App\Services\Reporting\Filters\FilterResolver())->resolve(\App\Services\Reporting\Filters\DatePreset::ThisFy);
+        $held = DhiranLoanItem::query()
+            ->join('dhiran_loans as l', 'l.id', '=', 'dhiran_loan_items.dhiran_loan_id')
+            ->where('l.shop_id', $shopId)->whereIn('l.status', $open)
+            ->where('dhiran_loan_items.status', 'pledged')
+            ->groupBy('dhiran_loan_items.metal_type')
+            ->selectRaw('dhiran_loan_items.metal_type as metal, coalesce(sum(dhiran_loan_items.fine_weight), 0) as fine, coalesce(sum(dhiran_loan_items.market_value), 0) as value')
+            ->toBase()->get()->keyBy('metal');
+
+        $dash = [
+            'open_count'     => (int) $openSums->n,
+            'money_out'      => (float) $openSums->principal,
+            'owed'           => (float) $openSums->owed,
+            'interest_month' => $thisMonthInterest,
+            'interest_fy'    => (float) DhiranPayment::where('shop_id', $shopId)
+                ->whereBetween('payment_date', [$fy->from->toDateString(), $fy->to->toDateString()])->sum('interest_component'),
+            'fy_label'       => $fy->label,
+            'overdue'        => $overdueBands,
+            'overdue_count'  => array_sum(array_column($overdueBands, 'n')),
+            'overdue_owed'   => array_sum(array_column($overdueBands, 'owed')),
+            'maturing'       => ['7' => $byFilter(['maturing' => '7']), '30' => $byFilter(['maturing' => '30'])],
+            'pending'        => DhiranLoan::where('shop_id', $shopId)->where('status', 'pending_evidence')->count(),
+            'held'           => $held,
+        ];
+
+        return view('dhiran.dashboard', compact('settings', 'stats', 'recentLoans', 'dash'));
     }
 
     public function activate(Request $request)

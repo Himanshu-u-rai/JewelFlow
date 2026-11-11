@@ -39,58 +39,90 @@
             />
         @endif
 
-        {{-- KPI Cards --}}
+        {{-- Owner 2026-11-11: the figures a lender runs the day on; every number links to the list behind it. --}}
+        @php
+            $inr = fn ($v) => '₹' . \App\Support\IndianNumber::format($v);
+            $grams = fn ($v) => \App\Support\IndianNumber::format($v, 3) . ' g';
+            $maxBand = max(1, ...array_column($dash['overdue'], 'n'));
+        @endphp
+
+        @if($dash['pending'] > 0)
+            <a href="{{ route('dhiran.loans', ['status' => 'pending_evidence']) }}" class="dd-alert">
+                <x-icon name="triangle-alert" size="16" />
+                <span><strong>{{ $dash['pending'] }} {{ \Illuminate\Support\Str::plural('loan', $dash['pending']) }}</strong> awaiting evidence: upload the item photo and ID proof to activate {{ $dash['pending'] > 1 ? 'them' : 'it' }}.</span>
+                <x-icon name="chevron-right" size="16" />
+            </a>
+        @endif
+
         <div class="dd-kpi-grid">
+            <a href="{{ route('dhiran.loans', ['status' => 'active']) }}" class="dd-kpi-card dd-kpi-link">
+                <span class="dd-kpi-icon bg-emerald-100 text-emerald-700"><x-icon name="banknote" /></span>
+                <span class="dd-kpi-label">Money lent out</span>
+                <span class="dd-kpi-value" data-dash="money-out">{{ $inr($dash['money_out']) }}</span>
+                <span class="dd-kpi-sub"><span data-dash="open-count">{{ $dash['open_count'] }}</span> open {{ \Illuminate\Support\Str::plural('loan', $dash['open_count']) }}</span>
+            </a>
+            <a href="{{ route('dhiran.reports.active') }}" class="dd-kpi-card dd-kpi-link">
+                <span class="dd-kpi-icon bg-amber-100 text-amber-700"><x-icon name="circle-dollar-sign" /></span>
+                <span class="dd-kpi-label">Total outstanding</span>
+                <span class="dd-kpi-value" data-dash="owed">{{ $inr($dash['owed']) }}</span>
+                <span class="dd-kpi-sub">Principal with interest and penalty due</span>
+            </a>
             <div class="dd-kpi-card">
-                <div class="dd-kpi-inner">
-                    <div class="dd-kpi-icon bg-emerald-100 text-emerald-700">
-                        <x-icon name="badge-check" />
-                    </div>
-                    <div>
-                        <p class="dd-kpi-label">Active Loans</p>
-                        <p class="dd-kpi-value">{{ number_format($stats['active_loans'] ?? 0) }}</p>
-                    </div>
-                </div>
+                <span class="dd-kpi-icon bg-violet-100 text-violet-700"><x-icon name="calculator" /></span>
+                <a href="{{ route('dhiran.reports.interest', ['period' => 'this_month']) }}" class="dd-kpi-label dd-kpi-labellink">Interest this month</a>
+                <span class="dd-kpi-value" data-dash="interest-month">{{ $inr($dash['interest_month']) }}</span>
+                <a href="{{ route('dhiran.reports.interest', ['period' => 'this_fy']) }}" class="dd-kpi-sub dd-kpi-sublink"><span data-dash="interest-fy">{{ $inr($dash['interest_fy']) }}</span> in {{ $dash['fy_label'] }}</a>
             </div>
-            <div class="dd-kpi-card">
-                <div class="dd-kpi-inner">
-                    <div class="dd-kpi-icon bg-rose-100 text-rose-700">
-                        <x-icon name="clock" />
-                    </div>
-                    <div>
-                        <p class="dd-kpi-label">Overdue Loans</p>
-                        <p class="dd-kpi-value">{{ number_format($stats['overdue_loans'] ?? 0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="dd-kpi-card">
-                <div class="dd-kpi-inner">
-                    <div class="dd-kpi-icon bg-amber-100 text-amber-700">
-                        <x-icon name="circle-dollar-sign" />
-                    </div>
-                    <div>
-                        <p class="dd-kpi-label">Total Outstanding</p>
-                        <p class="dd-kpi-value">{{ $currencySymbol ?? '₹' }}{{ number_format($stats['total_outstanding'] ?? 0, 2) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="dd-kpi-card">
-                <div class="dd-kpi-inner">
-                    <div class="dd-kpi-icon bg-violet-100 text-violet-700">
-                        <x-icon name="calculator" />
-                    </div>
-                    <div>
-                        <p class="dd-kpi-label">This Month Interest</p>
-                        <p class="dd-kpi-value">{{ $currencySymbol ?? '₹' }}{{ number_format($stats['month_interest'] ?? 0, 2) }}</p>
-                    </div>
-                </div>
-            </div>
+            <a href="{{ route('dhiran.reports.overdue') }}" class="dd-kpi-card dd-kpi-link {{ $dash['overdue_count'] ? 'is-alert' : '' }}">
+                <span class="dd-kpi-icon bg-rose-100 text-rose-700"><x-icon name="clock" /></span>
+                <span class="dd-kpi-label">Overdue</span>
+                <span class="dd-kpi-value" data-dash="overdue-count">{{ $dash['overdue_count'] }}</span>
+                <span class="dd-kpi-sub">{{ $inr($dash['overdue_owed']) }} owed</span>
+            </a>
+        </div>
+
+        <div class="dd-panels">
+            <section class="dd-panel">
+                <h2 class="dd-panel-title"><x-icon name="calendar-clock" size="16" /> Due soon</h2>
+                @foreach(['7' => 'Next 7 days', '30' => 'Next 30 days'] as $days => $label)
+                    <a href="{{ $dash['maturing'][$days]['url'] }}" class="dd-row">
+                        <span class="dd-row-label">{{ $label }}</span>
+                        <span class="dd-row-count" data-dash="maturing-{{ $days }}">{{ $dash['maturing'][$days]['n'] }}</span>
+                        <span class="dd-row-amount">{{ $inr($dash['maturing'][$days]['owed']) }}</span>
+                    </a>
+                @endforeach
+            </section>
+
+            <section class="dd-panel">
+                <h2 class="dd-panel-title"><x-icon name="triangle-alert" size="16" /> Overdue by age</h2>
+                @foreach(\App\Services\Dhiran\DhiranListFilters::OVERDUE as $band => $label)
+                    <a href="{{ $dash['overdue'][$band]['url'] }}" class="dd-row dd-row--bar">
+                        <span class="dd-row-label">{{ str_replace(' late', '', $label) }}</span>
+                        <span class="dd-row-count" data-dash="overdue-{{ $band }}">{{ $dash['overdue'][$band]['n'] }}</span>
+                        <span class="dd-row-amount">{{ $inr($dash['overdue'][$band]['owed']) }}</span>
+                        <span class="dd-bar" aria-hidden="true"><span class="dd-bar-fill dd-bar-fill--{{ $loop->index }}" style="width: {{ round(100 * $dash['overdue'][$band]['n'] / $maxBand) }}%"></span></span>
+                    </a>
+                @endforeach
+            </section>
+
+            <section class="dd-panel">
+                <h2 class="dd-panel-title"><x-icon name="weight" size="16" /> Gold &amp; silver held</h2>
+                @foreach(['gold' => 'Gold (fine)', 'silver' => 'Silver (fine)'] as $metal => $label)
+                    <a href="{{ route('dhiran.loans', ['metal' => $metal, 'status' => 'active']) }}" class="dd-row">
+                        <span class="dd-row-label">{{ $label }}</span>
+                        <span class="dd-row-count" data-dash="fine-{{ $metal }}">{{ $grams($dash['held'][$metal]->fine ?? 0) }}</span>
+                        <span class="dd-row-amount" title="Value when pledged">{{ $inr($dash['held'][$metal]->value ?? 0) }}</span>
+                    </a>
+                @endforeach
+                <p class="dd-panel-note">Items still pledged on open loans; value as at pledge.</p>
+            </section>
         </div>
 
         {{-- Recent Loans Table --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-slate-200">
+            <div class="dh-section-head">
                 <h2 class="text-lg font-semibold text-slate-900">Recent Loans</h2>
+                <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">View all loans <x-icon name="chevron-right" size="14" /></a>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[800px] jf-table dh-stack">

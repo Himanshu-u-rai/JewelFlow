@@ -375,8 +375,9 @@ class DhiranLifecycleUiTest extends TestCase
         $this->makeLoan($shop, ['loan_date' => today()->toDateString(), 'tenure_months' => 6]);
 
         $html = $this->actingAs($owner)->get('https://dhiran.jewelflows.com/dhiran')->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/Active Loans<\/p>\s*<p class="dd-kpi-value">1</', $html);
-        $this->assertMatchesRegularExpression('/Total Outstanding<\/p>\s*<p class="dd-kpi-value">₹100,000\.00</', $html);
+        // 2026-11-11 figures: open-loan count and money owed (Indian grouping); see DhiranDashboardFiguresTest.
+        $this->assertMatchesRegularExpression('/data-dash="open-count">1</', $html);
+        $this->assertMatchesRegularExpression('/data-dash="owed">₹1,00,000</', $html);
     }
 
     // Payment types printed raw ("Pre_closure").
