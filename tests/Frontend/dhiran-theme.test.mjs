@@ -151,6 +151,15 @@ test('every Dhiran screen table uses the stacked phone layout', async () => {
     assert.deepEqual(copies, []);
 });
 
+// Owner 2026-11-11: Settings cards sit two to a row on wide screens, fields two to a row inside each card, compact.
+test('settings: two cards a row, two fields a row, compact inputs', () => {
+    const css = read('dhiran.css');
+    assert.equal(decls(css, '.dh-app .dset-board', '(min-width: 1024px)')['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+    assert.equal(decls(css, '.dh-app .dset-fields', '(min-width: 640px)')['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+    assert.equal(decls(css, '.dh-app .dset-field--wide', '(min-width: 640px)')['grid-column'], '1 / -1');
+    assert.equal(decls(css, '.dh-app .dset-section :is(.dset-input, .dset-select)')['min-height'], '38px');
+});
+
 test('phones: closed menu is hidden from keyboard, links are tappable, the New Loan bar stays on the page', () => {
     const css = read('dhiran.css');
     assert.equal(decls(css, '.dh-shell:not(.is-open) .dh-sidebar', '(max-width: 900px)').visibility, 'hidden');

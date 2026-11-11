@@ -24,18 +24,20 @@
     @endphp
 
     <div class="content-inner dhiran-settings-root">
-        <form method="POST" action="{{ route('dhiran.settings.update') }}" class="max-w-3xl mx-auto" data-turbo-frame="_top">
+        {{-- Owner 2026-11-11: cards two to a row (Interest | LTV, Limits | Tenure, Printouts | Reminders), fields two to
+             a row inside each card, so the page no longer runs down as one long narrow column. --}}
+        <form method="POST" action="{{ route('dhiran.settings.update') }}" class="dset-form" data-turbo-frame="_top">
             @csrf
             @method('PATCH')
 
-            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
                 @if($errors->any())
                     <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ $errors->first() }}</div>
                 @endif
 
-                <div class="dset-section">
-                    <div class="dset-section-title"><x-icon name="calculator" /> Interest</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="dset-board" data-settings-board>
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="calculator" /> Interest</h2>
+                    <div class="dset-fields">
                         <div>
                             <label class="dset-label" for="ds-rate">Monthly interest rate (%)</label>
                             <input id="ds-rate" type="number" step="0.01" min="0" max="10" required name="default_interest_rate_monthly" class="dset-input" value="{{ $num('default_interest_rate_monthly') }}">
@@ -58,11 +60,11 @@
                             <p class="dset-hint">Charged even if the loan is closed or renewed sooner.</p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="dset-section">
-                    <div class="dset-section-title"><x-icon name="trending-up" /> Loan value (LTV)</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="trending-up" /> Loan value (LTV)</h2>
+                    <div class="dset-fields">
                         <div>
                             <label class="dset-label" for="ds-ltv">Loan value (% of market value)</label>
                             <input id="ds-ltv" type="number" step="0.01" min="1" max="100" required name="default_ltv_ratio" class="dset-input" value="{{ $num('default_ltv_ratio') }}">
@@ -77,11 +79,11 @@
                             <p class="dset-hint">Used instead of the normal % for loans of this size or more.</p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="dset-section">
-                    <div class="dset-section-title"><x-icon name="circle-dollar-sign" /> Loan limits and fee</div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="circle-dollar-sign" /> Loan limits and fee</h2>
+                    <div class="dset-fields">
                         <div>
                             <label class="dset-label" for="ds-min">Minimum loan (₹)</label>
                             <input id="ds-min" type="number" step="0.01" min="0" required name="min_loan_amount" class="dset-input" value="{{ $num('min_loan_amount') }}">
@@ -103,11 +105,11 @@
                             <p class="dset-hint">0 for no fee.</p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="dset-section">
-                    <div class="dset-section-title"><x-icon name="calendar" /> Tenure and forfeiture</div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="calendar" /> Tenure and forfeiture</h2>
+                    <div class="dset-fields">
                         <div>
                             <label class="dset-label" for="ds-tenure">Tenure (months)</label>
                             <input id="ds-tenure" type="number" min="1" max="60" required name="default_tenure_months" class="dset-input" value="{{ $v('default_tenure_months') }}">
@@ -128,30 +130,30 @@
                             <p class="dset-hint">Days the customer gets to pay after the notice, before forfeiture.</p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="dset-section">
-                    <div class="dset-section-title"><x-icon name="printer" /> Loan numbers and printouts</div>
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="max-w-xs">
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="printer" /> Loan numbers and printouts</h2>
+                    <div class="dset-fields">
+                        <div>
                             <label class="dset-label" for="ds-prefix">Loan number prefix</label>
                             <input id="ds-prefix" type="text" maxlength="10" name="loan_number_prefix" class="dset-input" value="{{ $v('loan_number_prefix') }}" placeholder="DH-">
                             <p class="dset-hint">Numbers continue from the last loan.</p>
                         </div>
-                        <div>
+                        <div class="dset-field--wide">
                             <label class="dset-label" for="ds-terms">Terms printed on the pledge receipt</label>
-                            <textarea id="ds-terms" name="receipt_terms_text" rows="4" maxlength="5000" class="dset-input dset-textarea">{{ $v('receipt_terms_text') }}</textarea>
+                            <textarea id="ds-terms" name="receipt_terms_text" rows="3" maxlength="5000" class="dset-input dset-textarea">{{ $v('receipt_terms_text') }}</textarea>
                         </div>
-                        <div>
+                        <div class="dset-field--wide">
                             <label class="dset-label" for="ds-closure">Text on the closure certificate</label>
-                            <textarea id="ds-closure" name="closure_certificate_text" rows="3" maxlength="5000" class="dset-input dset-textarea">{{ $v('closure_certificate_text') }}</textarea>
+                            <textarea id="ds-closure" name="closure_certificate_text" rows="2" maxlength="5000" class="dset-input dset-textarea">{{ $v('closure_certificate_text') }}</textarea>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="dset-section dset-section-last">
-                    <div class="dset-section-title"><x-icon name="bell" /> Reminders</div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <section class="dset-section">
+                    <h2 class="dset-section-title"><x-icon name="bell" /> Reminders</h2>
+                    <div class="dset-fields">
                         <div>
                             <label class="dset-label" for="ds-sms">Due-date reminders</label>
                             <select id="ds-sms" name="sms_reminders_enabled" class="dset-select">
@@ -164,15 +166,15 @@
                             <input id="ds-remind" type="number" min="1" max="30" name="reminder_days_before_due" class="dset-input" value="{{ $v('reminder_days_before_due') }}">
                         </div>
                     </div>
-                </div>
+                </section>
+            </div>
 
-                <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
-                    <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">Cancel</a>
-                    <button type="submit" class="btn btn-dark btn-sm">
-                        <x-icon name="save" size="14" class="mr-1" />
-                        Save Settings
-                    </button>
-                </div>
+            <div class="dset-actions">
+                <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">Cancel</a>
+                <button type="submit" class="btn btn-dark btn-sm">
+                    <x-icon name="save" size="14" class="mr-1" />
+                    Save Settings
+                </button>
             </div>
         </form>
     </div>

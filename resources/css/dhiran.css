@@ -3197,6 +3197,28 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
 }
 .dh-fopt input:checked + span .dh-fopt-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
 
+/* Settings (owner 2026-11-11): cards two to a row, fields two to a row inside each card, compact inputs, and the
+   Save bar stays in reach at the bottom. One card per row on phones. */
+.dh-app .dset-form { margin-inline: auto; }
+.dh-app .dset-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.dh-app .dset-board > .dset-section { margin: 0; }
+.dh-app .dset-section .dset-section-title { margin-bottom: 12px; }
+.dh-app .dset-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; align-content: start; }
+.dh-app .dset-section :is(.dset-input, .dset-select) { min-height: 38px; padding-block: 7px; }
+.dh-app .dset-section .dset-textarea { min-height: 60px; }
+.dh-app .dset-actions {
+    position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: flex-end; gap: 12px;
+    margin-top: 16px; padding: 12px 16px; border: 1px solid var(--dh-card-border); border-radius: var(--dh-card-radius);
+    background: var(--dh-card); box-shadow: var(--dh-card-shadow);
+}
+@media (min-width: 640px) {
+    .dh-app .dset-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dh-app .dset-field--wide { grid-column: 1 / -1; }
+}
+@media (min-width: 1024px) {
+    .dh-app .dset-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* Customer contact column: a tap-to-call number. */
 .dh-app a.dh-tel { color: var(--dh-link); font-weight: 600; font-variant-numeric: tabular-nums; text-decoration: none; }
 .dh-app a.dh-tel:hover { color: var(--dh-link-hover); }
