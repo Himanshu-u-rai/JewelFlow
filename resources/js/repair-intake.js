@@ -1,0 +1,104 @@
+// Local to Repairs: keep the original form nodes (including files and drafts).
+export function createRepairIntake(root, doc = document, win = window) {
+    const details = root.querySelector('[data-repair-intake]');
+    if (!details) return () => {};
+    const summary = details.querySelector('summary');
+    const form = details.querySelector('form');
+    const panes = [...root.querySelectorAll('[data-repair-rows]')];
+    let shell = root.parentElement;
+    while (shell && shell !== doc.body && !/auto|scroll/.test(win.getComputedStyle(shell).overflowY)) shell = shell.parentElement;
+    if (shell === doc.body) shell = win;
+    const position = () => shell === win ? win.scrollY : shell.scrollTop;
+    const scrollTo = top => shell.scrollTo({ top, behavior: 'instant' });
+    let frame = 0, active = true, upwardIntent = false, upwardPane = null, touchY = 0;
+
+    const resetFit = () => {
+        root.removeAttribute('data-repair-fit');
+        root.style.removeProperty('--repair-workspace-height');
+    };
+    const fit = () => {
+        resetFit();
+        if (details.open || win.innerHeight < 560) return;
+        const bottom = shell === win ? win.innerHeight : Math.min(win.innerHeight, shell.getBoundingClientRect().bottom);
+        const top = root.getBoundingClientRect().top + position();
+        // One pixel keeps a native scroll-back-to-top path after the form shrinks.
+        root.style.setProperty('--repair-workspace-height', `${Math.floor(bottom - top + 1)}px`);
+        root.setAttribute('data-repair-fit', '');
+        const pane = panes.find(p => p.getClientRects().length);
+        if (!pane || pane.clientHeight < 180) resetFit();
+    };
+    const open = () => {
+        upwardIntent = false;
+        details.open = true;
+        resetFit();
+        for (const pane of panes) pane.scrollTop = 0;
+        scrollTo(0);
+    };
+    const close = () => {
+        upwardIntent = false;
+        details.open = false;
+        fit();
+        scrollTo(1);
+    };
+    const measure = () => {
+        frame = 0;
+        if (!active || !root.isConnected) return;
+        const current = position();
+        if (details.open && current > 24 && !form.contains(doc.activeElement) && root.dataset.intakeErrors !== 'true') close();
+        else if (!details.open && current <= 1 && upwardIntent && (!upwardPane || upwardPane.scrollTop === 0)) open();
+    };
+    const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };
+    const toggle = event => { event.preventDefault(); details.open ? close() : open(); };
+    const resize = () => { if (!details.open) fit(); };
+    // Focus/scrollIntoView can move the one-pixel return path before a summary click.
+    // Only a browsing gesture may auto-open; otherwise that click would close it again.
+    const intent = (up, event) => {
+        upwardIntent = up;
+        upwardPane = event.target?.closest?.('[data-repair-rows]') ?? null;
+        if (up) schedule();
+    };
+    const gestures = [
+        ['wheel', e => intent(e.deltaY < 0, e)],
+        ['keydown', e => intent(['ArrowUp', 'PageUp', 'Home'].includes(e.key), e)],
+        ['touchstart', e => { touchY = e.touches[0]?.clientY ?? 0; upwardIntent = false; }],
+        ['touchmove', e => { const y = e.touches[0]?.clientY ?? touchY; intent(y > touchY, e); touchY = y; }],
+        ['pointerdown', e => intent(e.target === shell, e)],
+    ];
+    for (const [type, handler] of gestures) shell.addEventListener(type, handler, { passive: true });
+    shell.addEventListener('scroll', schedule, { passive: true });
+    summary.addEventListener('click', toggle);
+    form.addEventListener('invalid', open, true);
+    win.addEventListener('resize', resize);
+    const observer = win.ResizeObserver ? new win.ResizeObserver(resize) : null;
+    for (const el of root.querySelectorAll('[data-repair-measure], summary')) observer?.observe(el);
+    schedule();
+    return () => {
+        active = false;
+        win.cancelAnimationFrame(frame);
+        shell.removeEventListener('scroll', schedule);
+        for (const [type, handler] of gestures) shell.removeEventListener(type, handler);
+        summary.removeEventListener('click', toggle);
+        form.removeEventListener('invalid', open, true);
+        win.removeEventListener('resize', resize);
+        observer?.disconnect();
+        details.open = true;
+        resetFit();
+    };
+}
+
+const initialized = new WeakSet();
+export function initializeRepairIntakes(doc = document, win = window) {
+    if (initialized.has(doc)) return;
+    initialized.add(doc);
+    let dispose = [];
+    const clear = () => { dispose.forEach(fn => fn()); dispose = []; };
+    const mount = () => {
+        clear();
+        dispose = [...doc.querySelectorAll('[data-repair-intake-workspace]')].map(root => createRepairIntake(root, doc, win));
+    };
+    doc.addEventListener('turbo:load', mount);
+    doc.addEventListener('turbo:before-cache', clear);
+    doc.addEventListener('turbo:before-render', clear);
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', mount, { once: true });
+    else mount();
+}

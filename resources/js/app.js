@@ -9,6 +9,7 @@ import { showFlashes, toastSettings } from './toast';
 import { initializeChallanShare } from './repair-challan-share';
 import { initializeRowActionLabels } from './table-row-actions';
 import { initializeListWorkspaces } from './list-workspace';
+import { initializeRepairIntakes } from './repair-intake';
 import { createReorderEditor } from './reorder-editor';
 import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
 import { createIndianAddress } from './indian-address';
@@ -19,6 +20,7 @@ initializeCustomerPhotos();
 initializeChallanShare();
 initializeRowActionLabels();
 initializeListWorkspaces();
+initializeRepairIntakes();
 
 let toastTimer = null;
 let toastDuration = 4000;

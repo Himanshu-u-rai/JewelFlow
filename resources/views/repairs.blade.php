@@ -421,6 +421,22 @@
             container: repair-intake / inline-size;
             overflow: visible !important;
         }
+        .repairs-intake-summary { list-style: none; cursor: pointer; border-radius: 12px 12px 0 0; }
+        .repairs-intake-summary::-webkit-details-marker { display: none; }
+        .repairs-intake-summary:focus-visible { outline: 2px solid var(--r-accent); outline-offset: -3px; }
+        .repairs-intake-arrow { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; color: var(--r-accent-dark); border: 1px solid var(--r-border-soft); border-radius: 8px; }
+        .repairs-intake-arrow svg { width: 18px; height: 18px; }
+        details[open] > .repairs-intake-summary .repairs-intake-arrow svg { transform: rotate(180deg); }
+        details:not([open]) > .repairs-intake-summary { border-bottom: 0; border-radius: 12px; }
+        .repairs-management-page[data-repair-fit] { height: var(--repair-workspace-height); min-height: 0; overflow-anchor: none; }
+        [data-repair-fit] .repairs-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        [data-repair-fit] .repairs-form-column { flex: none; }
+        [data-repair-fit] .repairs-register-column { flex: 1; min-height: 0; }
+        [data-repair-fit] .repairs-table-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        [data-repair-fit] .repairs-table-card > .repairs-card-header,
+        [data-repair-fit] .repairs-register-footer { flex: none; }
+        [data-repair-fit] [data-repair-rows] { flex: 1; min-height: 0; overflow-y: auto; }
+        [data-repair-fit] .repairs-table thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
         .repairs-card-header {
             display: flex;
             align-items: center;
@@ -765,7 +781,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner repairs-management-page">
+    <div class="content-inner repairs-management-page" data-repair-intake-workspace data-intake-errors="{{ $errors->hasAny(['customer_id', 'item_description', 'metal_type', 'gross_weight', 'purity', 'estimated_cost', 'item_quantity', 'intake_condition', 'due_date', 'image', 'description']) ? 'true' : 'false' }}">
         @php
             $canModifyRepairs = auth()->user()->can('repairs.create')
                 || auth()->user()->can('repairs.edit')
@@ -779,8 +795,8 @@
             @can('repairs.create')
             <!-- New Repair Form -->
             <div class="repairs-form-column">
-                <div class="bg-white rounded-xl border border-gray-200 overflow-hidden repairs-form-card repairs-surface-card">
-                    <div class="repairs-card-header">
+                <details open data-repair-intake class="bg-white rounded-xl border border-gray-200 overflow-hidden repairs-form-card repairs-surface-card">
+                    <summary class="repairs-card-header repairs-intake-summary" aria-controls="repair-intake-form">
                         <div>
                         <h2 class="repairs-card-title">
                             <x-icon name="settings" class="w-5 h-5 text-amber-600" />
@@ -788,9 +804,10 @@
                         </h2>
                         <p class="repairs-card-subtitle">Register item for repair work</p>
                         </div>
-                    </div>
+                        <span class="repairs-intake-arrow" aria-hidden="true"><x-icon name="chevron-down" /></span>
+                    </summary>
                     
-                    <form method="POST" action="{{ route('repairs.store') }}" class="repairs-form" enctype="multipart/form-data">
+                    <form id="repair-intake-form" method="POST" action="{{ route('repairs.store') }}" class="repairs-form" enctype="multipart/form-data">
                         @csrf
                         
                         <!-- Customer Selection -->
@@ -977,14 +994,14 @@
                             </button>
                         </div>
                     </form>
-                </div>
+                </details>
             </div>
             @endcan
 
             <!-- Repairs List -->
             <div class="repairs-register-column">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden repairs-table-card repairs-surface-card">
-                    <div class="repairs-card-header">
+                    <div class="repairs-card-header" data-repair-measure>
                         <div>
                         <h2 class="repairs-card-title">
                             <x-icon name="clipboard-list" class="w-5 h-5 text-amber-600" />
@@ -1012,7 +1029,7 @@
                         </div>
                     </div>
 
-                    <div class="repairs-table-shell repairs-data-table-shell">
+                    <div class="repairs-table-shell repairs-data-table-shell jf-scrollbar" data-repair-rows tabindex="0" role="region" aria-label="Repair table rows">
                         <table class="w-full repairs-table jf-table jf-table--compact">
                             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:1">
                                 <tr>
@@ -1125,7 +1142,7 @@
                         </table>
                     </div>
 
-                    <div class="repairs-mobile-list" id="repairsMobileList">
+                    <div class="repairs-mobile-list jf-scrollbar" id="repairsMobileList" data-repair-rows tabindex="0" role="region" aria-label="Repair cards">
                         @forelse($repairs as $r)
                             @php
                                 $mobileSearchBlob = strtolower(trim(implode(' ', array_filter([
@@ -1204,7 +1221,7 @@
                     </div>
                     
                     @if($repairs->hasPages())
-                        <div class="px-6 py-4 border-t border-gray-200">
+                        <div class="px-6 py-4 border-t border-gray-200 repairs-register-footer" data-repair-measure>
                             {{ $repairs->links() }}
                         </div>
                     @endif

@@ -2,7 +2,69 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Reports directory consistency, 2026-11-11
+## Latest checkpoint — Repairs scroll-responsive intake, 2026-11-11
+
+Base `3b39832b3f79102e2322e493574376dc9bf7839e`; same branch/worktree.
+Owner requested the intake open at page top, collapsing while browsing, with a
+manual arrow and automatic reopening on returning to top. Implemented a native
+open details/summary (no-JS manual fallback), retaining the original form nodes,
+POST/CSRF, uploads, controls and scripts. New page-local `repair-intake.js` is
+initialized from app.js and disposed/remounted on Turbo navigation. It listens
+to the actual nearest scrolling container, not just window. Automatic collapse
+is suppressed while a form field is focused or intake server errors are present.
+Manual open resets page and row positions without resetting draft input.
+
+Collapsed workspace height derives from viewport and its natural page origin;
+table controls/footer stay outside the scrolling row/card pane. No global body
+overflow changes or fixed table height. Below560px height or less than180px of
+row room, normal page scrolling remains. A one-pixel return path permits normal
+upward browsing after collapse without scroll-clamp feedback. Real browser
+testing exposed scrollIntoView/focus moving that pixel before a summary click;
+added observed-RED regressions and required upward wheel/key/touch/scrollbar
+intent instead of interpreting every programmatic movement as browsing.
+
+Web pagination reduced10→5 per owner permission, with ID tie-break for stable
+same-second intakes; JSON contract remains25. No repair write, billing, status,
+permission, image or financial calculation logic changed. Existing synthetic
+22repairs preserved; no financial forms submitted in this UI increment.
+
+Verification actually performed:
+
+- `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+  DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+  tests/Feature/Repair tests/Feature/RepairDeliveredVisibilityTest.php
+  tests/Feature/RepairMetalTypeTest.php tests/Feature/RepairWebImageUploadFlowTest.php
+  tests/Feature/Security/RepairImagePrivacyTest.php`:
+  **70tests/400assertions, no failures/skips**. Guarded disposable DB only; new
+  tests observed RED for missing accordion and ten-row pages before implementation.
+- `node --test tests/Frontend/*.test.mjs`: **282passed/22existing skips/0failed**.
+  Includes12new actual-controller tests for scrolling, manual reset, draft
+  preservation, focused/invalid fields, touch/key intent, zero-position edge,
+  short-window fallback and listener/observer/frame disposal. Runtime boundaries
+  are small DOM doubles, not a substitute for actual browser/device checks.
+- `npm run build`: success85modules, app-l0N-yk7K.css/app-BYqOvENJ.js.
+  PHP/Blade lint, guarded Blade cache/clear and git diff checks pass. Detector
+  reported one inherited hidden empty-src preview image; it is populated before
+  its parent is revealed, not a newly shipped visible broken image. No unrelated
+  image refactor. Temporary diagnostic logging removed before final build.
+- Actual in-app Chromium at1339x925: scroll-down closes, all5rows/header/footer
+  visible; wheel-up reopens at0; manual repeated close/open stays open; synthetic
+  unsaved draft retained and then cleared. Focused typing is not auto-hidden.
+  At390x844 no horizontal overflow, pagination bottom829 within844; cards scroll
+  to700 while controls/footer stay available, wheel back through cards reopens.
+  Delivered link works; Back returns Active with one intake. At1024x500 no fit
+  mode; ordinary wheel scrolling reaches footer bottom479within500.
+- Physical phone/touch hardware, screen reader and full native keyboard traversal
+  remain unverified. Independent review was requested but agent hit its usage
+  limit; no reviewer approval is claimed. Source and live checks by main agent.
+
+Evidence: `/home/himanshu/jf-table-evidence/repair-intake-scroll-20261111.xZTvGQ/`
+with expanded/collapsed desktop/phone JPEGs, RED reproductions and final logs.
+Browser left at the expanded Repairs top, empty draft and normal viewport.
+Claude's13tracked/2untracked Dhiran changes retain the prior preservation hashes.
+No push, merge, staging/production deployment, OTP/SMTP/native-app changes.
+
+## Previous checkpoint — Reports directory consistency, 2026-11-11
 
 Base `a58f7f0213fca538febce3110dacf1d562e98ce9`; same branch/worktree.
 Owner approved a focused Reports hub consistency pass, not a table or report-engine
