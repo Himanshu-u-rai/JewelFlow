@@ -28,6 +28,7 @@
                     <option value="premium">Premium Pitch</option>
                     <option value="quick">Quick Quote</option>
                     <option value="newdrop">New Arrival</option>
+                    <option value="custom">Custom message</option>
                 </select>
             </div>
             <div class="wa-field phone">
@@ -209,34 +210,18 @@
                 <button type="button" id="modal-dismiss" class="wa-btn wa-btn-menu" aria-label="Close message editor"><x-icon name="x" size="18" /></button>
             </header>
             <div class="wa-custom-content">
-
-                <div class="wa-custom-grid">
-                    <div class="wa-custom-field header">
-                        <label for="modal-custom-header">Header (optional)</label>
-                        <input id="modal-custom-header" type="text" class="wa-input" value="*{shop}*">
-                    </div>
-                    <div class="wa-custom-field footer">
-                        <label for="modal-custom-footer">Footer (optional)</label>
-                        <input id="modal-custom-footer" type="text" class="wa-input" value="Reply on WhatsApp to book now.">
-                    </div>
-                    <div class="wa-custom-field body">
-                        <label for="modal-custom-body">Message body template</label>
-                        <textarea id="modal-custom-body" class="wa-textarea" rows="8">*{design}*
-Code: {barcode}
-Category: {category}{subcategory_suffix}
-Purity: {purity}
-Weight: {weight} g
-Price: ₹{price}
-{offer_line}
-{share_url_line}</textarea>
-                    </div>
+                <div class="wa-custom-field">
+                    <label for="modal-custom-body">Your message</label>
+                    <textarea id="modal-custom-body" class="wa-textarea" rows="5" maxlength="4000" placeholder="e.g. Hi! Here are a few designs you might like. Let us know your favourite." aria-describedby="wa-message-help"></textarea>
                 </div>
-                <div class="wa-custom-hint">
-                    Placeholders: <code>{shop}</code> <code>{design}</code> <code>{barcode}</code> <code>{category}</code> <code>{subcategory}</code> <code>{subcategory_suffix}</code> <code>{purity}</code> <code>{weight}</code> <code>{price}</code> <code>{huid}</code> <code>{offer}</code> <code>{offer_line}</code> <code>{contact}</code> <code>{share_url}</code> <code>{share_url_line}</code>
-                </div>
+                <p id="wa-message-help" class="wa-custom-hint">Write as you would on WhatsApp. Product details and the link are added automatically.</p>
+                <p id="wa-style-hint" class="wa-custom-hint" hidden>This style applies to messages on this page. The preview shows the first visible product, when available.</p>
 
                 <div style="margin-top: 1rem;">
-                  <label class="wa-metric-label">Live Preview</label>
+                  <div class="wa-preview-heading">
+                    <span class="wa-metric-label">Message preview</span>
+                    <a id="wa-preview-product-link" target="_blank" rel="noopener noreferrer" hidden>Public product page <x-icon name="external-link" size="14" /></a>
+                  </div>
                   <pre id="modal-preview" class="wa-preview" style="margin-top: 4px; max-height: 150px;"></pre>
                   <p id="wa-copy-status" role="status"></p>
                 </div>
@@ -245,6 +230,7 @@ Price: ₹{price}
                 <footer class="wa-custom-actions">
                     <a id="modal-wa-share" class="wa-btn wa-btn-share" target="_blank" rel="noopener noreferrer" href="#">Open WhatsApp</a>
                     <button type="button" id="modal-wa-copy" class="wa-btn wa-btn-copy">Copy Message</button>
+                    <button type="button" id="modal-apply-style" class="wa-btn wa-btn-primary" hidden>Apply custom message</button>
                     <button type="button" id="modal-close" class="wa-btn wa-btn-copy">Close</button>
                 </footer>
         </dialog>
@@ -276,21 +262,22 @@ Price: ₹{price}
 
             const modal = document.getElementById('wa-custom-modal');
             const modalTitle = document.getElementById('modal-title');
-            const modalHeaderInput = document.getElementById('modal-custom-header');
             const modalBodyInput = document.getElementById('modal-custom-body');
-            const modalFooterInput = document.getElementById('modal-custom-footer');
             const modalPreview = document.getElementById('modal-preview');
             const modalShareBtn = document.getElementById('modal-wa-share');
             const modalCopyBtn = document.getElementById('modal-wa-copy');
             const modalCloseBtn = document.getElementById('modal-close');
+            const modalApplyBtn = document.getElementById('modal-apply-style');
 
             const state = {
                 template: 'premium',
+                customMessage: null,
             };
 
             const modalState = {
                 itemData: null,
                 opener: null,
+                mode: 'item',
             };
 
             const STORAGE_KEY = 'wa_catalog_selected';
@@ -334,14 +321,6 @@ Price: ₹{price}
             const normalizePhone = (raw) => {
                 const digits = (raw || '').replace(/\D+/g, '');
                 return /^[6-9][0-9]{9}$/.test(digits) ? '91' + digits : digits;
-            };
-
-            const applyCustomTemplate = (templateText, vars) => {
-                if (!templateText) return '';
-                return templateText.replace(/\{([a-zA-Z_]+)\}/g, (_, key) => {
-                    const value = vars[key];
-                    return value === undefined || value === null ? '' : String(value);
-                });
             };
 
             const normalizeLines = (text) =>
@@ -395,7 +374,26 @@ Price: ₹{price}
                 }
             }
 
+            const buildCustomMessage = (item, message, offer, contactNumber, shareUrl) => {
+                const price = parseFloat(item.price || '0');
+                const lines = [(message || '').trim(), '', shopName];
+                if (item.collection) {
+                    lines.push(`${item.count} selected products`);
+                } else {
+                    if (item.design) lines.push(item.design);
+                    if (item.barcode) lines.push(`Code: ${item.barcode}`);
+                    if (item.purity) lines.push(`Purity: ${item.purity}`);
+                    if (item.weight) lines.push(`Weight: ${item.weight} g`);
+                    if (Number.isFinite(price) && price > 0) lines.push(`Price: ₹${money.format(price)}`);
+                }
+                if (offer) lines.push(`Offer: ${offer}`);
+                if (contactNumber) lines.push(`Contact: ${contactNumber}`);
+                if (shareUrl) lines.push('', `View ${item.collection ? 'collection' : 'Product'}: ${shareUrl}`);
+                return normalizeLines(lines.join('\n'));
+            };
+
             const buildMessage = (item, template, offer, contactNumber, shareUrl) => {
+                if (template === 'custom') return buildCustomMessage(item, state.customMessage, offer, contactNumber, shareUrl);
                 const design = (item.design || 'Jewellery Item').trim();
                 const category = (item.category || 'Jewellery').trim();
                 const sub = (item.subcategory || '').trim();
@@ -457,6 +455,9 @@ Price: ₹{price}
             const buildCollectionMessage = (link, count) => {
                 const offer = (offerInput?.value || '').trim();
                 const contactDisplay = (phoneInput?.value || '').trim();
+                if (state.template === 'custom') {
+                    return buildCustomMessage({ count, collection: true }, state.customMessage, offer, contactDisplay, link);
+                }
                 const lines = [];
 
                 if (state.template === 'premium') {
@@ -583,35 +584,12 @@ Price: ₹{price}
                 const offerText = (offerInput?.value || '').trim();
                 const contactDisplay = (phoneInput?.value || '').trim();
                 const shareLink = (item.shareUrl || '').trim();
-                const priceRaw = parseFloat(item.price || '0');
-                const hasPrice = Number.isFinite(priceRaw) && priceRaw > 0;
-                const formattedPrice = hasPrice ? money.format(priceRaw) : '';
-                const subSuffix = item.subcategory ? ` · ${item.subcategory}` : '';
-
-                const vars = {
-                    shop: shopName,
-                    design: item.design || '',
-                    barcode: item.barcode || '',
-                    category: item.category || '',
-                    subcategory: item.subcategory || '',
-                    subcategory_suffix: subSuffix,
-                    purity: item.purity || '',
-                    weight: item.weight || '',
-                    price: formattedPrice,
-                    huid: item.huid || '',
-                    offer: offerText,
-                    offer_line: offerText ? `Offer: ${offerText}` : '',
-                    contact: contactDisplay,
-                    share_url: shareLink,
-                    share_url_line: shareLink ? `View Product: ${shareLink}` : '',
-                };
-
-                const head = applyCustomTemplate(modalHeaderInput.value, vars);
-                const body = applyCustomTemplate(modalBodyInput.value, vars);
-                const foot = applyCustomTemplate(modalFooterInput.value, vars);
-                const finalMessage = normalizeLines([head, body, foot].filter(Boolean).join('\n\n'));
+                const finalMessage = buildCustomMessage(item, modalBodyInput.value, offerText, contactDisplay, shareLink);
 
                 modalPreview.textContent = finalMessage;
+                const previewLink = document.getElementById('wa-preview-product-link');
+                previewLink.hidden = !shareLink;
+                if (shareLink) previewLink.href = shareLink;
                 modalCopyBtn.dataset.message = finalMessage;
 
                 const waPhone = normalizePhone(contactDisplay);
@@ -619,15 +597,23 @@ Price: ₹{price}
                 modalShareBtn.href = waPhone ? `https://wa.me/${waPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
             };
 
-            const openModal = (itemCard, opener) => {
+            const openModal = (itemCard, opener, mode = 'item') => {
+                modalState.mode = mode;
                 modalState.opener = opener;
-                modalState.itemData = { ...itemCard.dataset };
+                modalState.itemData = { ...itemCard?.dataset };
+                modalBodyInput.value = state.customMessage || '';
+                modalApplyBtn.hidden = mode !== 'style';
+                modalShareBtn.hidden = mode === 'style';
+                modalCopyBtn.hidden = mode === 'style';
+                document.getElementById('wa-style-hint').hidden = mode !== 'style';
+                modalCloseBtn.textContent = mode === 'style' ? 'Cancel' : 'Close';
+                modalBodyInput.setCustomValidity('');
                 document.getElementById('wa-copy-status').textContent = '';
-                modalTitle.textContent = `Custom Message for ${modalState.itemData.design || 'Item'}`;
+                modalTitle.textContent = mode === 'style' ? 'Custom message style' : `Custom Message for ${modalState.itemData.design || 'Item'}`;
                 renderModalPreview();
                 closeAllMenus();
                 modal.showModal();
-                modalHeaderInput.focus();
+                modalBodyInput.focus();
             };
 
             const closeModal = () => {
@@ -635,7 +621,14 @@ Price: ₹{price}
                 modalState.itemData = null;
                 modalState.opener?.focus();
             };
-            modal.addEventListener('close', () => { modalState.itemData = null; modalState.opener?.focus(); });
+            modal.addEventListener('close', () => {
+                modalState.itemData = null;
+                if (modalState.mode === 'style') {
+                    templateSelect.value = state.template;
+                    templateSelect._refreshEnhancedFilterSelect?.();
+                }
+                modalState.opener?.focus();
+            });
             document.addEventListener('turbo:before-cache', () => { modal.close(); closeAllMenus(); }, { once: true });
 
             const createOrReuseCollectionLink = async () => {
@@ -687,8 +680,21 @@ Price: ₹{price}
             };
 
             templateSelect?.addEventListener('change', () => {
+                if (templateSelect.value === 'custom') {
+                    const opener = templateSelect.closest('.wa-message-style').querySelector('.ui-filter-select-trigger') || templateSelect;
+                    queueMicrotask(() => openModal(cards[0], opener, 'style'));
+                    return;
+                }
                 state.template = templateSelect.value;
                 renderGlobal();
+            });
+            modalApplyBtn.addEventListener('click', () => {
+                modalBodyInput.setCustomValidity(modalBodyInput.value.trim() ? '' : 'Please enter a custom message.');
+                if (!modalBodyInput.reportValidity()) return;
+                state.customMessage = modalBodyInput.value.trim();
+                state.template = 'custom';
+                renderGlobal();
+                closeModal();
             });
 
             if (offerInput) {
@@ -821,9 +827,8 @@ Price: ₹{price}
                 copyToClipboard(event.currentTarget.dataset.message, event.currentTarget);
             });
 
-            [modalHeaderInput, modalBodyInput, modalFooterInput].forEach((element) => {
-                element?.addEventListener('input', renderModalPreview);
-            });
+            modalBodyInput.addEventListener('input', () => modalBodyInput.setCustomValidity(''));
+            modalBodyInput.addEventListener('input', renderModalPreview);
 
             document.addEventListener('click', (event) => {
                 if (!event.target.closest('.wa-menu-wrap')) {

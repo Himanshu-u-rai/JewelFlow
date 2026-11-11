@@ -4,6 +4,22 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Retail Catalog workspace, 2026-11-11
 
+Owner requested a final Custom message dropdown option, then rejected the technical
+template editor. It now opens the existing dialog with ONE plain-text Your message
+box, no Header/Footer fields, token list or interpolation. Product details/contact
+and public link are generated automatically; collections use the selected count
+and collection link. Plain text, including literal braces/HTML-looking text, stays
+plain text. Apply changes the active message style on this page only; Cancel/close
+restores the prior dropdown choice and does not apply drafts. Blank messages are
+rejected. Clicking Custom message again reopens the applied wording. Existing
+per-item Custom Message uses the same simplified editor, preserving Copy/WhatsApp.
+Added an always-visible clickable Public product page link beside Message preview,
+since the full text's URL was below its inner scroll. No messages were sent.
+Browser checked blank validation, typing/live preview, Apply/reopen/focus return,
+Cancel restoring a preset, plus a 390×844 popup/link without horizontal overflow.
+Frontend suite: 322 passed / 22 existing skips. Custom message formatting and
+off-page selections have runnable regression checks; no new dependency/backend.
+
 Owner follow-up: removed the Catalog sharing heading and merged the two control
 rows into one toolbar. Message style is now the existing themed searchable select
 (Premium Pitch / Quick Quote / New Arrival); changing it updates the same message

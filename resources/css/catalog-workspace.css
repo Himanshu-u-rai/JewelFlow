@@ -81,12 +81,15 @@
 .wa-catalog-root .wa-custom-head button { flex: none; }
 .wa-catalog-root .wa-custom-actions { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--jf-border); background: var(--jf-surface); }
 .wa-catalog-root .wa-custom-actions .wa-btn { white-space: nowrap; }
-.wa-catalog-root .wa-custom-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.wa-catalog-root .wa-custom-actions [hidden] { display: none; }
+.wa-catalog-root #wa-style-hint { margin: 0 0 16px; }
 .wa-catalog-root .wa-custom-field { min-width: 0; }
-.wa-catalog-root .wa-custom-field.body { grid-column: 1 / -1; }
 .wa-catalog-root .wa-textarea { min-height: 150px; resize: vertical; }
 .wa-catalog-root .wa-custom-hint { margin-top: 12px; font-size: 12px; line-height: 1.7; color: var(--jf-text-muted); overflow-wrap: anywhere; }
 .wa-catalog-root .wa-preview { padding: 12px; border-radius: 8px; background: var(--jf-surface-soft); color: var(--jf-text); font: inherit; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; }
+.wa-catalog-root .wa-preview-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.wa-catalog-root .wa-preview-heading a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; color: #9a3412; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.wa-catalog-root .wa-preview-heading a[hidden] { display: none; }
 
 @media screen and (min-width: 769px) and (max-width: 1550px) {
     .wa-catalog-root .jf-filter-toggle { display: inline-flex; min-height: 44px; margin-left: auto; }
@@ -130,6 +133,5 @@
     .wa-catalog-root .wa-custom-content { padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
     .wa-catalog-root :is(.wa-custom-head, .wa-custom-actions) { padding: 12px 14px; }
     .wa-catalog-root .wa-custom-actions { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-    .wa-catalog-root .wa-custom-grid { grid-template-columns: minmax(0, 1fr); }
     body.app-shell .catalog-page-header .page-title { font-size: 18px; }
 }

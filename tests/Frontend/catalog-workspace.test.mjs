@@ -37,6 +37,37 @@ test('Message editor uses native modal focus and cleanup; message style is a rea
     assert.match(view, /templateSelect\?\.addEventListener\('change'/);
     assert.match(view, /state.template = templateSelect.value/);
     assert.match(view, /aria-controls="wa-item-actions-/);
+    assert.match(view, /id="wa-preview-product-link"/);
+    assert.match(view, /previewLink.href = shareLink/);
+});
+
+test('Custom message is last style option and opens the editor without applying an unfinished draft', () => {
+    const options = [...view.matchAll(/<option value="(premium|quick|newdrop|custom)">/g)].map(m => m[1]);
+    assert.deepEqual(options, ['premium', 'quick', 'newdrop', 'custom']);
+    assert.match(view, /id="modal-apply-style"/);
+    assert.match(view, /state.customMessage = modalBodyInput.value.trim\(\)/);
+    assert.match(view, /templateSelect.value = state.template/);
+    assert.match(view, /modalBodyInput.reportValidity\(\)/);
+});
+
+test('Custom editor accepts plain writing, automatically adds product/collection details and never interprets codes', () => {
+    const source = view.match(/const buildCustomMessage = ([\s\S]*?);\n\n\s*const buildMessage/)?.[1];
+    assert.ok(source);
+    const build = new Function('shopName', 'money', 'normalizeLines', `return ${source}`)(
+        'Review Shop', new Intl.NumberFormat('en-IN'), text => text.trim(),
+    );
+    const item = build({ design: 'Silver ring', price: '1200', purity: '925' }, 'Hello! <b>Plain text</b> and {ordinary braces}.', '', '9000000111', '/product/1');
+    assert.match(item, /Silver ring/);
+    assert.match(item, /Price: ₹1,200/);
+    assert.match(item, /<b>Plain text<\/b>/);
+    assert.match(item, /\{ordinary braces\}/);
+    assert.match(item, /View Product: \/product\/1/);
+    const collection = build({ count: 3, collection: true }, 'My favourite picks.', '', '', '/collection/1');
+    assert.match(collection, /My favourite picks\./);
+    assert.match(collection, /3 selected products/);
+    assert.match(collection, /View collection: \/collection\/1/);
+    assert.match(view, /<label for="modal-custom-body">Your message<\/label>/);
+    assert.doesNotMatch(view, /modal-custom-header|modal-custom-footer|Message body template|Placeholders:|\{share_url_line\}/);
 });
 
 test('Failed collection creation keeps its recovery message after button state resets', async () => {
