@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Everyone your shop has saved, with or without a loan</p>
         </div>
         <div class="page-actions">
+            <x-dhiran.export-button />
             @can('dhiran.create')
             <a href="{{ route('dhiran.borrowers.create') }}" class="btn btn-secondary btn-sm">
                 <x-icon name="user-plus" size="14" class="mr-1" />

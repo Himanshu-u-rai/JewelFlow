@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Loans past maturity date requiring attention</p>
         </div>
         <div class="page-actions">
+            <x-dhiran.export-button />
             <span class="header-badge">{{ $totals['count'] }} Overdue</span>
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
                 <x-icon name="printer" size="14" />

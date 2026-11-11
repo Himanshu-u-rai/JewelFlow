@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Forfeited and written-off loans</p>
         </div>
         <div class="page-actions">
+            <x-dhiran.export-button />
             <span class="header-badge">{{ $loans->count() }} Forfeited</span>
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
                 <x-icon name="printer" size="14" />

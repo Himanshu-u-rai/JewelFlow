@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">All gold &amp; silver pledge loans</p>
         </div>
         <div class="page-actions">
+            <x-dhiran.export-button />
             <a href="{{ route('dhiran.create') }}" class="btn btn-primary btn-sm">
                 <x-icon name="plus" size="14" class="mr-1" />
                 New Loan

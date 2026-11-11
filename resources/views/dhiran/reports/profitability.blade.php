@@ -14,6 +14,7 @@
             <p class="text-sm text-gray-500 mt-1">Revenue and profitability analysis across all loans</p>
         </div>
         <div class="page-actions">
+            <x-dhiran.export-button />
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
                 <x-icon name="printer" size="14" />
                 Print

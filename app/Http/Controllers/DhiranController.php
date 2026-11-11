@@ -399,7 +399,11 @@ class DhiranController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
-        $loans = $query->with('customer')->latest()->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->latest()->orderByDesc('id'), 'loans-' . now()->toDateString());
+        }
+        // id breaks ties (loans saved in the same second), so rows never shift between pages or exports.
+        $loans = $query->with('customer')->latest()->orderByDesc('id')->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
 
         return view('dhiran.loans', compact('loans', 'filters'));
     }
@@ -782,6 +786,9 @@ class DhiranController extends Controller
             });
         }
 
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->customers($query->orderBy('first_name')->orderBy('id'));
+        }
         $borrowers = $query->orderBy('first_name')->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
 
         // Outstanding per borrower (active loans only), scoped to this shop.
@@ -994,6 +1001,9 @@ class DhiranController extends Controller
 
         $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->active());
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->latest('loan_date')->orderByDesc('id'), 'active-loans-' . now()->toDateString());
+        }
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
 
@@ -1006,6 +1016,9 @@ class DhiranController extends Controller
 
         $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->overdue(), null);
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->orderBy('maturity_date')->orderBy('id'), 'overdue-loans-' . now()->toDateString());
+        }
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->orderBy('maturity_date')->paginate($filters::perPage($request))->withQueryString();
 
@@ -1026,6 +1039,9 @@ class DhiranController extends Controller
         $period = fn () => $filters->applyPeriod(DhiranPayment::where('shop_id', $shopId), 'payment_date')
             ->when($filters->get('search'), fn ($q) => $q->whereHas('loan', fn ($l) => $filters->applySearch($l)));
         $rows = fn () => $period()->where(fn ($q) => $q->where('interest_component', '>', 0)->orWhere('penalty_component', '>', 0));
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->payments($rows()->latest('payment_date')->orderByDesc('id'), "interest-{$from}-to-{$to}");
+        }
         $payments = $rows()
             ->with(['loan', 'loan.customer'])
             ->latest('payment_date')
@@ -1046,6 +1062,12 @@ class DhiranController extends Controller
         $shopId = auth()->user()->shop_id;
         $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
 
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->loans(
+                $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at')->latest('forfeited_at')->orderByDesc('id'),
+                'forfeited-loans-' . now()->toDateString()
+            );
+        }
         $loans = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at')
             ->with('customer')
             ->latest('forfeited_at')
@@ -1077,6 +1099,12 @@ class DhiranController extends Controller
         $totals['net'] = $totals['in'] - $totals['out'];
         $totals['closing'] = $opening + $totals['net'];
 
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->cashbook(
+                $period()->when($filters->get('cash'), fn ($q, $t) => $q->where('type', $t))->orderBy('entry_date')->orderBy('id'),
+                $totals, ! $filters->get('cash'), $from, $to
+            );
+        }
         $entries = $period()->when($filters->get('cash'), fn ($q, $t) => $q->where('type', $t))
             ->with('loan')->orderBy('entry_date')->orderBy('id')->paginate($filters::perPage($request, 50))->withQueryString();
 
@@ -1096,6 +1124,9 @@ class DhiranController extends Controller
         [$from, $to] = [$filters->from(), $filters->to()];
 
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
+        if ($request->query('export') === 'csv') {
+            return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->latest('loan_date')->orderByDesc('id'), "profitability-{$from}-to-{$to}");
+        }
         $totals = $this->loanTotals($query);
         $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
 
