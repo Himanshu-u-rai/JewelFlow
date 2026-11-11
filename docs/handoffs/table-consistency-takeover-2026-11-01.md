@@ -4,6 +4,15 @@ For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here h
 
 ## Latest checkpoint — Retail Catalog workspace, 2026-11-11
 
+Latest owner correction: exact wide toolbar order is Search → Customer number →
+Message style → Category → Sub Category → Apply/Clear, not sharing controls after
+the whole query group. Search is associated with `catalog-query-form` via native
+`form` attribute; sharing controls stay outside that query form. Query dirty state
+lives on the workspace and ignores nameless sharing inputs. Mobile keeps Search
+visible and category filters in the bottom sheet. Browser checked search submit,
+Clear, exact desktop positions and mobile overflow/sheet; 323 frontend checks and
+2 Catalog PHP tests passed. No sharing behavior or data changes.
+
 Owner requested a final Custom message dropdown option, then rejected the technical
 template editor. It now opens the existing dialog with ONE plain-text Your message
 box, no Header/Footer fields, token list or interpolation. Product details/contact

@@ -19,7 +19,9 @@
          data-collection-endpoint="{{ route('catalog.collections.store') }}"
          data-all-matching-ids="{{ json_encode($allMatchingIds) }}">
 
-        <section class="wa-workspace" aria-label="Catalog tools">
+        <section class="wa-workspace" aria-label="Catalog tools"
+                 x-data="{ dirty: false, hasFilters: @js($hasFilters) }"
+                 @input="if ($event.target.name) dirty = true" @change="if ($event.target.name) dirty = true">
           <header class="wa-workspace-head">
             <dl class="wa-summary" aria-label="Matching items"><div><dt>Items</dt><dd>{{ number_format($items->total()) }}</dd></div></dl>
             <div class="wa-selection-tools">
@@ -28,16 +30,28 @@
                     <span id="wa-select-all-text">Select All ({{ count($allMatchingIds) }})</span>
                 </label>
             </div>
-            <x-responsive-filter-panel id="catalog-filter-panel" label="Catalog filters">
-            <form method="GET" action="{{ route('catalog.index') }}" class="wa-tools"
-                  data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
-                  x-data="{ dirty: false, hasFilters: @js($hasFilters) }" @input="dirty = true" @change="dirty = true">
-                <div class="wa-field search">
+                <div class="wa-field search wa-header-search">
                     <label for="search">Search</label>
-                    <input id="search" name="search" type="text" class="wa-input"
+                    <input id="search" name="search" type="text" class="wa-input" form="catalog-query-form"
                            value="{{ request('search') }}"
                            placeholder="Barcode, design, category, HUID">
                 </div>
+            <div class="wa-field phone">
+                <label for="wa-phone">Customer number <span>(optional)</span></label>
+                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
+            </div>
+            <div class="wa-field wa-message-style" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                <label for="wa-message-style">Message style</label>
+                <select id="wa-message-style" class="wa-select">
+                    <option value="premium">Premium Pitch</option>
+                    <option value="quick">Quick Quote</option>
+                    <option value="newdrop">New Arrival</option>
+                    <option value="custom">Custom message</option>
+                </select>
+            </div>
+            <x-responsive-filter-panel id="catalog-filter-panel" label="Catalog filters">
+            <form id="catalog-query-form" method="GET" action="{{ route('catalog.index') }}" class="wa-tools"
+                  data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
                 <div class="wa-field category">
                     <label for="category">Category</label>
                     <select id="category" name="category" class="wa-select" @change="document.getElementById('sub_category').value = ''">
@@ -65,19 +79,6 @@
                 </div>
             </form>
             </x-responsive-filter-panel>
-            <div class="wa-field phone">
-                <label for="wa-phone">Customer number <span>(optional)</span></label>
-                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
-            </div>
-            <div class="wa-field wa-message-style" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                <label for="wa-message-style">Message style</label>
-                <select id="wa-message-style" class="wa-select">
-                    <option value="premium">Premium Pitch</option>
-                    <option value="quick">Quick Quote</option>
-                    <option value="newdrop">New Arrival</option>
-                    <option value="custom">Custom message</option>
-                </select>
-            </div>
           </header>
         </section>
 

@@ -24,6 +24,9 @@ test('Customer number and message style follow query controls in toolbar DOM and
     const toolbar = view.match(/<header class="wa-workspace-head">([\s\S]*?)<\/header>/)[1];
     assert.ok(toolbar.indexOf('name="search"') < toolbar.indexOf('id="wa-phone"'));
     assert.ok(toolbar.indexOf('id="wa-phone"') < toolbar.indexOf('id="wa-message-style"'));
+    assert.ok(toolbar.indexOf('id="wa-message-style"') < toolbar.indexOf('id="category"'));
+    assert.match(toolbar, /id="search"[^>]*form="catalog-query-form"/);
+    assert.match(toolbar, /<form id="catalog-query-form"/);
 });
 
 test('Select All collection payload contains off-page selections, not just rendered cards', () => {

@@ -6,10 +6,10 @@
 .wa-catalog-root .wa-summary > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 6px 9px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface-soft); }
 .wa-catalog-root .wa-summary dt { font-size: 12px; color: var(--jf-text-muted); }
 .wa-catalog-root .wa-summary dd { margin: 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.wa-catalog-root .jf-filter-panel { margin-left: auto; color: var(--jf-text); }
+.wa-catalog-root .jf-filter-panel { color: var(--jf-text); }
 .wa-catalog-root .wa-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; min-width: 0; }
 .wa-catalog-root .wa-field { min-width: 0; }
-.wa-catalog-root .wa-tools .search { width: 200px; }
+.wa-catalog-root .wa-header-search { width: 200px; max-width: 100%; margin-left: auto; }
 .wa-catalog-root .wa-tools .category { width: 148px; }
 .wa-catalog-root :is(.wa-field, .wa-custom-field) label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500; }
 .wa-catalog-root .wa-field label span { color: var(--jf-text-muted); }
@@ -107,15 +107,16 @@
 @media screen and (max-width: 768px) {
     .wa-catalog-root .wa-workspace-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; padding: 12px; }
     .wa-catalog-root .wa-summary { grid-column: 1; grid-row: 1; justify-self: start; }
+    .wa-catalog-root .wa-header-search { width: 100%; margin: 0; grid-column: 1 / -1; grid-row: 2; }
     .wa-catalog-root .jf-filter-toggle { grid-column: 2; grid-row: 1; justify-self: end; min-height: 44px; }
     .wa-catalog-root .jf-filter-panel { color: var(--jf-text); border-color: var(--jf-border); }
     .wa-catalog-root .wa-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .wa-catalog-root .wa-tools :is(.search, .category) { width: 100%; }
     .wa-catalog-root .wa-field-actions .btn { width: 100%; min-height: 44px; }
     .wa-catalog-root :is(.wa-input, .wa-select, .wa-textarea) { font-size: 16px; min-height: 44px; }
-    .wa-catalog-root :is(.wa-message-style, .phone) { width: 100%; grid-row: 2; }
+    .wa-catalog-root :is(.wa-message-style, .phone) { width: 100%; grid-row: 3; }
     .wa-catalog-root .wa-field.phone label span { display: none; }
-    .wa-catalog-root .wa-selection-tools { grid-column: 1 / -1; grid-row: 3; }
+    .wa-catalog-root .wa-selection-tools { grid-column: 1 / -1; grid-row: 4; }
     .wa-catalog-root .wa-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .wa-catalog-root .wa-item-layout { display: grid; grid-template-columns: 92px minmax(0, 1fr); }
     .wa-catalog-root .wa-media-pane { height: 100%; min-height: 150px; border-radius: 15px 0 0 15px; }
