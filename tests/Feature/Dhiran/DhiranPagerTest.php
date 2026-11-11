@@ -95,6 +95,26 @@ class DhiranPagerTest extends TestCase
         $this->assertMatchesRegularExpression('/Showing\s*<strong>1–20<\/strong>/u', $this->page('loans', ['per_page' => 100000]));
     }
 
+    // Owner 2026-11-11 ("where is table indexing?"): every Dhiran table starts with a # column; numbering continues
+    // across pages (page 2 of 20-row pages starts at 21), so a number always means the same row.
+    public function test_rows_are_numbered_and_numbering_continues_across_pages(): void
+    {
+        $this->loans(23);
+        $page2 = $this->page('loans', ['page' => 2]);
+        $table = substr($page2, strpos($page2, '<table'), strpos($page2, '</table>') - strpos($page2, '<table'));
+        $this->assertMatchesRegularExpression('/<thead.*?<th[^>]*>#<\/th>/s', $table, '# heads the table');
+        preg_match_all('/data-sno>(\d+)</', $table, $m);
+        $this->assertSame(['21', '22', '23'], $m[1]);
+
+        foreach (['reportActive', 'reportProfitability', 'reportCashbook', 'borrowers', 'dashboard'] as $method) {
+            $html = $method === 'dashboard'
+                ? TenantContext::runFor($this->shop->id, function () { $this->actingAs($this->owner); view()->share('errors', new \Illuminate\Support\ViewErrorBag); return app(DhiranController::class)->dashboard()->render(); })
+                : $this->page($method);
+            $this->assertMatchesRegularExpression('/<thead.*?<th[^>]*>#<\/th>/s', $html, "{$method}: # column");
+            $this->assertStringContainsString('data-sno>1<', $html, "{$method}: first row is 1");
+        }
+    }
+
     public function test_reports_and_customers_use_the_same_footer(): void
     {
         $this->loans(2);

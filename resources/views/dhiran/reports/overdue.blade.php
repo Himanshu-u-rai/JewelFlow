@@ -48,6 +48,7 @@
                 <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
@@ -75,6 +76,7 @@
                                 }
                             @endphp
                             <tr class="hover:bg-gray-50 {{ $severityClass }}">
+                                <x-dhiran.sno :rows="$loans" :n="$loop->iteration" />
                                 <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
@@ -104,7 +106,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No overdue loans found</td>
+                                <td colspan="9" class="jf-table-empty">No overdue loans found</td>
                             </tr>
                         @endforelse
                     </tbody>

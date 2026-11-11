@@ -48,6 +48,7 @@
                         <table class="w-full min-w-[820px] jf-table">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>
+                                    <th scope="col" class="dh-sno-th">#</th>
                                     <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customer</th>
                                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Mobile</th>
                                     <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active</th>
@@ -60,6 +61,7 @@
                             <tbody class="divide-y divide-slate-100">
             @endif
                                 <tr class="hover:bg-slate-50/70">
+                                    <x-dhiran.sno :rows="$borrowers" :n="$loop->iteration" />
                                     <td class="pl-6 pr-4 py-4">
                                         <div class="flex items-start gap-3">
                                             <x-customer-avatar :customer="$borrower" realm="dhiran" />
@@ -96,6 +98,7 @@
                             <article class="dh-mobile-card">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
+                                        <span class="dh-mobile-sno">#{{ ($borrowers->firstItem() ?? 1) + $loop->index }}</span>
                                         <a href="{{ route('dhiran.borrowers.show', $card) }}" class="dh-mobile-title">{{ $card->name }}</a>
                                         <p class="dh-mobile-meta">{{ \App\Support\Mobile::forDisplay($card->mobile) ?: '—' }} · {{ $card->customer_code }}</p>
                                     </div>

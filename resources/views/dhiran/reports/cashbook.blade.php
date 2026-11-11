@@ -53,6 +53,7 @@
                 <table class="w-full border-collapse jf-table dh-stack">
                     <thead>
                         <tr class="bg-gray-50 border-b">
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -74,6 +75,7 @@
                                 }
                             @endphp
                             <tr class="hover:bg-gray-50">
+                                <x-dhiran.sno :rows="$entries" :n="$loop->iteration" />
                                 <td data-label="Date" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $entry->entry_date?->format('d M Y') ?? '-' }}</td>
                                 <td data-label="Loan #" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     @if($entry->loan)
@@ -99,14 +101,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No cash entries found for the selected period</td>
+                                <td colspan="9" class="jf-table-empty">No cash entries found for the selected period</td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($entries->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Period totals ({{ $entries->total() }} entries)</td>
+                            <td colspan="5" class="px-6 py-3 text-sm text-gray-700">Period totals ({{ $entries->total() }} entries)</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">Net: {{ number_format($totals['net'], 2) }}</td>
                             <td colspan="2" class="px-6 py-3 text-sm text-gray-700 text-right">Closing balance</td>
                             <td class="px-6 py-3 text-sm font-bold text-right {{ $totals['closing'] >= 0 ? 'text-gray-900' : 'text-red-600' }}">{{ number_format($totals['closing'], 2) }}</td>

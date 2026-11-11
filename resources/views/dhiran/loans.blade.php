@@ -28,6 +28,7 @@
                 <table class="dh-table min-w-[900px] jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Principal</th>
@@ -41,6 +42,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loans ?? [] as $loan)
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :rows="$loans ?? null" :n="$loop->iteration" />
                                 <td class="pl-6 pr-4 py-4 whitespace-nowrap">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a>
                                 </td>
@@ -86,7 +88,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">
+                                <td colspan="9" class="jf-table-empty">
                                     <x-icon name="dollar-sign" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans found</p>
                                     <p class="text-sm">Try adjusting your search or filters</p>
@@ -102,6 +104,7 @@
                     <article class="dh-mobile-card">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
+                                <span class="dh-mobile-sno">#{{ ($loans->firstItem() ?? 1) + $loop->index }}</span>
                                 <a href="{{ route('dhiran.show', $loan) }}" class="dh-mobile-title font-mono">{{ $loan->loan_number }}</a>
                                 <p class="dh-mobile-meta">{{ $loan->customer->name ?? '---' }}{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ? ' · '.\App\Support\Mobile::forDisplay($loan->customer?->mobile) : '' }}</p>
                             </div>

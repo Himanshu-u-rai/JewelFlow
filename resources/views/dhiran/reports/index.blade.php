@@ -110,6 +110,7 @@
                 <table class="w-full jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             @foreach($reportColumns ?? [] as $col)
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ $col }}</th>
                             @endforeach
@@ -118,6 +119,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($reportData as $row)
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :n="$loop->iteration" />
                                 @foreach($row as $cell)
                                     <td data-label="{{ array_values($reportColumns ?? [])[$loop->index] ?? '' }}" class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{{ $cell }}</td>
                                 @endforeach

@@ -105,6 +105,7 @@
                     <table class="w-full min-w-[760px] jf-table dh-stack">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th scope="col" class="dh-sno-th">#</th>
                                 <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan #</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Principal</th>
@@ -126,6 +127,7 @@
                             @endphp
                             @foreach($loans as $loan)
                                 <tr class="hover:bg-slate-50/70">
+                                    <x-dhiran.sno :rows="null" :n="$loop->iteration" />
                                     <td data-label="Loan #" class="pl-6 pr-4 py-4"><a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
                                     <td data-label="Status" class="px-4 py-4 text-center">
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
@@ -153,6 +155,7 @@
                 <table class="w-full min-w-[760px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Type</th>
@@ -166,6 +169,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($payments as $p)
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :rows="null" :n="$loop->iteration" />
                                 <td data-label="Date" class="pl-6 pr-4 py-3 text-sm text-slate-500 whitespace-nowrap">{{ optional($p->payment_date)->format('d M Y') ?? $p->created_at->format('d M Y') }}</td>
                                 <td data-label="Loan" class="px-4 py-3 text-sm font-mono text-slate-600">
                                     @if($p->loan)<a href="{{ route('dhiran.show', $p->loan) }}" class="hover:text-amber-700">{{ $p->loan->loan_number }}</a>@else — @endif
@@ -195,6 +199,7 @@
                 <table class="w-full min-w-[820px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Item</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Metal</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Purity</th>
@@ -207,6 +212,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($allItems as [$item, $loan])
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :rows="null" :n="$loop->iteration" />
                                 <td data-label="Item" class="pl-6 pr-4 py-3 text-sm">
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-800 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>

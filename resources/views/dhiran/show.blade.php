@@ -241,6 +241,7 @@
                 <table class="w-full min-w-[900px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Description</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Metal</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Gross Wt</th>
@@ -256,6 +257,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->items ?? [] as $item)
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :rows="null" :n="$loop->iteration" />
                                 <td data-label="Description" class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium">
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-700 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>
@@ -283,7 +285,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="jf-table-empty">No items recorded</td>
+                                <td colspan="11" class="jf-table-empty">No items recorded</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -300,6 +302,7 @@
                 <table class="w-full min-w-[800px] jf-table dh-stack">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Type</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Amount</th>
@@ -313,6 +316,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->payments ?? [] as $payment)
                             <tr class="hover:bg-slate-50/70">
+                                <x-dhiran.sno :rows="null" :n="$loop->iteration" />
                                 <td data-label="Date" class="pl-6 pr-4 py-4 whitespace-nowrap text-sm text-slate-600">{{ $payment->payment_date ? $payment->payment_date->format('d M Y') : '---' }}</td>
                                 <td data-label="Type" class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $payment->type ? ucwords(str_replace('_', ' ', $payment->type)) : '---' }}</td>
                                 <td data-label="Amount" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($payment->amount, 2) }}</td>
@@ -330,7 +334,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No payments recorded yet</td>
+                                <td colspan="9" class="jf-table-empty">No payments recorded yet</td>
                             </tr>
                         @endforelse
                     </tbody>
