@@ -436,11 +436,11 @@
         [data-repair-fit] .repairs-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         [data-repair-fit] .repairs-form-column { flex: none; }
         [data-repair-fit] .repairs-register-column { flex: 1; min-height: 0; }
-        [data-repair-fit] .repairs-table-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-        [data-repair-fit] .repairs-table-card > .repairs-card-header,
-        [data-repair-fit] .repairs-register-footer { flex: none; }
-        [data-repair-fit] [data-repair-rows] { flex: 1; min-height: 0; overflow-y: auto; }
-        [data-repair-fit] .repairs-table thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
+        [data-repair-table-fit] .repairs-table-card { display: flex; flex-direction: column; height: var(--repair-table-height); min-height: 0; }
+        [data-repair-table-fit] .repairs-table-card > .repairs-card-header,
+        [data-repair-table-fit] .repairs-register-footer { flex: none; }
+        [data-repair-table-fit] [data-repair-rows] { flex: 1; min-height: 0; overflow-y: auto; }
+        [data-repair-table-fit] .repairs-table thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
         .repairs-card-header {
             display: flex;
             align-items: center;

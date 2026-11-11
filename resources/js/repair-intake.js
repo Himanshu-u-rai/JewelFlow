@@ -22,18 +22,35 @@ export function createRepairIntake(root, doc = document, win = window) {
 
     const resetFit = () => {
         root.removeAttribute('data-repair-fit');
+        root.removeAttribute('data-repair-table-fit');
         root.style.removeProperty('--repair-workspace-height');
+        root.style.removeProperty('--repair-table-height');
     };
     const fit = () => {
         resetFit();
-        if (details.open || win.innerHeight < 560) return;
+        if (win.innerHeight < 560) return;
         const bottom = shell === win ? win.innerHeight : Math.min(win.innerHeight, shell.getBoundingClientRect().bottom);
         const top = root.getBoundingClientRect().top + position();
-        // One pixel keeps a native scroll-back-to-top path after the form shrinks.
-        root.style.setProperty('--repair-workspace-height', `${Math.floor(bottom - top + 1)}px`);
-        root.setAttribute('data-repair-fit', '');
+        const available = Math.floor(bottom - top + 1);
+        const padding = win.getComputedStyle(root);
+        const gap = win.getComputedStyle(root.querySelector('.repairs-layout'));
+        const heading = win.getComputedStyle(summary);
+        const border = win.getComputedStyle(details);
+        const number = value => Number.parseFloat(value) || 0;
+        const collapsedIntake = summary.getBoundingClientRect().height - number(heading.borderBottomWidth)
+            + number(border.borderTopWidth) + number(border.borderBottomWidth);
+        // Budget against the collapsed heading once, even while the form is open.
+        const height = available - number(padding.paddingTop) - number(padding.paddingBottom)
+            - number(gap.rowGap) - collapsedIntake;
+        root.style.setProperty('--repair-table-height', `${height}px`);
+        root.setAttribute('data-repair-table-fit', '');
         const pane = panes.find(p => p.getClientRects().length);
-        if (!pane || pane.clientHeight < 180) resetFit();
+        if (!pane || pane.clientHeight < 180) return resetFit();
+        if (!details.open) {
+            // One pixel retains the native scroll-back-to-top path.
+            root.style.setProperty('--repair-workspace-height', `${available}px`);
+            root.setAttribute('data-repair-fit', '');
+        }
     };
     const change = (next, immediate = false) => {
         const from = details.getBoundingClientRect().height;
@@ -41,12 +58,13 @@ export function createRepairIntake(root, doc = document, win = window) {
         expanded = next;
         upwardIntent = false;
         details.open = true;
-        resetFit();
+        root.removeAttribute('data-repair-fit');
         if (next) for (const pane of panes) pane.scrollTop = 0;
         scrollTo(next ? 0 : 1);
         const finish = () => {
             details.open = next;
-            if (!next) { fit(); scrollTo(1); }
+            fit();
+            if (!next) scrollTo(1);
         };
         if (immediate || !details.animate || win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return finish();
         const border = win.getComputedStyle(details);
@@ -73,7 +91,7 @@ export function createRepairIntake(root, doc = document, win = window) {
     };
     const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };
     const toggle = event => { event.preventDefault(); expanded ? close() : open(); };
-    const resize = () => { if (animation) change(expanded, true); else if (!details.open) fit(); };
+    const resize = () => { if (animation) change(expanded, true); else fit(); };
     // Focus/scrollIntoView can move the one-pixel return path before a summary click.
     // Only a browsing gesture may auto-open; otherwise that click would close it again.
     const intent = (up, event) => {
@@ -94,8 +112,9 @@ export function createRepairIntake(root, doc = document, win = window) {
     form.addEventListener('invalid', revealInvalid, true);
     win.addEventListener('resize', resize);
     // The native summary itself gains/loses its bottom border when opened.
-    const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation && !details.open) fit(); }) : null;
+    const observer = win.ResizeObserver ? new win.ResizeObserver(() => { if (!animation) fit(); }) : null;
     for (const el of root.querySelectorAll('[data-repair-measure], summary')) observer?.observe(el);
+    fit();
     schedule();
     return () => {
         active = false;

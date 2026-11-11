@@ -31,9 +31,10 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
         return motion;
     };
     const pane = { clientHeight: room, scrollTop: 0, getClientRects: () => [{}] };
+    const layout = {};
     const root = {
         parentElement: shell, dataset: { intakeErrors: String(errors) }, isConnected: true,
-        querySelector: () => details,
+        querySelector: s => s === '.repairs-layout' ? layout : details,
         querySelectorAll: s => s === '[data-repair-rows]' ? [pane] : [],
         getBoundingClientRect: () => ({ top: 90 - shell.scrollTop }),
         setAttribute: (k, v) => attrs.set(k, v), removeAttribute: k => attrs.delete(k),
@@ -44,7 +45,8 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
     const win = {
         ...target(), key: 'win', innerHeight: height, scrollY: 0,
         matchMedia: () => ({ matches: reducedMotion }),
-        getComputedStyle: () => ({ overflowY: 'auto' }),
+        getComputedStyle: e => ({ overflowY: 'auto', paddingTop: e === root ? '32px' : '0px',
+            paddingBottom: e === root ? '32px' : '0px', rowGap: e === layout ? '20px' : '0px' }),
         requestAnimationFrame(fn) { frames.set(++serial, fn); return serial; },
         cancelAnimationFrame: id => frames.delete(id),
         ResizeObserver: class { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} disconnect() { this.closed = true; } },
@@ -55,6 +57,30 @@ function fixture({ room = 400, height = 925, errors = false, animated = false, r
     flush();
     return { root, shell, summary, form, details, pane, attrs, styles, doc, win, frames, observers, listeners, motions, dispose, send, flush };
 }
+
+test('the table starts at its full responsive height and never grows on collapse or reopening', () => {
+    const f = fixture();
+    assert.equal(f.styles.get('--repair-table-height'), '672px');
+    assert.equal(f.attrs.has('data-repair-table-fit'), true);
+    f.shell.scrollTop = 40; f.send('shell', 'scroll');
+    assert.equal(f.styles.get('--repair-table-height'), '672px');
+    f.send('summary', 'click');
+    assert.equal(f.styles.get('--repair-table-height'), '672px');
+});
+
+test('the table height stays unchanged throughout the form animation, not just at its endpoints', () => {
+    const f = fixture({ animated: true });
+    const height = f.styles.get('--repair-table-height');
+    assert.ok(height);
+    f.send('summary', 'click');
+    assert.equal(f.styles.get('--repair-table-height'), height);
+    f.motions[0].finish();
+    assert.equal(f.styles.get('--repair-table-height'), height);
+    f.send('summary', 'click');
+    assert.equal(f.styles.get('--repair-table-height'), height);
+    f.motions[1].finish();
+    assert.equal(f.styles.get('--repair-table-height'), height);
+});
 
 test('closing slides to the summary before hiding content and fitting the register', () => {
     const f = fixture({ animated: true });

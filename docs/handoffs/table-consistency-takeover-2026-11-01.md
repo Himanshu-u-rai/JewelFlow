@@ -2,7 +2,35 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Smooth Repairs intake motion, 2026-11-11
+## Latest checkpoint — Constant Repairs table frame, 2026-11-11
+
+Base `13c1a0410dd92a2aeb8fe8a67a90577b6e8183c7`. Owner requested the table start
+at its full size rather than expand on scroll. Decoupled the table frame budget
+from the collapsed-page container: it is measured at mount/viewport or toolbar
+resize against the collapsed intake heading, and retained through opening and
+closing animations. Only the form moves; the same frame slides into view. No
+fixed hard-coded table height, no pagination or financial change. Short windows
+and insufficient row space retain ordinary page scrolling. Cleanup removes both
+workspace/table fitting. Existing stable scrollbar gutter and motion retained.
+
+Two new actual-controller regressions observed RED for absent initial frame and
+changing frame during animation, then GREEN. Final `node --test
+tests/Frontend/*.test.mjs`:289passed/22existing skips/0failed, including19intake
+tests. `APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432
+DB_DATABASE=jewelflow_testing php8.2 vendor/bin/phpunit
+tests/Feature/Repair/RepairWorkspaceTest.php
+tests/Feature/Repair/RepairPageRevisitTest.php`:5tests/53assertions,0failures/skips,
+guarded disposable DB. `npm run build`:85modules,app-DRevvd3m.js; Blade lint and
+diff checks pass. No broad PHP suite rerun for this JS/CSS-only refinement.
+
+Actual signed-in desktop1339x925: table height669.65625px initially, collapsed,
+and reopened; scroller width1074px remains stable; collapsed footer891.8within925.
+Phone390x844: table662.515625px initially, unchanged after collapse; no horizontal
+overflow. Physical phone/full native keyboard/screen-reader unrun. Evidence logs
+and phone capture in `/home/himanshu/jf-table-evidence/repair-constant-frame-20261111.dW68OH/`.
+Existing data unchanged, Claude's Dhiran files preserved. No remote changes.
+
+## Previous checkpoint — Smooth Repairs intake motion, 2026-11-11
 
 Base `19df25c473e188c671167240e4e5bcbccbacd583`. Owner requested smooth closing,
 then reported whole-page shaking during the live iteration. Added one bounded
