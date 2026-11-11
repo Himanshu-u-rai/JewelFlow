@@ -27,7 +27,9 @@ return new class extends Migration
         $roleIds = DB::table('role_permission')
             ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
             ->where('permissions.name', 'reports.view')
-            ->pluck('role_permission.role_id');
+            ->pluck('role_permission.role_id')
+            // Owners hold every permission (no owner bypass in Gate::before): never leave one without the new switch.
+            ->merge(DB::table('roles')->where('name', 'owner')->pluck('id'))->unique();
 
         foreach ($roleIds as $roleId) {
             DB::table('role_permission')->updateOrInsert(
