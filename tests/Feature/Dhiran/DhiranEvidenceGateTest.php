@@ -272,7 +272,8 @@ class DhiranEvidenceGateTest extends TestCase
 
         $html = $this->renderLoans($shop, $owner, null);
         $this->assertStringContainsString('Awaiting Evidence', $html);
-        $this->assertStringContainsString('Upload required proof to activate', $html);
+        // The hint is the badge's tooltip now: one value per table cell (owner 2026-11-11).
+        $this->assertStringContainsString('title="Upload the required proof to activate this loan"', $html);
     }
 
     // 5. The status filter accepts pending_evidence (controller validation).

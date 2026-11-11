@@ -55,6 +55,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Interest</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Penalty</th>
@@ -70,6 +71,7 @@
                                     <a href="{{ route('dhiran.show', $payment->loan) }}" class="text-blue-600 hover:underline">{{ $payment->loan?->loan_number ?? '-' }}</a>
                                 </td>
                                 <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payment->loan?->customer?->name ?? '-' }}</td>
+                                <x-dhiran.mobile-cell :number="$payment->loan?->customer?->mobile" class="px-6" />
                                 <td data-label="Amount" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $payment->amount, 2) }}</td>
                                 <td data-label="Interest" class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $payment->interest_component, 2) }}</td>
                                 <td data-label="Penalty" class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $payment->penalty_component, 2) }}</td>
@@ -77,7 +79,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No payments found for the selected period</td>
+                                <td colspan="9" class="jf-table-empty">No payments found for the selected period</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -85,7 +87,7 @@
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
                             {{-- Every listed payment in the period, on every page. --}}
-                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $payments->total() }} payments)</td>
+                            <td colspan="5" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $payments->total() }} payments)</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($footer['amount'], 2) }}</td>
                             <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($footer['interest'], 2) }}</td>
                             <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($footer['penalty'], 2) }}</td>

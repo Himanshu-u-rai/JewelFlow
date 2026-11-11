@@ -52,6 +52,7 @@
                             <th scope="col" class="dh-sno-th">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Outstanding</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Days Overdue</th>
@@ -82,6 +83,7 @@
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
                                 <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <x-dhiran.mobile-cell :number="$loan->customer?->mobile" class="px-6" />
                                 <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
                                 <td data-label="Outstanding" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 text-right">{{ number_format($loan->totalOutstanding(), 2) }}</td>
                                 <td data-label="Days Overdue" class="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -107,7 +109,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="jf-table-empty">No overdue loans found</td>
+                                <td colspan="10" class="jf-table-empty">No overdue loans found</td>
                             </tr>
                         @endforelse
                     </tbody>

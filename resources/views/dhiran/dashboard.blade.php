@@ -99,6 +99,7 @@
                             <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Mobile</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Principal</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Outstanding</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Status</th>
@@ -112,10 +113,8 @@
                                 <td data-label="Loan #" class="pl-6 pr-4 py-4 whitespace-nowrap">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td data-label="Customer" class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</div>
-                                    <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '' }}</div>
-                                </td>
+                                <td data-label="Customer" class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</td>
+                                <x-dhiran.mobile-cell :number="$loan->customer?->mobile" />
                                 <td data-label="Principal" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}
                                 </td>
@@ -143,7 +142,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="jf-table-empty">
+                                <td colspan="8" class="jf-table-empty">
                                     <x-icon name="dollar-sign" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans yet</p>
                                     <p class="text-sm">Create your first pledge loan to get started</p>

@@ -3197,6 +3197,11 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
 }
 .dh-fopt input:checked + span .dh-fopt-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
 
+/* Customer contact column: a tap-to-call number. */
+.dh-app a.dh-tel { color: var(--dh-link); font-weight: 600; font-variant-numeric: tabular-nums; text-decoration: none; }
+.dh-app a.dh-tel:hover { color: var(--dh-link-hover); }
+@media (max-width: 720px) { .dh-app a.dh-tel { display: inline-flex; align-items: center; min-height: 32px; } }
+
 /* Row numbers (#): a narrow, quiet first column; numbering continues across pages. */
 .dh-app .dh-sno-th { width: 56px; padding-left: 20px !important; padding-right: 8px !important; text-align: left; }
 .dh-app td.dh-sno {

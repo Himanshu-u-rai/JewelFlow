@@ -81,7 +81,8 @@
     --dh-card-shadow: 0 1px 2px color-mix(in srgb, var(--dh-shadow-tint) 6%, transparent), 0 6px 16px color-mix(in srgb, var(--dh-shadow-tint) 5%, transparent);
 
     /* layout, shape and motion (not colour) */
-    --dh-content-max: 1440px;   /* every Dhiran page, lists and detail pages alike */
+    --dh-content-max: 1680px;   /* every Dhiran page, lists and detail pages alike; fills a 1920px screen beside the
+                                   sidebar so tables have room for one value per column (owner 2026-11-11) */
     --dh-form-max: 1100px;      /* long settings-style forms */
     --dh-card-radius: 14px;
     --dh-radius: 14px;

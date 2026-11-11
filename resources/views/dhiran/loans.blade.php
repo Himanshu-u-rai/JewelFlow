@@ -32,6 +32,7 @@
                             <th scope="col" class="dh-sno-th">#</th>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Loan #</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Mobile</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Principal</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Outstanding</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Rate</th>
@@ -47,10 +48,8 @@
                                 <td data-label="Loan #" class="pl-6 pr-4 py-4 whitespace-nowrap">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a>
                                 </td>
-                                <td data-label="Customer" class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</div>
-                                    <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '' }}</div>
-                                </td>
+                                <td data-label="Customer" class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</td>
+                                <x-dhiran.mobile-cell :number="$loan->customer?->mobile" />
                                 <td data-label="Principal" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}
                                 </td>
@@ -71,12 +70,11 @@
                                             'forfeited' => 'bg-red-100 text-red-800',
                                         ];
                                     @endphp
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
+                                    {{-- The "upload proof" hint is the badge's tooltip, not a second line under it (one value per cell). --}}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}"
+                                          @if($loan->status === 'pending_evidence') title="Upload the required proof to activate this loan" @endif>
                                         {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                                     </span>
-                                    @if($loan->status === 'pending_evidence')
-                                        <span class="block text-[10px] text-amber-700 mt-0.5">Upload required proof to activate</span>
-                                    @endif
                                 </td>
                                 <td data-label="Maturity" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                     {{ $loan->maturity_date ? $loan->maturity_date->format('d M Y') : '---' }}
@@ -89,7 +87,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="jf-table-empty">
+                                <td colspan="10" class="jf-table-empty">
                                     <x-icon name="dollar-sign" class="w-12 h-12 mx-auto text-gray-300 mb-4" />
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans found</p>
                                     <p class="text-sm">Try adjusting your search or filters</p>

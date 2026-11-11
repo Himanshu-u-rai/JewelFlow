@@ -1111,13 +1111,16 @@ class DhiranController extends Controller
                 'forfeited-loans-' . now()->toDateString()
             );
         }
-        $loans = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at')
-            ->with('customer')
-            ->latest('forfeited_at')
+        $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at');
+        $totals = $this->loanTotals($query) + [
+            'items' => DhiranLoanItem::whereIn('dhiran_loan_id', (clone $query)->reorder()->select('id'))->count(),
+        ];
+        $loans = $query->with('customer')->withCount('items')
+            ->latest('forfeited_at')->orderByDesc('id')
             ->paginate($filters::perPage($request))
             ->withQueryString();
 
-        return view('dhiran.reports.forfeiture', compact('loans', 'filters'));
+        return view('dhiran.reports.forfeiture', compact('loans', 'filters', 'totals'));
     }
 
     public function reportCashbook(Request $request)

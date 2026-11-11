@@ -70,6 +70,7 @@
                             <th scope="col" class="dh-sno-th">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Interest Collected</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Penalty Collected</th>
@@ -91,6 +92,7 @@
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
                                 <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <x-dhiran.mobile-cell :number="$loan->customer?->mobile" class="px-6" />
                                 <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
                                 <td data-label="Interest Collected" class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">{{ number_format((float) $loan->total_interest_collected, 2) }}</td>
                                 <td data-label="Penalty Collected" class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $loan->total_penalty_collected, 2) }}</td>
@@ -112,14 +114,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="jf-table-empty">No loans found</td>
+                                <td colspan="10" class="jf-table-empty">No loans found</td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($loans->count())
                     <tfoot>
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $totals['count'] }} loans)</td>
+                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $totals['count'] }} loans)</td>
                             <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($totalDisbursed, 2) }}</td>
                             <td class="px-6 py-3 text-sm text-green-700 text-right">{{ number_format($totalInterestEarned, 2) }}</td>
                             <td class="px-6 py-3 text-sm text-amber-700 text-right">{{ number_format($totalPenalties, 2) }}</td>

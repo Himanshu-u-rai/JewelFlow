@@ -46,11 +46,13 @@
             @if($loop->first)
                 <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden" data-list-frame>
                     <div class="dh-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Customer records">
-                        <table class="w-full min-w-[820px] jf-table dh-stack">
+                        <table class="w-full min-w-[1080px] jf-table dh-stack">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     <th scope="col" class="dh-sno-th">#</th>
                                     <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customer</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Code</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan state</th>
                                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Mobile</th>
                                     <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active</th>
                                     <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Closed</th>
@@ -63,22 +65,26 @@
             @endif
                                 <tr class="hover:bg-slate-50/70">
                                     <x-dhiran.sno :rows="$borrowers" :n="$loop->iteration" />
-                                    <td data-label="Customer" class="pl-6 pr-4 py-4">
-                                        <div class="flex items-start gap-3">
+                                    {{-- One value per column (owner 2026-11-11): name, code and loan state are not stacked. --}}
+                                    <td data-label="Customer" class="pl-6 pr-4 py-3 whitespace-nowrap">
+                                        <span class="inline-flex items-center gap-3">
                                             <x-customer-avatar :customer="$borrower" realm="dhiran" />
-                                            <div>
-                                                <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="font-medium text-slate-800 hover:text-amber-700">{{ $borrower->name }}</a>
-                                                <div class="text-xs text-slate-400 font-mono mt-0.5">{{ $borrower->customer_code }}</div>
-                                                @if(($borrower->loans_count ?? 0) === 0)
-                                                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">No loan yet</span>
-                                                @endif
-                                                @if(($borrower->pending_evidence_count ?? 0) > 0)
-                                                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">{{ $borrower->pending_evidence_count }} awaiting evidence</span>
-                                                @endif
-                                            </div>
-                                        </div>
+                                            <a href="{{ route('dhiran.borrowers.show', $borrower) }}" class="font-medium text-slate-800 hover:text-amber-700">{{ $borrower->name }}</a>
+                                        </span>
                                     </td>
-                                    <td data-label="Mobile" class="px-4 py-4 text-sm text-slate-600 whitespace-nowrap">{{ \App\Support\Mobile::forDisplay($borrower->mobile) ?: '—' }}</td>
+                                    <td data-label="Code" class="px-4 py-3 text-sm font-mono text-slate-600 whitespace-nowrap">{{ $borrower->customer_code ?: '—' }}</td>
+                                    <td data-label="Loan state" class="px-4 py-3 whitespace-nowrap">
+                                        @if(($borrower->pending_evidence_count ?? 0) > 0)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{{ $borrower->pending_evidence_count }} awaiting evidence</span>
+                                        @elseif(($borrower->active_loans_count ?? 0) > 0)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800">Active loan</span>
+                                        @elseif(($borrower->loans_count ?? 0) === 0)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">No loan yet</span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">No open loan</span>
+                                        @endif
+                                    </td>
+                                    <x-dhiran.mobile-cell :number="$borrower->mobile" />
                                     <td data-label="Active" class="px-4 py-4 text-center text-sm font-medium text-emerald-700">{{ $borrower->active_loans_count }}</td>
                                     <td data-label="Closed" class="px-4 py-4 text-center text-sm text-slate-500">{{ $borrower->closed_loans_count }}</td>
                                     <td data-label="Forfeited" class="px-4 py-4 text-center text-sm text-red-600">{{ $borrower->forfeited_loans_count }}</td>

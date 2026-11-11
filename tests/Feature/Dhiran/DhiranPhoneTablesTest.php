@@ -63,6 +63,12 @@ class DhiranPhoneTablesTest extends TestCase
             ];
         });
 
+        // Each value in its own column (owner 2026-11-11).
+        $this->assertMatchesRegularExpression('/<th[^>]*>Code<\/th>.*<th[^>]*>Loan state<\/th>/s', $pages['customers list']);
+        foreach (['Gross (g)', 'Net (g)', 'Fine (g)'] as $col) {
+            $this->assertMatchesRegularExpression('/<th[^>]*>' . preg_quote($col, '/') . '<\/th>/', $pages['profile'], "profile items: {$col}");
+        }
+
         foreach ($pages as $page => $html) {
             $doc = new \DOMDocument();
             @$doc->loadHTML('<?xml encoding="utf-8"?>' . $html);
@@ -80,6 +86,9 @@ class DhiranPhoneTablesTest extends TestCase
                     }
                     foreach ($cells as $i => $td) {
                         $this->assertSame($heads[$i] ?? null, $td->getAttribute('data-label'), "{$page}: cell {$i} label");
+                        // Owner 2026-11-11: one piece of data per column, never stacked under another inside a cell.
+                        $stacked = $xp->query('.//div|.//p|.//br|.//small', $td)->length;
+                        $this->assertLessThanOrEqual(1, $stacked, "{$page}: \"{$heads[$i]}\" cell stacks data: " . trim(preg_replace('/\s+/', ' ', $td->textContent)));
                     }
                 }
             }

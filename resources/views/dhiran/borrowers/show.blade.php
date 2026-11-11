@@ -254,7 +254,9 @@
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Item</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Metal</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Purity</th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Gross / Net / Fine</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Gross (g)</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Net (g)</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Fine (g)</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Loan</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Photo</th>
@@ -269,7 +271,9 @@
                                 </td>
                                 <td data-label="Metal" class="px-4 py-3 text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
                                 <td data-label="Purity" class="px-4 py-3 text-sm text-center text-slate-600">@if(($item->metal_type ?? "gold") === "other")—@else{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? "gold") === "silver" ? "" : "K" }}@endif</td>
-                                <td data-label="Gross / Net / Fine" class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap">{{ number_format($item->gross_weight, 3) }} / {{ number_format($item->net_metal_weight, 3) }} / {{ number_format($item->fine_weight, 3) }}g</td>
+                                <td data-label="Gross (g)" class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap tabular-nums">{{ number_format($item->gross_weight, 3) }}</td>
+                                <td data-label="Net (g)" class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap tabular-nums">{{ number_format($item->net_metal_weight, 3) }}</td>
+                                <td data-label="Fine (g)" class="px-4 py-3 text-sm text-right text-slate-800 font-medium whitespace-nowrap tabular-nums">{{ number_format($item->fine_weight, 3) }}</td>
                                 <td data-label="Status" class="px-4 py-3 text-center text-sm text-slate-600 capitalize">{{ $item->status ?? 'pledged' }}</td>
                                 <td data-label="Loan" class="px-4 py-3 text-sm font-mono"><a href="{{ route('dhiran.show', $loan) }}" class="text-slate-600 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
                                 <td data-label="Photo" class="px-4 py-3 text-center">

@@ -26,6 +26,7 @@
                             <th scope="col" class="dh-sno-th">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan #</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Written Off Amount</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Items Count</th>
@@ -37,7 +38,7 @@
                         @forelse($loans as $loan)
                             @php
                                 $writtenOff = $loan->totalOutstanding();
-                                $itemsCount = $loan->items->count();
+                                $itemsCount = $loan->items_count;
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <x-dhiran.sno :rows="$loans" :n="$loop->iteration" />
@@ -45,6 +46,7 @@
                                     <a href="{{ route('dhiran.show', $loan) }}" class="text-blue-600 hover:underline">{{ $loan->loan_number }}</a>
                                 </td>
                                 <td data-label="Customer" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->customer?->name ?? '-' }}</td>
+                                <x-dhiran.mobile-cell :number="$loan->customer?->mobile" class="px-6" />
                                 <td data-label="Principal" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float) $loan->principal_amount, 2) }}</td>
                                 <td data-label="Written Off Amount" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 text-right">{{ number_format($writtenOff, 2) }}</td>
                                 <td data-label="Items Count" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{{ $itemsCount }}</td>
@@ -59,17 +61,18 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="jf-table-empty">No forfeited loans found</td>
+                                <td colspan="9" class="jf-table-empty">No forfeited loans found</td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($loans->count())
                     <tfoot>
+                        {{-- Every forfeited loan matching the filters, on every page (it used to total this page only). --}}
                         <tr class="bg-gray-50 border-t-2 border-gray-300 font-semibold">
-                            <td colspan="3" class="px-6 py-3 text-sm text-gray-700">Page totals</td>
-                            <td class="px-6 py-3 text-sm text-gray-900 text-right">{{ number_format($loans->sum('principal_amount'), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-red-700 text-right">{{ number_format($loans->sum(fn($l) => $l->totalOutstanding()), 2) }}</td>
-                            <td class="px-6 py-3 text-sm text-gray-700 text-center">{{ $loans->sum(fn($l) => $l->items->count()) }}</td>
+                            <td colspan="4" class="px-6 py-3 text-sm text-gray-700">Totals ({{ $totals['count'] }} loans)</td>
+                            <td class="px-6 py-3 text-sm text-gray-900 text-right" data-report-total="principal">{{ number_format($totals['principal'], 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-red-700 text-right" data-report-total="outstanding">{{ number_format($totals['outstanding'], 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700 text-center">{{ $totals['items'] }}</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>
