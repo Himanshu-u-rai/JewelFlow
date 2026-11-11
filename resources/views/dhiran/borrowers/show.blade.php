@@ -93,15 +93,21 @@
 
         {{-- 4. Loans: status chips with counts, 10 a page --}}
         <div id="loans" data-profile-section class="dh-profile-section rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
+            @php
+                $loanFilters = ['loan_status' => [
+                    'legend' => 'Status', 'any' => 'All loans',
+                    'options' => collect(\App\Services\Dhiran\DhiranListFilters::STATUSES)
+                        ->filter(fn ($l, $s) => ($summary[$s] ?? 0) > 0 || $loanStatus === $s)
+                        ->map(fn ($l, $s) => [$l, $summary[$s] ?? 0])->all(),
+                ]];
+            @endphp
             <div class="dh-section-head">
-                <h2 class="text-base font-semibold text-slate-900">Loans</h2>
+                <h2 class="text-base font-semibold text-slate-900">Loans <span class="dh-section-count">{{ $loans->count() }}</span></h2>
                 @if($loans->isNotEmpty())
-                    <x-dhiran.segment param="loan_status" page-name="loans_page" fragment="loans" label="Filter loans by status" :current="$loanStatus"
-                        :options="['' => ['All', $loans->count()]] + collect(\App\Services\Dhiran\DhiranListFilters::STATUSES)
-                            ->filter(fn ($l, $s) => ($summary[$s] ?? 0) > 0 || $loanStatus === $s)
-                            ->map(fn ($l, $s) => [$l, $summary[$s] ?? 0])->all()" />
+                    <x-dhiran.filter-panel :groups="$loanFilters" title="Filter loans" fragment="loans" page-name="loans_page" />
                 @endif
             </div>
+            <x-dhiran.filter-panel :groups="$loanFilters" fragment="loans" page-name="loans_page" mode="chips" />
             @if($loans->isEmpty())
                 <div class="px-6 py-12 text-center">
                     <p class="text-base font-semibold text-slate-700 mb-1">No loans yet</p>
@@ -161,21 +167,29 @@
         {{-- 5. Payments: the full history, 10 a page, by type and by loan --}}
         @if($hasPayments)
         <div id="payments" data-profile-section class="dh-profile-section rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-6">
-            <div class="dh-section-head">
-                <h2 class="text-base font-semibold text-slate-900">Payments</h2>
-                <a href="{{ request()->fullUrlWithQuery(['export' => 'payments', 'payments_page' => null]) }}" class="btn btn-secondary btn-sm" data-turbo="false" download>
-                    <x-icon name="download" size="14" /> Export CSV
-                </a>
-            </div>
-            <div class="dh-section-filters">
-                <x-dhiran.segment param="payment_type" page-name="payments_page" fragment="payments" label="Filter payments by type" :current="$paymentType"
-                    :options="['' => ['All', array_sum($paymentTypeCounts)]] + collect($paymentTypes)
+            @php
+                $paymentFilters = ['payment_type' => [
+                    'legend' => 'Type', 'any' => 'All types',
+                    'options' => collect($paymentTypes)
                         ->filter(fn ($def, $key) => $paymentTypeCounts[$key] > 0 || $paymentType === $key)
-                        ->map(fn ($def, $key) => [$def[0], $paymentTypeCounts[$key]])->all()" />
-                @if($loans->count() > 1)
-                    <x-dhiran.segment param="payment_loan" page-name="payments_page" fragment="payments" label="Filter payments by loan" :current="$paymentLoan"
-                        :options="['' => ['All loans', null]] + $loans->mapWithKeys(fn ($l) => [$l->id => [$l->loan_number, null]])->all()" />
-                @endif
+                        ->map(fn ($def, $key) => [$def[0], $paymentTypeCounts[$key]])->all(),
+                ]];
+                if ($loans->count() > 1) {
+                    $paymentFilters['payment_loan'] = ['legend' => 'Loan', 'any' => 'All loans',
+                        'options' => $loans->mapWithKeys(fn ($l) => [$l->id => [$l->loan_number, null]])->all()];
+                }
+            @endphp
+            <div class="dh-section-head">
+                <h2 class="text-base font-semibold text-slate-900">Payments <span class="dh-section-count">{{ array_sum($paymentTypeCounts) }}</span></h2>
+                <div class="dh-section-tools">
+                    <x-dhiran.filter-panel :groups="$paymentFilters" title="Filter payments" fragment="payments" page-name="payments_page" />
+                    <a href="{{ request()->fullUrlWithQuery(['export' => 'payments', 'payments_page' => null]) }}" class="btn btn-secondary btn-sm" data-turbo="false" download>
+                        <x-icon name="download" size="14" /> Export CSV
+                    </a>
+                </div>
+            </div>
+            <x-dhiran.filter-panel :groups="$paymentFilters" fragment="payments" page-name="payments_page" mode="chips" />
+            <div class="dh-section-filters">
                 <p class="dh-section-summary" data-payments-summary>
                     {{ $payments->total() }} {{ \Illuminate\Support\Str::plural('payment', $payments->total()) }}
                     · <strong>₹{{ number_format($paymentSummary['received'], 2) }}</strong> received

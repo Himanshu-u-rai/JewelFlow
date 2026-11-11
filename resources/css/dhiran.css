@@ -3176,7 +3176,9 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     .dh-fbar-open { padding: 0 12px; }
     .dh-fbar-range { margin-left: 0; width: 100%; }
     .dh-app dialog.dh-fpanel {
-        margin: auto 0 0; width: 100vw; height: auto; max-height: 88dvh; border-radius: 20px 20px 0 0;
+        /* Pinned to the bottom edge only: a modal dialog is inset on all four sides, which stretched the sheet to
+           full height however few the choices. Now it is as tall as its content, up to 88% of the screen. */
+        inset: auto 0 0 0; margin: 0; width: 100vw; height: auto; max-height: 88dvh; border-radius: 20px 20px 0 0;
         box-shadow: 0 -12px 40px color-mix(in srgb, var(--dh-shadow-tint) 20%, transparent);
         animation-name: dh-fsheet-in;
     }
@@ -3195,30 +3197,22 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
     padding: 14px 20px; border-bottom: 1px solid var(--dh-line-soft);
 }
-.dh-section-filters { display: flex; flex-direction: column; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--dh-line-soft); }
+.dh-section-filters { padding: 10px 20px; border-bottom: 1px solid var(--dh-line-soft); }
 .dh-section-summary { font-size: 13px; color: var(--dh-muted); }
 .dh-section-summary strong { color: var(--dh-ink); font-weight: 700; }
-.dh-segment { display: flex; flex-wrap: wrap; gap: 6px; }
-.dh-app .dh-segment-chip {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px;
-    border: 1px solid var(--dh-field-border); background: var(--dh-card); color: var(--dh-ink-soft);
-    font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
-    transition: border-color 150ms var(--dh-ease), background-color 150ms var(--dh-ease);
+.dh-section-tools { display: flex; align-items: center; gap: 8px; }
+.dh-section-count {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; margin-left: 6px; padding: 0 7px;
+    border-radius: 999px; background: var(--dh-muted-surface); color: var(--dh-ink-soft); font-size: 12px; font-weight: 700; vertical-align: 2px;
 }
-.dh-app .dh-segment-chip:hover { border-color: var(--dh-accent); }
-.dh-app .dh-segment-chip.is-on { background: var(--dh-accent); border-color: var(--dh-accent); color: var(--dh-on-accent); }
-.dh-app .dh-segment-chip:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
-.dh-segment-count {
-    display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px;
-    border-radius: 999px; background: var(--dh-muted-surface); color: var(--dh-ink); font-size: 11px; font-weight: 700;
+/* A section's Filters button sits in its header (same look as the list bar, a little smaller); its chips sit below. */
+.dh-fbar-open--sm { height: 36px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+.dh-fbar-chips--section { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--dh-line-soft); }
+.dh-fopt-count {
+    margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--dh-muted-surface);
+    color: var(--dh-ink); font-size: 11px; font-style: normal; font-weight: 700;
 }
-.dh-segment-chip.is-on .dh-segment-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
-@media (max-width: 720px) {
-    /* Chips scroll sideways in one line instead of stacking into a tall block. */
-    .dh-segment { flex-wrap: nowrap; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
-    .dh-segment::-webkit-scrollbar { display: none; }
-    .dh-app .dh-segment-chip { min-height: 36px; }
-}
+.dh-fopt input:checked + span .dh-fopt-count { background: var(--dh-highlight); color: var(--dh-on-highlight); }
 
 /* Row numbers (#): a narrow, quiet first column; numbering continues across pages. */
 .dh-app .dh-sno-th { width: 56px; padding-left: 20px !important; padding-right: 8px !important; text-align: left; }

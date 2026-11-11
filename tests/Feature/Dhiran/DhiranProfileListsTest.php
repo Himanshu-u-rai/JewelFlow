@@ -90,16 +90,23 @@ class DhiranProfileListsTest extends TestCase
         TenantContext::runFor($this->shop->id, fn () => \Illuminate\Support\Facades\DB::table('dhiran_loans')->where('id', $loans[0]->id)->update(['status' => 'closed']));
 
         $all = $this->section($this->profile(), 'loans');
-        $this->assertMatchesRegularExpression('/All\s*<span[^>]*>12</', $all);
-        $this->assertMatchesRegularExpression('/Active\s*<span[^>]*>11</', $all);
-        $this->assertMatchesRegularExpression('/Closed\s*<span[^>]*>1</', $all);
+        // Owner: the standard Filters button + panel, not chip rows thrown on the page.
+        $this->assertStringNotContainsString('dh-segment', $all);
+        $this->assertMatchesRegularExpression('/<dialog[^>]*data-filter-panel/', $all);
+        $this->assertMatchesRegularExpression('/value="active"[^>]*>\s*<span>Active\s*<em class="dh-fopt-count">11</', $all);
+        $this->assertMatchesRegularExpression('/value="closed"[^>]*>\s*<span>Closed\s*<em class="dh-fopt-count">1</', $all);
         $this->assertStringContainsString('loans_page=2', $all, '10 per page');
         $this->assertStringContainsString('#loans', $all, 'links land on the section');
 
-        $closed = $this->section($this->profile(['loan_status' => 'closed']), 'loans');
+        $closed = $this->section($this->profile(['loan_status' => 'closed', 'payment_type' => 'disbursement']), 'loans');
         $this->assertStringContainsString($loans[0]->loan_number, $closed);
         $this->assertStringNotContainsString($loans[1]->loan_number, $closed);
-        $this->assertMatchesRegularExpression('/aria-current="page"[^>]*>\s*Closed/', $closed);
+        $this->assertMatchesRegularExpression('/<input type="radio" name="loan_status" value="closed" checked/', $closed);
+        $this->assertMatchesRegularExpression('/<span class="dh-fbar-badge">1</', $closed);
+        $chips = substr($closed, strpos($closed, 'data-active-filters'));
+        $this->assertStringContainsString('Remove filter: Closed', $chips);
+        $this->assertStringContainsString('payment_type=disbursement#loans"', $chips, 'removing it keeps the payments filter');
+        $this->assertStringContainsString('<input type="hidden" name="payment_type" value="disbursement">', $closed, 'the panel keeps the other section\'s filter');
 
         // The other sections still cover every loan.
         $this->assertStringContainsString($loans[1]->loan_number, $this->section($this->profile(['loan_status' => 'closed']), 'items'));
@@ -117,7 +124,8 @@ class DhiranProfileListsTest extends TestCase
         $all = $this->section($this->profile(), 'payments');
         $this->assertMatchesRegularExpression('/Showing\s*<strong>1–10<\/strong>\s*of\s*<strong>13<\/strong>\s*payments/u', $all, 'full history, 10 a page');
         $this->assertStringContainsString('payments_page=2', $all);
-        $this->assertMatchesRegularExpression('/Interest\s*<span[^>]*>1</', $all, 'type chip with count');
+        $this->assertMatchesRegularExpression('/value="interest"[^>]*>\s*<span>Interest\s*<em class="dh-fopt-count">1</', $all, 'type choice with count');
+        $this->assertStringNotContainsString('dh-segment', $all);
 
         $interest = $this->section($this->profile(['payment_type' => 'interest']), 'payments');
         $this->assertMatchesRegularExpression('/Showing\s*<strong>1–1<\/strong>\s*of\s*<strong>1<\/strong>/u', $interest);
