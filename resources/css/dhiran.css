@@ -3210,7 +3210,9 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
 }
 .dh-app a.dd-stat:hover { background: var(--dh-row-hover); }
 .dh-app a.dd-stat:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: -2px; }
-.dh-app .dd-stat-label { font-size: 12px; font-weight: 600; color: var(--dh-muted); }
+.dh-app .dd-stat-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--dh-muted); }
+.dh-app .dd-stat-label svg { flex-shrink: 0; color: var(--dh-subtle); } /* small plain outline icon, no badge */
+.dh-app .dd-stat.is-flagged .dd-stat-label svg { color: var(--dh-danger); }
 .dh-app .dd-stat-value { font-size: 17px; font-weight: 700; color: var(--dh-ink); font-variant-numeric: tabular-nums; }
 .dh-app .dd-stat-sub { font-size: 12px; color: var(--dh-muted); font-variant-numeric: tabular-nums; }
 .dh-app .dd-stat.is-flagged .dd-stat-value { color: var(--dh-danger); }

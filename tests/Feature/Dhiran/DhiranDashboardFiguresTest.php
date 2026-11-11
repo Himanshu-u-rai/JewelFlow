@@ -92,6 +92,8 @@ class DhiranDashboardFiguresTest extends TestCase
         // Owner 2026-11-11: small, simple figures in one strip, not big KPI cards, icons, bars or panels.
         $this->assertStringContainsString('data-dash-glance', $html);
         $this->assertSame(12, preg_match_all('/class="dd-stat[ "]/', $html), 'twelve small figures');
+        // ...each with a small plain icon beside its label, as elsewhere in the app (owner 2026-11-11).
+        $this->assertSame(12, preg_match_all('/<span class="dd-stat-label">\s*<svg/', $html), 'an icon on every figure');
         foreach (['dd-kpi-card', 'dd-bar', 'dd-panel', 'dd-kpi-icon'] as $gone) {
             $this->assertStringNotContainsString($gone, $html);
         }

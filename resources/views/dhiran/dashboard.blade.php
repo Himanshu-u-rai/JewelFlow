@@ -45,25 +45,25 @@
             $grams = fn ($v) => \App\Support\IndianNumber::format($v, 3) . ' g';
             $late90 = $dash['overdue']['90+'];
             $stats = [
-                ['Open loans', $dash['open_count'], null, 'open-count', route('dhiran.loans', ['status' => 'active']), false],
-                ['Money lent out', $inr($dash['money_out']), null, 'money-out', route('dhiran.loans', ['status' => 'active']), false],
-                ['Total owed', $inr($dash['owed']), 'with interest and penalty', 'owed', route('dhiran.reports.active'), false],
-                ['Interest this month', $inr($dash['interest_month']), null, 'interest-month', route('dhiran.reports.interest', ['period' => 'this_month']), false],
-                ['Interest ' . $dash['fy_label'], $inr($dash['interest_fy']), null, 'interest-fy', route('dhiran.reports.interest', ['period' => 'this_fy']), false],
-                ['Awaiting evidence', $dash['pending'], null, 'pending', route('dhiran.loans', ['status' => 'pending_evidence']), $dash['pending'] > 0],
-                ['Overdue', $dash['overdue_count'], $inr($dash['overdue_owed']) . ' owed', 'overdue-count', route('dhiran.reports.overdue'), $dash['overdue_count'] > 0],
-                ['Over 90 days late', $late90['n'], $inr($late90['owed']) . ' owed', 'overdue-90+', $late90['url'], $late90['n'] > 0],
-                ['Due in 7 days', $dash['maturing']['7']['n'], $inr($dash['maturing']['7']['owed']), 'maturing-7', $dash['maturing']['7']['url'], false],
-                ['Due in 30 days', $dash['maturing']['30']['n'], $inr($dash['maturing']['30']['owed']), 'maturing-30', $dash['maturing']['30']['url'], false],
-                ['Gold held (fine)', $grams($dash['held']['gold']->fine ?? 0), null, 'fine-gold', route('dhiran.loans', ['metal' => 'gold', 'status' => 'active']), false],
-                ['Silver held (fine)', $grams($dash['held']['silver']->fine ?? 0), null, 'fine-silver', route('dhiran.loans', ['metal' => 'silver', 'status' => 'active']), false],
+                ['Open loans', $dash['open_count'], null, 'open-count', route('dhiran.loans', ['status' => 'active']), false, 'file-text'],
+                ['Money lent out', $inr($dash['money_out']), null, 'money-out', route('dhiran.loans', ['status' => 'active']), false, 'banknote'],
+                ['Total owed', $inr($dash['owed']), 'with interest and penalty', 'owed', route('dhiran.reports.active'), false, 'wallet'],
+                ['Interest this month', $inr($dash['interest_month']), null, 'interest-month', route('dhiran.reports.interest', ['period' => 'this_month']), false, 'calculator'],
+                ['Interest ' . $dash['fy_label'], $inr($dash['interest_fy']), null, 'interest-fy', route('dhiran.reports.interest', ['period' => 'this_fy']), false, 'calendar'],
+                ['Awaiting evidence', $dash['pending'], null, 'pending', route('dhiran.loans', ['status' => 'pending_evidence']), $dash['pending'] > 0, 'camera'],
+                ['Overdue', $dash['overdue_count'], $inr($dash['overdue_owed']) . ' owed', 'overdue-count', route('dhiran.reports.overdue'), $dash['overdue_count'] > 0, 'clock'],
+                ['Over 90 days late', $late90['n'], $inr($late90['owed']) . ' owed', 'overdue-90+', $late90['url'], $late90['n'] > 0, 'triangle-alert'],
+                ['Due in 7 days', $dash['maturing']['7']['n'], $inr($dash['maturing']['7']['owed']), 'maturing-7', $dash['maturing']['7']['url'], false, 'calendar-clock'],
+                ['Due in 30 days', $dash['maturing']['30']['n'], $inr($dash['maturing']['30']['owed']), 'maturing-30', $dash['maturing']['30']['url'], false, 'calendar'],
+                ['Gold held (fine)', $grams($dash['held']['gold']->fine ?? 0), null, 'fine-gold', route('dhiran.loans', ['metal' => 'gold', 'status' => 'active']), false, 'weight'],
+                ['Silver held (fine)', $grams($dash['held']['silver']->fine ?? 0), null, 'fine-silver', route('dhiran.loans', ['metal' => 'silver', 'status' => 'active']), false, 'coins'],
             ];
         @endphp
 
         <section class="dd-glance" data-dash-glance aria-label="At a glance">
-            @foreach($stats as [$label, $value, $sub, $key, $url, $flag])
+            @foreach($stats as [$label, $value, $sub, $key, $url, $flag, $icon])
                 <a href="{{ $url }}" class="dd-stat {{ $flag ? 'is-flagged' : '' }}">
-                    <span class="dd-stat-label">{{ $label }}</span>
+                    <span class="dd-stat-label"><x-icon :name="$icon" size="14" />{{ $label }}</span>
                     <span class="dd-stat-value" data-dash="{{ $key }}">{{ $value }}</span>
                     @if($sub)<span class="dd-stat-sub">{{ $sub }}</span>@endif
                 </a>
