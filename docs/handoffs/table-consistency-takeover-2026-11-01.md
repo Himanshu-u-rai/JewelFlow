@@ -2,7 +2,28 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Retail orange scrollbars, 2026-11-11
+## Latest checkpoint — All Retail bars thin, 2026-11-11
+
+Base `16ab15dab77865aaeb38be984a7e35023ae5ef4c`. Owner extended the sidebar's
+8px size to all visible Retail scrollbars. Set8px on the Retail document/body
+and descendants so opted-in jf-scrollbar/list components cannot retain their
+own14px token. Color, track and corners unchanged. Non-WebKit thin fallback uses
+zero-specificity :where defaults so existing scrollbar-width:none still wins;
+legacy helper auto-width reset now applies only to WebKit. Admin/Dhiran excluded.
+
+Live pre-change width assertion failed on14px Settings areas, then passed on
+Settings,Customers,Repairs,Stock Items,Cash Book,Karigars. Karigar editor/State
+popup both8px orange; Customer status menu still display:none/width:none for its
+bar. Added fallback specificity safety test RED→GREEN. Full frontend:
+298passed/22existing skips/0failed(320total). Build85modules,
+app-DInTk4zm.css/app-Dgr0aUZm.js;diffcheck pass. No PHP/database suite rerun for
+this CSS-only refinement. Dhiran tracked diff hash unchanged; no admin files.
+Evidence in prior scrollbar folder: all-thin-checks.json,
+all-thin-karigar-state.jpg,all-thin test/build logs. Earlier14px captures/audits
+remain historical, superseded by this request. Native Firefox/physical-phone
+acceptance unrun. Local only; no data/remote changes.
+
+## Previous checkpoint — Retail orange scrollbars, 2026-11-11
 
 Base `2099327760f99e771aa4966867f1f9fb9a23657d`. Owner explicitly excluded both
 Dhiran and admin. Added `retail-scrollbars.css` via app.css, scoped to

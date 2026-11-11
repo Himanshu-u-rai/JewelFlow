@@ -11,8 +11,16 @@ test('Retail scrollbar rules cannot reach admin, Dhiran or other document shells
     css.walkRules(rule => rules.push(rule));
     assert.ok(rules.length > 0, 'The Retail scrollbar theme must exist');
     for (const rule of rules) for (const selector of rule.selectors) {
-        assert.ok(selector.startsWith('body.app-shell') || selector.startsWith('html:has(> body.app-shell)'), selector);
+        assert.ok(selector.startsWith('body.app-shell') || selector.startsWith('html:has(> body.app-shell)')
+            || selector === ':where(body.app-shell, body.app-shell *, html:has(> body.app-shell))', selector);
     }
+});
+
+test('thin fallback defaults have zero specificity so intentionally hidden bars take precedence', () => {
+    const rules = [];
+    css.walkDecls('scrollbar-width', decl => { if (decl.value === 'thin') rules.push(decl.parent); });
+    assert.ok(rules.length > 0);
+    for (const rule of rules) assert.ok(rule.selectors.every(selector => selector.startsWith(':where(')));
 });
 
 test('scrollbar theming cannot change container geometry, overflow or intentionally hidden bars', () => {
