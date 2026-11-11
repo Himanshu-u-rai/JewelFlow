@@ -120,10 +120,10 @@ class MovedShortcutsAccessTest extends TestCase
 
     public function test_master_data_left_the_sidebar_for_pages_whose_own_gate_is_no_stricter(): void
     {
-        // Retailer: Categories on the Stock page, Vendors on the Masters hub.
+        // Retailer: Categories on Stock; Vendors and Karigars on Masters.
         [$retailer] = $this->createRetailerTenant();
         $sidebar = $this->sidebarNav($this->actingAs($retailer)->get(route('dashboard'))->assertOk()->getContent());
-        foreach (['categories.index', 'vendors.index'] as $name) {
+        foreach (['categories.index', 'vendors.index', 'karigars.index'] as $name) {
             $this->assertStringNotContainsString($this->href($name), $sidebar, "retailer: {$name} is still in the sidebar");
         }
         // The least a role needs for each page is enough to find it from its new home.
@@ -131,6 +131,15 @@ class MovedShortcutsAccessTest extends TestCase
             $this->stockNav($this->pageAs($retailer, ['inventory.view'], route('inventory.items.index'))));
         $this->assertStringContainsString($this->href('vendors.index'),
             $this->pageBody($this->pageAs($retailer, ['vendors.view'], route('masters.index'))));
+        $karigarOnly = $this->pageAs($retailer, ['karigar.view'], route('masters.index'));
+        $this->assertStringContainsString($this->href('karigars.index'), $this->pageBody($karigarOnly));
+        $this->assertStringContainsString($this->href('masters.index'), $this->sidebarNav($karigarOnly));
+        $this->assertStringNotContainsString($this->href('karigars.index'),
+            $this->pageBody($this->pageAs($retailer, ['vendors.view'], route('masters.index'))));
+        $karigarPage = $this->pageAs($retailer, ['karigar.view'], route('karigars.index'));
+        $mastersLink = $this->link($this->sidebarNav($karigarPage), 'masters.index');
+        $this->assertStringContainsString('active', $mastersLink);
+        $this->assertStringContainsString('/karigars', $mastersLink);
 
         // Manufacturer: its Stock page has no view tabs, and still offers Categories; Product Catalog is a Masters card.
         [$maker] = $this->createManufacturerTenant();

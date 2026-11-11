@@ -8,7 +8,7 @@
     <x-page-header class="vendors-page-header" title="Vendors / Suppliers" subtitle="Manage your jewellery suppliers and vendors">
         <x-slot:actions>
             @can('vendors.manage')
-            <a href="{{ route('vendors.create') }}" class="btn btn-primary btn-sm vendors-add-btn" aria-label="Add Vendor" title="Add Vendor">
+            <a href="{{ route('vendors.create', ['full' => 1]) }}" class="btn btn-primary btn-sm vendors-add-btn" aria-label="Add Vendor" title="Add Vendor" aria-haspopup="dialog" aria-controls="vendor-editor" data-turbo-prefetch="false" x-data data-editor-title="Add Vendor" data-vendor-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('vendor-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">
                 <x-icon name="plus" size="16" />
                 <span class="vendors-add-label">Add Vendor</span>
             </a>
@@ -98,7 +98,7 @@
                                         <div class="vendors-table-actions">
                                             <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View" aria-label="View {{ $vendor->name }}"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                             @can('vendors.manage')
-                                            <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                            <a href="{{ route('vendors.edit', ['vendor' => $vendor, 'full' => 1]) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}" aria-haspopup="dialog" aria-controls="vendor-editor" data-turbo-prefetch="false" x-data data-editor-title="Edit Vendor" data-vendor-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('vendor-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                             {{-- MASTERS PART 3: explicit lifecycle action, right where
                                                  the status badge is, so it is never mistaken for an edit. --}}
                                             @if($vendor->is_active)
@@ -162,7 +162,7 @@
                             <div class="vendor-mobile-actions">
                                 <a href="{{ route('vendors.show', $vendor) }}" class="jf-row-action jf-row-action--view" data-tip="View" aria-label="View {{ $vendor->name }}"><x-icon name="eye" size="16" /><span class="jf-sr-only">View</span></a>
                                 @can('vendors.manage')
-                                <a href="{{ route('vendors.edit', $vendor) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
+                                <a href="{{ route('vendors.edit', ['vendor' => $vendor, 'full' => 1]) }}" class="jf-row-action jf-row-action--edit" data-tip="Edit" aria-label="Edit {{ $vendor->name }}" aria-haspopup="dialog" aria-controls="vendor-editor" data-turbo-prefetch="false" x-data data-editor-title="Edit Vendor" data-vendor-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('vendor-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }"><x-icon name="pencil" size="16" /><span class="jf-sr-only">Edit</span></a>
                                 @if($vendor->is_active)
                                     <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
                                           data-confirm-message="Archive {{ $vendor->name }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.">
@@ -193,7 +193,7 @@
                     @else
                         <p class="vendors-empty-title">No vendors yet.</p>
                         @can('vendors.manage')
-                        <a href="{{ route('vendors.create') }}" class="btn btn-primary btn-sm">Add your first vendor</a>
+                        <a href="{{ route('vendors.create', ['full' => 1]) }}" class="btn btn-primary btn-sm" aria-haspopup="dialog" aria-controls="vendor-editor" data-turbo-prefetch="false" x-data data-editor-title="Add Vendor" data-vendor-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('vendor-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">Add your first vendor</a>
                         @endcan
                     @endif
                 </div>
@@ -208,4 +208,7 @@
             </footer>
         </section>
     </div>
+    @can('vendors.manage')
+        @include('vendors._editor')
+    @endcan
 </x-app-layout>

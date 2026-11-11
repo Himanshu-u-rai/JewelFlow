@@ -427,11 +427,13 @@
 
     <x-page-header class="vendors-show-header ops-treatment-header" :title="$vendor->name" subtitle="Vendor details & associated items">
         <x-slot:actions>
-            <a href="{{ route('vendors.edit', $vendor) }}" class="btn btn-secondary btn-sm vendors-show-edit-btn">
+            @can('vendors.manage')
+            <a href="{{ route('vendors.edit', ['vendor' => $vendor, 'full' => 1]) }}" class="btn btn-secondary btn-sm vendors-show-edit-btn" aria-haspopup="dialog" aria-controls="vendor-editor" data-turbo-prefetch="false" x-data data-editor-title="Edit Vendor" data-vendor-open @click="if (!$event.ctrlKey && !$event.metaKey && !$event.shiftKey && !$event.altKey && $event.button === 0 && typeof HTMLDialogElement !== 'undefined' && HTMLDialogElement.prototype.showModal) { $event.preventDefault(); $dispatch('vendor-editor-open', { url: $el.href, title: $el.dataset.editorTitle, opener: $el }); }">
                 <x-icon name="pencil" size="14" class="mr-1.5" />
                 <span class="vendors-show-edit-label-full">Edit Vendor</span>
                 <span class="vendors-show-edit-label-short">Edit</span>
             </a>
+            @endcan
             {{-- MASTERS PART 3: two distinct actions, never one toggle. The state
                  the user is asking for is in the URL, so a stale page cannot
                  flip the vendor the wrong way — a repeat is a no-op. --}}
@@ -622,4 +624,7 @@
             </section>
         @endif
     </div>
+    @can('vendors.manage')
+        @include('vendors._editor', ['restoreVendorEditor' => false, 'editorVendor' => null])
+    @endcan
 </x-app-layout>

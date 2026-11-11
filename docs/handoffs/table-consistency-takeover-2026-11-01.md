@@ -2,7 +2,39 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Vendors directory compact treatment, 2026-11-11
+## Latest checkpoint — Vendor popup forms and Karigar navigation, 2026-11-11
+
+Owner clarified navigation: Vendors stays in Masters, with no sidebar shortcut.
+Karigars now also lives only in Masters (its permission-aware Parties link already
+existed). Removed the Karigar sidebar entry; Masters highlights on all Karigar
+routes, including Turbo visits. Job Orders, Metal Vault and Karigar Bills stay put.
+No route gates changed; a role holding only `karigar.view` can still reach Masters.
+
+Vendor Add/Edit now opens a native dialog, reusing the existing tested Karigar
+frame controller through an Alpine alias. Fresh frame-only responses, prefetch
+opt-out, close/submit guards, opener-focus return and Turbo cleanup are preserved.
+Direct create/edit URLs restore an on-directory popup; `?full=1` remains the
+progressive recovery route. Invalid submissions reopen the correct form with
+errors and old input. Existing fields, validation, JSON create response and
+availability lifecycle remain unchanged. Successful popup saves return to the
+directory; regular full-page saves retain their original detail redirect.
+
+Vendor-only compiled styles give a compact two-column desktop form, one-column
+mobile sheet, sticky header/actions and existing thin orange scrollbar. Reserved
+responsive popup space prevents loading-to-form recentering. Entry uses a 200ms
+fade/10px slide; reduced-motion disables animation. Browser checked Add, Edit,
+profile Edit, direct URLs, invalid GST restoration, Cancel/focus return, Masters
+navigation, mobile 390×844 wheel scrolling and desktop 1280×480 scrolling. Notes
+and bottom controls remained reachable, without horizontal overflow. No successful
+live save or archive was performed; success cases use the disposable test DB.
+
+Verification: 315 frontend passed, 22 existing skips; 44 targeted PHP tests,
+710 assertions; build passed (85 modules), layout detector [], diff check clean.
+Evidence: `/home/himanshu/jf-table-evidence/vendor-popup-20261111.mFIjkd/`.
+POS/Admin/Dhiran untouched. No dependency, schema, production or deployment work.
+Physical phone and full keyboard traversal remain unverified.
+
+## Previous checkpoint — Vendors directory compact treatment, 2026-11-11
 
 Owner approved working through the remaining Retail UI backlog in order, with
 POS explicitly excluded. First batch: Vendors directory only. Add/edit/detail

@@ -337,8 +337,8 @@
                             {{ __('Dashboard') }}
                         </a>
                         @if($hasRetailer || $hasManufacturer)
-                        {{-- Vendors and Product Catalog open from their Masters cards, so their pages light this link. --}}
-                        <a href="{{ route('masters.index') }}" class="nav-link {{ request()->routeIs('masters.*', 'vendors.*', 'products.*') ? 'active' : '' }}" data-nav-match="/vendors,/products">
+                        {{-- Vendors, Karigars and Product Catalog open from Masters, so their pages light this link. --}}
+                        <a href="{{ route('masters.index') }}" class="nav-link {{ request()->routeIs('masters.*', 'vendors.*', 'karigars.*', 'products.*') ? 'active' : '' }}" data-nav-match="/vendors,/karigars,/products">
                             <span class="nav-icon"><x-icon name="layers" size="16" /></span>
                             {{ __('Masters') }}
                         </a>
@@ -469,7 +469,6 @@
                     @php
                         $jobWorkNav = $hasRetailer ? [
                             'vault' => $navOpen('vault.index'),
-                            'karigars' => $navOpen('karigars.index'),
                             'jobOrders' => $navOpen('job-orders.index'),
                             'karigarBills' => $navOpen('karigar-invoices.index'),
                         ] : [];
@@ -481,12 +480,6 @@
                         <a href="{{ route('vault.index') }}" class="nav-link {{ request()->routeIs('vault.*') ? 'active' : '' }}">
                             <span class="nav-icon"><x-icon name="lock" size="16" /></span>
                             {{ __('Metal Vault') }}
-                        </a>
-                        @endif
-                        @if($jobWorkNav['karigars'])
-                        <a href="{{ route('karigars.index') }}" class="nav-link {{ request()->routeIs('karigars.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><x-icon name="hammer" size="16" /></span>
-                            {{ __('Karigars') }}
                         </a>
                         @endif
                         @if($jobWorkNav['jobOrders'])

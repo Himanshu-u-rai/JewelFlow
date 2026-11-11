@@ -7,6 +7,7 @@ use App\Http\Concerns\RespondsDynamically;
 use App\Models\Vendor;
 use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class VendorController extends Controller
 {
@@ -51,11 +52,11 @@ class VendorController extends Controller
         };
 
         $statusCounts = $applySearch(Vendor::where('shop_id', $shopId))
-            ->selectRaw("
+            ->selectRaw('
                 count(*) as all_count,
                 count(*) filter (where is_active IS TRUE) as active_count,
                 count(*) filter (where is_active IS FALSE) as archived_count
-            ")
+            ')
             ->first();
 
         $query = $applySearch(Vendor::where('shop_id', $shopId));
@@ -68,11 +69,28 @@ class VendorController extends Controller
 
         $vendors = $query->latest()->paginate(15)->withQueryString();
 
-        return view('vendors.index', compact('vendors', 'stats', 'status', 'statusCounts', 'search'));
+        $editorId = filter_var($request->query('editor'), FILTER_VALIDATE_INT);
+        $restoreVendorEditor = auth()->user()->can('vendors.manage')
+            && ($request->query('editor') === 'create' || $editorId > 0);
+        $editorVendor = null;
+        if ($restoreVendorEditor && $editorId) {
+            $editorVendor = Vendor::findOrFail($editorId);
+            $this->authorize('update', $editorVendor);
+        }
+
+        return view('vendors.index', compact('vendors', 'stats', 'status', 'statusCounts', 'search', 'restoreVendorEditor', 'editorVendor'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        if ($request->header('Turbo-Frame') === 'vendor-editor-frame') {
+            return view('vendors._editor-form', ['vendor' => null]);
+        }
+
+        if (! $request->boolean('full')) {
+            return redirect()->route('vendors.index', ['editor' => 'create']);
+        }
+
         return view('vendors.create');
     }
 
@@ -88,13 +106,13 @@ class VendorController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'id'        => $vendor->id,
-                'name'      => $vendor->name,
+                'id' => $vendor->id,
+                'name' => $vendor->name,
                 'is_active' => $vendor->is_active,
             ]);
         }
 
-        return redirect()->route('vendors.show', $vendor)
+        return redirect()->route($request->boolean('_vendor_editor') ? 'vendors.index' : 'vendors.show', $request->boolean('_vendor_editor') ? [] : [$vendor])
             ->with('success', 'Vendor added successfully.');
     }
 
@@ -109,9 +127,17 @@ class VendorController extends Controller
         return view('vendors.show', compact('vendor', 'items'));
     }
 
-    public function edit(Vendor $vendor)
+    public function edit(Request $request, Vendor $vendor)
     {
         $this->authorize('update', $vendor);
+
+        if ($request->header('Turbo-Frame') === 'vendor-editor-frame') {
+            return view('vendors._editor-form', compact('vendor'));
+        }
+
+        if (! $request->boolean('full')) {
+            return redirect()->route('vendors.index', ['editor' => $vendor->id]);
+        }
 
         return view('vendors.edit', compact('vendor'));
     }
@@ -123,7 +149,7 @@ class VendorController extends Controller
         // MASTERS PART 3: the old `$data['is_active'] = $request->has('is_active')`
         // line is gone. Lifecycle moves only through archive()/reactivate(), so
         // an edit-form submit (or a crafted one) can no longer flip it.
-        $data = $this->validateVendorPayload($request);
+        $data = $this->validateVendorPayload($request, $vendor);
 
         if (isset($data['gst_number'])) {
             $data['gst_number'] = strtoupper(trim($data['gst_number']));
@@ -131,7 +157,7 @@ class VendorController extends Controller
 
         $vendor->update($data);
 
-        return redirect()->route('vendors.show', $vendor)
+        return redirect()->route($request->boolean('_vendor_editor') ? 'vendors.index' : 'vendors.show', $request->boolean('_vendor_editor') ? [] : [$vendor])
             ->with('success', 'Vendor updated successfully.');
     }
 
@@ -179,26 +205,34 @@ class VendorController extends Controller
 
     // ─── Helpers ───
 
-    private function validateVendorPayload(Request $request): array
+    private function validateVendorPayload(Request $request, ?Vendor $vendor = null): array
     {
-        return $request->validate([
-            'name'           => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'mobile'         => ['nullable', 'string', new IndianMobileRule()],
-            'email'          => 'nullable|email|max:255',
-            'address'        => 'nullable|string|max:1000',
-            'city'           => 'nullable|string|max:100',
-            'state'          => 'nullable|string|max:100',
-            'gst_number'     => [
-                'nullable',
-                'string',
-                'size:15',
-                'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i',
-            ],
-            'notes'          => 'nullable|string|max:2000',
-        ], [
-            'gst_number.size'   => 'GST number must be exactly 15 characters.',
-            'gst_number.regex'  => 'GST number format is invalid (e.g. 22AAAAA0000A1Z5).',
-        ]);
+        try {
+            return $request->validate([
+                'name' => 'required|string|max:255',
+                'contact_person' => 'nullable|string|max:255',
+                'mobile' => ['nullable', 'string', new IndianMobileRule],
+                'email' => 'nullable|email|max:255',
+                'address' => 'nullable|string|max:1000',
+                'city' => 'nullable|string|max:100',
+                'state' => 'nullable|string|max:100',
+                'gst_number' => [
+                    'nullable',
+                    'string',
+                    'size:15',
+                    'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i',
+                ],
+                'notes' => 'nullable|string|max:2000',
+            ], [
+                'gst_number.size' => 'GST number must be exactly 15 characters.',
+                'gst_number.regex' => 'GST number format is invalid (e.g. 22AAAAA0000A1Z5).',
+            ]);
+        } catch (ValidationException $exception) {
+            if ($request->boolean('_vendor_editor')) {
+                $exception->redirectTo(route('vendors.index', ['editor' => $vendor?->id ?? 'create']));
+            }
+
+            throw $exception;
+        }
     }
 }

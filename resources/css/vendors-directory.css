@@ -47,7 +47,46 @@
 .vendor-directory .vendors-empty-copy { margin-bottom: 16px; color: var(--jf-text-muted); font-size: 14px; }
 .vendor-directory :is(a, button, input, select):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
 
+body.app-shell .vendor-editor { width: min(860px, calc(100% - 32px)); height: min(600px, calc(100dvh - 32px)); max-width: none; max-height: calc(100dvh - 32px); inset: 0; margin: auto; padding: 0; border: 1px solid var(--jf-border); border-radius: 16px; background: var(--jf-surface); color: var(--jf-text); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 80px; }
+body.app-shell .vendor-editor::backdrop { background: rgba(15, 23, 42, .42); }
+body.app-shell .vendor-editor[open] { animation: vendor-editor-enter 200ms cubic-bezier(.22, 1, .36, 1); }
+body.app-shell .vendor-editor[open]::backdrop { animation: vendor-editor-backdrop 200ms ease-out; }
+@keyframes vendor-editor-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vendor-editor-backdrop { from { background: rgba(15, 23, 42, 0); } to { background: rgba(15, 23, 42, .42); } }
+@media (prefers-reduced-motion: reduce) {
+    body.app-shell .vendor-editor[open],
+    body.app-shell .vendor-editor[open]::backdrop { animation: none; }
+}
+body.app-shell .vendor-editor-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--jf-border); background: var(--jf-surface); }
+body.app-shell .vendor-editor-head h2 { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+body.app-shell .vendor-editor-head button { flex: none; min-width: 44px; min-height: 44px; padding: 0; }
+body.app-shell .vendor-editor-message { padding: 20px; }
+body.app-shell .vendor-editor-message p { margin-bottom: 12px; }
+body.app-shell .vendor-form-body { padding: 20px; }
+body.app-shell .vendor-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+body.app-shell .vendor-location-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 200px; gap: 16px; margin-block: 16px; }
+body.app-shell .vendor-form label { display: block; margin-bottom: 6px; font-size: 13px; }
+body.app-shell .vendor-form label span { color: #b91c1c; }
+body.app-shell .vendor-field-input { display: block; width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; border: 1px solid var(--jf-border-strong); border-radius: 10px; background: var(--jf-surface); color: var(--jf-text); font-size: 14px; }
+body.app-shell textarea.vendor-field-input { resize: vertical; min-height: 76px; }
+body.app-shell .vendor-field-input[aria-invalid="true"] { border-color: #b91c1c; }
+body.app-shell .vendor-field-input:focus { border-color: #b45309; box-shadow: none; }
+body.app-shell .vendor-editor :is(a, button, input, textarea):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+body.app-shell .vendor-field-error { margin-top: 5px; color: #b91c1c; font-size: 12px; }
+body.app-shell .vendor-availability { margin: 16px 0 0; color: var(--jf-text-muted); font-size: 12px; }
+body.app-shell .vendor-editor-errors { margin-bottom: 16px; padding: 12px; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; color: #9f1239; font-size: 13px; }
+body.app-shell .vendor-editor-errors ul { padding-left: 20px; list-style: disc; }
+body.app-shell .vendor-form-actions { position: sticky; bottom: 0; z-index: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--jf-border); background: var(--jf-surface); }
+body.app-shell .vendor-form-actions .btn { min-height: 44px; }
+
 @media screen and (max-width: 768px) {
+    body.app-shell .vendor-editor { inset: auto 0 0; width: 100%; height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); margin: 0; border-radius: 16px 16px 0 0; }
+    body.app-shell .vendor-editor-head { padding: 10px 14px; }
+    body.app-shell .vendor-form-body { padding: 16px 14px; }
+    body.app-shell .vendor-form-grid,
+    body.app-shell .vendor-location-grid { grid-template-columns: minmax(0, 1fr); }
+    body.app-shell .vendor-field-input { font-size: 16px; }
+    body.app-shell .vendor-form-actions { padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); }
     .vendor-directory .vendors-list-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; padding: 12px; }
     .vendor-directory .vendors-list-titleblock { display: contents; }
     .vendor-directory .vendors-list-titleblock h2 { grid-column: 1; grid-row: 1; margin: 0; font-size: 16px; }

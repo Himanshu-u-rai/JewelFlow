@@ -198,6 +198,7 @@ window.Turbo = Turbo;
 registerHistoricalManual(Alpine);
 Alpine.data('reorderRuleEditor', createReorderEditor);
 Alpine.data('karigarEditor', createKarigarEditor);
+Alpine.data('vendorEditor', createKarigarEditor);
 Alpine.data('karigarFieldHelp', createKarigarFieldHelp);
 Alpine.data('indianAddress', createIndianAddress);
 Alpine.start();
