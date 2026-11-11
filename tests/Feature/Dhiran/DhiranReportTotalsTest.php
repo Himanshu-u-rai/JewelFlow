@@ -90,16 +90,16 @@ class DhiranReportTotalsTest extends TestCase
         $opening = -array_sum(range(10101, 10103));
         $period = array_sum(range(10201, 10232));
 
-        $page1 = $this->render('reportCashbook', ['from' => $from->toDateString(), 'to' => now()->toDateString()]);
+        $page1 = $this->render('reportCashbook', ['from' => $from->toDateString(), 'to' => now()->toDateString(), 'per_page' => 20]);
         $this->assertStringContainsString('data-report-total="opening">' . number_format($opening, 2) . '<', $page1);
         $this->assertStringContainsString('data-report-total="out">' . number_format($period, 2) . '<', $page1);
         $this->assertStringContainsString('data-report-total="closing">' . number_format($opening - $period, 2) . '<', $page1);
         $this->assertStringContainsString('page=2', $page1);
 
-        // Page 2's first row continues from the 30 rows before it.
-        $page2 = $this->render('reportCashbook', ['from' => $from->toDateString(), 'to' => now()->toDateString(), 'page' => 2]);
-        $afterRow31 = $opening - array_sum(range(10201, 10231));
-        $this->assertStringContainsString('data-running-balance>' . number_format($afterRow31, 2) . '<', $page2);
+        // Page 2's first row continues from the 20 rows before it.
+        $page2 = $this->render('reportCashbook', ['from' => $from->toDateString(), 'to' => now()->toDateString(), 'per_page' => 20, 'page' => 2]);
+        $afterRow21 = $opening - array_sum(range(10201, 10221));
+        $this->assertStringContainsString('data-running-balance>' . number_format($afterRow21, 2) . '<', $page2);
     }
 
     public function test_profitability_has_a_period_picker_pages_and_totals_every_loan(): void

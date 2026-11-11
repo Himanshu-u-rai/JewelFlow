@@ -92,9 +92,7 @@
                     @endif
                 </table>
             </div>
-            @if($payments->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200">{{ $payments->links() }}</div>
-            @endif
+            <x-dhiran.pager :paginator="$payments" noun="payments" />
         </div>
     </div>
 </x-dhiran-layout>

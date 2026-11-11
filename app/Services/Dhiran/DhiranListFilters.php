@@ -31,6 +31,15 @@ final class DhiranListFilters
     public const OVERDUE = ['1-30' => '1–30 days late', '31-90' => '31–90 days late', '90+' => 'Over 90 days late'];
     public const MATURING = ['7' => 'Due in 7 days', '30' => 'Due in 30 days'];
     public const CASH_TYPES = ['in' => 'Money in', 'out' => 'Money out'];
+    public const PER_PAGE = [20, 50, 100];
+
+    /** Rows per page from ?per_page; anything not offered falls back to the default (never "everything"). */
+    public static function perPage(Request $request, int $default = 20): int
+    {
+        $n = (int) $request->query('per_page', (string) $default);
+
+        return in_array($n, self::PER_PAGE, true) ? $n : $default;
+    }
 
     /** @param array<string, string> $values the validated, non-empty filter values */
     private function __construct(public readonly array $values, public readonly ?ResolvedPeriod $period)

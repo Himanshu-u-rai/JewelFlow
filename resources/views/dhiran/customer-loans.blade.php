@@ -123,11 +123,8 @@
                 </table>
             </div>
 
-            @if(isset($loans) && $loans->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200">
-                    {{ $loans->links() }}
-                </div>
-            @endif
+            {{-- This page's route sets its own page size, so no rows-per-page choice here. --}}
+            @isset($loans)<x-dhiran.pager :paginator="$loans" noun="loans" :sizes="[]" />@endisset
         </div>
     </div>
 </x-dhiran-layout>

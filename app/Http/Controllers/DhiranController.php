@@ -399,7 +399,7 @@ class DhiranController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
-        $loans = $query->with('customer')->latest()->paginate(20)->withQueryString();
+        $loans = $query->with('customer')->latest()->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
 
         return view('dhiran.loans', compact('loans', 'filters'));
     }
@@ -782,7 +782,7 @@ class DhiranController extends Controller
             });
         }
 
-        $borrowers = $query->orderBy('first_name')->paginate(20)->withQueryString();
+        $borrowers = $query->orderBy('first_name')->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
 
         // Outstanding per borrower (active loans only), scoped to this shop.
         $outstanding = [];
@@ -995,7 +995,7 @@ class DhiranController extends Controller
         $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->active());
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
+        $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.active', compact('loans', 'totals', 'filters'));
     }
@@ -1007,7 +1007,7 @@ class DhiranController extends Controller
         $filters = \App\Services\Dhiran\DhiranListFilters::fromRequest($request);
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->overdue(), null);
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->orderBy('maturity_date')->paginate(20)->withQueryString();
+        $loans = $query->with('customer')->orderBy('maturity_date')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.overdue', compact('loans', 'totals', 'filters'));
     }
@@ -1029,7 +1029,7 @@ class DhiranController extends Controller
         $payments = $rows()
             ->with(['loan', 'loan.customer'])
             ->latest('payment_date')
-            ->paginate(20)
+            ->paginate($filters::perPage($request))
             ->withQueryString();
 
         $totalInterest = (float) $period()->sum('interest_component');
@@ -1049,7 +1049,7 @@ class DhiranController extends Controller
         $loans = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId)->where('status', 'forfeited'), 'forfeited_at')
             ->with('customer')
             ->latest('forfeited_at')
-            ->paginate(20)
+            ->paginate($filters::perPage($request))
             ->withQueryString();
 
         return view('dhiran.reports.forfeiture', compact('loans', 'filters'));
@@ -1078,7 +1078,7 @@ class DhiranController extends Controller
         $totals['closing'] = $opening + $totals['net'];
 
         $entries = $period()->when($filters->get('cash'), fn ($q, $t) => $q->where('type', $t))
-            ->with('loan')->orderBy('entry_date')->orderBy('id')->paginate(30)->withQueryString();
+            ->with('loan')->orderBy('entry_date')->orderBy('id')->paginate($filters::perPage($request, 50))->withQueryString();
 
         $first = $entries->first();
         $pageStartBalance = $opening + ($first ? (float) $period()
@@ -1097,7 +1097,7 @@ class DhiranController extends Controller
 
         $query = $filters->applyToLoans(DhiranLoan::where('shop_id', $shopId));
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->latest('loan_date')->paginate(20)->withQueryString();
+        $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.profitability', compact('loans', 'from', 'to', 'totals', 'filters'));
     }

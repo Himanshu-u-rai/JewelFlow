@@ -118,9 +118,7 @@
                             </article>
                         @endforeach
                     </div>
-                    @if($borrowers->hasPages())
-                        <div class="px-6 py-4 border-t border-slate-200">{{ $borrowers->links() }}</div>
-                    @endif
+                    <x-dhiran.pager :paginator="$borrowers" noun="customers" />
                 </div>
             @endif
         @empty

@@ -115,9 +115,7 @@
                     @endif
                 </table>
             </div>
-            @if($entries->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200">{{ $entries->links() }}</div>
-            @endif
+            <x-dhiran.pager :paginator="$entries" noun="entries" />
         </div>
     </div>
 </x-dhiran-layout>

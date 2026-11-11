@@ -149,11 +149,7 @@
                 @endforelse
             </div>
 
-            @if(isset($loans) && $loans->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200">
-                    {{ $loans->links() }}
-                </div>
-            @endif
+            @isset($loans)<x-dhiran.pager :paginator="$loans" noun="loans" />@endisset
         </div>
     </div>
 </x-dhiran-layout>
