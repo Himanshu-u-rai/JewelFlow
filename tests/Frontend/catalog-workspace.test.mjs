@@ -20,6 +20,12 @@ test('Catalog uses shared filter sheet, one search form and one Apply/Clear slot
     assert.doesNotMatch(view, /<style>/);
 });
 
+test('Customer number and message style follow query controls in toolbar DOM and keyboard order', () => {
+    const toolbar = view.match(/<header class="wa-workspace-head">([\s\S]*?)<\/header>/)[1];
+    assert.ok(toolbar.indexOf('name="search"') < toolbar.indexOf('id="wa-phone"'));
+    assert.ok(toolbar.indexOf('id="wa-phone"') < toolbar.indexOf('id="wa-message-style"'));
+});
+
 test('Select All collection payload contains off-page selections, not just rendered cards', () => {
     const source = view.match(/const itemIds = ([\s\S]*?);\n\n\s*const response = await fetch/)?.[1];
     assert.ok(source);

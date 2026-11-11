@@ -22,19 +22,6 @@
         <section class="wa-workspace" aria-label="Catalog tools">
           <header class="wa-workspace-head">
             <dl class="wa-summary" aria-label="Matching items"><div><dt>Items</dt><dd>{{ number_format($items->total()) }}</dd></div></dl>
-            <div class="wa-field wa-message-style" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
-                <label for="wa-message-style">Message style</label>
-                <select id="wa-message-style" class="wa-select">
-                    <option value="premium">Premium Pitch</option>
-                    <option value="quick">Quick Quote</option>
-                    <option value="newdrop">New Arrival</option>
-                    <option value="custom">Custom message</option>
-                </select>
-            </div>
-            <div class="wa-field phone">
-                <label for="wa-phone">Customer number <span>(optional)</span></label>
-                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
-            </div>
             <div class="wa-selection-tools">
                 <label class="wa-select-all-label" id="wa-select-all-label">
                     <input type="checkbox" id="wa-select-all" class="wa-select-all-checkbox" @disabled(count($allMatchingIds) === 0)>
@@ -78,6 +65,19 @@
                 </div>
             </form>
             </x-responsive-filter-panel>
+            <div class="wa-field phone">
+                <label for="wa-phone">Customer number <span>(optional)</span></label>
+                <input id="wa-phone" type="tel" inputmode="tel" class="wa-input" value="{{ $shopPhone }}" placeholder="Mobile number" autocomplete="tel">
+            </div>
+            <div class="wa-field wa-message-style" data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport">
+                <label for="wa-message-style">Message style</label>
+                <select id="wa-message-style" class="wa-select">
+                    <option value="premium">Premium Pitch</option>
+                    <option value="quick">Quick Quote</option>
+                    <option value="newdrop">New Arrival</option>
+                    <option value="custom">Custom message</option>
+                </select>
+            </div>
           </header>
         </section>
 
