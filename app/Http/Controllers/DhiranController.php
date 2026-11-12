@@ -497,7 +497,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function payInterest(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
             'amount'         => 'required|numeric|min:1',
@@ -518,7 +517,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function repay(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
             'amount'         => 'required|numeric|min:1',
@@ -539,7 +537,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function releaseItem(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
             'item_id'         => ['required', 'integer', Rule::exists('dhiran_loan_items', 'id')->where('dhiran_loan_id', $loan->id)],
@@ -570,7 +567,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function preClose(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
             'payment_method' => 'nullable|in:cash,upi,card,bank_transfer',
@@ -590,7 +586,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function renew(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
             'tenure_months'         => 'nullable|integer|min:1|max:60',
@@ -617,7 +612,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function close(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         try {
             $this->dhiranService->closeLoan($loan);
@@ -653,7 +647,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function sendNotice(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         try {
             $this->dhiranService->sendForfeitureNotice($loan);
@@ -746,8 +739,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public function forfeit(Request $request, DhiranLoan $loan)
     {
         abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
-        abort_unless($loan->status === 'active', 422, 'Loan is not active.');
-        abort_unless($loan->forfeiture_notice_sent_at !== null, 422, 'Forfeiture notice must be sent first.');
 
         try {
             $this->dhiranService->executeForfeit($loan);

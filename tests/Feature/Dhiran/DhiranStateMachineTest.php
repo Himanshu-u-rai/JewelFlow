@@ -253,6 +253,25 @@ class DhiranStateMachineTest extends TestCase
         }
     }
 
+    // L2. The service decides what a loan allows; a form sent from a stale page comes back to the loan with the reason,
+    // not a bare 422 error page from a second copy of the rule in the controller.
+    public function test_a_stale_form_comes_back_with_the_reason(): void
+    {
+        $loan = $this->loan();
+        $this->in(fn ($svc) => $svc->preCloseLoan($loan->refresh(), 'cash'));
+
+        $forms = [
+            'pay-interest' => ['amount' => 100], 'repay' => ['amount' => 100], 'pre-close' => [], 'renew' => [],
+            'close' => [], 'send-notice' => [], 'forfeit' => [],
+            'release-item' => ['item_id' => $this->in(fn () => $loan->items()->value('id')), 'payment_amount' => 0],
+        ];
+        foreach ($forms as $action => $data) {
+            $this->in(fn () => $this->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/{$action}", $data + ['idempotency_key' => "stale-{$action}"]))
+                ->assertRedirect(route('dhiran.show', $loan))
+                ->assertSessionHas('error', fn ($m) => str_contains($m, 'closed'));
+        }
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();

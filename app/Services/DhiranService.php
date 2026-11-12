@@ -46,11 +46,27 @@ class DhiranService
     {
         $locked = DhiranLoan::lockForUpdate()->findOrFail($loan->id);
         if ($locked->status !== $state) {
-            throw new LogicException("This loan is already {$locked->status}. Reload the page to see it as it is now.");
+            throw new LogicException(self::notActive($locked->status));
         }
         $this->assertOpen((int) $locked->shop_id, today());
 
         return $locked;
+    }
+
+    /** The early check every action makes on the loan it was given (lockActive repeats it on the locked row). */
+    private function assertActive(DhiranLoan $loan): void
+    {
+        if ($loan->status !== 'active') {
+            throw new LogicException(self::notActive($loan->status));
+        }
+    }
+
+    /** One wording for "this loan cannot take that action in its state", wherever the check happens. */
+    private static function notActive(string $status): string
+    {
+        return $status === 'pending_evidence'
+            ? 'This loan is awaiting evidence. Upload the item photo and ID proof, then activate it.'
+            : "This loan is already {$status}. Reload the page to see it as it is now.";
     }
 
     private function assertOpen(int $shopId, mixed $date): void
@@ -652,9 +668,7 @@ class DhiranService
      */
     public function recordPayment(DhiranLoan $loan, float $amount, string $method = 'cash'): DhiranPayment
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Payments can only be recorded against active loans.');
-        }
+        $this->assertActive($loan);
         if ($amount <= 0) {
             throw new LogicException('Payment amount must be greater than zero.');
         }
@@ -771,9 +785,7 @@ class DhiranService
      */
     public function recordInterestPayment(DhiranLoan $loan, float $amount, string $method = 'cash'): DhiranPayment
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Payments can only be recorded against active loans.');
-        }
+        $this->assertActive($loan);
         if ($amount <= 0) {
             throw new LogicException('Payment amount must be greater than zero.');
         }
@@ -904,9 +916,7 @@ class DhiranService
         string $conditionNote
     ): DhiranPayment {
         // ── Validations ──────────────────────────────────────
-        if ($loan->status !== 'active') {
-            throw new LogicException('Items can only be released from active loans.');
-        }
+        $this->assertActive($loan);
         if ((int) $item->dhiran_loan_id !== (int) $loan->id) {
             throw new LogicException('Item does not belong to this loan.');
         }
@@ -1038,9 +1048,7 @@ class DhiranService
      */
     public function preCloseLoan(DhiranLoan $loan, string $method = 'cash'): ?DhiranPayment
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Only active loans can be pre-closed.');
-        }
+        $this->assertActive($loan);
         if (! $loan->canPreClose()) {
             throw new LogicException('Loan cannot be pre-closed during the lock period.');
         }
@@ -1188,9 +1196,7 @@ class DhiranService
 
     public function renewLoan(DhiranLoan $loan, ?int $newTenure = null, ?float $newRate = null, string $method = 'cash'): DhiranLoan
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Only active loans can be renewed.');
-        }
+        $this->assertActive($loan);
 
         // Accrue interest up to today
         $this->accrueInterest($loan);
@@ -1457,9 +1463,7 @@ class DhiranService
      */
     public function closeLoan(DhiranLoan $loan): void
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Only active loans can be closed.');
-        }
+        $this->assertActive($loan);
 
         if ($loan->totalOutstanding() > 0) {
             throw new LogicException(
@@ -1522,7 +1526,7 @@ class DhiranService
         $deadline = $loan->forfeitureDeadline();
 
         throw new LogicException(match (true) {
-            $stage === null => $wanted === 'ready' ? 'Only active loans can be forfeited.' : 'Forfeiture notice can only be sent for active loans.',
+            $stage === null => self::notActive((string) $loan->status),
             $wanted === 'notice_due' && $stage === 'current' => 'Forfeiture notice can only be sent for overdue loans.',
             $wanted === 'notice_due' && $stage === 'grace' => 'Loan is still within the grace period. Cannot send forfeiture notice yet.',
             $wanted === 'notice_due' => 'A forfeiture notice was already sent on ' . $loan->forfeiture_notice_sent_at->format('d M Y') . '.',
