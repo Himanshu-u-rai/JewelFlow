@@ -27,6 +27,21 @@ class DhiranService
      * @param  array  $items   Each item: description, category?, metal_type?, quantity?, gross_weight, stone_weight?, purity, rate_per_gram_at_pledge, photo_path?, huid?
      * @param  array  $params  principal_amount, loan_date?, gold_rate_on_date, silver_rate_on_date?, interest_rate_monthly?, interest_type?, penalty_rate_monthly?, tenure_months?, min_lock_months?, grace_period_days?, min_interest_months?, processing_fee?, processing_fee_type?, kyc_aadhaar?, kyc_pan?, kyc_photo_path?, terms_text?, notes?, payment_method?, created_by?
      */
+    /**
+     * Who is recording a money movement: the signed-in user. The loan's creator only when there is none (console and
+     * scheduled runs). Owner 2026-11-12: payments used to carry the loan's creator, so the cash book named the wrong person.
+     */
+    private function actor(DhiranLoan $loan): ?int
+    {
+        return auth()->id() ?? $loan->created_by;
+    }
+
+    /** Constitution Article I: no Dhiran money row may land in the shop's locked accounting period. */
+    private function assertOpen(int $shopId, mixed $date): void
+    {
+        \App\Services\InvoiceAccountingService::assertShopLockForDate($shopId, Carbon::parse($date)->toDateString());
+    }
+
     public function createLoan(Shop $shop, Customer $customer, array $items, array $params): DhiranLoan
     {
         return DB::transaction(function () use ($shop, $customer, $items, $params): DhiranLoan {
@@ -56,6 +71,7 @@ class DhiranService
             $gracePeriodDays      = (int) ($params['grace_period_days'] ?? $settings->grace_period_days);
             $minInterestMonths    = (int) ($params['min_interest_months'] ?? $settings->default_min_interest_months);
             $loanDate             = Carbon::parse($params['loan_date'] ?? today());
+            $this->assertOpen((int) $shop->id, $loanDate); // a back-dated loan must not land in a closed period
             $goldRateOnDate       = (float) $params['gold_rate_on_date'];
             $silverRateOnDate     = isset($params['silver_rate_on_date']) ? (float) $params['silver_rate_on_date'] : null;
             $paymentMethod        = $params['payment_method'] ?? 'cash';
@@ -427,6 +443,7 @@ class DhiranService
             // concurrent accrual requests cannot both read the same stale
             // `interest_accrued_through` and double-post interest.
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            // ponytail: no period-lock check here; accrual books interest owed, not cash, and runs on every loan view.
 
             // Re-check status under the lock — another process may have
             // closed/renewed/forfeited this loan between the outer guard and
@@ -455,30 +472,30 @@ class DhiranService
             $interestType          = $loan->interest_type;
 
             // ── Interest accrual ─────────────────────────────
-            $interestAccrual = 0.0;
-
-            switch ($interestType) {
-                case 'flat':
-                    // Flat: always on ORIGINAL principal, not outstanding
-                    $monthlyInterest = $principalAmount * $interestRateMonthly / 100;
-                    $interestAccrual = $monthlyInterest / 30 * $days;
-                    break;
-
-                case 'daily':
-                    $interestAccrual = $principalAmount * ($interestRateMonthly / 30) / 100 * $days;
-                    break;
-
-                case 'compound':
-                    // Compound: on outstanding_principal + outstanding_interest
-                    $base = $outstandingPrincipal + $outstandingInterest;
-                    $interestAccrual = $base * $interestRateMonthly / 100 / 30 * $days;
-                    break;
-
-                default:
-                    // Fallback to flat
-                    $monthlyInterest = $principalAmount * $interestRateMonthly / 100;
-                    $interestAccrual = $monthlyInterest / 30 * $days;
-                    break;
+            // Owner 2026-11-12: interest runs on the principal still OWED (it used to stay on the original amount after
+            // part-payments, overcharging). Compound interest compounds at month ends (the loan's monthly anniversary):
+            // between them the base is principal owed + the interest already unpaid at the last month end
+            // (interest_capitalised), so the result no longer depends on how often accrual runs.
+            $perDay = $interestRateMonthly / 100 / 30;
+            if ($interestType === 'compound') {
+                $capitalised = (float) $loan->interest_capitalised;
+                $accrued = 0.0;
+                $cursor = $fromDate->copy();
+                $loanDate = Carbon::parse($loan->loan_date);
+                for ($k = 1; ($monthEnd = $loanDate->copy()->addMonthsNoOverflow($k))->lte($today); $k++) {
+                    if ($monthEnd->lte($cursor)) {
+                        continue;
+                    }
+                    $accrued += ($outstandingPrincipal + $capitalised) * $perDay * $cursor->diffInDays($monthEnd);
+                    $capitalised = $outstandingInterest + $accrued; // everything unpaid at this month end now earns interest
+                    $cursor = $monthEnd;
+                }
+                $accrued += ($outstandingPrincipal + $capitalised) * $perDay * $cursor->diffInDays($today);
+                $loan->interest_capitalised = round($capitalised, 2);
+                $interestAccrual = $accrued;
+            } else {
+                // flat and daily: simple interest on the principal still owed, per day at the monthly rate / 30
+                $interestAccrual = $outstandingPrincipal * $perDay * $days;
             }
 
             $interestAccrual = round($interestAccrual, 2);
@@ -582,6 +599,7 @@ class DhiranService
         return DB::transaction(function () use ($loan, $amount, $method): DhiranPayment {
             // Re-fetch with lock
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             $totalOutstanding = $loan->totalOutstanding();
 
@@ -636,7 +654,7 @@ class DhiranService
                 'outstanding_interest_after' => (float) $loan->outstanding_interest,
                 'outstanding_penalty_after'  => (float) $loan->outstanding_penalty,
                 'notes'                      => "Payment received: {$loan->loan_number}",
-                'created_by'                 => $loan->created_by,
+                'created_by'                 => $this->actor($loan),
             ]);
 
             // ── Cash entry ───────────────────────────────────
@@ -650,7 +668,7 @@ class DhiranService
                 'source_type'        => 'principal_collection',
                 'payment_method'     => $method,
                 'description'        => "Payment: {$loan->loan_number} (P:{$principalComponent} I:{$interestComponent} Pen:{$penaltyComponent})",
-                'created_by'         => $loan->created_by,
+                'created_by'         => $this->actor($loan),
             ]);
 
             // ── Ledger entry ─────────────────────────────────
@@ -665,7 +683,7 @@ class DhiranService
                 'interest_balance_after'  => (float) $loan->outstanding_interest,
                 'penalty_balance_after'   => (float) $loan->outstanding_penalty,
                 'note'                    => "Payment applied: P:{$principalComponent} I:{$interestComponent} Pen:{$penaltyComponent}",
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             // ── Auto-close if fully paid ─────────────────────
@@ -700,6 +718,7 @@ class DhiranService
 
         return DB::transaction(function () use ($loan, $amount, $method): DhiranPayment {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             $maxPayable = round((float) $loan->outstanding_penalty + (float) $loan->outstanding_interest, 2);
 
@@ -741,7 +760,7 @@ class DhiranService
                 'outstanding_interest_after' => (float) $loan->outstanding_interest,
                 'outstanding_penalty_after'  => (float) $loan->outstanding_penalty,
                 'notes'                      => "Interest payment: {$loan->loan_number}",
-                'created_by'                 => $loan->created_by,
+                'created_by'                 => $this->actor($loan),
             ]);
 
             DhiranCashEntry::record([
@@ -754,7 +773,7 @@ class DhiranService
                 'source_type'        => 'interest_collection',
                 'payment_method'     => $method,
                 'description'        => "Interest payment: {$loan->loan_number} (I:{$interestComponent} Pen:{$penaltyComponent})",
-                'created_by'         => $loan->created_by,
+                'created_by'         => $this->actor($loan),
             ]);
 
             DhiranLedgerEntry::record([
@@ -768,7 +787,7 @@ class DhiranService
                 'interest_balance_after'  => (float) $loan->outstanding_interest,
                 'penalty_balance_after'   => (float) $loan->outstanding_penalty,
                 'note'                    => "Interest payment applied: I:{$interestComponent} Pen:{$penaltyComponent}",
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             // ── Auto-close if fully paid ─────────────────────
@@ -841,6 +860,7 @@ class DhiranService
 
         return DB::transaction(function () use ($loan, $item, $paymentAmount, $method, $conditionNote, $actorId): DhiranPayment {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
             $item = DhiranLoanItem::lockForUpdate()->find($item->id);
 
             $required = $this->releaseMinimum($loan, $item);
@@ -899,7 +919,7 @@ class DhiranService
                 'outstanding_interest_after' => (float) $loan->outstanding_interest,
                 'outstanding_penalty_after'  => (float) $loan->outstanding_penalty,
                 'notes'                      => "Item release payment: {$item->description}",
-                'created_by'                 => $loan->created_by,
+                'created_by'                 => $this->actor($loan),
             ]);
 
             DhiranCashEntry::record([
@@ -912,7 +932,7 @@ class DhiranService
                 'source_type'        => 'principal_collection',
                 'payment_method'     => $method,
                 'description'        => "Item release: {$item->description} — {$loan->loan_number}",
-                'created_by'         => $loan->created_by,
+                'created_by'         => $this->actor($loan),
             ]);
 
             DhiranLedgerEntry::record([
@@ -932,7 +952,7 @@ class DhiranService
                     'release_minimum'        => $required,
                     'condition_note'         => $conditionNote,
                 ]),
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             // ── If all items released and zero balance → close
@@ -967,6 +987,7 @@ class DhiranService
 
         return DB::transaction(function () use ($loan, $method): ?DhiranPayment {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             // ── Enforce minimum interest ─────────────────────
             $minimumInterest = $loan->minimumInterestAmount();
@@ -1042,7 +1063,7 @@ class DhiranService
                 'outstanding_interest_after' => 0,
                 'outstanding_penalty_after'  => 0,
                 'notes'                      => "Pre-closure: {$loan->loan_number}",
-                'created_by'                 => $loan->created_by,
+                'created_by'                 => $this->actor($loan),
             ]);
 
             DhiranCashEntry::record([
@@ -1055,7 +1076,7 @@ class DhiranService
                 'source_type'        => 'pre_closure',
                 'payment_method'     => $method,
                 'description'        => "Pre-closure: {$loan->loan_number}",
-                'created_by'         => $loan->created_by,
+                'created_by'         => $this->actor($loan),
             ]);
 
             DhiranLedgerEntry::record([
@@ -1069,7 +1090,7 @@ class DhiranService
                 'interest_balance_after'  => 0,
                 'penalty_balance_after'   => 0,
                 'note'                    => "Pre-closure completed: {$loan->loan_number}",
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             // ── Close the loan ───────────────────────────────
@@ -1114,6 +1135,7 @@ class DhiranService
 
         return DB::transaction(function () use ($loan, $newTenure, $newRate, $method): DhiranLoan {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             // Enforce minimum interest on renewal (same rule as pre-close)
             // so a same-day renewal cannot bypass min_interest_months.
@@ -1177,7 +1199,7 @@ class DhiranService
                     'outstanding_interest_after' => 0,
                     'outstanding_penalty_after'  => 0,
                     'notes'                      => "Interest cleared for renewal: {$loan->loan_number}",
-                    'created_by'                 => $loan->created_by,
+                    'created_by'                 => $this->actor($loan),
                 ]);
 
                 DhiranCashEntry::record([
@@ -1190,7 +1212,7 @@ class DhiranService
                     'source_type'        => 'interest_collection',
                     'payment_method'     => $method,
                     'description'        => "Renewal interest cleared: {$loan->loan_number}",
-                    'created_by'         => $loan->created_by,
+                    'created_by'         => $this->actor($loan),
                 ]);
 
                 DhiranLedgerEntry::record([
@@ -1204,7 +1226,7 @@ class DhiranService
                     'interest_balance_after'  => 0,
                     'penalty_balance_after'   => 0,
                     'note'                    => "Interest+penalty cleared for renewal",
-                    'created_by'              => $loan->created_by,
+                    'created_by'              => $this->actor($loan),
                 ]);
             }
 
@@ -1281,7 +1303,7 @@ class DhiranService
                 'interest_balance_after'  => 0,
                 'penalty_balance_after'   => 0,
                 'note'                    => "Loan renewed: {$loan->loan_number}",
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             // ── Create new loan ──────────────────────────────
@@ -1355,7 +1377,7 @@ class DhiranService
                     'renewed_from_id'     => $loan->id,
                     'renewed_from_number' => $loan->loan_number,
                 ]),
-                'created_by'              => $loan->created_by,
+                'created_by'              => $this->actor($loan),
             ]);
 
             return $newLoan->fresh(['items']);
@@ -1383,6 +1405,7 @@ class DhiranService
 
         DB::transaction(function () use ($loan): void {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
             $this->closeLoanInternal($loan);
         });
     }
@@ -1450,6 +1473,7 @@ class DhiranService
 
         DB::transaction(function () use ($loan): void {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             $settings = DhiranSettings::getForShop($loan->shop_id);
             $rupees = fn ($v) => '₹' . number_format((float) $v, 2);
@@ -1468,6 +1492,8 @@ class DhiranService
 
             $loan->forfeiture_notice_sent_at = now();
             $loan->forfeiture_notice_text    = $noticeText;
+            // The deadline the notice promises; forfeiture waits for it whatever the setting says later.
+            $loan->forfeiture_deadline       = today()->addDays((int) $settings->forfeiture_notice_days)->toDateString();
             $loan->save();
         });
     }
@@ -1489,15 +1515,13 @@ class DhiranService
             throw new LogicException('Forfeiture notice must be sent before executing forfeiture.');
         }
 
-        $settings = DhiranSettings::getForShop($loan->shop_id);
-
-        $noticeSentAt = Carbon::parse($loan->forfeiture_notice_sent_at);
-        $requiredDate = $noticeSentAt->copy()->addDays($settings->forfeiture_notice_days);
+        // The deadline printed on the notice, not today's setting (owner 2026-11-12).
+        $requiredDate = $loan->forfeitureDeadline();
 
         if (today()->lt($requiredDate)) {
             $daysRemaining = (int) today()->diffInDays($requiredDate, false);
             throw new LogicException(
-                "Forfeiture notice period has not elapsed. {$daysRemaining} days remaining (required: {$settings->forfeiture_notice_days} days)."
+                "Forfeiture notice period has not elapsed. {$daysRemaining} days remaining (the notice gives until {$requiredDate->format('d M Y')})."
             );
         }
 
@@ -1505,6 +1529,7 @@ class DhiranService
 
         DB::transaction(function () use ($loan, $actorId): void {
             $loan = DhiranLoan::lockForUpdate()->find($loan->id);
+            $this->assertOpen((int) $loan->shop_id, today());
 
             $writtenOffPrincipal = (float) $loan->outstanding_principal;
             $writtenOffInterest  = (float) $loan->outstanding_interest;

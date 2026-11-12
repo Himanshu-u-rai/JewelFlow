@@ -31,12 +31,13 @@ class DhiranForfeitureCheck extends Command
                 $graceDays = $settings->grace_period_days ?? 30;
                 $noticeDays = $settings->forfeiture_notice_days ?? 30;
 
-                // 1) Active loans past maturity + grace + forfeiture_notice_days with NO notice sent
+                // 1) Active loans past maturity + grace with NO notice sent (a notice is due once grace ends, the same
+                //    rule as DhiranLoan::forfeitureNoticeDue; it used to wait grace + notice days as well)
                 $needNotice = DhiranLoan::where('shop_id', $settings->shop_id)
                     ->where('status', 'active')
                     ->whereNotNull('maturity_date')
                     ->whereNull('forfeiture_notice_sent_at')
-                    ->whereDate('maturity_date', '<', now()->subDays($graceDays + $noticeDays))
+                    ->whereDate('maturity_date', '<', now()->subDays($graceDays))
                     ->with('customer')
                     ->get();
 
@@ -50,7 +51,9 @@ class DhiranForfeitureCheck extends Command
                     ->where('status', 'active')
                     ->whereNotNull('forfeiture_notice_sent_at')
                     ->whereNull('forfeited_at')
-                    ->whereDate('forfeiture_notice_sent_at', '<', now()->subDays($noticeDays))
+                    // the deadline printed on the notice (older notices: sent date + today's setting)
+                    ->where(fn ($q) => $q->whereDate('forfeiture_deadline', '<=', today())
+                        ->orWhere(fn ($w) => $w->whereNull('forfeiture_deadline')->whereDate('forfeiture_notice_sent_at', '<', now()->subDays($noticeDays))))
                     ->with('customer')
                     ->get();
 

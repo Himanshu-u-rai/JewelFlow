@@ -151,22 +151,9 @@
                     </div>
                 </section>
 
-                <section class="dset-section">
-                    <h2 class="dset-section-title"><x-icon name="bell" /> Reminders</h2>
-                    <div class="dset-fields">
-                        <div>
-                            <label class="dset-label" for="ds-sms">Due-date reminders</label>
-                            <select id="ds-sms" name="sms_reminders_enabled" class="dset-select">
-                                <option value="1" @selected((bool) $v('sms_reminders_enabled'))>On</option>
-                                <option value="0" @selected(! (bool) $v('sms_reminders_enabled'))>Off</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="dset-label" for="ds-remind">Remind (days before due)</label>
-                            <input id="ds-remind" type="number" min="1" max="30" name="reminder_days_before_due" class="dset-input" value="{{ $v('reminder_days_before_due') }}">
-                        </div>
-                    </div>
-                </section>
+                {{-- Owner 2026-11-12: no SMS reminder card. Nothing sends SMS yet (the reminder job's send step is a TODO),
+                     so offering "Due-date reminders: On" misled owners. Saving without the field turns the old switch off.
+                     ponytail: bring the card back with a real sender (provider + approved templates). --}}
             </div>
 
             <div class="dset-actions">

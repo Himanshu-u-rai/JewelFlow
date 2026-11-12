@@ -281,9 +281,10 @@ class DhiranFinancialTest extends TestCase
 
         TenantContext::runFor($shop->id, function () use ($loan) {
             $this->service->sendForfeitureNotice($this->freshLoan($loan->id));
-            // Backdate the notice so the (1-day) notice period has fully elapsed.
+            // Backdate the notice so the (1-day) notice period has fully elapsed. Since 2026-11-12 the notice stores
+            // its own deadline, so that moves back too.
             DhiranLoan::withoutGlobalScope('shop')->where('id', $loan->id)
-                ->update(['forfeiture_notice_sent_at' => now()->subDays(2)]);
+                ->update(['forfeiture_notice_sent_at' => now()->subDays(2), 'forfeiture_deadline' => today()->subDay()->toDateString()]);
             $this->service->executeForfeit($this->freshLoan($loan->id));
         });
 

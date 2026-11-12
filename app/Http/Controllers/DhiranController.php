@@ -297,7 +297,9 @@ class DhiranController extends Controller
             'silver_rate_on_date'      => ($needsSilver ? 'required' : 'nullable') . '|numeric|min:0',
             'interest_rate_monthly'    => 'nullable|numeric|min:0|max:10',
             'interest_type'            => 'nullable|in:flat,daily,compound',
-            'loan_date'                => 'nullable|date',
+            // No future dates; back-dating (entering existing paper loans) stays allowed, but the service refuses any
+            // date inside the shop's locked accounting period (owner 2026-11-12).
+            'loan_date'                => 'nullable|date|before_or_equal:today',
             'tenure_months'            => 'nullable|integer|min:1|max:60',
             'min_lock_months'          => 'nullable|integer|min:0|max:60',
             'grace_period_days'        => 'nullable|integer|min:0|max:90',

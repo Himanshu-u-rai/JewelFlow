@@ -46,13 +46,14 @@ class DhiranSettingsLayoutTest extends TestCase
         $board = substr($html, strpos($html, 'data-settings-board'));
         preg_match_all('/<section class="dset-section"[^>]*>\s*<h2 class="dset-section-title">.*?<\/svg>\s*([^<]+)</s', $board, $m);
         $this->assertSame(
-            ['Interest', 'Loan value (LTV)', 'Loan limits and fee', 'Tenure and forfeiture', 'Loan numbers and printouts', 'Reminders'],
+            // 2026-11-12: the Reminders card is gone until something actually sends reminders.
+            ['Interest', 'Loan value (LTV)', 'Loan limits and fee', 'Tenure and forfeiture', 'Loan numbers and printouts'],
             array_map('trim', $m[1]),
-            'six cards in pairs: Interest | LTV, Limits | Tenure, Printouts | Reminders'
+            'cards in pairs: Interest | LTV, Limits | Tenure, then Printouts'
         );
-        $this->assertSame(6, substr_count($board, 'class="dset-fields"'), 'each card lays its fields out two to a row');
+        $this->assertSame(5, substr_count($board, 'class="dset-fields"'), 'each card lays its fields out two to a row');
         $this->assertStringNotContainsString('max-w-3xl', $html, 'no narrow single column');
-        foreach (['default_interest_rate_monthly', 'default_ltv_ratio', 'high_value_threshold', 'processing_fee_value', 'grace_period_days', 'receipt_terms_text', 'reminder_days_before_due'] as $field) {
+        foreach (['default_interest_rate_monthly', 'default_ltv_ratio', 'high_value_threshold', 'processing_fee_value', 'grace_period_days', 'receipt_terms_text'] as $field) {
             $this->assertStringContainsString('name="' . $field . '"', $board, "still saves {$field}");
         }
     }

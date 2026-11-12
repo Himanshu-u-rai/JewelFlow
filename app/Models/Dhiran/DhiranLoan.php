@@ -55,6 +55,8 @@ class DhiranLoan extends Model
         'forfeited_by',
         'forfeiture_notice_sent_at',
         'forfeiture_notice_text',
+        'forfeiture_deadline',
+        'interest_capitalised',
         'created_by',
     ];
 
@@ -65,6 +67,7 @@ class DhiranLoan extends Model
         'closed_at'                 => 'datetime',
         'forfeited_at'              => 'datetime',
         'forfeiture_notice_sent_at' => 'datetime',
+        'forfeiture_deadline'       => 'date',
         'gold_rate_on_date'         => 'decimal:4',
         'silver_rate_on_date'       => 'decimal:4',
         'principal_amount'          => 'decimal:2',
@@ -237,10 +240,35 @@ class DhiranLoan extends Model
             return false;
         }
 
-        $noticeDays   = (int) (\App\Models\Dhiran\DhiranSettings::getForShop($this->shop_id)->forfeiture_notice_days ?? 0);
-        $requiredDate = \Illuminate\Support\Carbon::parse($this->forfeiture_notice_sent_at)->copy()->addDays($noticeDays);
+        return ! today()->lt($this->forfeitureDeadline());
+    }
 
-        return ! today()->lt($requiredDate);
+    /**
+     * The date printed on the forfeiture notice (owner 2026-11-12): forfeiture waits for it even if the shop's notice
+     * period setting changes after the notice went out. Notices sent before the column existed fall back to the setting.
+     */
+    public function forfeitureDeadline(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->forfeiture_deadline) {
+            return \Illuminate\Support\Carbon::parse($this->forfeiture_deadline)->startOfDay();
+        }
+        if (! $this->forfeiture_notice_sent_at) {
+            return null;
+        }
+        $noticeDays = (int) (\App\Models\Dhiran\DhiranSettings::getForShop($this->shop_id)->forfeiture_notice_days ?? 0);
+
+        return \Illuminate\Support\Carbon::parse($this->forfeiture_notice_sent_at)->startOfDay()->addDays($noticeDays);
+    }
+
+    protected static function booted(): void
+    {
+        // Compound monthly rest: the capitalised (month-end unpaid) interest can never exceed the interest still owed.
+        // One rule here covers every path that reduces interest (payments, releases, pre-close, renewal, forfeiture).
+        static::saving(function (self $loan) {
+            if ((float) $loan->interest_capitalised > (float) $loan->outstanding_interest) {
+                $loan->interest_capitalised = max(0, (float) $loan->outstanding_interest);
+            }
+        });
     }
 
     /* ── Route Model Binding (tenant-scoped) ──────────── */
