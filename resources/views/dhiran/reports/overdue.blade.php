@@ -15,7 +15,7 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.overdue')"
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.reports.overdue')"
             :fields="['search', 'metal', 'amount', 'overdue']" />
         <turbo-frame id="dh-results" target="_top">
         {{-- Summary Cards --}}

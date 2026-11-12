@@ -50,10 +50,14 @@ class CategoryPageRevisitTest extends TestCase
         $script = $this->pageScript();
 
         // One listener per kind, however many times the page is visited.
-        foreach (['turbo:load', 'keydown', 'turbo:submit-start'] as $event) {
+        foreach (['turbo:load', 'turbo:before-cache', 'turbo:submit-start'] as $event) {
             $this->assertSame(1, substr_count($script, "document.addEventListener('{$event}'"), "{$event}: added once per run");
             $this->assertSame(1, substr_count($script, "document.removeEventListener('{$event}'"), "{$event}: the previous run's listener is not removed first");
         }
+        // The popups are native modal dialogs (F03): Escape closes them by itself, so no page keydown listener is
+        // added any more, and the one an older visit left behind is removed.
+        $this->assertSame(0, substr_count($script, "document.addEventListener('keydown'"));
+        $this->assertSame(1, substr_count($script, "document.removeEventListener('keydown'"));
     }
 
     public function test_a_rejected_save_reopens_its_modal_once_per_response(): void
@@ -98,7 +102,8 @@ class CategoryPageRevisitTest extends TestCase
             ->assertOk()->getContent());
 
         $this->assertStringContainsString('<meta name="flash-success" content="Category created successfully!">', $html);
-        $this->assertMatchesRegularExpression('~<div id="addCategoryModal" class="[^"]*\bhidden\b~', $html);
+        // A native dialog (F03) is closed unless it carries the open attribute.
+        $this->assertMatchesRegularExpression('~<dialog id="addCategoryModal"(?![^>]*\bopen\b)[^>]*>~', $html);
         $this->assertMatchesRegularExpression('~<input type="text" name="name" id="addCategoryName" value=""~', $html);
         $this->assertDoesNotMatchRegularExpression("/page\.dataset\.intentShown = '1';\s*openAddCategoryModal\(\);/", $html);
     }

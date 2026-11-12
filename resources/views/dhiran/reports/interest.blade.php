@@ -16,7 +16,7 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.interest')" default-period="this_month"
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.reports.interest')" default-period="this_month"
             period-label="Paid in" :fields="['search', 'period']" />
         <turbo-frame id="dh-results" target="_top">
 

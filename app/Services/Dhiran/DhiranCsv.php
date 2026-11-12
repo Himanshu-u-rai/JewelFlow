@@ -16,9 +16,9 @@ final class DhiranCsv
         return response()->streamDownload(function () use ($headers, $rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, $headers);
+            \App\Support\Csv::put($out, $headers); // the app's one CSV writer (explicit escape; PHP 8.4-safe)
             foreach ($rows as $row) {
-                fputcsv($out, array_map([self::class, 'cell'], $row));
+                \App\Support\Csv::put($out, array_map([self::class, 'cell'], $row));
             }
             fclose($out);
         }, 'dhiran-' . $name . '.csv', [

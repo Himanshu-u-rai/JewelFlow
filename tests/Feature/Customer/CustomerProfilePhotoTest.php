@@ -223,7 +223,12 @@ class CustomerProfilePhotoTest extends TestCase
         $user->forceFill(['email_verified_at' => null])->save();
         $this->actingAs($user->fresh())->getJson($first->json('photo.url'))->assertStatus(409)->assertJsonPath('message', 'Verify your email to continue.');
         $user->forceFill(['email_verified_at' => now()])->save();
+        // Plan ended (owner 2026-11-12, collect-only): the books stay readable, new uploads wait for renewal.
         $shop->editions()->delete();
+        $this->actingAs($user->fresh())->get($first->json('photo.url'))->assertOk();
+        $this->upload($user->fresh(), $customer, $first->json('photo.version'), true)->assertRedirect(route('dhiran.dashboard'));
+        // Dhiran never set up for the shop: kept out entirely.
+        \Illuminate\Support\Facades\DB::table('dhiran_settings')->where('shop_id', $shop->id)->update(['is_enabled' => \Illuminate\Support\Facades\DB::raw('false')]);
         $this->actingAs($user->fresh())->get($first->json('photo.url'))->assertRedirect();
         Storage::disk('local')->assertExists($this->row($customer)->file_path);
     }

@@ -24,7 +24,7 @@
 
     <div class="content-inner" data-list-workspace>
         {{-- Loans given in this period (the controller always took a range; the page had no way to set it). --}}
-        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.profitability')" default-period="this_month"
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.reports.profitability')" default-period="this_month"
             period-label="Loans given in" :fields="['search', 'period', 'status', 'metal', 'amount']" />
         <turbo-frame id="dh-results" target="_top">
 

@@ -22,7 +22,7 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.cashbook')" default-period="this_month"
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.reports.cashbook')" default-period="this_month"
             :fields="['period', 'cash']" />
 
         {{-- Summary Cards --}}

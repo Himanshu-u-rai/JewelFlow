@@ -66,6 +66,8 @@ class NoDeadEndLinksTest extends TestCase
     {
         [$owner] = [User::query()->where('shop_id', $this->shop->id)->orderBy('id')->firstOrFail()];
         $html = TenantContext::runFor($this->shop->id, fn () => $this->actingAs($owner)->get('/dashboard'))->assertOk()->getContent();
+        // Karigars live in the Masters hub since 3621a512 (no sidebar link of their own): one click from the menu.
+        $html .= TenantContext::runFor($this->shop->id, fn () => $this->actingAs($owner)->get('/masters'))->assertOk()->getContent();
 
         foreach (['/pos', '/customers', '/invoices', '/returns', '/schemes', '/catalog', '/inventory/items',
             '/inventory/purchases', '/vault', '/karigars', '/job-orders', '/karigar-invoices', '/repairs', '/reports',

@@ -40,12 +40,16 @@ class TableConsistencyUiTest extends TestCase
         $loan->id = 123;
         $loan->setRelation('customer', new Customer(['first_name' => 'Table', 'last_name' => 'Example']));
         $loan->setRelation('items', collect([new DhiranLoanItem(), new DhiranLoanItem()]));
+        $loan->items_count = 2; // the report reads the controller's withCount('items')
         $loans = new LengthAwarePaginator($populated ? [$loan] : [], $populated ? $total : 0, 20, 1, [
             'path' => url('/dhiran/reports/forfeiture'),
         ]);
         $html = TenantContext::runFor($shop->id, function () use ($loans) {
             view()->share('errors', new ViewErrorBag());
-            return view('dhiran.reports.forfeiture', compact('loans'))->render();
+            // The controller always passes the period filters and the report totals (Dhiran reports, 2026-11).
+            $totals = ['count' => $loans->total(), 'principal' => 0, 'outstanding' => 0, 'items' => 0];
+
+            return view('dhiran.reports.forfeiture', compact('loans', 'totals'))->render();
         });
         $dom = new \DOMDocument();
         $previous = libxml_use_internal_errors(true);
@@ -60,20 +64,22 @@ class TableConsistencyUiTest extends TestCase
     {
         $xp = $this->forfeitureReport(true);
         $this->assertSame(1, $xp->query('//div[contains(@class,"jf-table-wrap")]/table[contains(@class,"jf-table")]')->length);
-        foreach ([3, 4] as $column) {
+        // Columns: row number, Loan #, Customer, Mobile (Dhiran tables, 2026-11), then Principal and Written Off.
+        foreach ([5, 6] as $column) {
             $this->assertSame(1, $xp->query('//table/thead/tr/th['.$column.'][contains(@class,"text-right")]')->length);
             $this->assertSame(1, $xp->query('//table/tbody/tr/td['.$column.'][contains(@class,"text-right")]')->length);
         }
-        $this->assertSame('12,345.67', trim($xp->query('//table/tbody/tr/td[3]')->item(0)->textContent));
-        $this->assertSame('12,350.67', trim($xp->query('//table/tbody/tr/td[4]')->item(0)->textContent));
-        $this->assertSame('2', trim($xp->query('//table/tbody/tr/td[5][contains(@class,"text-center")]')->item(0)->textContent));
+        $this->assertSame('12,345.67', trim($xp->query('//table/tbody/tr/td[5]')->item(0)->textContent));
+        $this->assertSame('12,350.67', trim($xp->query('//table/tbody/tr/td[6]')->item(0)->textContent));
+        $this->assertSame('2', trim($xp->query('//table/tbody/tr/td[7][contains(@class,"text-center")]')->item(0)->textContent));
         $this->assertSame(1, $xp->query('//table/tbody/tr/td/a[contains(@href,"/dhiran/loans/123")]')->length);
     }
 
     public function test_forfeiture_empty_state_uses_shared_seven_column_cell(): void
     {
         $xp = $this->forfeitureReport(false);
-        $this->assertSame(1, $xp->query('//td[@colspan="7" and contains(@class,"jf-table-empty") and normalize-space(.)="No forfeited loans found"]')->length);
+        // Nine columns now: row number and Mobile were added to the Dhiran tables (2026-11).
+        $this->assertSame(1, $xp->query('//td[@colspan="9" and contains(@class,"jf-table-empty") and normalize-space(.)="No forfeited loans found"]')->length);
     }
 
     public function test_forfeiture_exposes_existing_server_pagination_when_more_rows_exist(): void
@@ -216,7 +222,7 @@ class TableConsistencyUiTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
         $customer = $this->createCustomer($shop->id);
         TenantContext::runFor($shop->id, function () use ($customer) {
-            for ($i = 1; $i <= 26; $i++) {
+            for ($i = 1; $i <= 46; $i++) { // fifteen per page since 20993277: pages 15, 15, 15, 1
                 (new Repair())->forceFill([
                     'customer_id' => $customer->id, 'item_description' => 'IndexReview '.$i,
                     'gross_weight' => 5, 'metal_type' => 'gold', 'status' => 'received',
@@ -228,14 +234,15 @@ class TableConsistencyUiTest extends TestCase
             ->get('/repairs?search=IndexReview&page=2'))->assertOk()->getContent();
         $xp = $this->xpath($html);
         $this->assertSame(8, $xp->query('//table/thead/tr/th')->length);
-        $this->assertSame(10, $xp->query('//tbody[@id="repairsTbody"]/tr[@data-search]')->length);
-        $this->assertSame('11', trim($xp->query('//tbody[@id="repairsTbody"]/tr[@data-search]/td[1]')->item(0)->textContent));
-        $this->assertSame(2, $xp->query('//*[@data-repair-index="11"]')->length, 'desktop and phone use the paginator offset');
-        $this->assertSame(10, $xp->query('//tr[@data-search and not(@onclick) and not(@role)]//a[contains(@class,"repairs-row-view")]')->length);
+        $this->assertSame(15, $xp->query('//tbody[@id="repairsTbody"]/tr[@data-search]')->length);
+        $this->assertSame('16', trim($xp->query('//tbody[@id="repairsTbody"]/tr[@data-search]/td[1]')->item(0)->textContent));
+        $this->assertSame(2, $xp->query('//*[@data-repair-index="16"]')->length, 'desktop and phone use the paginator offset');
+        $this->assertSame(15, $xp->query('//tr[@data-search and not(@onclick) and not(@role)]//a[contains(@class,"repairs-row-view")]')->length);
         $this->assertSame(1, $xp->query('//form[contains(@class,"repairs-register-search") and @method="GET"]//input[@name="search" and @value="IndexReview"]')->length);
         $this->assertGreaterThan(0, $xp->query('//nav//a[contains(@href,"search=IndexReview") and contains(@href,"page=3")]')->length);
         $this->assertSame(0, $xp->query('//div[contains(@class,"repairs-data-table-shell") and contains(@style,"height:")]')->length);
-        $this->assertStringContainsString('scrollbar-width: thin;', $html);
+        // Thin scrollbars come from the shared retail rule since 16ab15da (no longer inline on this page).
+        $this->assertStringContainsString('scrollbar-width: thin;', file_get_contents(resource_path('css/retail-scrollbars.css')));
         $this->assertSame(1, $xp->query('//tr[@id="repairsNoMatchRow"]/td[@colspan="8"]')->length);
 
         $json = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)

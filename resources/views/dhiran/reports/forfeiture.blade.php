@@ -15,7 +15,7 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
-        <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.forfeiture')" period-label="Forfeited in"
+        <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.reports.forfeiture')" period-label="Forfeited in"
             :fields="['search', 'period', 'metal', 'amount']" />
         <turbo-frame id="dh-results" target="_top">
         {{-- Table --}}
