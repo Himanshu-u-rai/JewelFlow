@@ -312,8 +312,9 @@ class DhiranFinancialTest extends TestCase
         $disbursements = \App\Models\Dhiran\DhiranCashEntry::withoutGlobalScope('shop')
             ->where('shop_id', $shop->id)->where('type', 'out')->count();
         $this->assertSame(1, $disbursements, 'Renewal must not re-disburse principal.');
-        // The new loan carries the old loan's principal (no duplicate disbursement).
-        $this->assertSame((float) $old->outstanding_principal, (float) $renewed->principal_amount);
+        // The new loan carries the old loan's principal (no duplicate disbursement); the old loan no longer owes it.
+        $this->assertSame((float) $loan->outstanding_principal, (float) $renewed->principal_amount);
+        $this->assertSame(0.0, (float) $old->outstanding_principal);
         $this->assertGreaterThan(0, (float) $renewed->outstanding_principal);
     }
 

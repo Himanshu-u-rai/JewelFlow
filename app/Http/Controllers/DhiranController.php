@@ -84,7 +84,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
 
         // Owner 2026-11-11: the figures a lender runs the day on. Overdue and due-soon counts use the Loans list's own
         // filters, so each figure's number matches the list its link opens.
-        $open = ['active', 'pending_evidence'];
+        $open = DhiranLoan::OPEN;
         $owedSql = 'coalesce(sum(coalesce(outstanding_principal, 0) + coalesce(outstanding_interest, 0) + coalesce(outstanding_penalty, 0)), 0)';
         $openSums = DhiranLoan::where('shop_id', $shopId)->whereIn('status', $open)->toBase()
             ->selectRaw("count(*) as n, coalesce(sum(outstanding_principal), 0) as principal, {$owedSql} as owed")->first();
@@ -806,7 +806,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         $shopId = (int) auth()->user()->shop_id;
 
         // Everyone this shop has saved (owner decision 2026-11-08), filtered by where their loans stand.
-        $open = ['active', 'pending_evidence'];
+        $open = DhiranLoan::OPEN;
         $tabs = [
             'active' => fn ($q) => $q->whereHas('dhiranLoans', fn ($l) => $l->whereIn('status', $open)),
             'paid'   => fn ($q) => $q->whereHas('dhiranLoans', fn ($l) => $l->where('status', 'closed'))
@@ -846,7 +846,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         $outstanding = [];
         foreach ($borrowers as $b) {
             $outstanding[$b->id] = (float) DhiranLoan::where('customer_id', $b->id)
-                ->whereIn('status', ['active', 'pending_evidence'])
+                ->whereIn('status', DhiranLoan::OPEN)
                 ->sum(DB::raw('outstanding_principal + outstanding_interest + outstanding_penalty'));
         }
 
@@ -896,8 +896,9 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             'closed'          => $loans->where('status', 'closed')->count(),
             'renewed'         => $loans->where('status', 'renewed')->count(),
             'forfeited'       => $loans->where('status', 'forfeited')->count(),
-            'principal_outstanding' => (float) $loans->sum(fn ($l) => (float) $l->outstanding_principal),
-            'interest_outstanding'  => (float) $loans->sum(fn ($l) => (float) $l->outstanding_interest),
+            // Only open loans owe anything; a loan renewed before 2026-11-12 still carries its moved principal.
+            'principal_outstanding' => (float) $loans->whereIn('status', DhiranLoan::OPEN)->sum(fn ($l) => (float) $l->outstanding_principal),
+            'interest_outstanding'  => (float) $loans->whereIn('status', DhiranLoan::OPEN)->sum(fn ($l) => (float) $l->outstanding_interest),
             'total_collected'       => (float) $loans->sum(fn ($l) => (float) $l->total_principal_collected + (float) $l->total_interest_collected),
         ];
 
@@ -1081,7 +1082,8 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     {
         $row = (clone $query)->reorder()->toBase()->selectRaw(
             'count(*) as count, coalesce(sum(principal_amount), 0) as principal,'
-            . ' coalesce(sum(coalesce(outstanding_principal, 0) + coalesce(outstanding_interest, 0) + coalesce(outstanding_penalty, 0)), 0) as outstanding,'
+            // Only open loans owe anything (DhiranLoan::OPEN; a pre-fix renewed loan still carries moved principal).
+            . " coalesce(sum(case when status in ('pending_evidence', 'active') then coalesce(outstanding_principal, 0) + coalesce(outstanding_interest, 0) + coalesce(outstanding_penalty, 0) end), 0) as outstanding,"
             . ' coalesce(sum(total_interest_collected), 0) as interest, coalesce(sum(total_penalty_collected), 0) as penalty,'
             . ' coalesce(sum(processing_fee), 0) as fees'
         )->first();

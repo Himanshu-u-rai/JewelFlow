@@ -1299,6 +1299,9 @@ class DhiranService
 
             // ── Mark old loan as renewed ─────────────────────
             $loan->status        = 'renewed';
+            // The principal moves to the new loan (its ledger row below already says balance 0); leaving it here
+            // counted it twice wherever loans are summed.
+            $loan->outstanding_principal = 0;
             $loan->renewed_count = (int) $loan->renewed_count + 1;
             $loan->closed_at     = now();
             $loan->closure_notes = 'Renewed';

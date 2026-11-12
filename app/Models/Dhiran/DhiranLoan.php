@@ -13,6 +13,9 @@ class DhiranLoan extends Model
 {
     use BelongsToShop;
 
+    /** Loans that still owe money (the rest are finished: closed, renewed into a new loan, or forfeited). */
+    public const OPEN = ['pending_evidence', 'active'];
+
     protected $fillable = [
         'shop_id',
         'customer_id',
@@ -141,6 +144,11 @@ class DhiranLoan extends Model
 
     public function totalOutstanding(): float
     {
+        // A finished loan owes nothing (a loan renewed before 2026-11-12 still carries the principal it handed on).
+        if (! in_array($this->status, self::OPEN, true)) {
+            return 0.0;
+        }
+
         return round(
             (float) $this->outstanding_principal
             + (float) $this->outstanding_interest

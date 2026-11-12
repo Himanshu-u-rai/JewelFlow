@@ -105,6 +105,28 @@ class DhiranStateMachineTest extends TestCase
         }
     }
 
+    // H2. A renewed loan owes nothing (its balance moved to the new loan), its page says where its items went, and the
+    // borrower's totals count the principal once, also for loans renewed before this fix.
+    public function test_a_renewed_loan_owes_nothing_and_is_counted_once(): void
+    {
+        $old = $this->loan();
+        $new = $this->in(fn ($svc) => $svc->renewLoan($old->refresh(), null, null, 'cash'));
+
+        $this->assertSame('renewed', $old->refresh()->status);
+        $this->assertSame(0.0, (float) $old->outstanding_principal, 'the balance moved to the new loan');
+        $this->assertSame(100000.0, (float) $new->outstanding_principal);
+
+        $old->forceFill(['outstanding_principal' => 100000])->saveQuietly(); // a loan renewed before this fix
+        $summary = $this->in(fn () => $this->get("https://dhiran.jewelflows.com/dhiran/borrowers/{$this->customer->id}")->assertOk()->viewData('summary'));
+        $this->assertSame(100000.0, (float) $summary['principal_outstanding'], 'principal counted once, not on the renewed loan too');
+        $this->assertSame(0.0, $old->refresh()->totalOutstanding(), 'a finished loan owes nothing, whatever an old row says');
+        $totals = $this->in(fn () => $this->get('https://dhiran.jewelflows.com/dhiran/reports/profitability')->assertOk()->viewData('totals'));
+        $this->assertSame(100000.0, round($totals['outstanding'], 2), 'report totals count the moved principal once');
+
+        $page = $this->in(fn () => $this->get("https://dhiran.jewelflows.com/dhiran/loans/{$old->id}")->getContent());
+        $this->assertStringContainsString("Items moved to {$new->loan_number}", $page);
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();

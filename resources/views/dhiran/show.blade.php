@@ -285,7 +285,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="jf-table-empty">No items recorded</td>
+                                <td colspan="11" class="jf-table-empty">
+                                    @if($loan->status === 'renewed' && $loan->renewals->isNotEmpty())
+                                        Items moved to {{ $loan->renewals->first()->loan_number }} with the renewal.
+                                    @else
+                                        No items recorded
+                                    @endif
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
