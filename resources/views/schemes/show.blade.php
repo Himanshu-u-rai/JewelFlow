@@ -221,6 +221,7 @@
                                 <table class="schemes-enrollments-table jf-table">
                                     <thead>
                                         <tr>
+                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                             <th>Customer</th>
                                             <th class="text-right">Monthly</th>
                                             <th class="text-center">Paid</th>
@@ -232,6 +233,7 @@
                                     <tbody>
                                         @foreach($enrollments as $enrollment)
                                             <tr>
+                                                <td class="jf-table-index">{{ ($enrollments->firstItem() ?? 1) + $loop->index }}</td>
                                                 <td>
                                                     <strong>{{ $enrollment->customer->name ?? 'Unknown' }}</strong>
                                                     <span>{{ \App\Support\Mobile::forDisplay($enrollment->customer?->mobile) ?: 'No mobile' }}</span>
@@ -255,7 +257,7 @@
                                 @foreach($enrollments as $enrollment)
                                     <article class="schemes-enrollment-mobile-card">
                                         <div>
-                                            <strong>{{ $enrollment->customer->name ?? 'Unknown' }}</strong>
+                                            <strong><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ ($enrollments->firstItem() ?? 1) + $loop->index }}</span>{{ $enrollment->customer->name ?? 'Unknown' }}</strong>
                                             <span>{{ \App\Support\Mobile::forDisplay($enrollment->customer?->mobile) ?: 'No mobile' }}</span>
                                         </div>
                                         <span class="schemes-enrollment-status schemes-enrollment-status--{{ $enrollment->status }}">{{ ucfirst($enrollment->status) }}</span>

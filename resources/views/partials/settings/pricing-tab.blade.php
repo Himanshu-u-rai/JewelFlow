@@ -906,6 +906,7 @@
 <div class="section-divider"></div>
 <div class="section-label">{{ __('Today\'s Resolved Rates') }}</div>
 @if($todayRate)
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
@@ -920,6 +921,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($pricingData['resolved_rates'] as $row)
+                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                         @php
                             $profile = $row['profile'];
                             $currentRate = $row['current_rate'];
@@ -976,6 +978,7 @@
         {{ __('No legacy items need pricing review right now.') }}
     </div>
 @else
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
@@ -987,6 +990,7 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Purity') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Assign Metal') }}</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Resolve') }}</th>
+                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -1079,6 +1083,7 @@
             <p class="text-xs text-gray-500">
                 {{ __('One day per page — use the arrows below to see other days.') }}
             </p>
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
         </div>
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
@@ -1128,6 +1133,7 @@
                             $rawPurity = is_numeric($historyRow->purity_value ?? null)
                                 ? (float) $historyRow->purity_value
                                 : (float) ($historyRow->purity ?? 0);
+                            <td class="jf-table-index">{{ ($historyRows->firstItem() ?? 1) + $loop->index }}</td>
                             $purityText = rtrim(rtrim(number_format($rawPurity, 3, '.', ''), '0'), '.');
                             $fallbackPurityLabel = $historyRow->metal_type === 'gold' ? $purityText . 'K' : $purityText;
                             $purityLabel = $historyRow->profile_label ?: $fallbackPurityLabel;

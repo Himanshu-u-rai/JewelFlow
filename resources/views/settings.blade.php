@@ -4602,6 +4602,7 @@
                     {{-- Pending removal requests --}}
                     @if($pendingRemove->isNotEmpty())
                         <section>
+                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Waiting to be turned off') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
                                 <table class="w-full text-sm jf-table">
@@ -4610,6 +4611,7 @@
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Service') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Asked on') }}</th>
                                             <th class="px-5 py-2.5 text-right"></th>
+                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
@@ -4636,6 +4638,7 @@
                     {{-- Recent activity --}}
                     @if($history->isNotEmpty())
                         <section>
+                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Recent activity') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
                                 <table class="w-full text-sm jf-table">
@@ -4645,6 +4648,7 @@
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Result') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('On') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Notes') }}</th>
+                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
@@ -4940,6 +4944,7 @@
                                     </div>
                                 </div>
 
+                                                    <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <div class="sub-billing-card">
                                     <div class="sub-billing-table-wrap">
                                         <table class="sub-billing-table jf-table">
@@ -4953,6 +4958,7 @@
                                                     <th class="text-left">Date</th>
                                                     <th class="text-left">Status</th>
                                                     <th class="text-right"></th>
+                                                        <td class="jf-table-index" data-label="#">{{ ($invoices->firstItem() ?? 1) + $loop->index }}</td>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -4981,7 +4987,7 @@
                                                     </tr>
                                                 @empty
                                                     <tr>
-                                                        <td colspan="8" class="sub-billing-empty">
+                                                        <td colspan="9" class="sub-billing-empty">
                                                             No bills yet. Bills appear here after each subscription payment.
                                                         </td>
                                                     </tr>

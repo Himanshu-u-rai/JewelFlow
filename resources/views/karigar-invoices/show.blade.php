@@ -784,6 +784,7 @@
                             <table class="ki-show-lines-table jf-table">
                                 <thead>
                                     <tr>
+                                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                         <th>Description</th>
                                         <th>HSN</th>
                                         <th class="ki-show-text-right">Pcs</th>
@@ -801,6 +802,7 @@
                                 <tbody>
                                     @foreach($invoice->lines as $line)
                                         <tr>
+                                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                                             <td>
                                                 <div class="ki-show-line-title">{{ $line->description }}</div>
                                             </td>
@@ -826,7 +828,7 @@
                                 <article class="ki-show-line-card">
                                     <div class="ki-show-line-card-head">
                                         <div>
-                                            <div class="ki-show-line-title">{{ $line->description }}</div>
+                                            <div class="ki-show-line-title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loop->iteration }}</span>{{ $line->description }}</div>
                                             <div class="ki-show-line-meta">{{ $line->hsn_code }}</div>
                                         </div>
                                         <div class="ki-show-card-value ki-show-mono">₹{{ number_format($line->line_total, 2) }}</div>
@@ -936,6 +938,7 @@
                         <table class="ki-show-payments-table jf-table">
                             <thead>
                                 <tr>
+                                    <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                     <th>Date</th>
                                     <th>Mode</th>
                                     <th>Account</th>
@@ -947,6 +950,7 @@
                             <tbody>
                                 @foreach($invoice->payments as $pay)
                                     <tr>
+                                        <td class="jf-table-index">{{ $loop->iteration }}</td>
                                         <td>{{ $pay->paid_on->format('d M Y') }}</td>
                                         <td class="ki-show-mono">{{ strtoupper($pay->mode) }}</td>
                                         <td>{{ $pay->paymentMethod?->name ?? '—' }}</td>
@@ -978,7 +982,7 @@
                             <article class="ki-show-payment-card">
                                 <div class="ki-show-payment-card-head">
                                     <div>
-                                        <div class="ki-show-line-title">{{ strtoupper($pay->mode) }}</div>
+                                        <div class="ki-show-line-title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ $loop->iteration }}</span>{{ strtoupper($pay->mode) }}</div>
                                         <div class="ki-show-line-meta">{{ $pay->paid_on->format('d M Y') }}</div>
                                     </div>
                                     <div class="ki-show-card-value ki-show-mono">₹{{ number_format($pay->amount, 2) }}</div>

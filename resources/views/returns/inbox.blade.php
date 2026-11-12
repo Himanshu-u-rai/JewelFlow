@@ -1731,6 +1731,7 @@
                         <table class="ri-table customers-data-table returns-data-table jf-table">
                             <thead>
                                 <tr>
+                                    <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                     <th>Credit Note</th>
                                     <th>Original Invoice</th>
                                     <th>Customer</th>
@@ -1750,6 +1751,7 @@
                                         $tone = $statusTone($ro->status);
                                     @endphp
                                     <tr>
+                                        <td class="jf-table-index">{{ ($returnOrders->firstItem() ?? 1) + $loop->index }}</td>
                                         <td>
                                             @if($cn)
                                                 <span class="ri-cn-number">{{ $cn->credit_note_number }}</span>
@@ -1828,7 +1830,7 @@
                                     <div class="customers-mobile-card__identity">
                                         <span class="customers-mobile-avatar">{{ $mobileInitials }}</span>
                                         <div>
-                                            <span class="ri-cn-number customers-mobile-card__title">{{ $cn?->credit_note_number ?? 'Pending' }}</span>
+                                            <span class="ri-cn-number customers-mobile-card__title"><span class="jf-row-number"><span class="jf-sr-only">Row </span>#{{ ($returnOrders->firstItem() ?? 1) + $loop->index }}</span>{{ $cn?->credit_note_number ?? 'Pending' }}</span>
                                             <span class="ri-cell-sub customers-mobile-card__sub">{{ $cn?->issued_at?->format('d M Y') ?? 'Not issued yet' }}</span>
                                         </div>
                                     </div>
