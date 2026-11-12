@@ -32,17 +32,15 @@
                     @error('email')<p class="vendor-field-error">{{ $message }}</p>@enderror
                 </div>
             </div>
-            <div class="vendor-location-grid">
-                <div>
-                    <label for="vendor-city">City</label>
-                    <input id="vendor-city" class="vendor-field-input" type="text" name="city" value="{{ old('city', $vendor?->city) }}" maxlength="100" autocomplete="address-level2">
-                    @error('city')<p class="vendor-field-error">{{ $message }}</p>@enderror
-                </div>
-                <div>
-                    <label for="vendor-state">State</label>
-                    <input id="vendor-state" class="vendor-field-input" type="text" name="state" value="{{ old('state', $vendor?->state) }}" maxlength="100" autocomplete="address-level1">
-                    @error('state')<p class="vendor-field-error">{{ $message }}</p>@enderror
-                </div>
+            {{-- Shared PIN-assisted address group (same component as Karigars). Saved free-text city/state render as-is:
+                 the state box is a type-or-choose combobox, so a value outside the list stays and is submitted unchanged.
+                 Vendors have no pincode column; the PIN is a lookup aid only and is not stored. --}}
+            <style>body.app-shell .vendor-form .jf-address-field > span { color: inherit; }</style>
+            <x-indian-address class="vendor-address-group" id-prefix="vendor" input-class="vendor-field-input" label-class=""
+                :city="old('city', $vendor?->city)" :state="old('state', $vendor?->state)" :pincode="old('pincode')" />
+            @error('city')<p class="vendor-field-error">{{ $message }}</p>@enderror
+            @error('state')<p class="vendor-field-error">{{ $message }}</p>@enderror
+            <div class="vendor-form-grid">
                 <div>
                     <label for="vendor-gst">GST Number</label>
                     <input id="vendor-gst" class="vendor-field-input" type="text" name="gst_number" value="{{ old('gst_number', $vendor?->gst_number) }}" maxlength="15" placeholder="22AAAAA0000A1Z5" @error('gst_number') aria-invalid="true" aria-describedby="vendor-gst-error" @enderror>
