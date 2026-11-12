@@ -64,16 +64,16 @@
             </div>
 
             <div>
-                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Amount (₹) <span class="text-rose-600">*</span></label>
-                <input type="number" name="amount" step="0.01" min="0.01" max="1000000" required
+                <label for="store-credit-amount" class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Amount (₹) <span class="text-rose-600">*</span></label>
+                <input type="number" name="amount" id="store-credit-amount" step="0.01" min="0.01" max="1000000" required
                        value="{{ old('amount') }}"
                        placeholder="e.g. 500.00"
                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
             </div>
 
             <div>
-                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Reason / Notes <span class="text-rose-600">*</span></label>
-                <textarea name="notes" required minlength="5" maxlength="500" rows="3"
+                <label for="store-credit-notes" class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Reason / Notes <span class="text-rose-600">*</span></label>
+                <textarea name="notes" id="store-credit-notes" required minlength="5" maxlength="500" rows="3"
                           placeholder="e.g. Goodwill credit — customer reported delayed delivery on order INV/00123"
                           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{{ old('notes') }}</textarea>
                 <p class="mt-1 text-xs text-slate-500">Required. Will appear in the customer's audit history alongside this adjustment.</p>

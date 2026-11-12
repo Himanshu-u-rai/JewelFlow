@@ -1184,6 +1184,14 @@ function styleDatePickerInput(nativeInput, instance) {
 
     if (nativeInput.getAttribute('aria-label')) {
         displayInput.setAttribute('aria-label', nativeInput.getAttribute('aria-label'));
+    } else if (nativeInput.getAttribute('aria-labelledby')) {
+        displayInput.setAttribute('aria-labelledby', nativeInput.getAttribute('aria-labelledby'));
+    } else if (nativeInput.id) {
+        const label = document.querySelector(`label[for="${nativeInput.id.replace(/["\\]/g, '\\$&')}"]`);
+        if (label) {
+            if (!label.id) label.id = `${nativeInput.id}-label`;
+            displayInput.setAttribute('aria-labelledby', label.id);
+        }
     }
 
     displayInput.placeholder = nativeInput.placeholder || 'dd/mm/yyyy';

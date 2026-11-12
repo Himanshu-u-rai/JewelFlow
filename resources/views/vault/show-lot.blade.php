@@ -188,19 +188,19 @@
                   class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                 @csrf
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
-                    <select name="direction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <label for="vault-adjust-direction" class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
+                    <select name="direction" id="vault-adjust-direction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="add">Add to vault (+)</option>
                         <option value="remove">Remove from vault (−)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Fine weight (g)</label>
-                    <input type="number" name="fine_weight" step="0.0001" min="0.0001" required class="w-full rounded-md border-gray-300 shadow-sm text-sm font-mono">
+                    <label for="vault-adjust-fine-weight" class="block text-xs font-medium text-gray-600 mb-1">Fine weight (g)</label>
+                    <input type="number" name="fine_weight" id="vault-adjust-fine-weight" step="0.0001" min="0.0001" required class="w-full rounded-md border-gray-300 shadow-sm text-sm font-mono">
                 </div>
                 <div class="sm:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Reason (required)</label>
-                    <input type="text" name="reason" maxlength="500" required placeholder="e.g. physical count correction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <label for="vault-adjust-reason" class="block text-xs font-medium text-gray-600 mb-1">Reason (required)</label>
+                    <input type="text" name="reason" id="vault-adjust-reason" maxlength="500" required placeholder="e.g. physical count correction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 </div>
                 <div class="sm:col-span-4">
                     <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200">Record Adjustment</button>

@@ -1032,15 +1032,15 @@
                                 <template x-for="(split, i) in splits" :key="i">
                                     <div class="ki-show-payment-row">
                                         <div>
-                                            <div class="ki-show-payment-field-label">Amount</div>
-                                            <input type="number" step="0.01" min="0.01"
+                                            <div class="ki-show-payment-field-label" :id="'ki-pay-amount-label-' + i">Amount</div>
+                                            <input type="number" step="0.01" min="0.01" :aria-labelledby="'ki-pay-amount-label-' + i"
                                                    :name="'payments[' + i + '][amount]'" required
                                                    x-model="split.amount"
                                                    class="rounded-md border-gray-300 text-sm" style="width:120px;">
                                         </div>
                                         <div class="ki-split-mode">
-                                            <div class="ki-show-payment-field-label">Mode</div>
-                                            <select :name="'payments[' + i + '][mode]'" required x-model="split.mode" class="rounded-md border-gray-300 text-sm">
+                                            <div class="ki-show-payment-field-label" :id="'ki-pay-mode-label-' + i">Mode</div>
+                                            <select :name="'payments[' + i + '][mode]'" :aria-labelledby="'ki-pay-mode-label-' + i" required x-model="split.mode" class="rounded-md border-gray-300 text-sm">
                                                 <option value="cash">Cash</option>
                                                 <option value="upi">UPI</option>
                                                 <option value="bank">Bank</option>
@@ -1049,8 +1049,8 @@
                                             </select>
                                         </div>
                                         <div class="ki-split-account">
-                                            <div class="ki-show-payment-field-label">Account</div>
-                                            <select :name="'payments[' + i + '][payment_method_id]'" x-model="split.payment_method_id" class="rounded-md border-gray-300 text-sm">
+                                            <div class="ki-show-payment-field-label" :id="'ki-pay-account-label-' + i">Account</div>
+                                            <select :name="'payments[' + i + '][payment_method_id]'" :aria-labelledby="'ki-pay-account-label-' + i" x-model="split.payment_method_id" class="rounded-md border-gray-300 text-sm">
                                                 <option value="">—</option>
                                                 @foreach($paymentMethods as $pm)
                                                     <option value="{{ $pm->id }}">{{ $pm->name }} ({{ $pm->type }})</option>
@@ -1058,13 +1058,13 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <div class="ki-show-payment-field-label">Reference</div>
-                                            <input type="text" :name="'payments[' + i + '][reference]'" x-model="split.reference"
+                                            <div class="ki-show-payment-field-label" :id="'ki-pay-reference-label-' + i">Reference</div>
+                                            <input type="text" :name="'payments[' + i + '][reference]'" :aria-labelledby="'ki-pay-reference-label-' + i" x-model="split.reference"
                                                    placeholder="UTR / cheque #" class="rounded-md border-gray-300 text-sm" style="width:150px;">
                                         </div>
                                         <div>
-                                            <div class="ki-show-payment-field-label">Date</div>
-                                            <input type="date" :name="'payments[' + i + '][paid_on]'" required x-model="split.paid_on" class="rounded-md border-gray-300 text-sm">
+                                            <div class="ki-show-payment-field-label" :id="'ki-pay-date-label-' + i">Date</div>
+                                            <input type="date" :name="'payments[' + i + '][paid_on]'" :aria-labelledby="'ki-pay-date-label-' + i" required x-model="split.paid_on" class="rounded-md border-gray-300 text-sm">
                                         </div>
                                         <button type="button" @click="removeSplit(i)" x-show="splits.length > 1" class="ki-show-payment-remove">×</button>
                                     </div>

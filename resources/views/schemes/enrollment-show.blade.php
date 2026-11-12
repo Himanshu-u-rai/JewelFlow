@@ -86,10 +86,10 @@
                         @csrf
                         <div class="space-y-3">
                             <div>
-                                <input type="number" name="amount" value="{{ $enrollment->monthly_amount }}" step="0.01" min="1" required placeholder="Amount" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <input type="number" name="amount" value="{{ $enrollment->monthly_amount }}" step="0.01" min="1" required placeholder="Amount" aria-label="Payment amount" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
                             <div>
-                                <select name="payment_method" required class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <select name="payment_method" required aria-label="Payment method" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                                     <option value="cash">Cash</option>
                                     <option value="upi">UPI</option>
                                     <option value="card">Card</option>
@@ -97,7 +97,7 @@
                                 </select>
                             </div>
                             <div>
-                                <input type="text" name="receipt_number" placeholder="Receipt # (optional)" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <input type="text" name="receipt_number" placeholder="Receipt # (optional)" aria-label="Receipt number (optional)" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
                             <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;"><x-icon name="credit-card" size="14" class="inline -mt-0.5 mr-1" />Record Payment</button>
                         </div>
@@ -109,7 +109,7 @@
                         <form method="POST" action="{{ route('schemes.enrollment.cancel', $enrollment) }}" data-turbo-frame="_top"
                               data-confirm-message="{{ __('Cancel this enrollment and refund the contributions in cash? This cannot be undone.') }}">
                             @csrf
-                            <input type="text" name="reason" placeholder="Reason (optional)" class="w-full mb-2 rounded-md border-gray-300 shadow-sm text-sm focus:border-red-500 focus:ring-red-500">
+                            <input type="text" name="reason" placeholder="Reason (optional)" aria-label="Cancellation reason (optional)" class="w-full mb-2 rounded-md border-gray-300 shadow-sm text-sm focus:border-red-500 focus:ring-red-500">
                             <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200">Cancel &amp; Refund Contributions</button>
                         </form>
                     </div>
@@ -124,8 +124,8 @@
                         @csrf
                         <div class="space-y-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Invoice</label>
-                                <select name="invoice_id" required class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <label for="scheme-redeem-invoice" class="block text-xs font-medium text-gray-600 mb-1">Invoice</label>
+                                <select name="invoice_id" id="scheme-redeem-invoice" required class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                                     <option value="">Select outstanding invoice</option>
                                     @foreach($eligibleInvoices as $invoice)
                                         <option value="{{ $invoice->id }}">
@@ -135,12 +135,12 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Redeem Amount (₹)</label>
-                                <input type="number" name="amount" step="0.01" min="1" max="{{ $redeemableValue }}" value="{{ number_format($redeemableValue, 2, '.', '') }}" required class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <label for="scheme-redeem-amount" class="block text-xs font-medium text-gray-600 mb-1">Redeem Amount (₹)</label>
+                                <input type="number" name="amount" id="scheme-redeem-amount" step="0.01" min="1" max="{{ $redeemableValue }}" value="{{ number_format($redeemableValue, 2, '.', '') }}" required class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Note</label>
-                                <input type="text" name="note" placeholder="Optional note" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <label for="scheme-redeem-note" class="block text-xs font-medium text-gray-600 mb-1">Note</label>
+                                <input type="text" name="note" id="scheme-redeem-note" placeholder="Optional note" class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
                             <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;">
                                 Redeem to Invoice

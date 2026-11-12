@@ -107,23 +107,23 @@
 
                         <div class="item-create-grid item-create-grid--identity">
                             <div class="item-create-field item-create-field--barcode">
-                                <label class="item-create-label">
+                                <label for="item-barcode" class="item-create-label">
                                     Barcode <span class="text-red-500">*</span>
                                 </label>
-                                <input type="text" name="barcode" required
+                                <input type="text" name="barcode" id="item-barcode" required
                                        value="{{ old('barcode', $item->barcode) }}"
                                        class="item-create-input item-create-input--mono">
                             </div>
 
                             <div class="item-create-field item-create-field--design">
-                                <label class="item-create-label">Design / Item Name</label>
-                                <input type="text" name="design" value="{{ old('design', $item->design) }}"
+                                <label for="item-design" class="item-create-label">Design / Item Name</label>
+                                <input type="text" name="design" id="item-design" value="{{ old('design', $item->design) }}"
                                        class="item-create-input"
                                        placeholder="e.g., Flower Ring, Traditional Necklace">
                             </div>
 
                             <div class="item-create-field item-create-field--category">
-                                <label class="item-create-label">
+                                <label for="category" class="item-create-label">
                                     Category <span class="text-red-500">*</span>
                                 </label>
                                 <select name="category" id="category" required
@@ -142,7 +142,7 @@
                             </div>
 
                             <div class="item-create-field item-create-field--sub-category">
-                                <label class="item-create-label">Sub Category</label>
+                                <label for="sub_category" class="item-create-label">Sub Category</label>
                                 <select name="sub_category" id="sub_category" data-initial-value="{{ old('sub_category', $item->sub_category) }}"
                                         class="item-create-input">
                                     <option value="">Select sub category</option>
@@ -150,7 +150,7 @@
                             </div>
 
                             <div class="item-create-field item-create-field--metal">
-                                <label class="item-create-label">
+                                <label for="metal_type" class="item-create-label">
                                     Metal Type <span class="text-red-500">*</span>
                                 </label>
                                 @php
@@ -237,7 +237,7 @@
 
                         <div class="item-create-grid item-create-grid--weight">
                             <div class="item-create-field">
-                                <label class="item-create-label">
+                                <label for="gross_weight" class="item-create-label">
                                     Gross Weight (g) <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" name="gross_weight" id="gross_weight" required
@@ -248,7 +248,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Stone Weight (g)</label>
+                                <label for="stone_weight" class="item-create-label">Stone Weight (g)</label>
                                 <input type="number" name="stone_weight" id="stone_weight"
                                        value="{{ old('stone_weight', $item->stone_weight ?? 0) }}"
                                        step="0.001" min="0"
@@ -257,14 +257,14 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Net Metal Weight (g)</label>
+                                <label for="net_weight_display" class="item-create-label">Net Metal Weight (g)</label>
                                 <input type="text" id="net_weight_display" readonly
                                        class="item-create-input item-create-input--readonly"
                                        value="{{ number_format($item->net_metal_weight, 3) }}">
                             </div>
 
                             <div class="item-create-field" id="purity_field_wrap">
-                                <label class="item-create-label">
+                                <label for="purity" class="item-create-label">
                                     <span id="purity_field_label">Purity Profile</span> <span id="purity_required_star" class="text-red-500">*</span>
                                 </label>
                                 <select name="purity" id="purity" required data-initial-value="{{ old('purity', rtrim(rtrim(number_format((float) $item->purity, 3, '.', ''), '0'), '.')) }}"
@@ -274,7 +274,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Live Rate / g</label>
+                                <label for="resolved_rate_display" class="item-create-label">Live Rate / g</label>
                                 <input type="text" id="resolved_rate_display" readonly
                                        class="item-create-input item-create-input--readonly item-create-input--money"
                                        value="Select purity">
@@ -295,7 +295,7 @@
 
                         <div class="item-create-grid item-create-grid--pricing">
                             <div class="item-create-field">
-                                <label class="item-create-label">Metal Cost (₹)</label>
+                                <label for="cost_price" class="item-create-label">Metal Cost (₹)</label>
                                 <input type="number" name="cost_price" id="cost_price" readonly
                                        value="{{ old('cost_price', $item->cost_price) }}"
                                        step="0.01" min="0"
@@ -303,11 +303,11 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label" id="making_charges_label">Making Charges (₹)</label>
+                                <label for="making_charges" class="item-create-label" id="making_charges_label">Making Charges (₹)</label>
                                 @if(config('features.making_charge_modes'))
                                 @php $mcType = old('making_charge_type', $item->making_charge_type ?? 'fixed'); @endphp
                                 <div class="item-create-split-control">
-                                    <select id="making_charge_type" name="making_charge_type"
+                                    <select id="making_charge_type" name="making_charge_type" aria-label="Making charge type"
                                             class="item-create-input">
                                         <option value="fixed" @selected($mcType === 'fixed' || $mcType === null)>Fixed (₹)</option>
                                         <option value="percentage" @selected($mcType === 'percentage')>% of metal</option>
@@ -331,7 +331,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Stone Charges (₹)</label>
+                                <label for="stone_charges" class="item-create-label">Stone Charges (₹)</label>
                                 <input type="number" name="stone_charges" id="stone_charges"
                                        value="{{ old('stone_charges', $item->stone_charges) }}"
                                        step="0.01" min="0"
@@ -340,7 +340,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Hallmark Charges (₹)</label>
+                                <label for="hallmark_charges" class="item-create-label">Hallmark Charges (₹)</label>
                                 <input type="number" name="hallmark_charges" id="hallmark_charges"
                                        value="{{ old('hallmark_charges', $item->hallmark_charges ?? 0) }}"
                                        step="0.01" min="0"
@@ -349,7 +349,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Rhodium Charges (₹)</label>
+                                <label for="rhodium_charges" class="item-create-label">Rhodium Charges (₹)</label>
                                 <input type="number" name="rhodium_charges" id="rhodium_charges"
                                        value="{{ old('rhodium_charges', $item->rhodium_charges ?? 0) }}"
                                        step="0.01" min="0"
@@ -358,7 +358,7 @@
                             </div>
 
                             <div class="item-create-field">
-                                <label class="item-create-label">Other Charges (₹)</label>
+                                <label for="other_charges" class="item-create-label">Other Charges (₹)</label>
                                 <input type="number" name="other_charges" id="other_charges"
                                        value="{{ old('other_charges', $item->other_charges ?? 0) }}"
                                        step="0.01" min="0"
@@ -367,7 +367,7 @@
                             </div>
 
                             <div class="item-create-field item-create-field--total">
-                                <label class="item-create-label">Selling Price / MRP (₹)</label>
+                                <label for="selling_price_display" class="item-create-label">Selling Price / MRP (₹)</label>
                                 <input type="number" id="selling_price_display" readonly
                                        value="{{ old('selling_price', $item->selling_price) }}"
                                        step="0.01" min="0"
@@ -390,7 +390,7 @@
 
                         <div class="item-create-grid item-create-grid--supplier">
                             <div class="item-create-field">
-                                <label class="item-create-label">Vendor / Karigar</label>
+                                <label for="supplier_picker" class="item-create-label">Vendor / Karigar</label>
                                 @php
                                     $initialSupplierValue = '';
                                     if (old('karigar_id', $item->karigar_id)) $initialSupplierValue = 'karigar:' . old('karigar_id', $item->karigar_id);
@@ -418,15 +418,15 @@
                                 <input type="hidden" name="karigar_id" id="karigar_id" value="{{ old('karigar_id', $item->karigar_id) }}">
                             </div>
                             <div class="item-create-field">
-                                <label class="item-create-label">HUID Number</label>
-                                <input type="text" name="huid" value="{{ old('huid', $item->huid) }}"
+                                <label for="huid" class="item-create-label">HUID Number</label>
+                                <input type="text" name="huid" id="huid" value="{{ old('huid', $item->huid) }}"
                                        class="item-create-input item-create-input--mono"
                                        placeholder="e.g., A1B2C3D4E5F6"
                                        maxlength="30">
                             </div>
                             <div class="item-create-field">
-                                <label class="item-create-label">Hallmark Date</label>
-                                <input type="date" name="hallmark_date" value="{{ old('hallmark_date', $item->hallmark_date?->format('Y-m-d')) }}"
+                                <label for="hallmark_date" class="item-create-label">Hallmark Date</label>
+                                <input type="date" name="hallmark_date" id="hallmark_date" value="{{ old('hallmark_date', $item->hallmark_date?->format('Y-m-d')) }}"
                                        class="item-create-input">
                             </div>
                         </div>
@@ -1406,7 +1406,7 @@
             </div>
             <div class="item-create-modal-body space-y-3">
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+                    <label for="newSupplierInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSupplierInput" maxlength="255"
                            class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Mehta Jewellers, Rajesh Traders">
@@ -1441,7 +1441,7 @@
             </div>
             <div class="item-create-modal-body space-y-3">
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
+                    <label for="newCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newCategoryInput" maxlength="255"
                            class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Necklace, Bangles, Earrings">
@@ -1476,12 +1476,12 @@
             </div>
             <div class="item-create-modal-body space-y-3">
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+                    <label for="newSubCategoryParentDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
                     <input type="text" id="newSubCategoryParentDisplay" readonly
                            class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
+                    <label for="newSubCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSubCategoryInput" maxlength="255"
                            class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Studs, Jhumkas, Hoops">
@@ -1521,12 +1521,12 @@
 
             <div class="item-create-modal-body space-y-3">
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
+                    <label for="customPurityMetalDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
                     <input type="text" id="customPurityMetalDisplay" readonly
                            class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
                 <div class="item-create-modal-field">
-                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
+                    <label for="customPurityInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
                         Purity Value <span class="text-red-500">*</span>
                         <span class="text-xs font-normal text-gray-400" id="customPurityHint"></span>
                     </label>

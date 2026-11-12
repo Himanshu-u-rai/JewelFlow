@@ -60,8 +60,8 @@
             <form method="POST" action="{{ route('profile.mobile.verify') }}" class="space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('6-digit code') }}</label>
-                    <input type="text" name="otp" inputmode="numeric" autocomplete="one-time-code"
+                    <label for="mobile-change-otp" class="block text-sm font-medium text-gray-700 mb-1">{{ __('6-digit code') }}</label>
+                    <input type="text" name="otp" id="mobile-change-otp" inputmode="numeric" autocomplete="one-time-code"
                            pattern="[0-9]{6}" maxlength="6" required
                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-lg font-mono tracking-[0.5em] focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                            placeholder="______">
@@ -81,16 +81,16 @@
                 @csrf
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('New mobile number') }}</label>
-                    <input type="tel" name="new_mobile_number" inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
+                    <label for="mobile-change-new-number" class="block text-sm font-medium text-gray-700 mb-1">{{ __('New mobile number') }}</label>
+                    <input type="tel" name="new_mobile_number" id="mobile-change-new-number" inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                            required value="{{ old('new_mobile_number') }}"
                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                            placeholder="{{ __('10-digit mobile') }}">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Confirm your current password') }}</label>
-                    <input type="password" name="current_password" required autocomplete="current-password"
+                    <label for="mobile-change-current-password" class="block text-sm font-medium text-gray-700 mb-1">{{ __('Confirm your current password') }}</label>
+                    <input type="password" name="current_password" id="mobile-change-current-password" required autocomplete="current-password"
                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                     <p class="mt-1 text-xs text-gray-500">{{ __('We ask for your password so a stolen session alone cannot change your login.') }}</p>
                 </div>
