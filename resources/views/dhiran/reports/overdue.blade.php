@@ -17,6 +17,7 @@
     <div class="content-inner" data-list-workspace>
         <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.overdue')"
             :fields="['search', 'metal', 'amount', 'overdue']" />
+        <turbo-frame id="dh-results" target="_top">
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -117,5 +118,6 @@
             </div>
             <x-dhiran.pager :paginator="$loans" noun="loans" />
         </div>
+        </turbo-frame>
     </div>
 </x-dhiran-layout>

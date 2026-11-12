@@ -17,6 +17,7 @@
     <div class="content-inner" data-list-workspace>
         <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.forfeiture')" period-label="Forfeited in"
             :fields="['search', 'period', 'metal', 'amount']" />
+        <turbo-frame id="dh-results" target="_top">
         {{-- Table --}}
         <div class="bg-white rounded-lg shadow-sm" data-list-frame>
             <div class="overflow-x-auto jf-table-wrap" data-list-scroll tabindex="0" role="region" aria-label="Forfeited loan records">
@@ -81,5 +82,6 @@
             </div>
             <x-dhiran.pager :paginator="$loans" noun="loans" />
         </div>
+        </turbo-frame>
     </div>
 </x-dhiran-layout>

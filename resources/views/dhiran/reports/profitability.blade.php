@@ -26,6 +26,7 @@
         {{-- Loans given in this period (the controller always took a range; the page had no way to set it). --}}
         <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.profitability')" default-period="this_month"
             period-label="Loans given in" :fields="['search', 'period', 'status', 'metal', 'amount']" />
+        <turbo-frame id="dh-results" target="_top">
 
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -127,5 +128,6 @@
             </div>
             <x-dhiran.pager :paginator="$loans" noun="loans" />
         </div>
+        </turbo-frame>
     </div>
 </x-dhiran-layout>

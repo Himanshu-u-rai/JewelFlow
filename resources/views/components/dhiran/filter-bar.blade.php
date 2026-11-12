@@ -35,14 +35,7 @@
           @turbo:before-cache.window="$refs.panel?.open && $refs.panel.close(); [...$el.elements].forEach(e => { if (e.name && !['from', 'to'].includes(e.name)) e.disabled = false })">
         <div class="dh-fbar-row">
             @if($has('search'))
-                <div class="dh-fbar-search" x-data="{ q: @js($filters->get('search') ?? '') }">
-                    <x-icon name="search" size="16" />
-                    <input type="search" name="search" x-model="q" value="{{ $filters->get('search') }}" placeholder="Search loan number, name or mobile"
-                           aria-label="Search loans" autocomplete="off" enterkeyhint="search">
-                    <button type="button" class="dh-fbar-clear" x-show="q" x-cloak @click="q = ''; $nextTick(() => $el.closest('form').requestSubmit())" aria-label="Clear search">
-                        <x-icon name="x" size="14" />
-                    </button>
-                </div>
+                <x-dhiran.search :value="$filters->get('search') ?? ''" placeholder="Search loan number, name or mobile" label="Search loans" />
             @endif
             @if($panelFields)
                 <button type="button" class="dh-fbar-open {{ $count ? 'is-on' : '' }}" @click="$refs.panel.showModal()" aria-haspopup="dialog" aria-controls="{{ $uid }}-panel">

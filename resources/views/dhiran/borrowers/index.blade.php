@@ -20,6 +20,17 @@
     </x-dhiran.page-header>
 
     <div class="content-inner" data-list-workspace>
+        {{-- Search: live, outside the results frame so typing never leaves the box --}}
+        <div class="dh-fbar">
+            <form method="GET" action="{{ route('dhiran.borrowers.index') }}">
+                @if($show ?? null)<input type="hidden" name="show" value="{{ $show }}">@endif
+                <div class="dh-fbar-row">
+                    <x-dhiran.search :value="request('search', '')" placeholder="Search name, mobile, or code" label="Search customers" />
+                </div>
+            </form>
+        </div>
+
+        <turbo-frame id="dh-results" target="_top">
         {{-- Where their loans stand --}}
         <nav class="mb-4 flex flex-wrap gap-2" aria-label="Filter customers">
             @foreach(['' => 'All', 'active' => 'Active loan', 'paid' => 'Fully paid', 'none' => 'No loan yet'] as $key => $tabLabel)
@@ -30,17 +41,6 @@
                 </a>
             @endforeach
         </nav>
-
-        {{-- Search --}}
-        <form method="GET" action="{{ route('dhiran.borrowers.index') }}" class="mb-5 flex flex-wrap items-center gap-2">
-            @if($show ?? null)<input type="hidden" name="show" value="{{ $show }}">@endif
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, mobile, or code"
-                   class="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
-            <button type="submit" class="btn btn-dark btn-sm">Search</button>
-            @if(request('search'))
-                <a href="{{ route('dhiran.borrowers.index', array_filter(['show' => $show ?? null])) }}" class="btn btn-secondary btn-sm">Clear</a>
-            @endif
-        </form>
 
         @forelse($borrowers as $borrower)
             @if($loop->first)
@@ -115,5 +115,6 @@
                 @endunless
             </div>
         @endforelse
+        </turbo-frame>
     </div>
 </x-dhiran-layout>

@@ -3321,6 +3321,9 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     .dh-app table.dh-stack tfoot td:empty { display: none; }
 }
 
+/* Live search results frame (x-dhiran.search): no box of its own, so page layout and table fitting are unchanged. */
+turbo-frame#dh-results { display: contents; }
+
 /* Loan and item status (x-dhiran.status): one pill, one tone per state, colours from dhiran-tokens.css only. */
 .dh-status {
     display: inline-flex; align-items: center; white-space: nowrap;

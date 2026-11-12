@@ -18,6 +18,7 @@
     <div class="content-inner" data-list-workspace>
         <x-dhiran.filter-bar :filters="$filters" :action="route('dhiran.reports.interest')" default-period="this_month"
             period-label="Paid in" :fields="['search', 'period']" />
+        <turbo-frame id="dh-results" target="_top">
 
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -99,5 +100,6 @@
             </div>
             <x-dhiran.pager :paginator="$payments" noun="payments" />
         </div>
+        </turbo-frame>
     </div>
 </x-dhiran-layout>

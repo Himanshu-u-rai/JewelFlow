@@ -22,6 +22,7 @@
         {{-- Filters --}}
         <x-dhiran.filter-bar :filters="$filters ?? \App\Services\Dhiran\DhiranListFilters::fromRequest(request())" :action="route('dhiran.loans')" period-label="Loan date"
             :fields="['search', 'period', 'status', 'metal', 'amount', 'overdue', 'maturing']" />
+        <turbo-frame id="dh-results" target="_top">
 
         {{-- Loans Table --}}
         <div class="dh-table-card" data-list-frame>
@@ -87,5 +88,6 @@
 
             @isset($loans)<x-dhiran.pager :paginator="$loans" noun="loans" />@endisset
         </div>
+        </turbo-frame>
     </div>
 </x-dhiran-layout>
