@@ -37,6 +37,22 @@ class DhiranService
     }
 
     /** Constitution Article I: no Dhiran money row may land in the shop's locked accounting period. */
+    /**
+     * The one gate for acting on a loan (owner 2026-11-12, state-machine audit): lock the row, then decide on the loan
+     * as it is now. The status check callers make before the lock reads the copy their page loaded; another person may
+     * have closed, renewed or forfeited it since.
+     */
+    private function lockActive(DhiranLoan $loan): DhiranLoan
+    {
+        $locked = DhiranLoan::lockForUpdate()->findOrFail($loan->id);
+        if ($locked->status !== 'active') {
+            throw new LogicException("This loan is already {$locked->status}. Reload the page to see it as it is now.");
+        }
+        $this->assertOpen((int) $locked->shop_id, today());
+
+        return $locked;
+    }
+
     private function assertOpen(int $shopId, mixed $date): void
     {
         \App\Services\InvoiceAccountingService::assertShopLockForDate($shopId, Carbon::parse($date)->toDateString());
@@ -598,8 +614,7 @@ class DhiranService
 
         return DB::transaction(function () use ($loan, $amount, $method): DhiranPayment {
             // Re-fetch with lock
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             $totalOutstanding = $loan->totalOutstanding();
 
@@ -717,8 +732,7 @@ class DhiranService
         $this->accrueInterest($loan);
 
         return DB::transaction(function () use ($loan, $amount, $method): DhiranPayment {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             $maxPayable = round((float) $loan->outstanding_penalty + (float) $loan->outstanding_interest, 2);
 
@@ -859,8 +873,7 @@ class DhiranService
         $actorId = auth()->id();
 
         return DB::transaction(function () use ($loan, $item, $paymentAmount, $method, $conditionNote, $actorId): DhiranPayment {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
             $item = DhiranLoanItem::lockForUpdate()->find($item->id);
 
             $required = $this->releaseMinimum($loan, $item);
@@ -986,8 +999,7 @@ class DhiranService
         $this->accrueInterest($loan);
 
         return DB::transaction(function () use ($loan, $method): ?DhiranPayment {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             // ── Enforce minimum interest ─────────────────────
             $minimumInterest = $loan->minimumInterestAmount();
@@ -1134,8 +1146,7 @@ class DhiranService
         $this->accrueInterest($loan);
 
         return DB::transaction(function () use ($loan, $newTenure, $newRate, $method): DhiranLoan {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             // Enforce minimum interest on renewal (same rule as pre-close)
             // so a same-day renewal cannot bypass min_interest_months.
@@ -1404,8 +1415,7 @@ class DhiranService
         }
 
         DB::transaction(function () use ($loan): void {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
             $this->closeLoanInternal($loan);
         });
     }
@@ -1472,8 +1482,7 @@ class DhiranService
         $this->accrueInterest($loan);
 
         DB::transaction(function () use ($loan): void {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             $settings = DhiranSettings::getForShop($loan->shop_id);
             $rupees = fn ($v) => '₹' . number_format((float) $v, 2);
@@ -1528,8 +1537,7 @@ class DhiranService
         $actorId = auth()->id() ?? $loan->created_by;
 
         DB::transaction(function () use ($loan, $actorId): void {
-            $loan = DhiranLoan::lockForUpdate()->find($loan->id);
-            $this->assertOpen((int) $loan->shop_id, today());
+            $loan = $this->lockActive($loan);
 
             $writtenOffPrincipal = (float) $loan->outstanding_principal;
             $writtenOffInterest  = (float) $loan->outstanding_interest;
