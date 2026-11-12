@@ -27180,7 +27180,8 @@ input[type="date"] {
 
 .invoice-show-totals-box {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* As many tiles per row as have room (F01): four fixed columns squeezed amounts onto two lines. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
     gap: 10px;
     border: 0;
     border-radius: 0;
@@ -27229,8 +27230,9 @@ input[type="date"] {
     color: var(--invoice-show-ink);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    min-width: 0;
-    overflow-wrap: anywhere;
+    /* An amount is one unit: never "₹1,599." / "00". The label beside it wraps instead. */
+    flex-shrink: 0;
+    white-space: nowrap;
     text-align: right;
 }
 
