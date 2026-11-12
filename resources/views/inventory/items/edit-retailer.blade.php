@@ -774,16 +774,20 @@
                     const allFiles = Array.from(event.target.files || []);
                     const tooBig = allFiles.filter(function (f) { return f.size > MAX_BYTES; });
                     if (tooBig.length) {
-                        alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
-                            + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
-                            + '\n\nPlease choose images under 5 MB each.');
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Some images are larger than 5 MB and can\'t be uploaded: '
+                                + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join(', ')
+                                + '. Please choose images under 5 MB each.', 'error', 8000);
+                        }
                         selectedImageFiles = [];
                         event.target.value = '';
                         renderUploadPreviews();
                         return;
                     }
                     if (allFiles.length > MAX_FILES) {
-                        alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.', 'warning', 8000);
+                        }
                     }
                     selectedImageFiles = allFiles.slice(0, MAX_FILES);
                     syncImageInputFiles();

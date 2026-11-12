@@ -241,8 +241,7 @@
                         {{-- POS-EMI: cancelling discards the draft invoice POS created. --}}
                         <button type="submit"
                                 form="emi-discard-draft"
-                                class="emi-create-secondary"
-                                onclick="return confirm('Cancel this EMI checkout? The draft will be discarded. The items stay available.')">
+                                class="emi-create-secondary">
                             Cancel
                         </button>
                     @else
@@ -253,7 +252,7 @@
         </form>
 
         @if(!empty($fromPosEmi) && !empty($selectedInvoiceId))
-            <form id="emi-discard-draft" method="POST" action="{{ route('installments.discard-draft') }}" data-turbo-frame="_top" class="hidden">
+            <form id="emi-discard-draft" method="POST" action="{{ route('installments.discard-draft') }}" data-turbo-frame="_top" class="hidden" onsubmit="return confirm('Cancel this EMI checkout? The draft will be discarded. The items stay available.')">
                 @csrf
                 <input type="hidden" name="invoice_id" value="{{ $selectedInvoiceId }}">
             </form>

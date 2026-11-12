@@ -107,18 +107,18 @@
                 <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100">
                     Edit
                 </a>
-                <form method="POST" action="{{ route('inventory.purchases.confirm', $purchase) }}" class="inline">
+                <form method="POST" action="{{ route('inventory.purchases.confirm', $purchase) }}" class="inline" onsubmit="return confirm('Confirm this purchase? This will lock the invoice details.')">
                     @csrf @method('PATCH')
-                    <button type="submit" onclick="return confirm('Confirm this purchase? This will lock the invoice details.')"
+                    <button type="submit"
                             class="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
                         <x-icon name="check" class="w-4 h-4" />
                         Confirm Purchase
                     </button>
                 </form>
             @elseif($purchase->isConfirmed())
-                <form method="POST" action="{{ route('inventory.purchases.stock', $purchase) }}" class="inline">
+                <form method="POST" action="{{ route('inventory.purchases.stock', $purchase) }}" class="inline" onsubmit="return confirm('Add items from this purchase to shop inventory? This cannot be undone.')">
                     @csrf @method('PATCH')
-                    <button type="submit" onclick="return confirm('Add items from this purchase to shop inventory? This cannot be undone.')"
+                    <button type="submit"
                             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
                         <x-icon name="package" class="w-4 h-4" />
                         Add to Shop Inventory
@@ -126,9 +126,9 @@
                 </form>
             @endif
             @if(($purchase->isConfirmed() || $purchase->isStocked()))
-                <form method="POST" action="{{ route('inventory.purchases.reverse', $purchase) }}" class="inline">
+                <form method="POST" action="{{ route('inventory.purchases.reverse', $purchase) }}" class="inline" onsubmit="return confirm('Reverse this purchase back to a draft? Any items it added to stock will be removed (only if still in stock).')">
                     @csrf @method('PATCH')
-                    <button type="submit" onclick="return confirm('Reverse this purchase back to a draft? Any items it added to stock will be removed (only if still in stock).')"
+                    <button type="submit"
                             class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100">
                         <x-icon name="undo-2" class="w-4 h-4" />
                         Reverse to Draft

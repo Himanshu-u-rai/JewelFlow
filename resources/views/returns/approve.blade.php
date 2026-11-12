@@ -259,12 +259,11 @@
                         Approving will process the return, issue the credit note, and update inventory dispositions as submitted. This action cannot be undone.
                     </p>
                 </div>
-                <form method="POST" action="{{ route('returns.approve', $returnOrder) }}" id="approve-form">
+                <form method="POST" action="{{ route('returns.approve', $returnOrder) }}" id="approve-form" onsubmit="return confirm('Approve this return and issue the credit note?')">
                     @csrf
                     <div id="approve-overrides-target"></div>
                     <button type="submit"
-                            class="w-full rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition"
-                            onclick="return confirm('Approve this return and issue the credit note?')">
+                            class="w-full rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition">
                         Approve &amp; Issue Credit Note
                     </button>
                 </form>
@@ -278,7 +277,7 @@
                         Rejecting will cancel this return. The staff member will be notified with the reason provided below.
                     </p>
                 </div>
-                <form method="POST" action="{{ route('returns.reject', $returnOrder) }}" class="flex flex-col gap-3">
+                <form method="POST" action="{{ route('returns.reject', $returnOrder) }}" class="flex flex-col gap-3" onsubmit="return confirm('Reject this return? This cannot be undone.')">
                     @csrf
                     <div>
                         <label for="rejection_reason" class="block text-xs font-semibold uppercase tracking-[0.15em] text-rose-800 mb-1">
@@ -292,8 +291,7 @@
                         @enderror
                     </div>
                     <button type="submit"
-                            class="w-full rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition"
-                            onclick="return confirm('Reject this return? This cannot be undone.')">
+                            class="w-full rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition">
                         Reject Return
                     </button>
                 </form>
@@ -310,6 +308,8 @@
             const adjustmentsContainer = document.getElementById('approve-adjustments-container');
             if (approveForm && overridesTarget && adjustmentsContainer) {
                 approveForm.addEventListener('submit', () => {
+                    // The submit event fires once before and once after the confirmation dialog.
+                    overridesTarget.replaceChildren();
                     adjustmentsContainer.querySelectorAll('input, textarea, select').forEach(el => {
                         const clone = el.cloneNode(true);
                         overridesTarget.appendChild(clone);

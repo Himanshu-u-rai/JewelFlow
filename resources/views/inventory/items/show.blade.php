@@ -722,12 +722,16 @@
     </div>
 
     <script>
+        function notifyShareCopied() {
+            if (typeof window.showToast === 'function') window.showToast('Share link copied.', 'success');
+        }
+
         async function copyShareLink(link) {
             if (!link) return;
 
             try {
                 await navigator.clipboard.writeText(link);
-                alert('Share link copied.');
+                notifyShareCopied();
             } catch (_) {
                 const helper = document.createElement('textarea');
                 helper.value = link;
@@ -737,7 +741,7 @@
                 helper.select();
                 document.execCommand('copy');
                 document.body.removeChild(helper);
-                alert('Share link copied.');
+                notifyShareCopied();
             }
         }
 

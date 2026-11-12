@@ -4197,13 +4197,14 @@
                     <form method="POST" action="{{ route('settings.update.shop-access') }}" class="dash-access-form">
                         @csrf
                         @method('PATCH')
-                        <input type="hidden" name="shop_access_enabled" value="0">
+                        <input type="hidden" name="shop_access_enabled" value="0" id="dash-shop-access-value">
                         <label class="dash-access-toggle" title="Closing blocks staff from web, mobile, POS. Owner access stays. No data is deleted.">
                             <span class="dash-access-label">Shop Access</span>
                             <span class="dash-access-state {{ $shopOpen ? 'is-open' : 'is-closed' }}">{{ $shopOpen ? 'Open' : 'Closed' }}</span>
-                            <input type="checkbox" name="shop_access_enabled" value="1" class="dash-access-switch"
+                            {{-- Not submitted itself: the click is held back (the switch stays put) and the hidden field carries the wanted state, so closing runs through the themed confirmation (data-confirm-message) and Cancel leaves the switch untouched. --}}
+                            <input type="checkbox" value="1" class="dash-access-switch"
                                 {{ $shopOpen ? 'checked' : '' }}
-                                onchange="if(!this.checked && !confirm('Close the shop? Staff will be locked out of the app until you reopen.')){this.checked=true;return;} this.form.submit();">
+                                onclick="event.preventDefault(); var f=this.form, wantOpen=this.checked; document.getElementById('dash-shop-access-value').value=wantOpen?'1':'0'; if(wantOpen){delete f.dataset.confirmMessage;}else{f.dataset.confirmMessage='Close the shop? Staff will be locked out of the app until you reopen.';} f.requestSubmit();">
                         </label>
                     </form>
                 @endif
