@@ -253,7 +253,7 @@ class DhiranLifecycleUiTest extends TestCase
         $this->assertStringNotContainsString('value="bank"', $html);
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
-            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi'])
+            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/repay", ['amount' => 1000, 'payment_method' => 'upi', 'idempotency_key' => 'test-repay-upi'])
             ->assertRedirect());
         $this->assertSame('upi', TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->payments()->latest('id')->first()->payment_method));
     }
@@ -275,7 +275,7 @@ class DhiranLifecycleUiTest extends TestCase
         $item = TenantContext::runFor($shop->id, fn () => $this->fresh($loan->id)->items()->first());
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->from("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}")
-            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/release-item", ['item_id' => $item->id])
+            ->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/release-item", ['item_id' => $item->id, 'idempotency_key' => 'test-release-1'])
             ->assertSessionHasErrors('payment_amount'));
 
         $shown = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
@@ -453,7 +453,7 @@ class DhiranLifecycleUiTest extends TestCase
         $page = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
             ->from('https://dhiran.jewelflows.com/dhiran/create')
             ->followingRedirects()
-            ->post('https://dhiran.jewelflows.com/dhiran', [
+            ->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
                 'customer_id' => $customer->id, 'principal_amount' => 40000, 'gold_rate_on_date' => 6000,
                 'interest_rate_monthly' => 1.5, 'interest_type' => 'flat', 'tenure_months' => 6,
                 'items' => [['description' => 'Gold ring', 'metal_type' => 'gold', 'value_mode' => 'metal', 'gross_weight' => 8, 'stone_weight' => 0, 'purity' => 22, 'rate_per_gram_at_pledge' => 6000]],

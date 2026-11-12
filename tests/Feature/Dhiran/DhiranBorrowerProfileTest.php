@@ -245,7 +245,7 @@ class DhiranBorrowerProfileTest extends TestCase
         [$shop, $owner] = $this->dhiranShop('9390001012');
         // create a loan via controller store so masking applies
         $c = TenantContext::runFor($shop->id, fn () => Customer::create(['shop_id' => $shop->id, 'first_name' => 'Asha', 'last_name' => 'B', 'mobile' => '9811110101']));
-        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $c->id, 'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'aadhaar' => '123456789012',
             'items' => [['description' => 'X', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],

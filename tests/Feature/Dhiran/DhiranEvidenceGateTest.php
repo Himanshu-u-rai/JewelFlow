@@ -88,7 +88,7 @@ class DhiranEvidenceGateTest extends TestCase
         [$shop, $owner] = $this->shopOwner('9390000100');
         $customer = TenantContext::runFor($shop->id, fn () => Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'O', 'mobile' => '9811120001']));
 
-        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $customer->id, 'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'items' => [['description' => 'X', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],
         ])->assertRedirect();

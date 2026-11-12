@@ -59,7 +59,7 @@
                 @can('dhiran.forfeit')
                 @if(! $loan->forfeitureNoticeSent() && $loan->forfeitureNoticeDue())
                 <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline" data-turbo-frame="_top">
-                    @csrf
+                    @csrf <x-dhiran.once />
                     <button type="submit" class="btn btn-secondary btn-sm">
                         <x-icon name="mail" size="14" class="mr-1" />
                         Send Notice
@@ -73,7 +73,7 @@
                 @if($loan->canExecuteForfeit())
                 <form method="POST" action="{{ route('dhiran.forfeit', $loan) }}" class="inline" data-turbo-frame="_top"
                       onsubmit="return confirm('Execute forfeiture for {{ $loan->loan_number }}? This permanently forfeits all pledged items and writes off the outstanding balance. This cannot be undone.');">
-                    @csrf
+                    @csrf <x-dhiran.once />
                     <button type="submit" class="btn btn-danger btn-sm">
                         <x-icon name="trash-2" size="14" class="mr-1" />
                         Execute Forfeit
@@ -417,7 +417,7 @@
         <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pay Interest</h3>
             <form method="POST" action="{{ route('dhiran.pay-interest', $loan) }}" data-turbo-frame="_top">
-                @csrf
+                @csrf <x-dhiran.once />
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
                     <input type="number" step="0.01" name="amount" required placeholder="0.00"
@@ -428,6 +428,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
+                        <option value="card">Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
@@ -444,7 +445,7 @@
         <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Repay Loan</h3>
             <form method="POST" action="{{ route('dhiran.repay', $loan) }}" data-turbo-frame="_top">
-                @csrf
+                @csrf <x-dhiran.once />
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
                     <input type="number" step="0.01" name="amount" required placeholder="0.00"
@@ -455,6 +456,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
+                        <option value="card">Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
@@ -471,7 +473,7 @@
         <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Release Pledged Item</h3>
             <form method="POST" action="{{ route('dhiran.release-item', $loan) }}" data-turbo-frame="_top">
-                @csrf
+                @csrf <x-dhiran.once />
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Select Item</label>
                     <select name="item_id" required class="dh-form-control dh-native-select">
@@ -496,6 +498,7 @@
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
+                        <option value="card">Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
@@ -519,12 +522,13 @@
             @php $closeTakes = $loan->status === 'active' ? (float) $loan->outstanding_principal + app(\App\Services\DhiranService::class)->renewalDue($loan) : 0; @endphp
             <p class="text-sm text-slate-600 mb-4">This will close the loan and release all pledged items. To close, collect <strong>{{ $currencySymbol ?? '₹' }}{{ number_format($closeTakes, 2) }}</strong>: the principal, plus interest and penalty due (at least the minimum interest), up to {{ \Illuminate\Support\Carbon::parse($loan->interest_accrued_through ?? $loan->loan_date)->format('d M Y') }}. Interest for any days since is added.</p>
             <form method="POST" action="{{ route('dhiran.pre-close', $loan) }}" data-turbo-frame="_top">
-                @csrf
+                @csrf <x-dhiran.once />
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
                     <select name="payment_method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
+                        <option value="card">Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
@@ -541,7 +545,7 @@
         <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Renew Loan</h3>
             <form method="POST" action="{{ route('dhiran.renew', $loan) }}" data-turbo-frame="_top">
-                @csrf
+                @csrf <x-dhiran.once />
                 @php $renewDue = $loan->status === 'active' ? app(\App\Services\DhiranService::class)->renewalDue($loan) : 0; @endphp
                 @if($renewDue > 0)
                     <p class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -552,6 +556,7 @@
                         <select name="payment_method" class="dh-form-control dh-native-select">
                             <option value="cash">Cash</option>
                             <option value="upi">UPI</option>
+                            <option value="card">Card</option>
                             <option value="bank_transfer">Bank Transfer</option>
                         </select>
                     </div>

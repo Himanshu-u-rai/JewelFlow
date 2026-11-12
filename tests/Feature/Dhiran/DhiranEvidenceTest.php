@@ -81,7 +81,7 @@ class DhiranEvidenceTest extends TestCase
         [$shop, $owner] = $this->dhiranShopWithOwner('9390000080');
         $customer = TenantContext::runFor($shop->id, fn () => Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'O', 'mobile' => '9811110001']));
 
-        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $customer->id, 'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'aadhaar' => '987698769876',
             'items' => [['description' => 'X', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],
@@ -243,7 +243,7 @@ class DhiranEvidenceTest extends TestCase
         $customer = TenantContext::runFor($shop->id, fn () => Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'O', 'mobile' => '9811110002']));
 
         // metal_type=diamond is not in the gold/silver allow-list → validation error.
-        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $customer->id, 'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'items' => [['description' => 'Ring', 'metal_type' => 'diamond', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],
         ])->assertSessionHasErrors('items.0.metal_type');

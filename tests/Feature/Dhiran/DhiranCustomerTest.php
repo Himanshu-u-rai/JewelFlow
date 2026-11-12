@@ -83,7 +83,7 @@ class DhiranCustomerTest extends TestCase
         [$shop, $owner] = $this->dhiranShopWithOwner();
         $customer = $this->customerFor($shop, '9811113333');
 
-        $res = $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', [
+        $res = $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $customer->id,
             'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'items' => [[
@@ -103,7 +103,7 @@ class DhiranCustomerTest extends TestCase
         [$erpOwner, $erpShop] = $this->createRetailerTenant();
         $erpCustomer = $this->customerFor($erpShop, '9811114444');
 
-        $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', [
+        $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $erpCustomer->id,
             'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'items' => [['description' => 'C', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],
@@ -119,7 +119,7 @@ class DhiranCustomerTest extends TestCase
         [$shopB] = $this->dhiranShopWithOwner('9390000062');
         $other = $this->customerFor($shopB, '9811115555');
 
-        $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', [
+        $this->actingAs($owner)->post(self::DHIRAN.'/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $other->id,
             'principal_amount' => 10000, 'gold_rate_on_date' => 6000,
             'items' => [['description' => 'C', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000]],

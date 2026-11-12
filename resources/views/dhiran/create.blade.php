@@ -18,7 +18,7 @@
          @turbo:before-cache.window="document.body.classList.remove('dh-modal-open')">
 
         <form method="POST" action="{{ route('dhiran.store') }}" class="dhiran-create-form max-w-4xl mx-auto space-y-6" @submit="prepareSubmit" data-turbo-frame="_top">
-            @csrf
+            @csrf <x-dhiran.once />
 
             {{-- Customer Section --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">

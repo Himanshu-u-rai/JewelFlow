@@ -50,7 +50,7 @@ class DhiranMetalPurityTest extends TestCase
 
     private function submitLoan(User $owner, array $items, Customer $c, float $principal = 10000): \Illuminate\Testing\TestResponse
     {
-        return $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        return $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $c->id, 'principal_amount' => $principal, 'gold_rate_on_date' => 6000,
             'silver_rate_on_date' => 80,
             'items' => $items,
@@ -225,7 +225,7 @@ class DhiranMetalPurityTest extends TestCase
     {
         [$shop, $owner] = $this->dhiranShop('9390003010');
         $c = $this->customer($shop, '9812230010');
-        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $c->id, 'principal_amount' => 3000,
             'silver_rate_on_date' => 80,
             // gold_rate_on_date deliberately omitted
@@ -243,7 +243,7 @@ class DhiranMetalPurityTest extends TestCase
     {
         [$shop, $owner] = $this->dhiranShop('9390003011');
         $c = $this->customer($shop, '9812230011');
-        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', ['idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
             'customer_id' => $c->id, 'principal_amount' => 10000,
             // no gold_rate_on_date, no silver_rate_on_date
             'items' => [[

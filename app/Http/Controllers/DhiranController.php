@@ -13,8 +13,15 @@ use App\Services\DhiranService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class DhiranController extends Controller
+class DhiranController extends Controller implements \Illuminate\Routing\Controllers\HasMiddleware
 {
+    /** Every form that moves money or changes a loan takes effect once (see DhiranSubmitOnce). */
+    public static function middleware(): array
+    {
+        return [new \Illuminate\Routing\Controllers\Middleware(\App\Http\Middleware\DhiranSubmitOnce::class,
+            only: ['store', 'payInterest', 'repay', 'releaseItem', 'preClose', 'renew', 'close', 'sendNotice', 'forfeit'])];
+    }
+
     public function __construct(
         protected DhiranService $dhiranService
     ) {}
@@ -209,7 +216,7 @@ class DhiranController extends Controller
             'mobile'     => ['required', 'string', new IndianMobileRule()],
             'address'    => ['nullable', 'string', 'max:500'],
             'state_code' => ['nullable', 'string', 'max:10'],
-            'pan'        => ['nullable', 'string', 'max:20'],
+            'pan'        => ['nullable', new \App\Rules\PanFormatRule],
             'id_number'  => ['nullable', 'string', 'max:50'],
             'notes'      => ['nullable', 'string', 'max:1000'],
         ]);
@@ -249,7 +256,7 @@ class DhiranController extends Controller
             'last_name'  => $data['last_name'] ?? null,
             'mobile'     => $data['mobile'],
             'address'    => $data['address'] ?? null,
-            'pan'        => $data['pan'] ?? null,
+            'pan'        => isset($data['pan']) ? strtoupper(trim($data['pan'])) : null,
             'id_number'  => $data['id_number'] ?? null,
             'notes'      => $data['notes'] ?? null,
         ]);
@@ -309,7 +316,7 @@ class DhiranController extends Controller
             // Aadhaar: accept a full 12-digit number OR an already-masked value, but
             // NEVER persist the full number (masked to last-4 before save below).
             'aadhaar'                  => ['nullable', 'string', 'max:20', 'regex:/^[0-9Xx\- ]{4,20}$/'],
-            'pan'                      => 'nullable|string|max:20',
+            'pan'                      => ['nullable', new \App\Rules\PanFormatRule],
             'notes'                    => 'nullable|string|max:1000',
             'items'                    => 'required|array|min:1',
             'items.*.description'      => 'required|string|max:255',
@@ -396,7 +403,7 @@ class DhiranController extends Controller
             // Privacy: store only a masked Aadhaar (last 4). The full number is
             // never persisted, logged, or shown. PAN is kept as-is for now.
             'kyc_aadhaar'           => \App\Support\AadhaarMask::mask($data['aadhaar'] ?? null),
-            'kyc_pan'               => $data['pan'] ?? null,
+            'kyc_pan'               => isset($data['pan']) ? strtoupper(trim($data['pan'])) : null,
             'notes'                 => $data['notes'] ?? null,
             'created_by'            => auth()->id(),
             // Evidence gate: a loan created from the UI starts inactive until the
@@ -588,7 +595,7 @@ class DhiranController extends Controller
         $data = $request->validate([
             'tenure_months'         => 'nullable|integer|min:1|max:60',
             'interest_rate_monthly' => 'nullable|numeric|min:0|max:10',
-            'payment_method'        => 'nullable|in:cash,upi,bank_transfer',
+            'payment_method'        => 'nullable|in:cash,upi,card,bank_transfer',
         ]);
 
         try {
