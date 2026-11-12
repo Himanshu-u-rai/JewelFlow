@@ -40,6 +40,9 @@ class DhiranNoBrandTest extends TestCase
         }
         $this->assertStringContainsString('JewelFlows', strip_tags($this->get('https://jewelflows.com/login')->getContent()), 'retail sign-in unchanged');
 
+        $this->app->instance('request', \Illuminate\Http\Request::create(self::HOST . '/dhiran'));
+        $this->assertDoesNotMatchRegularExpression('/jewel\s?flows/i', strip_tags(view('errors.503')->render()), 'maintenance page on Dhiran');
+
         $card = Blade::render('<x-cross-promo-card heading="h" body="b" cta="c" url="#" realm="dhiran" />');
         // Visible words and the screen-reader label; the web address (dhiran.jewelflows.com) is not wording.
         $this->assertDoesNotMatchRegularExpression('/jewel\s?flows/i', strip_tags($card) . implode(' ', preg_match_all('/aria-label="([^"]*)"/', $card, $m) ? $m[1] : []), 'promotion card on Dhiran');

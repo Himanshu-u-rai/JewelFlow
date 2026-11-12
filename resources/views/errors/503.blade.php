@@ -1,9 +1,10 @@
+@php $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlows'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Maintenance — JewelFlows</title>
+    <title>Maintenance — {{ $brand }}</title>
     @vite('resources/css/app.css')
 </head>
 <body style="margin:0;font-family:'Plus Jakarta Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;background:#f8f9fc;">
@@ -14,7 +15,7 @@
             </div>
             <h1 style="font-size:32px;font-weight:800;color:#101828;margin:0 0 12px;letter-spacing:-0.3px;">We'll Be Right Back</h1>
             <p style="font-size:16px;color:#475569;line-height:1.6;margin:0 0 8px;">
-                JewelFlows is undergoing scheduled maintenance.
+                {{ $brand }} is undergoing scheduled maintenance.
             </p>
             <p style="font-size:14px;color:#64748b;line-height:1.6;margin:0;">
                 We expect to be back online shortly. Thank you for your patience.
