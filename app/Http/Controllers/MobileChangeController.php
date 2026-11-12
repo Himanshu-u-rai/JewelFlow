@@ -40,7 +40,8 @@ class MobileChangeController extends Controller
         return view('profile.mobile-change', [
             'user'            => $user,
             'pendingRequest'  => $this->latestPendingRequest($user->id),
-            'emailVerified'   => (bool) $user->email_verified_at,
+            'emailVerified'   => $this->canRequestCode($user),
+            'hasEmail'        => filled($user->email),
         ]);
     }
 
@@ -51,7 +52,7 @@ class MobileChangeController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->email || ! $user->email_verified_at) {
+        if (! $this->canRequestCode($user)) {
             return back()->with('error', 'Please verify your email address before changing your login mobile.');
         }
 
@@ -201,6 +202,12 @@ class MobileChangeController extends Controller
 
         return redirect()->route('profile.mobile.change')
             ->with('success', 'Your login mobile number has been updated successfully.');
+    }
+
+    /** Single source of truth: a code can only be emailed to a present AND verified address. */
+    private function canRequestCode(User $user): bool
+    {
+        return filled($user->email) && $user->email_verified_at !== null;
     }
 
     private function latestPendingRequest(int $userId): ?MobileChangeRequest

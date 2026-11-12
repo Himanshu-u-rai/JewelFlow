@@ -6,8 +6,7 @@
     <div class="content-inner">
     <div class="max-w-2xl mx-auto">
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">{{ __('Change Login Mobile Number') }}</h1>
-        <p class="text-sm text-gray-500 mt-1">
+        <p class="text-sm text-gray-500">
             {{ __('Your mobile number is how you log in. Changing it requires email verification.') }}
         </p>
     </div>
@@ -29,13 +28,17 @@
                 <div class="mt-1 text-lg font-semibold text-gray-900">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</div>
             </div>
             <div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ __('Verified email') }}</div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ __('Email for the code') }}</div>
                 <div class="mt-1 text-sm text-gray-700">
-                    {{ $user->email ?? __('Not set') }}
-                    @if($emailVerified)
-                        <span class="inline-block ml-1 text-emerald-600 text-xs">✓ {{ __('Verified') }}</span>
+                    @if(! $hasEmail)
+                        {{ __('Not set') }}
                     @else
-                        <span class="inline-block ml-1 text-rose-600 text-xs">✗ {{ __('Not verified') }}</span>
+                        {{ $user->email }}
+                        @if($emailVerified)
+                            <span class="inline-block ml-1 text-emerald-600 text-xs">✓ {{ __('Verified') }}</span>
+                        @else
+                            <span class="inline-block ml-1 text-rose-600 text-xs">✗ {{ __('Not verified') }}</span>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -43,8 +46,13 @@
 
         @if(! $emailVerified)
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {{ __('You must verify your email address before you can change your login mobile.') }}
-                <a href="{{ route('profile.edit') }}" class="font-semibold underline ml-1">{{ __('Verify email') }}</a>
+                @if(! $hasEmail)
+                    {{ __('Add an email address to your profile and verify it before you can change your login mobile. The confirmation code is sent there.') }}
+                    <a href="{{ route('profile.edit') }}" class="font-semibold underline ml-1">{{ __('Add email in Profile') }}</a>
+                @else
+                    {{ __('You must verify your email address before you can change your login mobile.') }}
+                    <a href="{{ route('profile.edit') }}" class="font-semibold underline ml-1">{{ __('Verify email in Profile') }}</a>
+                @endif
             </div>
         @elseif($pendingRequest)
             {{-- Step 2: OTP verification --}}
