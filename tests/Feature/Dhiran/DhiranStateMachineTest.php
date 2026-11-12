@@ -80,7 +80,7 @@ class DhiranStateMachineTest extends TestCase
             'pre-close'   => fn ($svc, $l) => $svc->preCloseLoan($l, 'cash'),
             'renew'       => fn ($svc, $l) => $svc->renewLoan($l, null, null, 'cash'),
             'close'       => function ($svc, $l) { $l->outstanding_principal = 0; $l->outstanding_interest = 0; $l->outstanding_penalty = 0; $svc->closeLoan($l); },
-            'notice'      => fn ($svc, $l) => $svc->sendForfeitureNotice($l),
+            'notice'      => fn ($svc, $l) => $svc->sendForfeitureNotice($l->forceFill(['forfeiture_notice_sent_at' => null, 'forfeiture_deadline' => null])),
             'forfeit'     => fn ($svc, $l) => $svc->executeForfeit($l),
         ];
 
@@ -158,6 +158,44 @@ class DhiranStateMachineTest extends TestCase
         $active = $this->loan();
         $this->expectException(LogicException::class);
         $this->in(fn ($svc) => $svc->cancelPendingLoan($active, 'no'));
+    }
+
+    // M1. Forfeiture moves through named stages decided in one place; the loan page, the service and the daily check
+    // agree (all use the loan's own grace days), and a notice cannot be sent twice from a stale page.
+    public function test_forfeiture_stages_are_decided_in_one_place(): void
+    {
+        DhiranSettings::getForShop($this->shop->id)->update(['grace_period_days' => 30, 'forfeiture_notice_days' => 10]);
+        $start = CarbonImmutable::today()->subMonths(1)->subDays(6);   // matures 6 days ago
+        $this->travelTo($start);
+        $loan = $this->loan($start->toDateString(), 1, ['grace_period_days' => 5]);
+        $this->travelBack();
+
+        $stage = fn () => $this->in(fn () => DhiranLoan::find($loan->id)->forfeitureStage());
+        $this->assertSame('notice_due', $stage(), 'past maturity and the loan\'s own 5 grace days');
+        $this->artisan('dhiran:forfeiture-check')->expectsOutputToContain('1 need notice')->assertSuccessful();
+
+        $stale = $this->in(fn () => DhiranLoan::find($loan->id));
+        $this->in(fn ($svc) => $svc->sendForfeitureNotice(DhiranLoan::find($loan->id)));
+        $deadline = $loan->refresh()->forfeiture_deadline->toDateString();
+        $this->assertSame('notice_sent', $stage());
+
+        $this->travelTo(CarbonImmutable::today()->addDays(3));
+        try {
+            $this->in(fn ($svc) => $svc->sendForfeitureNotice($stale));
+            $this->fail('a second notice went out from a stale page');
+        } catch (LogicException $e) {
+            $this->assertStringContainsString('already', $e->getMessage());
+        }
+        $this->assertSame($deadline, $loan->refresh()->forfeiture_deadline->toDateString(), 'the printed deadline did not move');
+
+        $this->travelTo(CarbonImmutable::parse($deadline));
+        $this->assertSame('ready', $stage());
+        $this->artisan('dhiran:forfeiture-check')->expectsOutputToContain('1 ready for forfeiture')->assertSuccessful();
+        $this->travelBack();
+
+        $loan->forceFill(['status' => 'closed'])->saveQuietly();
+        $this->assertNull($stage(), 'a finished loan has no forfeiture stage, whatever its notice fields say');
+        $this->assertFalse($this->in(fn () => DhiranLoan::find($loan->id)->canExecuteForfeit()));
     }
 
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void

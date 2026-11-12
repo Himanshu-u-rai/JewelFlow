@@ -57,7 +57,7 @@
                 </button>
                 @endcan
                 @can('dhiran.forfeit')
-                @if(! $loan->forfeitureNoticeSent() && $loan->forfeitureNoticeDue())
+                @if($loan->forfeitureNoticeDue())
                 <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline" data-turbo-frame="_top">
                     @csrf <x-dhiran.once />
                     <button type="submit" class="btn btn-secondary btn-sm">

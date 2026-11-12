@@ -228,27 +228,41 @@ class DhiranLoan extends Model
         return $this->forfeiture_notice_sent_at !== null;
     }
 
-    /** A forfeiture notice may go out only for an active loan past maturity AND its grace period. */
-    public function forfeitureNoticeDue(): bool
-    {
-        return $this->isOverdue()
-            && today()->gt(\Illuminate\Support\Carbon::parse($this->maturity_date)->addDays((int) $this->grace_period_days));
-    }
-
     /**
-     * Whether forfeiture can be EXECUTED right now. Mirrors the authoritative
-     * service guard (DhiranService::executeForfeit): the loan must be active, a
-     * notice must have been sent, and the configured notice period must have
-     * elapsed. The UI uses this to show/hide the action; the service guard remains
-     * the real protection.
+     * Where an active loan stands on the road to forfeiture: the one rule the loan page, the service guards and the
+     * daily check all use (owner 2026-11-12, state-machine audit). Null for a loan that is not active.
+     *   current     not yet past maturity
+     *   grace       past maturity, within the loan's own grace days
+     *   notice_due  grace over, no notice yet
+     *   notice_sent notice out, its printed deadline not reached
+     *   ready       the deadline on the notice has come: forfeiture may be executed
      */
-    public function canExecuteForfeit(): bool
+    public function forfeitureStage(): ?string
     {
-        if ($this->status !== 'active' || ! $this->forfeiture_notice_sent_at) {
-            return false;
+        if ($this->status !== 'active') {
+            return null;
+        }
+        if ($this->forfeiture_notice_sent_at) {
+            return today()->lt($this->forfeitureDeadline()) ? 'notice_sent' : 'ready';
+        }
+        if (! $this->maturity_date || ! today()->gt($this->maturity_date)) {
+            return 'current';
         }
 
-        return ! today()->lt($this->forfeitureDeadline());
+        return today()->gt(\Illuminate\Support\Carbon::parse($this->maturity_date)->addDays((int) $this->grace_period_days))
+            ? 'notice_due' : 'grace';
+    }
+
+    /** A forfeiture notice may go out now (see forfeitureStage). */
+    public function forfeitureNoticeDue(): bool
+    {
+        return $this->forfeitureStage() === 'notice_due';
+    }
+
+    /** Forfeiture may be executed now (see forfeitureStage); the service re-checks under the row lock. */
+    public function canExecuteForfeit(): bool
+    {
+        return $this->forfeitureStage() === 'ready';
     }
 
     /**

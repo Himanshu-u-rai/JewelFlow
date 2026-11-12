@@ -28,18 +28,18 @@ class DhiranForfeitureCheck extends Command
         foreach ($enabledSettings as $settings) {
             try {
                 [$needCount, $readyCount] = TenantContext::runFor($settings->shop_id, function () use ($settings) {
-                $graceDays = $settings->grace_period_days ?? 30;
-                $noticeDays = $settings->forfeiture_notice_days ?? 30;
-
-                // 1) Active loans past maturity + grace with NO notice sent (a notice is due once grace ends, the same
-                //    rule as DhiranLoan::forfeitureNoticeDue; it used to wait grace + notice days as well)
-                $needNotice = DhiranLoan::where('shop_id', $settings->shop_id)
+                // Stages come from DhiranLoan::forfeitureStage, the rule the loan page and the service use (each loan's
+                // own grace days; this check used the shop's setting). ponytail: past-maturity active loans are
+                // classified in PHP; a shop's overdue book is small. Move the rule to SQL if it ever is not.
+                $overdue = DhiranLoan::where('shop_id', $settings->shop_id)
                     ->where('status', 'active')
-                    ->whereNotNull('maturity_date')
-                    ->whereNull('forfeiture_notice_sent_at')
-                    ->whereDate('maturity_date', '<', now()->subDays($graceDays))
+                    ->whereDate('maturity_date', '<', today())
                     ->with('customer')
-                    ->get();
+                    ->get()
+                    ->groupBy(fn (DhiranLoan $loan) => $loan->forfeitureStage());
+
+                // 1) Grace over, no notice sent yet.
+                $needNotice = $overdue->get('notice_due', collect());
 
                 foreach ($needNotice as $loan) {
                     $customerName = $loan->customer?->name ?? 'Unknown';
@@ -47,15 +47,7 @@ class DhiranForfeitureCheck extends Command
                 }
 
                 // 2) Loans where forfeiture notice WAS sent and notice period has elapsed, but not yet forfeited
-                $readyForfeiture = DhiranLoan::where('shop_id', $settings->shop_id)
-                    ->where('status', 'active')
-                    ->whereNotNull('forfeiture_notice_sent_at')
-                    ->whereNull('forfeited_at')
-                    // the deadline printed on the notice (older notices: sent date + today's setting)
-                    ->where(fn ($q) => $q->whereDate('forfeiture_deadline', '<=', today())
-                        ->orWhere(fn ($w) => $w->whereNull('forfeiture_deadline')->whereDate('forfeiture_notice_sent_at', '<', now()->subDays($noticeDays))))
-                    ->with('customer')
-                    ->get();
+                $readyForfeiture = $overdue->get('ready', collect());
 
                 foreach ($readyForfeiture as $loan) {
                     $customerName = $loan->customer?->name ?? 'Unknown';

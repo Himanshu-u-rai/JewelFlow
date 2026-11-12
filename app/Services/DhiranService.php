@@ -1512,30 +1512,39 @@ class DhiranService
      *  9. SEND FORFEITURE NOTICE
      * ══════════════════════════════════════════════════════════ */
 
+    /** Refuse unless the loan is at $wanted on the forfeiture road (DhiranLoan::forfeitureStage), saying why. */
+    private function assertForfeitureStage(DhiranLoan $loan, string $wanted): void
+    {
+        $stage = $loan->forfeitureStage();
+        if ($stage === $wanted) {
+            return;
+        }
+        $deadline = $loan->forfeitureDeadline();
+
+        throw new LogicException(match (true) {
+            $stage === null => $wanted === 'ready' ? 'Only active loans can be forfeited.' : 'Forfeiture notice can only be sent for active loans.',
+            $wanted === 'notice_due' && $stage === 'current' => 'Forfeiture notice can only be sent for overdue loans.',
+            $wanted === 'notice_due' && $stage === 'grace' => 'Loan is still within the grace period. Cannot send forfeiture notice yet.',
+            $wanted === 'notice_due' => 'A forfeiture notice was already sent on ' . $loan->forfeiture_notice_sent_at->format('d M Y') . '.',
+            $stage === 'notice_sent' => 'Forfeiture notice period has not elapsed. ' . (int) today()->diffInDays($deadline, false)
+                . " days remaining (the notice gives until {$deadline->format('d M Y')}).",
+            default => 'Forfeiture notice must be sent before executing forfeiture.',
+        });
+    }
+
     /**
      * Send forfeiture notice to borrower (RBI 30-day notice requirement).
      */
     public function sendForfeitureNotice(DhiranLoan $loan): void
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Forfeiture notice can only be sent for active loans.');
-        }
-
-        if (! $loan->isOverdue()) {
-            throw new LogicException('Forfeiture notice can only be sent for overdue loans.');
-        }
-
-        // Validate overdue past grace period
-        $gracePeriodEnd = Carbon::parse($loan->maturity_date)->addDays($loan->grace_period_days);
-        if (today()->lte($gracePeriodEnd)) {
-            throw new LogicException('Loan is still within the grace period. Cannot send forfeiture notice yet.');
-        }
+        $this->assertForfeitureStage($loan, 'notice_due');
 
         // The notice quotes the balance, so bring interest and penalty up to today first (as release and renewal do).
         $this->accrueInterest($loan);
 
         DB::transaction(function () use ($loan): void {
             $loan = $this->lockActive($loan);
+            $this->assertForfeitureStage($loan, 'notice_due'); // a notice sent from another page meanwhile
 
             $settings = DhiranSettings::getForShop($loan->shop_id);
             $rupees = fn ($v) => '₹' . number_format((float) $v, 2);
@@ -1569,28 +1578,13 @@ class DhiranService
      */
     public function executeForfeit(DhiranLoan $loan): void
     {
-        if ($loan->status !== 'active') {
-            throw new LogicException('Only active loans can be forfeited.');
-        }
-
-        if (! $loan->forfeiture_notice_sent_at) {
-            throw new LogicException('Forfeiture notice must be sent before executing forfeiture.');
-        }
-
-        // The deadline printed on the notice, not today's setting (owner 2026-11-12).
-        $requiredDate = $loan->forfeitureDeadline();
-
-        if (today()->lt($requiredDate)) {
-            $daysRemaining = (int) today()->diffInDays($requiredDate, false);
-            throw new LogicException(
-                "Forfeiture notice period has not elapsed. {$daysRemaining} days remaining (the notice gives until {$requiredDate->format('d M Y')})."
-            );
-        }
+        $this->assertForfeitureStage($loan, 'ready');
 
         $actorId = auth()->id() ?? $loan->created_by;
 
         DB::transaction(function () use ($loan, $actorId): void {
             $loan = $this->lockActive($loan);
+            $this->assertForfeitureStage($loan, 'ready');
 
             $writtenOffPrincipal = (float) $loan->outstanding_principal;
             $writtenOffInterest  = (float) $loan->outstanding_interest;
