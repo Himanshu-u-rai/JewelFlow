@@ -94,18 +94,7 @@
                                 <td data-label="Outstanding" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding, 2) }}</td>
                                 <td data-label="Rate" class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ $loan->interest_rate_monthly }}%/mo</td>
                                 <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
-                                    @php
-                                        $statusColors = [
-                                            'active' => 'bg-emerald-100 text-emerald-800',
-                                            'overdue' => 'bg-rose-100 text-rose-800',
-                                            'closed' => 'bg-slate-100 text-slate-600',
-                                            'renewed' => 'bg-sky-100 text-sky-800',
-                                            'forfeited' => 'bg-red-100 text-red-800',
-                                        ];
-                                    @endphp
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ ucfirst($loan->status) }}
-                                    </span>
+                                    <x-dhiran.status :value="$loan->status" />
                                 </td>
                                 <td data-label="Actions" class="px-4 py-4 whitespace-nowrap text-center">
                                     <a href="{{ route('dhiran.show', $loan) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-50" title="View">

@@ -132,23 +132,12 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @php
-                                $statusColors = [
-                                    'pending_evidence' => 'bg-amber-100 text-amber-800',
-                                    'active' => 'bg-emerald-100 text-emerald-800',
-                                    'closed' => 'bg-slate-100 text-slate-600',
-                                    'renewed' => 'bg-sky-100 text-sky-800',
-                                    'forfeited' => 'bg-red-100 text-red-800',
-                                ];
-                            @endphp
                             @foreach($loanList as $loan)
                                 <tr class="hover:bg-slate-50/70">
                                     <x-dhiran.sno :rows="$loanList" :n="$loop->iteration" />
                                     <td data-label="Loan #" class="pl-6 pr-4 py-4"><a href="{{ route('dhiran.show', $loan) }}" class="font-mono font-medium text-slate-700 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
                                     <td data-label="Status" class="px-4 py-4 text-center">
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                            {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
-                                        </span>
+                                        <x-dhiran.status :value="$loan->status" />
                                     </td>
                                     <td data-label="Principal" class="px-4 py-4 text-right text-sm text-slate-700">₹{{ number_format($loan->principal_amount, 2) }}</td>
                                     <td data-label="Outstanding" class="px-4 py-4 text-right text-sm font-medium text-slate-800">₹{{ number_format($loan->totalOutstanding(), 2) }}</td>

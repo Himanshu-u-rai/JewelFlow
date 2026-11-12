@@ -106,19 +106,7 @@
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding, 2) }}
                                 </td>
                                 <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
-                                    @php
-                                        $statusColors = [
-                                            'pending_evidence' => 'bg-amber-100 text-amber-800',
-                                            'active' => 'bg-emerald-100 text-emerald-800',
-                                            'overdue' => 'bg-rose-100 text-rose-800',
-                                            'closed' => 'bg-slate-100 text-slate-600',
-                                            'renewed' => 'bg-sky-100 text-sky-800',
-                                            'forfeited' => 'bg-red-100 text-red-800',
-                                        ];
-                                    @endphp
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
-                                    </span>
+                                    <x-dhiran.status :value="$loan->status" />
                                 </td>
                                 <td data-label="Date" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                     {{ $loan->loan_date->format('d M Y') }}

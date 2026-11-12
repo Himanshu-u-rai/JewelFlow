@@ -175,7 +175,7 @@ class DhiranBorrowerProfileTest extends TestCase
         $html = $this->profile($shop, $owner, $c->id)->render();
         $this->assertStringContainsString($loanA->loan_number, $html);
         $this->assertStringNotContainsString($loanB->loan_number, $html);
-        $this->assertStringContainsString('Awaiting Evidence', $html); // pending_evidence shown
+        $this->assertStringContainsString('Awaiting evidence', $html); // pending_evidence shown
         // Grouped, not bare: the column stores '9811110051', the page prints it
         // through Mobile::forDisplay per E.123. Spelt out rather than calling the
         // helper here — asserting against the helper would pass whatever it does.

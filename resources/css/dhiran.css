@@ -3319,3 +3319,16 @@ html:has(dialog.dh-fpanel[open]) .dh-scroll { overflow: hidden; } /* the page be
     .dh-app table.dh-stack tfoot td { padding: 4px 16px; text-align: left; }
     .dh-app table.dh-stack tfoot td:empty { display: none; }
 }
+
+/* Loan and item status (x-dhiran.status): one pill, one tone per state, colours from dhiran-tokens.css only. */
+.dh-status {
+    display: inline-flex; align-items: center; white-space: nowrap;
+    padding: 2px 9px; border-radius: 999px; border: 1px solid var(--dh-status-line);
+    font-size: 12px; font-weight: 600; line-height: 1.5;
+    color: var(--dh-status-ink); background: var(--dh-status-soft);
+}
+.dh-status--success { --dh-status-ink: var(--dh-success); --dh-status-soft: var(--dh-success-soft); --dh-status-line: var(--dh-success-line); }
+.dh-status--warning { --dh-status-ink: var(--dh-warning-ink); --dh-status-soft: var(--dh-warning-soft); --dh-status-line: var(--dh-warning-line); }
+.dh-status--danger  { --dh-status-ink: var(--dh-danger); --dh-status-soft: var(--dh-danger-soft); --dh-status-line: var(--dh-danger-line); }
+.dh-status--info    { --dh-status-ink: var(--dh-blue); --dh-status-soft: color-mix(in srgb, var(--dh-blue) 8%, var(--dh-white)); --dh-status-line: color-mix(in srgb, var(--dh-blue) 25%, var(--dh-white)); }
+.dh-status--muted   { --dh-status-ink: var(--dh-muted); --dh-status-soft: var(--dh-muted-surface); --dh-status-line: color-mix(in srgb, var(--dh-muted) 20%, var(--dh-white)); }

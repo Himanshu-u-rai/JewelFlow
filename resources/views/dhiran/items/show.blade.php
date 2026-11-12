@@ -1,18 +1,6 @@
 <x-dhiran-layout title="Pledged Item">
     @php
         $borrower = $loan?->customer;
-        $statusColors = [
-            'pledged' => 'bg-amber-100 text-amber-800',
-            'released' => 'bg-emerald-100 text-emerald-800',
-            'forfeited' => 'bg-red-100 text-red-800',
-        ];
-        $loanStatusColors = [
-            'pending_evidence' => 'bg-amber-100 text-amber-800',
-            'active' => 'bg-emerald-100 text-emerald-800',
-            'closed' => 'bg-slate-100 text-slate-600',
-            'renewed' => 'bg-sky-100 text-sky-800',
-            'forfeited' => 'bg-red-100 text-red-800',
-        ];
     @endphp
 
     {{-- 1. Header --}}
@@ -24,9 +12,7 @@
                 @if($borrower) · {{ $borrower->name }}@endif
                 @if($item->created_at) · Pledged {{ $item->created_at->format('d M Y') }}@endif
             </p>
-            <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-xs font-semibold {{ $statusColors[$item->status] ?? 'bg-slate-100 text-slate-600' }}">
-                {{ ucfirst($item->status ?? 'pledged') }}
-            </span>
+            <x-dhiran.status :value="$item->status ?? 'pledged'" class="mt-2" />
         </div>
         <div class="page-actions">
             @if($loan)
@@ -127,9 +113,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
                     <h3 class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-2">Loan</h3>
                     <p class="text-sm font-mono font-semibold text-slate-800">{{ $loan->loan_number }}</p>
-                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $loanStatusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                        {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
-                    </span>
+                    <x-dhiran.status :value="$loan->status" class="mt-1" />
                     <dl class="mt-3 space-y-1.5 text-sm">
                         <div class="flex justify-between"><dt class="text-slate-500">Principal</dt><dd class="text-slate-800">₹{{ number_format($loan->principal_amount, 2) }}</dd></div>
                         <div class="flex justify-between"><dt class="text-slate-500">Outstanding</dt><dd class="text-slate-800 font-medium">₹{{ number_format($loan->totalOutstanding(), 2) }}</dd></div>

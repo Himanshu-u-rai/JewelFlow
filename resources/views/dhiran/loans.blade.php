@@ -60,21 +60,8 @@
                                     {{ $loan->interest_rate_monthly }}%/mo
                                 </td>
                                 <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
-                                    @php
-                                        $statusColors = [
-                                            'pending_evidence' => 'bg-amber-100 text-amber-800',
-                                            'active' => 'bg-emerald-100 text-emerald-800',
-                                            'overdue' => 'bg-rose-100 text-rose-800',
-                                            'closed' => 'bg-slate-100 text-slate-600',
-                                            'renewed' => 'bg-sky-100 text-sky-800',
-                                            'forfeited' => 'bg-red-100 text-red-800',
-                                        ];
-                                    @endphp
                                     {{-- The "upload proof" hint is the badge's tooltip, not a second line under it (one value per cell). --}}
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}"
-                                          @if($loan->status === 'pending_evidence') title="Upload the required proof to activate this loan" @endif>
-                                        {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
-                                    </span>
+                                    <x-dhiran.status :value="$loan->status" :title="$loan->status === 'pending_evidence' ? 'Upload the required proof to activate this loan' : null" />
                                 </td>
                                 <td data-label="Maturity" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                     {{ $loan->maturity_date ? $loan->maturity_date->format('d M Y') : '---' }}

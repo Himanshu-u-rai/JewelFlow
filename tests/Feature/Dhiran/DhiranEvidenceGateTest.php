@@ -233,7 +233,7 @@ class DhiranEvidenceGateTest extends TestCase
 
         $html = $this->renderLoans($shop, $owner, null);
         $this->assertStringContainsString($loan->loan_number, $html);
-        $this->assertStringContainsString('Awaiting Evidence', $html);
+        $this->assertStringContainsString('Awaiting evidence', $html);
     }
 
     // 2. Pending-evidence loan appears under the "Awaiting Evidence" filter.
@@ -271,7 +271,7 @@ class DhiranEvidenceGateTest extends TestCase
         $this->pendingLoan($shop, $owner);
 
         $html = $this->renderLoans($shop, $owner, null);
-        $this->assertStringContainsString('Awaiting Evidence', $html);
+        $this->assertStringContainsString('Awaiting evidence', $html);
         // The hint is the badge's tooltip now: one value per table cell (owner 2026-11-11).
         $this->assertStringContainsString('title="Upload the required proof to activate this loan"', $html);
     }

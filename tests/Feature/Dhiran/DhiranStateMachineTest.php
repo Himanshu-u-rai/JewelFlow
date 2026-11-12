@@ -233,6 +233,26 @@ class DhiranStateMachineTest extends TestCase
             DB::table('dhiran_loans')->distinct()->orderBy('status')->pluck('status')->all(), 'every ending was exercised');
     }
 
+    // M3. A status is shown the same way everywhere, by one component with one label and one colour token per state;
+    // no page keeps its own copy (one copy missed 'Awaiting evidence' and printed "Pending_evidence").
+    public function test_every_status_is_shown_by_one_component(): void
+    {
+        $copies = collect(\Illuminate\Support\Facades\File::allFiles(resource_path('views/dhiran')))
+            ->filter(fn ($f) => preg_match('/statusColors|ucfirst\(\$(loan|item)->status|\$loan->status === \'(active|closed|forfeited)\'\)\s*<span/', $f->getContents()))
+            ->map(fn ($f) => $f->getRelativePathname())->values()->all();
+        $this->assertSame([], $copies, 'pages with their own status labels or colours');
+
+        $this->loan(null, 12, ['status' => 'pending_evidence']);
+        $report = $this->in(fn () => $this->get('https://dhiran.jewelflows.com/dhiran/reports/profitability')->getContent());
+        $this->assertStringNotContainsString('Pending_evidence', $report);
+        $this->assertMatchesRegularExpression('/dh-status dh-status--warning">\s*Awaiting evidence/', $report);
+
+        foreach (['pending_evidence' => 'warning', 'active' => 'success', 'closed' => 'muted', 'renewed' => 'info',
+            'forfeited' => 'danger', 'cancelled' => 'muted', 'pledged' => 'warning', 'released' => 'success'] as $status => $tone) {
+            $this->assertStringContainsString("dh-status--{$tone}", \Illuminate\Support\Facades\Blade::render('<x-dhiran.status :value="$v" />', ['v' => $status]), $status);
+        }
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();

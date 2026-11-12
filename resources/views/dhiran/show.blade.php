@@ -4,19 +4,7 @@
             <h1 class="page-title">Loan {{ $loan->loan_number }}</h1>
             <p class="text-sm text-gray-500 mt-1">
                 {{ $loan->customer->name ?? '---' }}
-                @php
-                    $statusColors = [
-                        'pending_evidence' => 'bg-amber-100 text-amber-800',
-                        'active' => 'bg-emerald-100 text-emerald-800',
-                        'overdue' => 'bg-rose-100 text-rose-800',
-                        'closed' => 'bg-slate-100 text-slate-600',
-                        'renewed' => 'bg-sky-100 text-sky-800',
-                        'forfeited' => 'bg-red-100 text-red-800',
-                    ];
-                @endphp
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ml-2 {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                    {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
-                </span>
+                <x-dhiran.status :value="$loan->status" class="ml-2" />
             </p>
             {{-- Renewal chain: the old loan keeps its figures as a record; its balance moved to the new loan. --}}
             @if($loan->renewedFrom)
@@ -290,17 +278,7 @@
                                 <td data-label="Market Val" class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
                                 <td data-label="Loan Val" class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($item->loan_value, 2) }}</td>
                                 <td data-label="Status" class="px-4 py-4 whitespace-nowrap text-center">
-                                    @php
-                                        $itemStatus = $item->status ?? 'pledged';
-                                        $itemStatusColors = [
-                                            'pledged' => 'bg-amber-100 text-amber-800',
-                                            'released' => 'bg-emerald-100 text-emerald-800',
-                                            'forfeited' => 'bg-red-100 text-red-800',
-                                        ];
-                                    @endphp
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $itemStatusColors[$itemStatus] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ ucfirst($itemStatus) }}
-                                    </span>
+                                    <x-dhiran.status :value="$item->status ?? 'pledged'" />
                                 </td>
                                 <td data-label="HUID" class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{{ $item->huid ?? '---' }}</td>
                             </tr>

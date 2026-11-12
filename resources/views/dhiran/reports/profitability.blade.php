@@ -98,15 +98,7 @@
                                 <td data-label="Penalty Collected" class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 text-right">{{ number_format((float) $loan->total_penalty_collected, 2) }}</td>
                                 <td data-label="Processing Fee" class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ number_format((float) $loan->processing_fee, 2) }}</td>
                                 <td data-label="Status" class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                    @if($loan->status === 'active')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
-                                    @elseif($loan->status === 'closed')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Closed</span>
-                                    @elseif($loan->status === 'forfeited')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Forfeited</span>
-                                    @else
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($loan->status) }}</span>
-                                    @endif
+                                    <x-dhiran.status :value="$loan->status" />
                                 </td>
                                 <td data-label="Profit/Loss" class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right {{ $loanProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     {{ number_format($loanProfit, 2) }}
