@@ -27,7 +27,8 @@ class EnsureDhiranEnabled
     ];
 
     /** Pages that only exist to start new business. */
-    private const NEW_BUSINESS_PAGES = ['dhiran.create', 'dhiran.borrowers.create', 'dhiran.old-loans.create'];
+    private const NEW_BUSINESS_PAGES = ['dhiran.create', 'dhiran.borrowers.create', 'dhiran.old-loans.create',
+        'dhiran.old-loans.upload', 'dhiran.old-loans.upload.preview'];
 
     public const LAPSED = 'Your Dhiran plan has ended. Renew it to start new loans, renewals or borrowers; collections on existing loans stay open.';
 

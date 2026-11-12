@@ -6,6 +6,10 @@
         </div>
         <div class="page-actions">
             <x-dhiran.filter-panel :groups="$filters" title="Filter old loans" />
+            <a href="{{ route('dhiran.old-loans.upload') }}" class="btn btn-secondary btn-sm">
+                <x-icon name="upload" size="14" class="mr-1" />
+                Upload spreadsheet
+            </a>
             <a href="{{ route('dhiran.old-loans.create') }}" class="btn btn-primary btn-sm">
                 <x-icon name="plus" size="14" class="mr-1" />
                 Add old loan

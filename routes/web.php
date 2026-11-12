@@ -1128,6 +1128,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::get('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'index'])->middleware('can:dhiran.create')->name('old-loans.index');
             Route::get('/old-loans/create', [\App\Http\Controllers\DhiranOldLoanController::class, 'create'])->middleware('can:dhiran.create')->name('old-loans.create');
             Route::post('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'store'])->middleware('can:dhiran.create')->name('old-loans.store');
+            Route::get('/old-loans/template', [\App\Http\Controllers\DhiranOldLoanController::class, 'template'])->middleware('can:dhiran.create')->name('old-loans.template');
+            Route::get('/old-loans/upload', [\App\Http\Controllers\DhiranOldLoanController::class, 'uploadForm'])->middleware('can:dhiran.create')->name('old-loans.upload');
+            Route::post('/old-loans/upload', [\App\Http\Controllers\DhiranOldLoanController::class, 'upload'])->middleware('can:dhiran.create')->name('old-loans.upload.store');
+            Route::get('/old-loans/upload/{token}', [\App\Http\Controllers\DhiranOldLoanController::class, 'preview'])->middleware('can:dhiran.create')->name('old-loans.upload.preview');
+            Route::post('/old-loans/upload/{token}', [\App\Http\Controllers\DhiranOldLoanController::class, 'confirmUpload'])->middleware('can:dhiran.create')->name('old-loans.upload.confirm');
 
             // Release item — release permission
             Route::post('/loans/{loan}/release-item', [\App\Http\Controllers\DhiranController::class, 'releaseItem'])->middleware('can:dhiran.release')->name('release-item');

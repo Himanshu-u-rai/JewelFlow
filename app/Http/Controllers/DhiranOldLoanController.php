@@ -6,29 +6,28 @@ use App\Models\Customer;
 use App\Models\Dhiran\DhiranAttachment;
 use App\Models\Dhiran\DhiranLoan;
 use App\Models\Dhiran\DhiranSettings;
-use App\Rules\IndianMobileRule;
-use App\Rules\PanFormatRule;
 use App\Services\Dhiran\DhiranCollateral;
 use App\Services\Dhiran\DhiranListFilters;
-use App\Services\DhiranService;
+use App\Services\Dhiran\DhiranOldLoans;
+use App\Support\Historical\HistoricalParseException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Old Loans (owner 2026-11-12): a shop joining Dhiran brings its running paper loans in, borrower and loan together,
- * as they stand today. Kept apart from the daily New Loan page. Loans come in active (payments from day one); a
- * missing item photo or ID proof is flagged here and on the loan, not blocking. Spreadsheet upload: see upload*.
+ * as they stand today, one at a time or from a spreadsheet. Kept apart from the daily New Loan page. Loans come in
+ * active (payments from day one); a missing item photo or ID proof is flagged here and on the loan, not blocking.
  */
 class DhiranOldLoanController extends Controller implements \Illuminate\Routing\Controllers\HasMiddleware
 {
     public static function middleware(): array
     {
-        return [new \Illuminate\Routing\Controllers\Middleware(\App\Http\Middleware\DhiranSubmitOnce::class, only: ['store'])];
+        return [new \Illuminate\Routing\Controllers\Middleware(\App\Http\Middleware\DhiranSubmitOnce::class, only: ['store', 'confirmUpload'])];
     }
 
-    public function __construct(private DhiranService $dhiranService) {}
+    public function __construct(private DhiranOldLoans $oldLoans) {}
 
     public function index(Request $request)
     {
@@ -60,61 +59,13 @@ class DhiranOldLoanController extends Controller implements \Illuminate\Routing\
     public function store(Request $request)
     {
         $shopId = (int) auth()->user()->shop_id;
-        $items = (array) $request->input('items', []);
-
-        $data = $request->validate(DhiranCollateral::rules() + [
-            'customer_id'            => ['nullable', 'integer', Customer::activeExistsRule($shopId)],
-            // A new borrower is needed unless one is picked (the form always sends the picker, empty for "new").
-            'borrower'               => ['required_without:customer_id', 'nullable', 'array'],
-            'borrower.first_name'    => ['required_without:customer_id', 'nullable', 'string', 'max:255'],
-            'borrower.last_name'     => ['nullable', 'string', 'max:255'],
-            'borrower.mobile'        => ['required_without:customer_id', 'nullable', 'string', new IndianMobileRule()],
-            'borrower.address'       => ['nullable', 'string', 'max:500'],
-            'borrower.pan'           => ['nullable', new PanFormatRule()],
-            'borrower.id_number'     => ['nullable', 'string', 'max:50'],
-            'paper_loan_number'      => ['required', 'string', 'max:30', Rule::unique('dhiran_loans', 'loan_number')->where('shop_id', $shopId)],
-            'loan_date'              => 'required|date|before_or_equal:today',
-            'principal_amount'       => 'required|numeric|min:1',
-            'principal_owed'         => 'required|numeric|min:0.01|lte:principal_amount',
-            'interest_rate_monthly'  => 'required|numeric|min:0|max:10',
-            'interest_type'          => 'required|in:flat,daily,compound',
-            'tenure_months'          => 'required|integer|min:1|max:60',
-            'penalty_rate_monthly'   => 'nullable|numeric|min:0|max:10',
-            'grace_period_days'      => 'nullable|integer|min:0|max:90',
-            'interest_paid_until'    => 'required|date|after_or_equal:loan_date|before_or_equal:today',
-            'unpaid_interest'        => 'nullable|numeric|min:0',
-            'gold_rate_on_date'      => (DhiranCollateral::needsRate($items, 'gold') ? 'required' : 'nullable') . '|numeric|min:0',
-            'silver_rate_on_date'    => (DhiranCollateral::needsRate($items, 'silver') ? 'required' : 'nullable') . '|numeric|min:0',
-            'notes'                  => 'nullable|string|max:1000',
-        ]);
+        $data = $request->validate(DhiranOldLoans::rules((array) $request->input('items', []), $shopId));
         if ($itemErrors = DhiranCollateral::errors($data['items'])) {
             throw ValidationException::withMessages($itemErrors);
         }
 
         try {
-            $loan = DB::transaction(function () use ($data, $shopId) {
-                $customer = $this->borrower($data, $shopId);
-
-                return $this->dhiranService->createLoan(auth()->user()->shop, $customer, DhiranCollateral::normalise($data['items']), [
-                    'brought_forward'       => true,
-                    'status'                => 'active',
-                    'loan_number'           => $data['paper_loan_number'],
-                    'loan_date'             => $data['loan_date'],
-                    'principal_amount'      => $data['principal_amount'],
-                    'principal_owed'        => $data['principal_owed'],
-                    'interest_paid_until'   => $data['interest_paid_until'],
-                    'unpaid_interest'       => $data['unpaid_interest'] ?? null,
-                    'interest_rate_monthly' => $data['interest_rate_monthly'],
-                    'interest_type'         => $data['interest_type'],
-                    'tenure_months'         => $data['tenure_months'],
-                    'penalty_rate_monthly'  => $data['penalty_rate_monthly'] ?? null,
-                    'grace_period_days'     => $data['grace_period_days'] ?? null,
-                    'gold_rate_on_date'     => $data['gold_rate_on_date'] ?? 0,
-                    'silver_rate_on_date'   => $data['silver_rate_on_date'] ?? null,
-                    'notes'                 => $data['notes'] ?? null,
-                    'created_by'            => auth()->id(),
-                ]);
-            });
+            $loan = $this->oldLoans->bringIn($data, $shopId);
         } catch (\LogicException $e) {
             return back()->withErrors(['loan' => $e->getMessage()])->withInput();
         }
@@ -123,22 +74,87 @@ class DhiranOldLoanController extends Controller implements \Illuminate\Routing\
             ->with('success', "Old loan {$loan->loan_number} brought in. Add the next one, or open it from Old Loans.");
     }
 
-    /** The picked borrower, else the one already on the books with that mobile, else a new borrower. */
-    private function borrower(array $data, int $shopId): Customer
-    {
-        if (! empty($data['customer_id'])) {
-            return Customer::findOrFail($data['customer_id']);
-        }
-        $b = $data['borrower'];
+    /* ── Spreadsheet: template, upload, preview, bring in ─────────────────── */
 
-        return Customer::resolveByMobile($b['mobile']) ?? Customer::create([
-            'first_name' => $b['first_name'],
-            'last_name'  => $b['last_name'] ?? null,
-            'mobile'     => $b['mobile'],
-            'address'    => $b['address'] ?? null,
-            'pan'        => isset($b['pan']) ? strtoupper(trim($b['pan'])) : null,
-            'id_number'  => $b['id_number'] ?? null,
-        ]);
+    public function uploadForm()
+    {
+        return view('dhiran.old-loans.upload', ['columns' => DhiranOldLoans::COLUMNS, 'maxRows' => DhiranOldLoans::MAX_ROWS]);
+    }
+
+    public function template()
+    {
+        return response()->streamDownload(fn () => print(DhiranOldLoans::template()), 'old-loans-template.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    /** Keep the file privately for this shop and show what is in it; nothing is saved to the books yet. */
+    public function upload(Request $request)
+    {
+        $request->validate(['file' => ['required', 'file', 'max:5120', 'mimes:csv,txt,xlsx']],
+            ['file.mimes' => 'Upload the Old Loans template as a CSV or Excel (.xlsx) file.']);
+        $ext = strtolower($request->file('file')->getClientOriginalExtension()) === 'xlsx' ? 'xlsx' : 'csv';
+        $token = (string) Str::uuid();
+        Storage::disk('local')->putFileAs($this->folder(), $request->file('file'), "{$token}.{$ext}");
+
+        return redirect()->route('dhiran.old-loans.upload.preview', $token);
+    }
+
+    public function preview(string $token)
+    {
+        try {
+            $loans = $this->oldLoans->read(...$this->file($token));
+        } catch (HistoricalParseException $e) {
+            return redirect()->route('dhiran.old-loans.upload')->with('error', $e->getMessage());
+        }
+
+        return view('dhiran.old-loans.preview', compact('loans', 'token'));
+    }
+
+    /** Bring in every loan without problems (each on its own: one failing does not stop the rest); skip the others. */
+    public function confirmUpload(string $token)
+    {
+        try {
+            [$path, $ext, $shopId] = $this->file($token);
+            $loans = $this->oldLoans->read($path, $ext, $shopId);
+        } catch (HistoricalParseException $e) {
+            return redirect()->route('dhiran.old-loans.upload')->with('error', $e->getMessage());
+        }
+
+        $in = 0;
+        $skipped = [];
+        foreach ($loans as $loan) {
+            if ($loan['problems']) {
+                $skipped[] = $loan['ticket'];
+                continue;
+            }
+            try {
+                $this->oldLoans->bringIn($loan['data'], $shopId);
+                $in++;
+            } catch (\LogicException $e) {
+                $skipped[] = $loan['ticket'];
+            }
+        }
+        Storage::disk('local')->delete(substr($path, strlen(Storage::disk('local')->path(''))));
+
+        $message = "{$in} old " . Str::plural('loan', $in) . ' brought in' .($skipped ? '; ' . count($skipped) . ' skipped (' . implode(', ', array_slice($skipped, 0, 10)) . (count($skipped) > 10 ? ', …' : '') . '). Fix those rows and upload them again.' : '.');
+
+        return redirect()->route('dhiran.old-loans.index')->with('success', $message);
+    }
+
+    private function folder(): string
+    {
+        return 'dhiran-old-loans/' . (int) auth()->user()->shop_id;
+    }
+
+    /** @return array{0: string, 1: string, 2: int} absolute path, extension, shop — only this shop's own upload */
+    private function file(string $token): array
+    {
+        abort_unless(Str::isUuid($token), 404);
+        foreach (['csv', 'xlsx'] as $ext) {
+            if (Storage::disk('local')->exists($rel = "{$this->folder()}/{$token}.{$ext}")) {
+                return [Storage::disk('local')->path($rel), $ext, (int) auth()->user()->shop_id];
+            }
+        }
+        abort(404);
     }
 
     /** True when the loan has an item photo and an ID proof (the rule of DhiranService::evidenceStatus, in SQL). */
