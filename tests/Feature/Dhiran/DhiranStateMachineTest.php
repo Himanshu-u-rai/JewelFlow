@@ -198,6 +198,41 @@ class DhiranStateMachineTest extends TestCase
         $this->assertFalse($this->in(fn () => DhiranLoan::find($loan->id)->canExecuteForfeit()));
     }
 
+    // M2. Items and their loan never disagree: an open loan holds at least one pledged item, a finished loan holds none.
+    // (Checked across every way a loan ends; releasing the last item needs the whole balance, so it closes the loan.)
+    public function test_items_and_their_loan_never_disagree(): void
+    {
+        $twoItems = $this->in(fn ($svc) => $svc->createLoan($this->shop, $this->customer, [
+            ['description' => 'Ring', 'metal_type' => 'gold', 'purity' => 22, 'gross_weight' => 30, 'rate_per_gram_at_pledge' => 7000],
+            ['description' => 'Chain', 'metal_type' => 'gold', 'purity' => 22, 'gross_weight' => 70, 'rate_per_gram_at_pledge' => 7000],
+        ], ['principal_amount' => 100000, 'gold_rate_on_date' => 7000, 'created_by' => $this->owner->id, 'tenure_months' => 12]));
+        $this->in(function ($svc) use ($twoItems) {
+            foreach ($twoItems->items()->get() as $item) {
+                $loan = DhiranLoan::find($twoItems->id);
+                $svc->releaseItem($loan, $item, $svc->releaseMinimum($loan, $item), 'cash', '');
+            }
+        });
+        $this->assertSame('closed', $twoItems->refresh()->status, 'releasing the last item settles and closes the loan');
+
+        $this->in(fn ($svc) => $svc->preCloseLoan($this->loan(), 'cash'));
+        $this->in(fn ($svc) => $svc->renewLoan($this->loan(), null, null, 'cash'));
+        $this->in(fn ($svc) => $svc->cancelPendingLoan($this->loan(null, 12, ['status' => 'pending_evidence']), ''));
+        $start = CarbonImmutable::today()->subMonths(3);
+        $this->travelTo($start);
+        $old = $this->loan($start->toDateString(), 1);
+        $this->travelBack();
+        $this->in(fn ($svc) => $svc->sendForfeitureNotice($old->refresh()));
+        $this->in(fn ($svc) => $svc->executeForfeit($old->refresh()));
+        $this->loan(null, 12, ['status' => 'pending_evidence']);
+
+        $pledged = 'select count(*) from dhiran_loan_items i where i.dhiran_loan_id = l.id and i.status = \'pledged\'';
+        $open = "'" . implode("','", DhiranLoan::OPEN) . "'";
+        $this->assertSame(0, DB::table('dhiran_loans as l')->whereRaw("l.status in ({$open}) and ({$pledged}) = 0")->count(), 'open loan without collateral');
+        $this->assertSame(0, DB::table('dhiran_loans as l')->whereRaw("l.status not in ({$open}) and ({$pledged}) > 0")->count(), 'finished loan still holding items');
+        $this->assertSame(['active', 'cancelled', 'closed', 'forfeited', 'pending_evidence', 'renewed'],
+            DB::table('dhiran_loans')->distinct()->orderBy('status')->pluck('status')->all(), 'every ending was exercised');
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();
