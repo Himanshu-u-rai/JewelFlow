@@ -86,9 +86,9 @@ function placeToast(toast) {
     let top = (page ? Math.max(page.getBoundingClientRect().top, 0) : 0) + 8;
 
     if (page && !overlayIsOpen(toast)) {
-        // The page is in view: it moves down by the toast's height, header and all, and the
-        // toast takes the strip that leaves at the top.
-        root.style.setProperty('--toast-space', `${toast.offsetHeight + 16}px`);
+        // The page is in view: the toast floats over its top edge (position: fixed in app.css)
+        // and the page does not move. Transient feedback never changes layout.
+        root.style.removeProperty('--toast-space');
     } else {
         // Something lies over the page: there is nothing to move out of the way, so a clear
         // place is looked for. (A layout with no page area to move shows it at the top.)

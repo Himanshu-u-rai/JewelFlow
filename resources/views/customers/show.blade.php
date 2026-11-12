@@ -29,12 +29,7 @@
 
     @if($isRetailer)
         <div class="content-inner customers-show-page customers-show-page--retailer customers-show-retailer-shell">
-            @if(session('success'))
-                <div class="customers-show-retailer-alert customers-show-retailer-alert--success">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="customers-show-retailer-alert customers-show-retailer-alert--error">{{ session('error') }}</div>
-            @endif
+            {{-- Success/error flashes are delivered by the global toast (layouts/app.blade.php). --}}
             @include('customers.partials.archived-banner')
 
             <div class="customers-show-retailer-overview">
@@ -336,12 +331,6 @@
         </div>
     @else
         <div class="content-inner customers-show-page customers-show-page--manufacturer space-y-6">
-            @if(session('success'))
-                <div class="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">{{ session('error') }}</div>
-            @endif
             @include('customers.partials.archived-banner')
 
             <div class="customers-show-manufacturer-actions" aria-label="Customer account actions">

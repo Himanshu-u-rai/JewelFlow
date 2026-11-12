@@ -22,7 +22,11 @@
         default => new \Illuminate\Support\MessageBag(),
     };
 
-    $topMessage = $errorBag->first('message') ?: session('error');
+    // session('success') / session('error') are NOT rendered here: layouts/app.blade.php
+    // already delivers them as the global toast (flash meta tags, resources/js/toast.js).
+    // This component keeps only what the toast does not carry: `message`-keyed and
+    // field validation errors.
+    $topMessage = $errorBag->first('message');
 
     $validationMessages = collect($errorBag->all())
         ->filter(function ($message) use ($topMessage) {
@@ -58,28 +62,16 @@
         // the session. A `message`-keyed validation error was therefore filtered
         // OUT of the list below (as a duplicate of $topMessage) and then never
         // rendered at all — swallowed. Same variable, both branches.
-        $hasAny = ($showSuccess && session('success'))
-            || ($showError && $topMessage)
+        $hasAny = ($showError && $topMessage)
             || ($showValidation && $validationMessages->isNotEmpty());
     @endphp
 
     @if($hasAny)
         <div {{ $attributes->merge(['class' => trim('app-alert-stack ' . $class)]) }}>
-            @if($showSuccess && session('success'))
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
-                     x-transition:leave="transition ease-in duration-300"
-                     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                     class="app-alert app-alert-success">
-                    <span class="app-alert-message">{{ session('success') }}</span>
-                    <button type="button" @click="show = false" class="app-alert-close" aria-label="Close alert">
-                        <x-icon name="x" size="16" />
-                    </button>
-                </div>
-            @endif
-
-            {{-- No auto-dismiss on the two error branches: an error is a thing the
-                 operator must act on, and a 6s/8s timer deleted the instructions
-                 while they were still reading them. Success stays transient. --}}
+            {{-- No auto-dismiss on the error branches: an error is a thing the
+                 operator must act on, and a timer deleted the instructions while
+                 they were still reading them. Transient success/error flashes are
+                 the global toast's job (see top of file). --}}
             @if($showError && $topMessage)
                 <div x-data="{ show: true }" x-show="show"
                      x-transition:leave="transition ease-in duration-300"

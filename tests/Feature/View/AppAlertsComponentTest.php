@@ -152,11 +152,12 @@ class AppAlertsComponentTest extends TestCase
         $this->assertStringNotContainsString('setTimeout', $errorHtml,
             'An error alert that removes itself on a timer is the silent-validation bug again.');
 
+        // Success acknowledgements are no longer rendered here at all: the global toast
+        // (layouts/app.blade.php flash meta) owns them. See SingleFlashTest.
         View::share('errors', new ViewErrorBag());
         session()->flash('success', 'Historical bill saved.');
 
-        $this->assertStringContainsString('setTimeout', (string) $this->blade('<x-app-alerts />'),
-            'Success acknowledgements are transient by design; only errors must persist.');
+        $this->assertStringNotContainsString('Historical bill saved.', (string) $this->blade('<x-app-alerts />'));
     }
 
     /** Defensive: the component is also used where `$errors` was never shared. */

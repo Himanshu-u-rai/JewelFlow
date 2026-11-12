@@ -4124,11 +4124,10 @@ body.drawer-open {
 /* Phones: the toast lies over nothing. The bottom edge belongs to the Cancel/Save row of
    bottom-sheet modals and to .jf-header-mobile-fab; the top of the page is its header,
    and under the header is whatever the page starts with (tabs, a navigation row, filters).
-   So while a toast shows the page makes room: it moves down by the toast's height, header
-   and all, and the toast takes the strip that leaves at the top. showToast() says how
-   tall (--toast-space) and where the strip starts (--toast-top). With a modal, a sheet or
-   a dialog over the page there is nothing to move; showToast() then looks for the highest
-   place clear of that overlay's controls and messages. The toast goes one layer above the
+   The toast floats over the page (position: fixed) and never changes its layout or
+   padding. showToast() says where it starts (--toast-top). With a modal, a sheet or
+   a dialog over the page, showToast() looks for the highest place clear of that
+   overlay's controls and messages. The toast goes one layer above the
    confirmation dialog (9999, later in the page), whose backdrop would otherwise dim it. */
 @media (max-width: 768px) {
     .global-toast {
@@ -4139,11 +4138,6 @@ body.drawer-open {
         z-index: 10000;
         width: fit-content;
         max-width: none;
-    }
-
-    .content-area {
-        padding-top: var(--toast-space, 0px);
-        transition: padding-top 180ms ease;
     }
 }
 
