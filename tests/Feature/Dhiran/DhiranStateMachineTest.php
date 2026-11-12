@@ -272,6 +272,16 @@ class DhiranStateMachineTest extends TestCase
         }
     }
 
+    // L4. No daily job pretends to send reminders: the placeholder sent nothing and its switch can no longer be turned
+    // on. Reminders come back with a real sender (owner decision on the SMS provider).
+    public function test_no_scheduled_job_pretends_to_send_reminders(): void
+    {
+        $this->assertArrayNotHasKey('dhiran:overdue-reminders', \Illuminate\Support\Facades\Artisan::all());
+        $scheduled = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->map(fn ($e) => (string) $e->command)->implode("\n");
+        $this->assertStringContainsString('dhiran:forfeiture-check', $scheduled, 'the schedule was read');
+        $this->assertStringNotContainsString('dhiran:overdue-reminders', $scheduled);
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();

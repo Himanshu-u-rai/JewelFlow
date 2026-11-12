@@ -154,7 +154,6 @@ Schedule::command('scan:cleanup')->daily();
 Schedule::command('schemes:process-maturity')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('cache:warm-shops')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('dhiran:accrue-interest')->daily();
-Schedule::command('dhiran:overdue-reminders')->daily();
 Schedule::command('dhiran:forfeiture-check')->daily();
 Schedule::command('platform:evaluate-alerts')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('platform:detect-fraud')->dailyAt('03:00');
