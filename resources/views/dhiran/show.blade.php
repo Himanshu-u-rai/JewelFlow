@@ -7,6 +7,9 @@
                 <x-dhiran.status :value="$loan->status" class="ml-2" />
             </p>
             {{-- Renewal chain: the old loan keeps its figures as a record; its balance moved to the new loan. --}}
+            @if($loan->brought_forward)
+                <p class="text-xs text-slate-500 mt-1" data-brought-forward-note>Brought forward from the paper book; lent on {{ $loan->loan_date->format('d M Y') }}.</p>
+            @endif
             @if($loan->renewedFrom)
                 <p class="text-xs text-slate-500 mt-1">Renewed from <a href="{{ route('dhiran.show', $loan->renewedFrom) }}" class="font-semibold text-amber-700 hover:underline">{{ $loan->renewedFrom->loan_number }}</a></p>
             @endif

@@ -59,6 +59,7 @@ class DhiranLoan extends Model
         'forfeiture_notice_sent_at',
         'forfeiture_notice_text',
         'forfeiture_deadline',
+        'brought_forward',
         'interest_capitalised',
         'created_by',
     ];
@@ -71,6 +72,7 @@ class DhiranLoan extends Model
         'forfeited_at'              => 'datetime',
         'forfeiture_notice_sent_at' => 'datetime',
         'forfeiture_deadline'       => 'date',
+        'brought_forward'           => 'boolean',
         'gold_rate_on_date'         => 'decimal:4',
         'silver_rate_on_date'       => 'decimal:4',
         'principal_amount'          => 'decimal:2',

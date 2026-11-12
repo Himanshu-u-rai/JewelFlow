@@ -103,7 +103,15 @@ class DhiranService
             $gracePeriodDays      = (int) ($params['grace_period_days'] ?? $settings->grace_period_days);
             $minInterestMonths    = (int) ($params['min_interest_months'] ?? $settings->default_min_interest_months);
             $loanDate             = Carbon::parse($params['loan_date'] ?? today());
-            $this->assertOpen((int) $shop->id, $loanDate); // a back-dated loan must not land in a closed period
+            // Brought forward (owner 2026-11-12): a paper loan entered as it stands today. Its money moved before the
+            // shop used the app, so nothing lands on its old date: no payout, no fee, one opening ledger line today.
+            $broughtForward       = ! empty($params['brought_forward']);
+            if ($broughtForward) {
+                $minLockMonths = 0;     // the paper loan's minimum period and minimum interest were settled on paper
+                $minInterestMonths = 0;
+            }
+            // a back-dated loan must not land in a closed period; a brought-forward one books only today
+            $this->assertOpen((int) $shop->id, $broughtForward ? today() : $loanDate);
             $goldRateOnDate       = (float) $params['gold_rate_on_date'];
             $silverRateOnDate     = isset($params['silver_rate_on_date']) ? (float) $params['silver_rate_on_date'] : null;
             $paymentMethod        = $params['payment_method'] ?? 'cash';
@@ -183,7 +191,8 @@ class DhiranService
             unset($ci);
 
             // ── Validate principal against collateral ────────
-            if ($principalAmount > $totalLoanValue) {
+            // (today's lending limits judge new lending, not a loan made on paper long ago)
+            if (! $broughtForward && $principalAmount > $totalLoanValue) {
                 throw new LogicException(
                     "Principal amount ({$principalAmount}) exceeds maximum loan value ({$totalLoanValue}) based on LTV ratio ({$ltvRatio}%)."
                 );
@@ -193,16 +202,18 @@ class DhiranService
             $minLoan = (float) $settings->min_loan_amount;
             $maxLoan = (float) $settings->max_loan_amount;
 
-            if ($principalAmount < $minLoan) {
+            if (! $broughtForward && $principalAmount < $minLoan) {
                 throw new LogicException("Principal amount ({$principalAmount}) is below minimum loan amount ({$minLoan}).");
             }
-            if ($principalAmount > $maxLoan) {
+            if (! $broughtForward && $principalAmount > $maxLoan) {
                 throw new LogicException("Principal amount ({$principalAmount}) exceeds maximum loan amount ({$maxLoan}).");
             }
 
             // ── Processing fee ───────────────────────────────
             $processingFeeType = $params['processing_fee_type'] ?? $settings->processing_fee_type ?? 'flat';
-            if (isset($params['processing_fee'])) {
+            if ($broughtForward) {
+                $processingFee = 0.0;
+            } elseif (isset($params['processing_fee'])) {
                 $processingFee = (float) $params['processing_fee'];
             } else {
                 $feeValue = (float) ($settings->processing_fee_value ?? 0);
@@ -214,7 +225,18 @@ class DhiranService
             }
 
             // ── Generate loan number ─────────────────────────
-            $loanNumber = $this->generateLoanNumber($shop);
+            $loanNumber = $broughtForward ? (string) $params['loan_number'] : $this->generateLoanNumber($shop);
+
+            // ── Opening position (brought forward) ──────────
+            // Principal still owed and interest from the paid-up date; with the shop's own unpaid-interest figure the
+            // app takes that and adds interest only from today.
+            $owed = $broughtForward ? round((float) $params['principal_owed'], 2) : $principalAmount;
+            $shopsInterest = $broughtForward && ($params['unpaid_interest'] ?? null) !== null ? round((float) $params['unpaid_interest'], 2) : null;
+            $accruedThrough = match (true) {
+                ! $broughtForward      => $loanDate->toDateString(),
+                $shopsInterest !== null => today()->toDateString(),
+                default                => Carbon::parse($params['interest_paid_until'])->toDateString(),
+            };
 
             // ── Create loan record ───────────────────────────
             $maturityDate = $loanDate->copy()->addMonths($tenureMonths);
@@ -235,13 +257,14 @@ class DhiranService
                 'ltv_ratio_applied'        => $ltvRatio,
                 'total_collateral_value'   => round($totalCollateral, 2),
                 'total_fine_weight'        => round($totalFineWeight, 6),
-                'outstanding_principal'    => $principalAmount,
-                'outstanding_interest'     => 0,
+                'outstanding_principal'    => $owed,
+                'outstanding_interest'     => $shopsInterest ?? 0,
                 'outstanding_penalty'      => 0,
-                'interest_accrued_through' => $loanDate->toDateString(),
+                'interest_accrued_through' => $accruedThrough,
                 'total_interest_collected' => 0,
                 'total_penalty_collected'  => 0,
-                'total_principal_collected' => 0,
+                'total_principal_collected' => round($principalAmount - $owed, 2),
+                'brought_forward'          => $broughtForward,
                 'tenure_months'            => $tenureMonths,
                 'maturity_date'            => $maturityDate->toDateString(),
                 'min_lock_months'          => $minLockMonths,
@@ -283,6 +306,23 @@ class DhiranService
                     'huid'                   => $ci['huid'] ?? null,
                     'status'                 => 'pledged',
                 ]);
+            }
+
+            if ($broughtForward) {
+                DhiranLedgerEntry::record([
+                    'shop_id'                => $shop->id,
+                    'dhiran_loan_id'         => $loan->id,
+                    'entry_type'             => 'brought_forward',
+                    'direction'              => 'debit',
+                    'amount'                 => $owed,
+                    'balance_after'          => $owed,
+                    'interest_balance_after' => $shopsInterest ?? 0,
+                    'penalty_balance_after'  => 0,
+                    'note'                   => "Brought forward from the paper book: {$loanNumber} (lent {$principalAmount} on {$loanDate->format('d M Y')})",
+                    'created_by'             => $createdBy,
+                ]);
+
+                return $loan->fresh(['items', 'payments']);
             }
 
             // ── Disbursement payment (cash out) ──────────────
@@ -461,38 +501,51 @@ class DhiranService
             $base = ['shop_id' => $loan->shop_id, 'dhiran_loan_id' => $loan->id, 'created_by' => $actor];
             $note = "Loan cancelled before activation: {$loan->loan_number}" . ($reason !== '' ? " ({$reason})" : '');
 
-            $back = DhiranPayment::record($base + [
-                'payment_date' => today()->toDateString(), 'type' => 'cancellation', 'amount' => $principal, 'direction' => 'in',
-                'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => $principal,
-                'processing_fee_component' => 0, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
-                'outstanding_penalty_after' => 0, 'notes' => $note,
-            ]);
-            DhiranCashEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_date' => today()->toDateString(), 'type' => 'in',
-                'amount' => $principal, 'source_type' => 'cancellation', 'payment_method' => $method, 'description' => $note]);
-            DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_type' => 'cancellation', 'direction' => 'credit',
-                'amount' => $principal, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0, 'note' => $note]);
-
-            if ($fee > 0) {
-                $refund = DhiranPayment::record($base + [
-                    'payment_date' => today()->toDateString(), 'type' => 'fee_refund', 'amount' => $fee, 'direction' => 'out',
-                    'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => 0,
-                    'processing_fee_component' => $fee, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
-                    'outstanding_penalty_after' => 0, 'notes' => "Processing fee refunded: {$loan->loan_number}",
-                ]);
-                DhiranCashEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_date' => today()->toDateString(), 'type' => 'out',
-                    'amount' => $fee, 'source_type' => 'fee_refund', 'payment_method' => $method, 'description' => "Processing fee refunded: {$loan->loan_number}"]);
-                DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_type' => 'fee_refund', 'direction' => 'debit',
-                    'amount' => $fee, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0,
-                    'note' => "Processing fee refunded: {$loan->loan_number}"]);
+            if ($loan->brought_forward) {
+                // Nothing was paid out in the app: withdraw the opening ledger line only.
+                DhiranLedgerEntry::record($base + ['entry_type' => 'cancellation', 'direction' => 'credit', 'amount' => $principal,
+                    'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0, 'note' => $note]);
+            } else {
+                $this->reversePayout($loan, $base, $method, $principal, $fee, $note);
             }
 
             $loan->items()->where('status', 'pledged')->update(['status' => 'released', 'released_at' => now(), 'released_by' => $actor]);
             $loan->status = 'cancelled';
             $loan->outstanding_principal = 0;
+            $loan->outstanding_interest = 0;
             $loan->closed_at = now();
             $loan->closure_notes = $reason !== '' ? "Cancelled: {$reason}" : 'Cancelled';
             $loan->save();
         });
+    }
+
+    /** The cancellation's reversal of what creation booked: principal back in, fee back out, ledger to 0. */
+    private function reversePayout(DhiranLoan $loan, array $base, string $method, float $principal, float $fee, string $note): void
+    {
+        $back = DhiranPayment::record($base + [
+            'payment_date' => today()->toDateString(), 'type' => 'cancellation', 'amount' => $principal, 'direction' => 'in',
+            'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => $principal,
+            'processing_fee_component' => 0, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
+            'outstanding_penalty_after' => 0, 'notes' => $note,
+        ]);
+        DhiranCashEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_date' => today()->toDateString(), 'type' => 'in',
+            'amount' => $principal, 'source_type' => 'cancellation', 'payment_method' => $method, 'description' => $note]);
+        DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_type' => 'cancellation', 'direction' => 'credit',
+            'amount' => $principal, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0, 'note' => $note]);
+
+        if ($fee > 0) {
+            $refund = DhiranPayment::record($base + [
+                'payment_date' => today()->toDateString(), 'type' => 'fee_refund', 'amount' => $fee, 'direction' => 'out',
+                'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => 0,
+                'processing_fee_component' => $fee, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
+                'outstanding_penalty_after' => 0, 'notes' => "Processing fee refunded: {$loan->loan_number}",
+            ]);
+            DhiranCashEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_date' => today()->toDateString(), 'type' => 'out',
+                'amount' => $fee, 'source_type' => 'fee_refund', 'payment_method' => $method, 'description' => "Processing fee refunded: {$loan->loan_number}"]);
+            DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_type' => 'fee_refund', 'direction' => 'debit',
+                'amount' => $fee, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0,
+                'note' => "Processing fee refunded: {$loan->loan_number}"]);
+        }
     }
 
     /* ══════════════════════════════════════════════════════════
