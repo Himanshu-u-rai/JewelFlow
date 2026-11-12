@@ -640,6 +640,7 @@
     />
 
     <div class="content-inner space-y-6 ops-treatment-page imports-page">
+        <x-app-alerts />
         @php $isRetailer = auth()->user()->shop?->isRetailer(); @endphp
 
         @if (auth()->user()->isOwner())
@@ -690,17 +691,20 @@
                         @csrf
                         <div class="upload-box">
                             <div class="upload-box-head">
-                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
+                                <label for="import-file-stock" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
                                 <a href="{{ route('imports.template', ['type' => 'stock']) }}" class="btn btn-secondary btn-sm" data-turbo="false"><x-icon name="download" size="14" class="mr-1" />Sample CSV</a>
                             </div>
                             <input
                                 type="file"
+                                id="import-file-stock"
                                 name="file"
                                 required
+                                aria-required="true"
+                                aria-describedby="import-file-stock-hint"
                                 accept=".csv,text/csv"
                                 class="import-file-input"
                             >
-                            <p class="text-xs text-gray-500 mt-2">Barcode must be unique. Vendors will be auto-created if not found.</p>
+                            <p id="import-file-stock-hint" class="text-xs text-gray-500 mt-2">Barcode must be unique. Vendors will be auto-created if not found.</p>
                         </div>
                         <button type="submit" class="btn btn-dark" :disabled="uploading">
                             <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
@@ -765,15 +769,18 @@
                 <form method="POST" action="{{ route('imports.catalog.preview') }}" enctype="multipart/form-data" class="mt-4" x-data="{ uploading: false }" @submit="uploading = true">
                     @csrf
                     <div class="upload-box">
-                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
+                        <label for="import-file-catalog" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
                         <input
                             type="file"
+                            id="import-file-catalog"
                             name="file"
                             required
+                            aria-required="true"
+                            aria-describedby="import-file-catalog-hint"
                             accept=".csv,text/csv"
                             class="import-file-input"
                         >
-                        <p class="text-xs text-gray-500 mt-2">Max file size: 10 MB. Only CSV allowed.</p>
+                        <p id="import-file-catalog-hint" class="text-xs text-gray-500 mt-2">Max file size: 10 MB. Only CSV allowed.</p>
                     </div>
                     <button type="submit" class="btn btn-dark mt-3" :disabled="uploading">
                         <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
@@ -821,15 +828,18 @@
                 <form method="POST" action="{{ route('imports.manufacture.preview') }}" enctype="multipart/form-data" class="mt-4" x-data="{ uploading: false }" @submit="uploading = true">
                     @csrf
                     <div class="upload-box">
-                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
+                        <label for="import-file-manufacture" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Upload CSV</label>
                         <input
                             type="file"
+                            id="import-file-manufacture"
                             name="file"
                             required
+                            aria-required="true"
+                            aria-describedby="import-file-manufacture-hint"
                             accept=".csv,text/csv"
                             class="import-file-input"
                         >
-                        <p class="text-xs text-gray-500 mt-2">Make sure lot_number belongs to your shop and barcode is unique.</p>
+                        <p id="import-file-manufacture-hint" class="text-xs text-gray-500 mt-2">Make sure lot_number belongs to your shop and barcode is unique.</p>
                     </div>
                     <button type="submit" class="btn btn-dark mt-3" :disabled="uploading">
                         <template x-if="!uploading"><span><x-icon name="upload" size="14" class="mr-1 inline" />Create Preview</span></template>
@@ -849,6 +859,7 @@
                 <table class="w-full jf-table">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
+                            <th class="jf-table-index px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase" aria-label="Row number">#</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Reference</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
@@ -873,6 +884,7 @@
                                 };
                             @endphp
                             <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="jf-table-index px-4 py-3 text-center text-xs tabular-nums text-gray-500">{{ ($imports->firstItem() ?? 1) + $loop->index }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900 font-semibold">{{ $import->import_reference ?? 'PENDING-REF' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ ucfirst($import->type) }}</td>
                                 <td class="px-4 py-3 text-sm">
@@ -888,7 +900,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-4 py-8">
+                                <td colspan="9" class="px-4 py-8">
                                     <x-empty-state
                                         compact
                                         title="No imports yet"

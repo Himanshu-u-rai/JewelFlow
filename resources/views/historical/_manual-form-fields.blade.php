@@ -4,6 +4,7 @@
      Fieldset/legend kept for accessibility (screen readers announce the
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
+@include('historical._manual-layout-styles')
 <div class="grid grid-cols-1 gap-4 items-start" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-12" data-historical-identity-row>
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-4" data-historical-form-section data-historical-section="document">
@@ -58,7 +59,7 @@
                    @keydown.enter.prevent="chooseActive()" @keydown.escape.prevent="close()"
                    role="combobox" aria-autocomplete="list" :aria-expanded="open"
                    data-customer-search-input data-customer-search-url="{{ route('historical.customers.search') }}"
-                   placeholder="Search name, mobile or GSTIN" autocomplete="off" class="w-full">
+                   placeholder="Search name, mobile or GSTIN" autocomplete="off" class="jf-control w-full">
             <input type="hidden" name="customer_id" x-model="customerId">
             <input type="hidden" name="selected_customer_label" x-model="selectedLabel">
 
@@ -138,9 +139,10 @@
         </div>
 
         <div class="mt-4 hidden max-w-full overflow-hidden rounded-xl border border-slate-300 bg-white xl:block" data-historical-item-grid-desktop>
+            <div class="historical-line-scroll" data-historical-line-scroll tabindex="0" role="group" aria-label="Item lines table, scrolls sideways when narrow">
             <table class="w-full table-fixed text-sm jf-grid" data-historical-item-table>
                 <colgroup>
-                    <col class="w-[3%]"><col class="w-[19%]"><col class="w-[11%]"><col class="w-[9%]"><col class="w-[7%]"><col class="w-[11%]"><col class="w-[13%]"><col class="w-[14%]"><col class="w-[13%]">
+                    <col class="w-[3%]"><col class="w-[18%]"><col class="w-[12%]"><col class="w-[11%]"><col class="w-[7%]"><col class="w-[11%]"><col class="w-[12%]"><col class="w-[13%]"><col class="w-[13%]">
                 </colgroup>
                 <thead class="sticky top-0 z-10 bg-slate-100">
                     <tr class="text-xs font-semibold text-slate-600">
@@ -161,7 +163,7 @@
                             <th scope="row" x-text="i + 1" class="border-b border-r border-slate-300 px-1 py-2 text-center text-xs font-semibold tabular-nums text-slate-500"></th>
                             <td class="border-b border-r border-slate-300 p-0"><input type="text" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="isMobile" :aria-label="`Item ${i + 1} name`" placeholder="Description" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-sm shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
                             <td class="border-b border-r border-slate-300 p-0">
-                                <select x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} metal`" class="h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <select x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} metal`" class="historical-line-select h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                     <option value="">Select metal</option>
                                     @foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach
                                     <option value="__custom">Other…</option>
@@ -170,7 +172,7 @@
                                 <input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="isMobile">
                             </td>
                             <td class="border-b border-r border-slate-300 p-0">
-                                <select x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} purity`" class="h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <select x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} purity`" class="historical-line-select h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                     <option value="">Select purity</option>
                                     <template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template>
                                     <option value="__custom">Custom…</option>
@@ -186,7 +188,7 @@
                             <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="isMobile" :aria-label="`Item ${i + 1} historical rate per gram`" placeholder="Rate" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
                             <td class="border-b border-r border-slate-300 p-0">
                                 <div class="flex items-center">
-                                    <input type="number" step="any" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="isMobile" :aria-label="`Item ${i + 1} line total`" placeholder="Total" class="h-11 min-w-0 flex-1 rounded-none border border-slate-300 bg-white px-2 text-right text-sm font-semibold tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <input type="number" step="any" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="isMobile" :aria-label="`Item ${i + 1} line total`" placeholder="Total" class="historical-line-total h-11 min-w-0 flex-1 rounded-none border border-slate-300 bg-white px-2 text-right text-sm font-semibold tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                     <span class="mr-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_total_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_total_mode === 'manual' ? 'M' : 'A'"></span>
                                 </div>
                                 <input type="hidden" :name="`lines[${i}][line_total_mode]`" :value="line.line_total_mode" :disabled="isMobile">
@@ -210,6 +212,7 @@
                     </tbody>
                 </template>
             </table>
+            </div>
         </div>
 
         <div class="mt-4 grid gap-3 xl:hidden" data-historical-item-grid-mobile>
@@ -252,7 +255,7 @@
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
+    <div class="historical-amount-grid grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6" data-historical-amount-grid>
         @foreach($money as $f => $label)
             <div>
                 <span class="flex items-center justify-between gap-2">
@@ -445,7 +448,7 @@
                         @endforeach
                         <option value="__custom">Custom account…</option>
                     </select>
-                    <input type="text" x-show="payment.account_choice === '__custom'" x-model="payment.account_label_snapshot" :name="`payments[${i}][account_label_snapshot]`" placeholder="Account name" class="mt-2 w-full">
+                    <input type="text" x-show="payment.account_choice === '__custom'" x-model="payment.account_label_snapshot" :name="`payments[${i}][account_label_snapshot]`" placeholder="Account name" aria-label="Custom account name" class="mt-2 w-full">
                     <input type="hidden" :name="`payments[${i}][shop_payment_method_id]`" x-model="payment.shop_payment_method_id">
                 </div>
                 <div>
