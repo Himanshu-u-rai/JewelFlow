@@ -25,7 +25,7 @@ final class DhiranListFilters
     ];
     public const STATUSES = [
         'pending_evidence' => 'Awaiting evidence', 'active' => 'Active', 'closed' => 'Closed',
-        'renewed' => 'Renewed', 'forfeited' => 'Forfeited',
+        'renewed' => 'Renewed', 'forfeited' => 'Forfeited', 'cancelled' => 'Cancelled',
     ];
     public const METALS = ['gold' => 'Gold', 'silver' => 'Silver', 'other' => 'Other'];
     public const OVERDUE = ['1-30' => '1–30 days late', '31-90' => '31–90 days late', '90+' => 'Over 90 days late'];

@@ -1122,6 +1122,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::post('/loans/{loan}/repay', [\App\Http\Controllers\DhiranController::class, 'repay'])->middleware('can:dhiran.pay')->name('repay');
             Route::post('/loans/{loan}/pre-close', [\App\Http\Controllers\DhiranController::class, 'preClose'])->middleware('can:dhiran.pay')->name('pre-close');
             Route::post('/loans/{loan}/close', [\App\Http\Controllers\DhiranController::class, 'close'])->middleware('can:dhiran.pay')->name('close');
+            Route::post('/loans/{loan}/cancel', [\App\Http\Controllers\DhiranController::class, 'cancel'])->middleware('can:dhiran.create')->name('cancel');
 
             // Release item — release permission
             Route::post('/loans/{loan}/release-item', [\App\Http\Controllers\DhiranController::class, 'releaseItem'])->middleware('can:dhiran.release')->name('release-item');

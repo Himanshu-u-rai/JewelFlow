@@ -127,6 +127,39 @@ class DhiranStateMachineTest extends TestCase
         $this->assertStringContainsString("Items moved to {$new->loan_number}", $page);
     }
 
+    // H3. A loan still awaiting evidence can be cancelled: the money it booked is reversed with new entries (principal
+    // back in, fee refunded), the items go back to the borrower, and it no longer counts as open.
+    public function test_a_loan_awaiting_evidence_can_be_cancelled_with_its_money_reversed(): void
+    {
+        DhiranSettings::getForShop($this->shop->id)->update(['processing_fee_value' => 500, 'processing_fee_type' => 'flat']);
+        $loan = $this->loan(null, 12, ['status' => 'pending_evidence']);
+        $this->assertGreaterThan(0, (float) $loan->processing_fee, 'the fee was booked at creation');
+
+        $page = $this->in(fn () => $this->get("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}")->getContent());
+        $this->assertMatchesRegularExpression('#action="[^"]*/loans/' . $loan->id . '/cancel"[^>]*>.*?name="idempotency_key"#s', $page, 'the page offers Cancel');
+
+        $this->in(fn () => $this->post("https://dhiran.jewelflows.com/dhiran/loans/{$loan->id}/cancel", [
+            'reason' => 'Borrower changed mind', 'idempotency_key' => 'cancel-key-0001',
+        ]))->assertSessionHas('success');
+
+        $loan->refresh();
+        $this->assertSame('cancelled', $loan->status);
+        $this->assertSame(0.0, (float) $loan->outstanding_principal);
+        $this->assertNotContains('cancelled', DhiranLoan::OPEN);
+        $this->assertSame(['released'], $this->in(fn () => $loan->items()->pluck('status')->unique()->values()->all()), 'items handed back');
+
+        $cash = \App\Models\Dhiran\DhiranCashEntry::withoutGlobalScopes()->where('dhiran_loan_id', $loan->id)->get();
+        $net = $cash->where('type', 'in')->sum('amount') - $cash->where('type', 'out')->sum('amount');
+        $this->assertEqualsWithDelta(0, $net, 0.001, 'cash book for the loan nets to zero');
+        $this->assertSame(4, $cash->count(), 'original two rows kept, two reversal rows added');
+        $this->assertSame(0.0, (float) \App\Models\Dhiran\DhiranLedgerEntry::withoutGlobalScopes()->where('dhiran_loan_id', $loan->id)->latest('id')->value('balance_after'));
+
+        // Only a loan awaiting evidence can be cancelled.
+        $active = $this->loan();
+        $this->expectException(LogicException::class);
+        $this->in(fn ($svc) => $svc->cancelPendingLoan($active, 'no'));
+    }
+
     public function test_the_database_refuses_a_status_that_is_not_a_loan_state(): void
     {
         $loan = $this->loan();

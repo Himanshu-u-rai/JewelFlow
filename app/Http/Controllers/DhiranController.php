@@ -19,7 +19,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
     public static function middleware(): array
     {
         return [new \Illuminate\Routing\Controllers\Middleware(\App\Http\Middleware\DhiranSubmitOnce::class,
-            only: ['store', 'payInterest', 'repay', 'releaseItem', 'preClose', 'renew', 'close', 'sendNotice', 'forfeit'])];
+            only: ['store', 'payInterest', 'repay', 'releaseItem', 'preClose', 'renew', 'close', 'cancel', 'sendNotice', 'forfeit'])];
     }
 
     public function __construct(
@@ -630,6 +630,22 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             ->with('success', 'Loan closed successfully.');
     }
 
+    /** Cancel a loan still awaiting evidence; its payout and fee are reversed (DhiranService::cancelPendingLoan). */
+    public function cancel(Request $request, DhiranLoan $loan)
+    {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
+        $data = $request->validate(['reason' => 'nullable|string|max:255']);
+
+        try {
+            $this->dhiranService->cancelPendingLoan($loan, trim((string) ($data['reason'] ?? '')));
+        } catch (\LogicException $e) {
+            return redirect()->route('dhiran.show', $loan)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('dhiran.show', $loan)
+            ->with('success', 'Loan cancelled. The payout and any fee were reversed in the cash book; the items are marked returned.');
+    }
+
     /* ================================================================
      *  FORFEITURE
      * ================================================================ */
@@ -872,6 +888,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         'repayment'    => ['Repayment', ['principal_repayment']],
         'closure'      => ['Pre-closure', ['pre_closure']],
         'fee'          => ['Processing fee', ['processing_fee']],
+        'cancellation' => ['Cancellation', ['cancellation', 'fee_refund']],
     ];
 
     public function borrowerProfile(Customer $customer)

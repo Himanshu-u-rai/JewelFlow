@@ -42,10 +42,10 @@ class DhiranService
      * as it is now. The status check callers make before the lock reads the copy their page loaded; another person may
      * have closed, renewed or forfeited it since.
      */
-    private function lockActive(DhiranLoan $loan): DhiranLoan
+    private function lockActive(DhiranLoan $loan, string $state = 'active'): DhiranLoan
     {
         $locked = DhiranLoan::lockForUpdate()->findOrFail($loan->id);
-        if ($locked->status !== 'active') {
+        if ($locked->status !== $state) {
             throw new LogicException("This loan is already {$locked->status}. Reload the page to see it as it is now.");
         }
         $this->assertOpen((int) $locked->shop_id, today());
@@ -427,6 +427,56 @@ class DhiranService
 
         $loan->status = 'active';
         $loan->save();
+    }
+
+    /**
+     * Cancel a loan still awaiting evidence (owner 2026-11-12, option "cancel with reversal"). Creation already booked
+     * the payout and any processing fee; nothing booked is changed. New rows reverse them: the principal comes back in,
+     * the fee goes back out, the ledger returns to 0, the items go back to the borrower, and the loan is 'cancelled'.
+     */
+    public function cancelPendingLoan(DhiranLoan $loan, string $reason): void
+    {
+        DB::transaction(function () use ($loan, $reason): void {
+            $loan = $this->lockActive($loan, 'pending_evidence');
+            $actor = $this->actor($loan);
+            $method = DhiranPayment::where('dhiran_loan_id', $loan->id)->where('type', 'disbursement')->value('payment_method') ?? 'cash';
+            $principal = (float) $loan->outstanding_principal;
+            $fee = (float) $loan->processing_fee;
+            $base = ['shop_id' => $loan->shop_id, 'dhiran_loan_id' => $loan->id, 'created_by' => $actor];
+            $note = "Loan cancelled before activation: {$loan->loan_number}" . ($reason !== '' ? " ({$reason})" : '');
+
+            $back = DhiranPayment::record($base + [
+                'payment_date' => today()->toDateString(), 'type' => 'cancellation', 'amount' => $principal, 'direction' => 'in',
+                'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => $principal,
+                'processing_fee_component' => 0, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
+                'outstanding_penalty_after' => 0, 'notes' => $note,
+            ]);
+            DhiranCashEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_date' => today()->toDateString(), 'type' => 'in',
+                'amount' => $principal, 'source_type' => 'cancellation', 'payment_method' => $method, 'description' => $note]);
+            DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $back->id, 'entry_type' => 'cancellation', 'direction' => 'credit',
+                'amount' => $principal, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0, 'note' => $note]);
+
+            if ($fee > 0) {
+                $refund = DhiranPayment::record($base + [
+                    'payment_date' => today()->toDateString(), 'type' => 'fee_refund', 'amount' => $fee, 'direction' => 'out',
+                    'payment_method' => $method, 'interest_component' => 0, 'penalty_component' => 0, 'principal_component' => 0,
+                    'processing_fee_component' => $fee, 'outstanding_principal_after' => 0, 'outstanding_interest_after' => 0,
+                    'outstanding_penalty_after' => 0, 'notes' => "Processing fee refunded: {$loan->loan_number}",
+                ]);
+                DhiranCashEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_date' => today()->toDateString(), 'type' => 'out',
+                    'amount' => $fee, 'source_type' => 'fee_refund', 'payment_method' => $method, 'description' => "Processing fee refunded: {$loan->loan_number}"]);
+                DhiranLedgerEntry::record($base + ['dhiran_payment_id' => $refund->id, 'entry_type' => 'fee_refund', 'direction' => 'debit',
+                    'amount' => $fee, 'balance_after' => 0, 'interest_balance_after' => 0, 'penalty_balance_after' => 0,
+                    'note' => "Processing fee refunded: {$loan->loan_number}"]);
+            }
+
+            $loan->items()->where('status', 'pledged')->update(['status' => 'released', 'released_at' => now(), 'released_by' => $actor]);
+            $loan->status = 'cancelled';
+            $loan->outstanding_principal = 0;
+            $loan->closed_at = now();
+            $loan->closure_notes = $reason !== '' ? "Cancelled: {$reason}" : 'Cancelled';
+            $loan->save();
+        });
     }
 
     /* ══════════════════════════════════════════════════════════

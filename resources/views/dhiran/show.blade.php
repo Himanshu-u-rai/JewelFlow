@@ -152,8 +152,29 @@
                 <button type="button" class="btn btn-sm" disabled>Activate Loan</button>
                 <p class="text-xs text-amber-800/80 mt-2">Upload both required documents in the Evidence &amp; Documents section below to enable activation.</p>
             @endif
+            <button type="button" class="btn btn-secondary btn-sm mt-3" onclick="document.getElementById('cancelLoanModal').showModal()">Cancel loan</button>
             @endcan
         </div>
+
+        @can('dhiran.create')
+        <dialog id="cancelLoanModal" class="dh-dialog">
+            <form method="POST" action="{{ route('dhiran.cancel', $loan) }}" data-turbo-frame="_top">
+                @csrf <x-dhiran.once />
+                <div class="dh-dialog-body">
+                    <h3 class="text-lg font-semibold text-slate-900 mb-2">Cancel {{ $loan->loan_number }}?</h3>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Use this when the loan will not go ahead. The cash book gets the ₹{{ number_format((float) $loan->outstanding_principal, 2) }} paid out back in{{ (float) $loan->processing_fee > 0 ? ' and the ₹' . number_format((float) $loan->processing_fee, 2) . ' fee back out' : '' }}, and the items are marked returned to the borrower. This cannot be undone.
+                    </p>
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2" for="cancel-reason">Reason</label>
+                    <input id="cancel-reason" type="text" name="reason" maxlength="255" class="dh-form-control" placeholder="e.g. Borrower changed mind">
+                </div>
+                <div class="dh-dialog-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('dialog').close()">Keep loan</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Cancel loan</button>
+                </div>
+            </form>
+        </dialog>
+        @endcan
         @endif
 
         {{-- Loan Info Grid --}}
