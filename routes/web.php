@@ -1124,6 +1124,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::post('/loans/{loan}/close', [\App\Http\Controllers\DhiranController::class, 'close'])->middleware('can:dhiran.pay')->name('close');
             Route::post('/loans/{loan}/cancel', [\App\Http\Controllers\DhiranController::class, 'cancel'])->middleware('can:dhiran.create')->name('cancel');
 
+            // Old Loans: bring a shop's running paper loans in, borrower and loan together (owner 2026-11-12)
+            Route::get('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'index'])->middleware('can:dhiran.create')->name('old-loans.index');
+            Route::get('/old-loans/create', [\App\Http\Controllers\DhiranOldLoanController::class, 'create'])->middleware('can:dhiran.create')->name('old-loans.create');
+            Route::post('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'store'])->middleware('can:dhiran.create')->name('old-loans.store');
+
             // Release item — release permission
             Route::post('/loans/{loan}/release-item', [\App\Http\Controllers\DhiranController::class, 'releaseItem'])->middleware('can:dhiran.release')->name('release-item');
 

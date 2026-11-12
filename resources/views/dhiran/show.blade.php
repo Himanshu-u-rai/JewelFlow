@@ -146,22 +146,41 @@
             <button type="button" class="btn btn-secondary btn-sm mt-3" onclick="document.getElementById('cancelLoanModal').showModal()">Cancel loan</button>
             @endcan
         </div>
+        @endif
 
+        {{-- An active loan without its photo or ID proof (an old loan brought in active): flagged, not blocking. --}}
+        @php $removableOld = $loan->brought_forward && $loan->status === 'active' && $loan->payments->isEmpty(); @endphp
+        @if($loan->status === 'active' && ! ($evidence['ok'] ?? true))
+            <div class="dh-flash dh-flash-warning mb-6" data-evidence-missing>
+                Evidence missing: upload {{ collect(['the pledged-item photo' => ! ($evidence['item_photo'] ?? false), 'the borrower ID proof' => ! ($evidence['id_proof'] ?? false)])->filter()->keys()->implode(' and ') }} in Evidence &amp; Documents below.
+            </div>
+        @endif
+        @if($removableOld)
+            @can('dhiran.create')
+                <div class="mb-6"><button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('cancelLoanModal').showModal()">Remove old loan (entered by mistake)</button></div>
+            @endcan
+        @endif
+
+        @if($loan->status === 'pending_evidence' || $removableOld)
         @can('dhiran.create')
         <dialog id="cancelLoanModal" class="dh-dialog">
             <form method="POST" action="{{ route('dhiran.cancel', $loan) }}" data-turbo-frame="_top">
                 @csrf <x-dhiran.once />
                 <div class="dh-dialog-body">
-                    <h3 class="text-lg font-semibold text-slate-900 mb-2">Cancel {{ $loan->loan_number }}?</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 mb-2">{{ $removableOld ? 'Remove' : 'Cancel' }} {{ $loan->loan_number }}?</h3>
                     <p class="text-sm text-slate-600 mb-4">
-                        Use this when the loan will not go ahead. The cash book gets the ₹{{ number_format((float) $loan->outstanding_principal, 2) }} paid out back in{{ (float) $loan->processing_fee > 0 ? ' and the ₹' . number_format((float) $loan->processing_fee, 2) . ' fee back out' : '' }}, and the items are marked returned to the borrower. This cannot be undone.
+                        @if($removableOld)
+                            Use this only if this old loan was entered by mistake. It is marked cancelled and its opening balance withdrawn; nothing goes into the cash book. Enter it again with the right figures. This cannot be undone.
+                        @else
+                            Use this when the loan will not go ahead. The cash book gets the ₹{{ number_format((float) $loan->outstanding_principal, 2) }} paid out back in{{ (float) $loan->processing_fee > 0 ? ' and the ₹' . number_format((float) $loan->processing_fee, 2) . ' fee back out' : '' }}, and the items are marked returned to the borrower. This cannot be undone.
+                        @endif
                     </p>
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2" for="cancel-reason">Reason</label>
                     <input id="cancel-reason" type="text" name="reason" maxlength="255" class="dh-form-control" placeholder="e.g. Borrower changed mind">
                 </div>
                 <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('dialog').close()">Keep loan</button>
-                    <button type="submit" class="btn btn-danger btn-sm">Cancel loan</button>
+                    <button type="submit" class="btn btn-danger btn-sm">{{ $removableOld ? 'Remove old loan' : 'Cancel loan' }}</button>
                 </div>
             </form>
         </dialog>
@@ -372,7 +391,7 @@
         @endif
 
         {{-- Evidence & Documents (private, shop-scoped attachments) --}}
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
+        <div id="evidence" class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-900 mb-1">Evidence &amp; Documents</h2>
             <p class="text-xs text-slate-500 mb-4">Pledged-item photos, borrower ID proof, and loan documents. Files are private to your shop.</p>
 

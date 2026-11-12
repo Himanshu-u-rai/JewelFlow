@@ -493,7 +493,11 @@ class DhiranService
     public function cancelPendingLoan(DhiranLoan $loan, string $reason): void
     {
         DB::transaction(function () use ($loan, $reason): void {
-            $loan = $this->lockActive($loan, 'pending_evidence');
+            // An old loan (brought in active from the paper book) can be removed if entered by mistake, until money moves.
+            $loan = $this->lockActive($loan, $loan->brought_forward ? 'active' : 'pending_evidence');
+            if ($loan->brought_forward && DhiranPayment::where('dhiran_loan_id', $loan->id)->exists()) {
+                throw new LogicException('Money has been taken on this loan since it was brought in. Settle it the normal way.');
+            }
             $actor = $this->actor($loan);
             $method = DhiranPayment::where('dhiran_loan_id', $loan->id)->where('type', 'disbursement')->value('payment_method') ?? 'cash';
             $principal = (float) $loan->outstanding_principal;

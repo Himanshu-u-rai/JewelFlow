@@ -64,6 +64,12 @@
                         <x-icon name="plus" />
                         <span class="dh-nav-text">New Loan</span>
                     </a>
+                    @can('dhiran.create')
+                    <a href="{{ route('dhiran.old-loans.index') }}" class="dh-nav-link {{ request()->routeIs('dhiran.old-loans.*') ? 'active' : '' }}" @click="open = false">
+                        <x-icon name="book-open" />
+                        <span class="dh-nav-text">Old Loans</span>
+                    </a>
+                    @endcan
                     <a href="{{ route('dhiran.reports.index') }}" class="dh-nav-link {{ request()->routeIs('dhiran.reports.*') ? 'active' : '' }}" @click="open = false">
                         <x-icon name="chart-no-axes-column" />
                         <span class="dh-nav-text">Reports</span>

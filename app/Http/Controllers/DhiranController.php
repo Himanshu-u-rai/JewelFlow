@@ -293,11 +293,11 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         // A metal rate is only needed for metal-valued items of that metal. A
         // pure-silver or pure-Other (appraised) loan must not be forced to enter a
         // gold rate, and vice-versa.
-        $rawItems   = $request->input('items', []);
-        $needsGold  = collect($rawItems)->contains(fn ($i) => ($i['metal_type'] ?? 'gold') === 'gold'   && (($i['value_mode'] ?? 'metal') !== 'appraised'));
-        $needsSilver = collect($rawItems)->contains(fn ($i) => ($i['metal_type'] ?? 'gold') === 'silver' && (($i['value_mode'] ?? 'metal') !== 'appraised'));
+        $rawItems    = (array) $request->input('items', []);
+        $needsGold   = \App\Services\Dhiran\DhiranCollateral::needsRate($rawItems, 'gold');
+        $needsSilver = \App\Services\Dhiran\DhiranCollateral::needsRate($rawItems, 'silver');
 
-        $data = $request->validate([
+        $data = $request->validate(\App\Services\Dhiran\DhiranCollateral::rules() + [
             'customer_id'              => ['required', 'integer', Customer::activeExistsRule((int) $shopId)],
             'principal_amount'         => 'required|numeric|min:1',
             'gold_rate_on_date'        => ($needsGold ? 'required' : 'nullable') . '|numeric|min:0',
@@ -318,74 +318,15 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             'aadhaar'                  => ['nullable', 'string', 'max:20', 'regex:/^[0-9Xx\- ]{4,20}$/'],
             'pan'                      => ['nullable', new \App\Rules\PanFormatRule],
             'notes'                    => 'nullable|string|max:1000',
-            'items'                    => 'required|array|min:1',
-            'items.*.description'      => 'required|string|max:255',
-            // gold / silver = metal-valued (purity → fine weight). other =
-            // manually appraised (diamonds, platinum, watches, mixed pieces).
-            'items.*.metal_type'       => 'nullable|in:gold,silver,other',
-            'items.*.value_mode'       => 'nullable|in:metal,appraised',
-            'items.*.category'         => 'nullable|string|max:100',
-            'items.*.quantity'         => 'nullable|integer|min:1|max:1000',
-            // Purity required only for metal-valued items (checked in the gate).
-            'items.*.purity'           => 'nullable|numeric|min:1|max:1000',
-            'items.*.gross_weight'     => 'nullable|numeric|min:0|max:9999.999999',
-            'items.*.stone_weight'     => 'nullable|numeric|min:0|max:9999.999999',
-            'items.*.rate_per_gram_at_pledge' => 'nullable|numeric|min:0|max:999999.9999',
-            // Appraised value (required for 'other' / appraised mode; checked below).
-            'items.*.market_value'     => 'nullable|numeric|min:0|max:999999999.99',
-            'items.*.huid'             => 'nullable|string|max:50',
         ]);
 
-        // Authoritative collateral gate. Metal-valued gold/silver need a supported
-        // purity (gold karat, silver fineness) and gross weight; appraised / other
-        // items need a market value. Backend is the source of truth, not the form.
-        $supportedPurities = [
-            'gold'   => [24, 22, 20, 18, 14],
-            'silver' => [999, 958, 925, 900, 800],
-        ];
-        $itemErrors = [];
-        foreach ($data['items'] as $idx => $row) {
-            $metal     = $row['metal_type'] ?? 'gold';
-            $isOther   = $metal === 'other';
-            $valueMode = $isOther ? 'appraised' : ($row['value_mode'] ?? 'metal');
-
-            if (! in_array($metal, ['gold', 'silver', 'other'], true)) {
-                $itemErrors["items.{$idx}.metal_type"] = "This collateral type is not supported. Choose gold, silver, or other.";
-                continue;
-            }
-
-            if ($valueMode === 'appraised') {
-                // Manual value path — appraised market value is required.
-                if ((float) ($row['market_value'] ?? 0) <= 0) {
-                    $itemErrors["items.{$idx}.market_value"] = 'Enter an appraised market value for this item.';
-                }
-            } else {
-                // Metal-melt path (gold/silver) — purity, weight, rate required.
-                $purity = (int) round((float) ($row['purity'] ?? 0));
-                if (! in_array($purity, $supportedPurities[$metal] ?? [], true)) {
-                    $itemErrors["items.{$idx}.purity"] = "Selected purity is not supported for {$metal}.";
-                }
-                if ((float) ($row['gross_weight'] ?? 0) <= 0) {
-                    $itemErrors["items.{$idx}.gross_weight"] = 'Gross weight is required for a metal-valued item.';
-                }
-                if (! isset($row['rate_per_gram_at_pledge']) || $row['rate_per_gram_at_pledge'] === '') {
-                    $itemErrors["items.{$idx}.rate_per_gram_at_pledge"] = 'Rate per gram is required for a metal-valued item.';
-                }
-            }
-        }
-        if (! empty($itemErrors)) {
+        // Authoritative collateral gate (shared with Old Loans); the backend is the source of truth, not the form.
+        if ($itemErrors = \App\Services\Dhiran\DhiranCollateral::errors($data['items'])) {
             return back()->withErrors($itemErrors)->withInput();
         }
 
         $customer = Customer::findOrFail($data['customer_id']);
-
-        $items = array_map(
-            fn ($i) => array_merge($i, [
-                'metal_type' => $i['metal_type'] ?? 'gold',
-                'value_mode' => (($i['metal_type'] ?? 'gold') === 'other') ? 'appraised' : ($i['value_mode'] ?? 'metal'),
-            ]),
-            $data['items']
-        );
+        $items = \App\Services\Dhiran\DhiranCollateral::normalise($data['items']);
 
         $params = [
             'principal_amount'      => $data['principal_amount'],
