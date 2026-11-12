@@ -1,26 +1,4 @@
 @php $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlows'; @endphp
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Maintenance — {{ $brand }}</title>
-    @vite('resources/css/app.css')
-</head>
-<body style="margin:0;font-family:'Plus Jakarta Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;background:#f8f9fc;">
-    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;">
-        <div style="text-align:center;max-width:480px;">
-            <div style="font-size:72px;margin-bottom:16px;">
-                <x-icon name="wrench" size="72" style="display:inline-block;" stroke="#d97706" stroke-width="1.5" />
-            </div>
-            <h1 style="font-size:32px;font-weight:800;color:#101828;margin:0 0 12px;letter-spacing:-0.3px;">We'll Be Right Back</h1>
-            <p style="font-size:16px;color:#475569;line-height:1.6;margin:0 0 8px;">
-                {{ $brand }} is undergoing scheduled maintenance.
-            </p>
-            <p style="font-size:14px;color:#64748b;line-height:1.6;margin:0;">
-                We expect to be back online shortly. Thank you for your patience.
-            </p>
-        </div>
-    </div>
-</body>
-</html>
+<x-error-page title="We'll be right back" :message="$brand.' is undergoing scheduled maintenance. We expect to be back online shortly. Thank you for your patience.'" icon="wrench" :actions="[
+    ['label' => 'Reload', 'reload' => true, 'kind' => 'secondary', 'icon' => 'rotate-cw'],
+]" />

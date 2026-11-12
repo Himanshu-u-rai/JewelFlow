@@ -1,13 +1,5 @@
 <x-app-layout>
-    <div style="display:flex;align-items:center;justify-content:center;min-height:70vh;padding:40px 20px;">
-        <div style="text-align:center;max-width:460px;">
-            <div style="margin-bottom:16px;">
-                <x-icon name="clock" size="72" style="display:inline-block;" stroke="#0f766e" stroke-width="1.5" />
-            </div>
-            <h1 style="font-size:28px;font-weight:700;color:#101828;margin-bottom:8px;">Opening Balance setup in progress</h1>
-            <p style="font-size:15px;color:#475569;line-height:1.6;margin-bottom:24px;">
-                Live billing will unlock after the owner locks opening balances.
-            </p>
-        </div>
-    </div>
+    <x-error-page :standalone="false" title="Opening Balance setup in progress" message="Live billing will unlock after the owner locks opening balances." icon="clock" tone="teal" :actions="[
+        ['label' => 'Reload', 'reload' => true, 'kind' => 'secondary', 'icon' => 'rotate-cw'],
+    ]" />
 </x-app-layout>
