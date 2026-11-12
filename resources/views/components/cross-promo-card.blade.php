@@ -10,7 +10,7 @@
     $preferencesPrefix = ($realm === 'dhiran' ? 'dhiran.' : '').'product-preferences';
 @endphp
 {{-- In-flow card cannot cover dashboard controls. Turbo must not restore a claimed introduction. --}}
-<section class="product-introduction" data-cross-promo data-turbo-temporary aria-label="Other JewelFlows product">
+<section class="product-introduction" data-cross-promo data-turbo-temporary aria-label="{{ $realm === 'dhiran' ? 'Our other product' : 'Other JewelFlows product' }}">
     <style>
         .product-introduction { border:1px solid #d6e5df; border-radius:14px; padding:18px; margin-bottom:16px; background:#f3faf7; color:#142f28; }
         .product-introduction h2 { margin:0 0 6px; font-size:17px; font-weight:700; }

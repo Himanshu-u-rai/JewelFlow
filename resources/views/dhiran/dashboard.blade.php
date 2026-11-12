@@ -38,8 +38,8 @@
                 key="erp"
                 realm="dhiran"
                 heading="Running a jewellery store too?"
-                body="Use JewelFlows ERP for inventory, POS billing, returns, karigar work and reports — as its own separate account."
-                cta="Explore JewelFlows ERP"
+                body="Use our jewellery store software for inventory, POS billing, returns, karigar work and reports — as its own separate account."
+                cta="Explore the store software"
                 :url="$erpRegisterUrl"
             />
         @endif

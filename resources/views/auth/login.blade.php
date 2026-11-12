@@ -238,7 +238,7 @@
         </div>
 
         <p class="text-center text-sm text-slate-500 mt-6">
-            {{ __('New to JewelFlows?') }}
+            {{ \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? __('New to Dhiran?') : __('New to JewelFlows?') }}
             <a class="font-semibold text-amber-700 hover:text-amber-800 transition" href="{{ route('register') }}">
                 {{ __('Create your shop') }}
             </a>

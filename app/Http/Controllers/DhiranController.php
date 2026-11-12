@@ -306,15 +306,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             'interest_type'            => 'nullable|in:flat,daily,compound',
             // No future dates; back-dating (entering existing paper loans) stays allowed, but the service refuses any
             // date inside the shop's locked accounting period (owner 2026-11-12).
-            'loan_date'                => 'nullable|required_if:brought_forward,1|date|before_or_equal:today',
-            // A paper loan brought in as it stands today (owner 2026-11-12): its ticket number, the principal still
-            // owed, the date interest was paid up to, and optionally the shop's own figure for interest unpaid since.
-            'brought_forward'          => 'nullable|boolean',
-            'paper_loan_number'        => ['exclude_unless:brought_forward,1', 'required', 'string', 'max:30',
-                Rule::unique('dhiran_loans', 'loan_number')->where('shop_id', $shopId)],
-            'principal_owed'           => 'exclude_unless:brought_forward,1|required|numeric|min:0.01|lte:principal_amount',
-            'interest_paid_until'      => 'exclude_unless:brought_forward,1|required|date|after_or_equal:loan_date|before_or_equal:today',
-            'unpaid_interest'          => 'exclude_unless:brought_forward,1|nullable|numeric|min:0',
+            'loan_date'                => 'nullable|date|before_or_equal:today',
             'tenure_months'            => 'nullable|integer|min:1|max:60',
             'min_lock_months'          => 'nullable|integer|min:0|max:60',
             'grace_period_days'        => 'nullable|integer|min:0|max:90',
@@ -413,11 +405,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             'kyc_aadhaar'           => \App\Support\AadhaarMask::mask($data['aadhaar'] ?? null),
             'kyc_pan'               => isset($data['pan']) ? strtoupper(trim($data['pan'])) : null,
             'notes'                 => $data['notes'] ?? null,
-            'brought_forward'       => ! empty($data['brought_forward']),
-            'loan_number'           => $data['paper_loan_number'] ?? null,
-            'principal_owed'        => $data['principal_owed'] ?? null,
-            'interest_paid_until'   => $data['interest_paid_until'] ?? null,
-            'unpaid_interest'       => $data['unpaid_interest'] ?? null,
             'created_by'            => auth()->id(),
             // Evidence gate: a loan created from the UI starts inactive until the
             // required photo + ID proof are uploaded and the owner activates it.

@@ -21,7 +21,7 @@ class ProductPromotionController extends Controller
 
         return response()->view('product-preferences', [
             'owner' => $owner, 'prefix' => $service->routePrefix($owner),
-            'targetLabel' => $service->target($owner) === 'dhiran' ? 'Dhiran' : 'JewelFlows Retail',
+            'targetLabel' => $service->target($owner) === 'dhiran' ? 'Dhiran' : 'our jewellery store software', // never "JewelFlows" on Dhiran (owner 2026-11-12)
             'preference' => $service->preference($owner), 'pending' => $pending,
             'incoming' => $service->incomingRequests($owner)->whereNull('consumed_at')->where('expires_at', '>', now())->get(['id']),
             'recognitions' => $service->recognitions($owner),

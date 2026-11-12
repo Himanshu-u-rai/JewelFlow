@@ -403,58 +403,6 @@
                 </div>
             </div>
 
-            {{-- Brought forward (owner 2026-11-12): a loan already running in the shop's paper book, entered as it
-                 stands today. Nothing is booked in the cash book; interest runs from the paid-up date. --}}
-            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6" data-brought-forward>
-                <label class="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" name="brought_forward" value="1" x-model="broughtForward" class="mt-1">
-                    <span>
-                        <span class="dh-section-title !mb-1"><x-icon name="book-open" /> Existing loan from your paper book</span>
-                        <span class="block text-sm text-slate-500">Tick this to bring in a loan given before you used JewelFlows. Principal Amount above is what was lent then.</span>
-                    </span>
-                </label>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4" x-show="broughtForward" x-cloak>
-                    <div>
-                        <label for="paper_loan_number" class="dh-label">Loan / ticket number in your book *</label>
-                        <input type="text" name="paper_loan_number" id="paper_loan_number" maxlength="30" class="dh-input"
-                               value="{{ old('paper_loan_number') }}" :disabled="!broughtForward" :required="broughtForward" placeholder="e.g. 778">
-                        @error('paper_loan_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="loan_date" class="dh-label">Date the loan was given *</label>
-                        <input type="date" name="loan_date" id="loan_date" class="dh-input" max="{{ today()->toDateString() }}"
-                               value="{{ old('loan_date') }}" :disabled="!broughtForward" :required="broughtForward">
-                        @error('loan_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="principal_owed" class="dh-label">Principal still owed today *</label>
-                        <div class="dh-cost-wrap">
-                            <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
-                            <input type="number" step="0.01" min="0.01" name="principal_owed" id="principal_owed" class="dh-input"
-                                   value="{{ old('principal_owed') }}" :disabled="!broughtForward" :required="broughtForward" placeholder="0.00">
-                        </div>
-                        @error('principal_owed') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="interest_paid_until" class="dh-label">Interest paid up to *</label>
-                        <input type="date" name="interest_paid_until" id="interest_paid_until" class="dh-input" max="{{ today()->toDateString() }}"
-                               value="{{ old('interest_paid_until') }}" :disabled="!broughtForward" :required="broughtForward">
-                        @error('interest_paid_until') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="md:col-span-2">
-                        <label for="unpaid_interest" class="dh-label">Interest unpaid since then, as per your book</label>
-                        <div class="dh-cost-wrap">
-                            <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
-                            <input type="number" step="0.01" min="0" name="unpaid_interest" id="unpaid_interest" class="dh-input"
-                                   value="{{ old('unpaid_interest') }}" :disabled="!broughtForward" placeholder="Leave blank to let JewelFlows work it out">
-                        </div>
-                        <p class="mt-1 text-xs text-slate-500">Blank: interest is worked out from the paid-up date at this loan's rate. Filled: your figure is kept and interest is added from today.</p>
-                        @error('unpaid_interest') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-            </div>
-
             {{-- Summary --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-visible p-6">
                 <div class="dh-section-title">
@@ -544,7 +492,6 @@
                 loanAadhaar: {{ Illuminate\Support\Js::from(old('aadhaar', '')) }},
                 goldRateOnDate: {{ old('gold_rate_on_date', 0) }},
                 principal_amount: {{ old('principal_amount', 0) }},
-                broughtForward: {{ old('brought_forward') ? 'true' : 'false' }},
                 interest_rate_monthly: {{ old('interest_rate_monthly', $defaults['interest_rate_monthly'] ?? 1.5) }},
                 interest_type: '{{ old('interest_type', $defaults['interest_type'] ?? 'flat') }}',
                 tenure_months: {{ old('tenure_months', $defaults['tenure_months'] ?? 6) }},
@@ -589,7 +536,6 @@
                     return Math.max(0, this.maxLoan > 0 ? Math.min(best, this.maxLoan) : best);
                 },
                 get principalProblem() {
-                    if (this.broughtForward) return false; // a paper loan is not judged by today's lending limits
                     const p = Number(this.principal_amount) || 0;
                     if (p <= 0 || this.totalMarketValue <= 0) return false;
                     return p > this.maxPrincipal + 0.001 || p < this.minLoan;
@@ -605,7 +551,6 @@
                     return (this.principal_amount || 0) * (this.interest_rate_monthly || 0) / 100;
                 },
                 get processingFee() {
-                    if (this.broughtForward) return 0; // no fee on a loan made before the app
                     // The shop's fee is either a % of the loan or a fixed amount (Dhiran settings).
                     return (Number(this.principal_amount) || 0) * (this.processingFeePercent || 0) / 100 + (this.processingFeeFlat || 0);
                 },

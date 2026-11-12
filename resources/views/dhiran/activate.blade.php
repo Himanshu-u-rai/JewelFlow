@@ -14,7 +14,7 @@
                 </div>
                 <h2 class="da-hero-title">Dhiran &mdash; Pledge Loan Module</h2>
                 <p class="da-hero-subtitle">
-                    Manage gold &amp; silver pledge loans directly from JewelFlows. Track collateral, calculate interest, handle renewals and forfeitures &mdash; all in one place.
+                    Manage gold &amp; silver pledge loans in one place. Track collateral, calculate interest, handle renewals and forfeitures.
                 </p>
 
                 <div class="da-features">
