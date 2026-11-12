@@ -72,12 +72,18 @@
     </div>
 
     {{-- ==================== ADD CATEGORY MODAL ==================== --}}
-    <div id="addCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
-        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeAddCategoryModal()"></div>
+    <style>
+        /* Native <dialog> hosts for the category popups: full-viewport and transparent so the
+           centered card (and the phone bottom sheet in app.css) lay out exactly as before. */
+        dialog.categories-modal { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; overflow: hidden; }
+        dialog.categories-modal::backdrop { background: rgb(2 6 23 / .55); }
+    </style>
+
+    <dialog id="addCategoryModal" class="categories-modal fixed inset-0 z-50" aria-labelledby="addCategoryTitle" onclick="if (event.target === this) closeAddCategoryModal()">
         <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
             <div class="categories-modal-card bg-white shadow-xl">
                 <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Add New Category') }}</h3>
+                    <h3 id="addCategoryTitle" class="text-lg font-semibold text-slate-900">{{ __('Add New Category') }}</h3>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Create a parent group for jewellery stock.') }}</p>
                 </div>
                 <form method="POST" action="{{ route('categories.store') }}" class="categories-modal-body p-6">
@@ -105,15 +111,14 @@
                 </form>
             </div>
         </div>
-    </div>
+    </dialog>
 
     {{-- ==================== ADD SUB-CATEGORY MODAL ==================== --}}
-    <div id="addSubCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
-        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeAddSubCategoryModal()"></div>
+    <dialog id="addSubCategoryModal" class="categories-modal fixed inset-0 z-50" aria-labelledby="addSubCategoryTitle" onclick="if (event.target === this) closeAddSubCategoryModal()">
         <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
             <div class="categories-modal-card bg-white shadow-xl">
                 <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Add Sub-Category') }}</h3>
+                    <h3 id="addSubCategoryTitle" class="text-lg font-semibold text-slate-900">{{ __('Add Sub-Category') }}</h3>
                     <p class="text-sm text-slate-500 mt-1">{{ __('Adding to:') }} <span id="parentCategoryName" class="font-semibold text-slate-700"></span></p>
                 </div>
                 <form method="POST" action="{{ route('sub-categories.store') }}" class="categories-modal-body p-6">
@@ -145,15 +150,14 @@
                 </form>
             </div>
         </div>
-    </div>
+    </dialog>
 
     {{-- ==================== EDIT CATEGORY MODAL ==================== --}}
-    <div id="editCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
-        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeEditCategoryModal()"></div>
+    <dialog id="editCategoryModal" class="categories-modal fixed inset-0 z-50" aria-labelledby="editCategoryTitle" onclick="if (event.target === this) closeEditCategoryModal()">
         <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
             <div class="categories-modal-card bg-white shadow-xl">
                 <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Rename Category') }}</h3>
+                    <h3 id="editCategoryTitle" class="text-lg font-semibold text-slate-900">{{ __('Rename Category') }}</h3>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Update parent category name.') }}</p>
                 </div>
                 <form method="POST" id="editCategoryForm" class="categories-modal-body p-6">
@@ -183,15 +187,14 @@
                 </form>
             </div>
         </div>
-    </div>
+    </dialog>
 
     {{-- ==================== EDIT SUB-CATEGORY MODAL ==================== --}}
-    <div id="editSubCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
-        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeEditSubCategoryModal()"></div>
+    <dialog id="editSubCategoryModal" class="categories-modal fixed inset-0 z-50" aria-labelledby="editSubCategoryTitle" onclick="if (event.target === this) closeEditSubCategoryModal()">
         <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
             <div class="categories-modal-card bg-white shadow-xl">
                 <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Rename Sub-Category') }}</h3>
+                    <h3 id="editSubCategoryTitle" class="text-lg font-semibold text-slate-900">{{ __('Rename Sub-Category') }}</h3>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Update category detail name.') }}</p>
                 </div>
                 <form method="POST" id="editSubCategoryForm" class="categories-modal-body p-6">
@@ -221,7 +224,7 @@
                 </form>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <script>
         // Turbo Drive evaluates this script again on every visit to this page, in the
@@ -234,24 +237,28 @@
 
         function showCategoryModal(id, focusSelector = 'input[name="name"]') {
             const modal = document.getElementById(id);
-            if (!modal) return;
-            modal.classList.remove('hidden');
+            if (!modal || modal.open) return;
+            // Native modal: the browser makes the page behind inert, keeps Tab inside and closes on Escape.
+            window.__categoriesDialogOpener = document.activeElement;
+            modal.onclose = function () {
+                // Fires for Cancel, Escape and a backdrop click alike.
+                document.body.classList.remove('categories-modal-open');
+                const opener = window.__categoriesDialogOpener;
+                window.__categoriesDialogOpener = null;
+                if (opener && opener.isConnected && opener.focus) opener.focus();
+            };
             document.body.classList.add('categories-modal-open');
-            window.setTimeout(() => {
-                const input = modal.querySelector(focusSelector);
-                if (!input) return;
+            modal.showModal();
+            const input = modal.querySelector(focusSelector);
+            if (input) {
                 input.focus();
                 if (input.select) input.select();
-            }, 30);
+            }
         }
 
         function hideCategoryModal(id) {
             const modal = document.getElementById(id);
-            if (!modal) return;
-            modal.classList.add('hidden');
-            if (!document.querySelector('.categories-modal:not(.hidden)')) {
-                document.body.classList.remove('categories-modal-open');
-            }
+            if (modal && modal.open) modal.close();
         }
 
         // ---- Add Category ----
@@ -295,19 +302,25 @@
             hideCategoryModal('editSubCategoryModal');
         }
 
-        // ---- Escape key closes any open modal ----
+        // ---- end dialog helpers ----
+
+        // Escape is handled by <dialog> itself. Drop the old keydown listener an earlier
+        // visit of this page may have left on the document.
         if (window.__categoriesPageEscapeHandler) {
             document.removeEventListener('keydown', window.__categoriesPageEscapeHandler);
+            window.__categoriesPageEscapeHandler = null;
         }
-        window.__categoriesPageEscapeHandler = function(e) {
-            if (e.key === 'Escape') {
-                closeAddCategoryModal();
-                closeAddSubCategoryModal();
-                closeEditCategoryModal();
-                closeEditSubCategoryModal();
-            }
+
+        // Turbo caches the page as it stands; a cached copy must not come back with a dialog
+        // marked open (it would not be modal). Close them before the snapshot is taken.
+        if (window.__categoriesPageBeforeCacheHandler) {
+            document.removeEventListener('turbo:before-cache', window.__categoriesPageBeforeCacheHandler);
+        }
+        window.__categoriesPageBeforeCacheHandler = function() {
+            document.querySelectorAll('dialog.categories-modal[open]').forEach((dialog) => dialog.close());
+            document.body.classList.remove('categories-modal-open');
         };
-        document.addEventListener('keydown', window.__categoriesPageEscapeHandler);
+        document.addEventListener('turbo:before-cache', window.__categoriesPageBeforeCacheHandler);
 
         // ---- A change redraws the page; the user keeps their place ----
         // Every change here is answered with this page drawn again, at the address it was
@@ -383,7 +396,7 @@
         function initCategoriesPage() {
             const page = document.querySelector('.categories-index-page');
             if (!page) return;
-            if (!document.querySelector('.categories-modal:not(.hidden)')) {
+            if (!document.querySelector('dialog.categories-modal[open]')) {
                 document.body.classList.remove('categories-modal-open');
             }
 
