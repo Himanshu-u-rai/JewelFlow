@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Dhiran\DhiranSettings;
+use App\Models\Dhiran\DhiranLoan;
 use App\Services\DhiranService;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
@@ -14,35 +14,33 @@ class DhiranAccrueInterest extends Command
 
     public function handle(): int
     {
-        // Cross-shop discovery query: BelongsToShop fails closed in console, so
-        // bypass the tenant scope to actually find every enabled shop. Each
-        // shop's work then runs inside its own TenantContext so the tenant-scoped
-        // loan queries resolve (otherwise they fail closed and accrue nothing).
-        $enabledSettings = DhiranSettings::withoutGlobalScope('shop')
-            ->whereRaw('is_enabled IS TRUE')->get();
+        // Interest follows the loan (owner 2026-11-12): every shop with an active loan, whatever its plan or its
+        // Dhiran switch says. Cross-shop discovery bypasses the tenant scope (it fails closed in console); each
+        // shop's work then runs inside its own TenantContext so the tenant-scoped loan queries resolve.
+        $shops = DhiranLoan::shopsWithActiveLoans()->map(fn ($id) => (object) ['shop_id' => $id]);
         $totalProcessed = 0;
         $errors = 0;
 
-        $this->info("Found {$enabledSettings->count()} shop(s) with Dhiran enabled.");
+        $this->info("Found {$shops->count()} shop(s) with active Dhiran loans.");
 
         $service = app(DhiranService::class);
 
-        foreach ($enabledSettings as $settings) {
+        foreach ($shops as $shop) {
             try {
                 $count = TenantContext::runFor(
-                    $settings->shop_id,
-                    fn () => $service->accrueInterestBatch($settings->shop_id)
+                    $shop->shop_id,
+                    fn () => $service->accrueInterestBatch($shop->shop_id)
                 );
-                $this->info("Shop #{$settings->shop_id}: accrued interest on {$count} loan(s)");
+                $this->info("Shop #{$shop->shop_id}: accrued interest on {$count} loan(s)");
                 $totalProcessed += $count;
             } catch (\Throwable $e) {
                 $errors++;
-                $this->error("Shop #{$settings->shop_id}: interest accrual failed — {$e->getMessage()}");
-                \Log::error("dhiran:accrue-interest failed for shop #{$settings->shop_id}", ['exception' => $e]);
+                $this->error("Shop #{$shop->shop_id}: interest accrual failed — {$e->getMessage()}");
+                \Log::error("dhiran:accrue-interest failed for shop #{$shop->shop_id}", ['exception' => $e]);
             }
         }
 
-        $this->info("Done. Total loans processed: {$totalProcessed} across {$enabledSettings->count()} shop(s). Errors: {$errors}");
+        $this->info("Done. Total loans processed: {$totalProcessed} across {$shops->count()} shop(s). Errors: {$errors}");
 
         return $errors > 0 ? self::FAILURE : self::SUCCESS;
     }

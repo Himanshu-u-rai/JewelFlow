@@ -817,6 +817,7 @@
 }
 .dh-flash-success { background: var(--dh-success-soft); color: var(--dh-success); border: 1px solid var(--dh-success-line); }
 .dh-flash-error { background: var(--dh-danger-soft); color: var(--dh-danger); border: 1px solid var(--dh-danger-line); }
+.dh-flash-warning { background: var(--dh-warning-soft); color: var(--dh-warning-ink); border: 1px solid var(--dh-warning-line); }
 
 .dh-menu-toggle,
 .dh-header-toggle {

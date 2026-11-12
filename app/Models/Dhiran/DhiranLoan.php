@@ -303,6 +303,12 @@ class DhiranLoan extends Model
 
     /* ── Scopes ────────────────────────────────────────── */
 
+    /** Shops whose loans the nightly jobs work on (cross-shop: console only). */
+    public static function shopsWithActiveLoans(): \Illuminate\Support\Collection
+    {
+        return static::withoutGlobalScope('shop')->where('status', 'active')->distinct()->orderBy('shop_id')->pluck('shop_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');

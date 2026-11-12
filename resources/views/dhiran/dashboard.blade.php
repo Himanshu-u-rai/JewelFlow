@@ -28,6 +28,11 @@
         {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
         <x-promo-banner realm="dhiran" />
 
+        {{-- Plan ended: collect-only (EnsureDhiranEnabled). Only the owner hears about the plan. --}}
+        @if(auth()->user()->isOwner() && ! auth()->user()->shop?->hasEdition('dhiran'))
+            <div class="dh-flash dh-flash-warning" role="status" data-dh-plan-lapsed>{{ \App\Http\Middleware\EnsureDhiranEnabled::LAPSED }}</div>
+        @endif
+
         @if($showErpPromo)
             <x-cross-promo-card
                 key="erp"
