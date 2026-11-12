@@ -235,8 +235,8 @@ class DhiranBorrowerProfileTest extends TestCase
             view()->share('errors', new \Illuminate\Support\ViewErrorBag);
             return app(DhiranController::class)->create($req)->render();
         });
-        // the Alpine form should seed customer_id with this borrower
-        $this->assertStringContainsString("customer_id: '{$c->id}'", $html);
+        // the Alpine form should start with this borrower selected
+        $this->assertStringContainsString("initialCustomerId: '{$c->id}'", $html);
     }
 
     // 15. Full Aadhaar is never displayed (only masked).

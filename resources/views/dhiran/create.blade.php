@@ -34,7 +34,7 @@
                                 <x-icon name="user" />
                                 Customer *
                             </label>
-                            <input type="hidden" name="customer_id" x-model="customer_id">
+                            <input type="hidden" name="customer_id" :value="customer_id">
                             <div class="dh-dd-wrap" :class="{ 'dd-open': customerDropdownOpen }">
                                 <div class="dh-customer-search-control" :class="{ open: customerDropdownOpen }">
                                     <span class="dh-customer-search-icon"><x-icon name="search" size="15" /></span>
@@ -124,9 +124,9 @@
                  x-show="newBorrowerOpen"
                  x-cloak
                  x-transition.opacity
-                 @keydown.escape.window="newBorrowerOpen = false"
+                 @keydown.escape.window="closeNewBorrower()"
                  @keydown.enter.prevent.stop="if (!$event.target.matches('textarea')) saveBorrower()"
-                 @click.self="newBorrowerOpen = false"
+                 @click.self="closeNewBorrower()"
                  @wheel.self.prevent
                  @touchmove.self.prevent
                  role="dialog"
@@ -138,7 +138,7 @@
                             <h2 id="dh-borrower-modal-title">Add New Borrower</h2>
                             <p>Create a borrower profile and select it for this pledge loan.</p>
                         </div>
-                        <button type="button" class="dh-borrower-modal-close" @click="newBorrowerOpen = false" aria-label="Close borrower form">
+                        <button type="button" class="dh-borrower-modal-close" @click="closeNewBorrower()" aria-label="Close borrower form">
                             <x-icon name="x" />
                         </button>
                     </div>
@@ -178,7 +178,7 @@
                     </div>
 
                     <div class="dh-borrower-modal-foot">
-                        <button type="button" class="btn btn-secondary btn-sm" @click="newBorrowerOpen = false">Cancel</button>
+                        <button type="button" class="btn btn-secondary btn-sm" @click="closeNewBorrower()" :disabled="nbSaving">Cancel</button>
                         <button type="button" class="dh-borrower-save" @click="saveBorrower()" :disabled="nbSaving">
                             <span x-text="nbSaving ? 'Saving…' : 'Save borrower'"></span>
                         </button>
@@ -459,7 +459,12 @@
         (() => {
         const registerDhiranCreateForm = () => {
             Alpine.data('dhiranCreateForm', () => ({
-                customer_id: '{{ old('customer_id', $preselectedCustomerId ?? '') }}',
+                // The borrower is one value, selectedCustomer; the posted id is read from it, so the form can never
+                // send an id for a borrower the screen does not show (owner 2026-11-12, state-machine audit).
+                initialCustomerId: '{{ old('customer_id', $preselectedCustomerId ?? '') }}',
+                get customer_id() {
+                    return this.selectedCustomer ? this.selectedCustomer.id : '';
+                },
                 customerDisplayName: '',
                 customerDropdownOpen: false,
                 customerSearch: '',
@@ -473,9 +478,15 @@
                     'state_code' => $c->state_code ?? '',
                 ])->values()) }},
                 selectedCustomer: null,
-                newBorrowerOpen: false,
-                nbSaving: false,
+                // Add Borrower dialog: one state, 'closed' -> 'open' -> 'saving' -> 'closed' (saved) or 'open' (refused).
+                nbState: 'closed',
                 nbError: '',
+                get newBorrowerOpen() {
+                    return this.nbState !== 'closed';
+                },
+                get nbSaving() {
+                    return this.nbState === 'saving';
+                },
                 nb: { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' },
                 loanPan: {{ Illuminate\Support\Js::from(old('pan', '')) }},
                 loanAadhaar: {{ Illuminate\Support\Js::from(old('aadhaar', '')) }},
@@ -552,8 +563,8 @@
                     this.items.forEach((_, i) => this.recalcItem(i));
                     // If a borrower was preselected (?customer_id= from the borrower
                     // profile/list), show their name in the picker on load.
-                    if (this.customer_id) {
-                        const c = this.customers.find(x => String(x.id) === String(this.customer_id));
+                    if (this.initialCustomerId) {
+                        const c = this.customers.find(x => String(x.id) === String(this.initialCustomerId));
                         if (c) this.selectCustomer(c, true);
                     }
                 },
@@ -575,7 +586,6 @@
                     this.customerDropdownOpen = true;
                     if (this.selectedCustomer && this.customerSearch.trim() !== (this.selectedCustomer.name || '')) {
                         this.selectedCustomer = null;
-                        this.customer_id = '';
                         this.customerDisplayName = '';
                         this.loanPan = '';
                         this.loanAadhaar = '';
@@ -584,7 +594,12 @@
 
                 openNewBorrower() {
                     this.customerDropdownOpen = false;
-                    this.newBorrowerOpen = true;
+                    this.nbError = '';
+                    this.nbState = 'open';
+                },
+
+                closeNewBorrower() {
+                    if (this.nbState === 'open') this.nbState = 'closed'; // never mid-save: the answer would land unseen
                 },
 
                 aadhaarCandidate(customer) {
@@ -594,7 +609,6 @@
 
                 selectCustomer(customer, keepExistingKyc = false) {
                     this.selectedCustomer = customer;
-                    this.customer_id = customer.id;
                     this.customerDisplayName = customer.name + (customer.mobile ? ' (' + customer.mobile + ')' : '');
                     this.customerSearch = customer.name || '';
                     if (!keepExistingKyc || !this.loanPan) this.loanPan = customer.pan || '';
@@ -606,7 +620,8 @@
                     this.nbError = '';
                     if (!this.nb.first_name.trim()) { this.nbError = 'First name is required.'; return; }
                     if (!/^[0-9]{10}$/.test(this.nb.mobile.trim())) { this.nbError = 'Enter a valid 10-digit mobile number.'; return; }
-                    this.nbSaving = true;
+                    if (this.nbState !== 'open') return; // one save at a time
+                    this.nbState = 'saving';
                     try {
                         const res = await fetch('{{ route('dhiran.customers.store') }}', {
                             method: 'POST',
@@ -640,12 +655,12 @@
                             this.customers.splice(existingIndex, 1, { ...this.customers[existingIndex], ...savedCustomer });
                         }
                         this.selectCustomer(savedCustomer);
-                        this.newBorrowerOpen = false;
+                        this.nbState = 'closed';
                         this.nb = { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' };
                     } catch (e) {
                         this.nbError = 'Network error. Please try again.';
                     } finally {
-                        this.nbSaving = false;
+                        if (this.nbState === 'saving') this.nbState = 'open'; // refused: back to the form, error shown
                     }
                 },
 
