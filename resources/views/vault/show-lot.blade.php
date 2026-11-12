@@ -8,86 +8,91 @@
     </x-page-header>
 
     <div class="content-inner">
+        <style>
+            .lot-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid #e5e7eb; border-radius:10px; background:#fff; margin-bottom:16px; overflow:hidden; }
+            @media (min-width:640px){ .lot-facts { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+            .lot-fact { padding:10px 14px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; min-width:0; }
+            .lot-fact dt { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:600; }
+            .lot-fact dd { margin:2px 0 0; font-size:14px; color:#111827; overflow-wrap:anywhere; }
+            .lot-fact dd.lot-num { font-family:ui-monospace,monospace; font-weight:600; font-variant-numeric:tabular-nums; }
+            .lot-fact small { display:block; font-size:11px; font-weight:400; color:#6b7280; font-family:inherit; }
+            .lot-fact-wide { grid-column:1 / -1; }
+            .lot-usage { height:6px; border-radius:999px; background:#f3f4f6; overflow:hidden; margin:8px 0 0; }
+            .lot-usage > span { display:block; height:100%; background:#4b5563; }
+            .lot-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:16px; overflow:hidden; }
+            .lot-card > header { padding:10px 14px; border-bottom:1px solid #f3f4f6; }
+            .lot-card > header h2, .lot-card > header h3 { font-size:14px; font-weight:600; color:#111827; margin:0; }
+            .lot-card > header p { font-size:12px; color:#6b7280; margin:2px 0 0; }
+            .lot-card-body { padding:14px; }
+            .lot-table-wrap { overflow-x:auto; max-width:100%; }
+            .lot-table-wrap .lot-w { text-align:right; font-family:ui-monospace,monospace; font-variant-numeric:tabular-nums; white-space:nowrap; color:#111827; }
+            .lot-chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600; background:#f3f4f6; color:#374151; text-transform:capitalize; }
+            .lot-adjust { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+            @media (min-width:640px){ .lot-adjust { grid-template-columns:1fr 1fr 2fr; align-items:end; } .lot-adjust .lot-adjust-actions { grid-column:1 / -1; } }
+            .lot-adjust label { display:block; font-size:12px; font-weight:500; color:#4b5563; margin-bottom:4px; }
+            .lot-adjust select, .lot-adjust input { width:100%; max-width:100%; border-radius:6px; border:1px solid #d1d5db; font-size:14px; }
+        </style>
 
-        {{-- Lot summary cards --}}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-4 text-center">
-                <div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold mb-1">Total Fine</div>
-                <div class="text-xl font-bold text-amber-800 font-mono">{{ number_format($metalLot->fine_weight_total, 3) }}<span class="text-xs font-normal ml-0.5">g</span></div>
-                <div class="text-[10px] text-gray-400 mt-0.5">when received</div>
-            </div>
-            <div class="bg-white rounded-xl border border-emerald-200 shadow-sm p-4 text-center">
-                <div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold mb-1">Remaining</div>
-                <div class="text-xl font-bold text-emerald-700 font-mono">{{ number_format($metalLot->fine_weight_remaining, 3) }}<span class="text-xs font-normal ml-0.5">g</span></div>
-                @php $pct = $metalLot->fine_weight_total > 0 ? round((float)$metalLot->fine_weight_remaining / (float)$metalLot->fine_weight_total * 100) : 0; @endphp
-                <div class="text-[10px] text-gray-400 mt-0.5">{{ $pct }}% left</div>
-            </div>
-            <div class="bg-white rounded-xl border border-blue-200 shadow-sm p-4 text-center">
-                <div class="text-[10px] uppercase tracking-wide text-blue-700 font-semibold mb-1">Issued Out</div>
-                @php $issued = (float)$metalLot->fine_weight_total - (float)$metalLot->fine_weight_remaining; @endphp
-                <div class="text-xl font-bold text-blue-700 font-mono">{{ number_format($issued, 3) }}<span class="text-xs font-normal ml-0.5">g</span></div>
-                <div class="text-[10px] text-gray-400 mt-0.5">to karigars</div>
-            </div>
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
-                <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Purity</div>
-                <div class="text-xl font-bold text-gray-800">{{ rtrim(rtrim(number_format($metalLot->purity, 2), '0'), '.') }}<span class="text-xs font-normal ml-0.5">K</span></div>
-                <div class="text-[10px] text-gray-400 mt-0.5">{{ ucfirst($metalLot->metal_type ?? 'gold') }}</div>
-            </div>
-        </div>
+        @php
+            $pct = $metalLot->fine_weight_total > 0 ? round((float) $metalLot->fine_weight_remaining / (float) $metalLot->fine_weight_total * 100) : 0;
+            $issued = (float) $metalLot->fine_weight_total - (float) $metalLot->fine_weight_remaining;
+        @endphp
 
-        {{-- Lot metadata --}}
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
-            <h2 class="text-sm font-semibold text-gray-800 mb-3">Lot Details</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                <div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Source</div>
-                    <div class="mt-0.5 text-gray-800 capitalize">{{ str_replace('_', ' ', $metalLot->source) }}</div>
-                </div>
-                <div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Vendor / Supplier</div>
-                    <div class="mt-0.5 text-gray-800">{{ $metalLot->vendor?->name ?? '—' }}</div>
-                </div>
-                <div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Cost / Fine Gram</div>
-                    <div class="mt-0.5 text-gray-800 font-mono">{{ $metalLot->cost_per_fine_gram ? '₹' . number_format($metalLot->cost_per_fine_gram, 2) : '—' }}</div>
-                </div>
-                <div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Added On</div>
-                    <div class="mt-0.5 text-gray-800">{{ $metalLot->created_at->format('d M Y, H:i') }}</div>
-                </div>
-                @if($metalLot->notes)
-                    <div class="col-span-2 sm:col-span-4">
-                        <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Notes</div>
-                        <div class="mt-0.5 text-gray-700">{{ $metalLot->notes }}</div>
-                    </div>
-                @endif
+        {{-- Compact lot facts --}}
+        <dl class="lot-facts" aria-label="Lot summary">
+            <div class="lot-fact">
+                <dt>Total fine</dt>
+                <dd class="lot-num">{{ number_format($metalLot->fine_weight_total, 3) }} g<small>when received</small></dd>
             </div>
-        </div>
-
-        {{-- Running balance bar --}}
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-gray-700">Fine Weight Usage</span>
-                <span class="text-xs text-gray-500 font-mono">{{ number_format($issued, 3) }}g used of {{ number_format($metalLot->fine_weight_total, 3) }}g</span>
+            <div class="lot-fact">
+                <dt>Remaining</dt>
+                <dd class="lot-num">{{ number_format($metalLot->fine_weight_remaining, 3) }} g<small>{{ $pct }}% left</small></dd>
             </div>
-            <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                <div class="h-3 rounded-full {{ $pct > 80 ? 'bg-rose-500' : ($pct > 50 ? 'bg-amber-400' : 'bg-emerald-500') }}"
-                     style="width: {{ 100 - $pct }}%"></div>
+            <div class="lot-fact">
+                <dt>Issued out</dt>
+                <dd class="lot-num">{{ number_format($issued, 3) }} g<small>to karigars</small></dd>
             </div>
-            <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-                <span>{{ number_format($metalLot->fine_weight_remaining, 3) }}g remaining</span>
-                <span>{{ $pct }}% available</span>
+            <div class="lot-fact">
+                <dt>Purity</dt>
+                <dd class="lot-num">{{ rtrim(rtrim(number_format($metalLot->purity, 2), '0'), '.') }}K<small>{{ ucfirst($metalLot->metal_type ?? 'gold') }}</small></dd>
             </div>
-        </div>
+            <div class="lot-fact">
+                <dt>Source</dt>
+                <dd class="capitalize">{{ str_replace('_', ' ', $metalLot->source) }}</dd>
+            </div>
+            <div class="lot-fact">
+                <dt>Vendor / Supplier</dt>
+                <dd>{{ $metalLot->vendor?->name ?? '—' }}</dd>
+            </div>
+            <div class="lot-fact">
+                <dt>Cost / fine gram</dt>
+                <dd class="lot-num">{{ $metalLot->cost_per_fine_gram ? '₹' . number_format($metalLot->cost_per_fine_gram, 2) : '—' }}</dd>
+            </div>
+            <div class="lot-fact">
+                <dt>Added on</dt>
+                <dd>{{ $metalLot->created_at->format('d M Y, H:i') }}</dd>
+            </div>
+            @if($metalLot->notes)
+                <div class="lot-fact lot-fact-wide">
+                    <dt>Notes</dt>
+                    <dd>{{ $metalLot->notes }}</dd>
+                </div>
+            @endif
+            <div class="lot-fact lot-fact-wide">
+                <dt>Fine weight usage</dt>
+                <dd class="lot-num">{{ number_format($issued, 3) }} g used of {{ number_format($metalLot->fine_weight_total, 3) }} g</dd>
+                <div class="lot-usage" role="img" aria-label="{{ $pct }}% of this lot is still available"><span style="width: {{ 100 - $pct }}%"></span></div>
+            </div>
+        </dl>
 
         {{-- Movement history --}}
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="px-5 py-3 border-b border-gray-100">
-                <h2 class="text-sm font-semibold text-gray-800">Gold Movement History</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Every deduction and addition recorded against this lot</p>
-            </div>
+        <section class="lot-card" aria-labelledby="lot-movements-title">
+            <header>
+                <h2 id="lot-movements-title">Movement history</h2>
+                <p>Every deduction and addition recorded against this lot</p>
+            </header>
             @if($movements->isEmpty())
-                <div class="py-10 text-center text-gray-400 text-sm">No movements recorded yet.</div>
+                <div class="py-10 text-center text-gray-500 text-sm">No movements recorded yet.</div>
             @else
                 {{-- Running balance from the bottom up --}}
                 @php
@@ -113,10 +118,11 @@
                         $runningBalance = $balanceBefore;
                     }
                 @endphp
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm jf-table">
+                <div class="lot-table-wrap">
+                    <table class="w-full text-sm jf-table" id="lot-movements-table">
                         <thead>
                             <tr class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <th class="px-4 py-2 text-left font-semibold">When</th>
                                 <th class="px-4 py-2 text-left font-semibold">Type</th>
                                 <th class="px-4 py-2 text-left font-semibold">Reference</th>
@@ -132,37 +138,25 @@
                                         onclick="window.location='{{ route('job-orders.show', $row['mv']->reference_id) }}'"
                                     @endif
                                 >
+                                    <td class="jf-table-index">{{ $loop->iteration }}</td>
                                     <td class="px-4 py-2 text-gray-500 whitespace-nowrap text-xs">{{ $row['mv']->created_at->format('d M Y, H:i') }}</td>
                                     <td class="px-4 py-2">
-                                        @php
-                                            $typeColors = [
-                                                'purchase'   => 'bg-emerald-100 text-emerald-700',
-                                                'opening'    => 'bg-emerald-100 text-emerald-700',
-                                                'buyback'    => 'bg-teal-100 text-teal-700',
-                                                'job_issue'  => 'bg-blue-100 text-blue-700',
-                                                'job_return' => 'bg-amber-100 text-amber-700',
-                                                'manufacture'=> 'bg-purple-100 text-purple-700',
-                                            ];
-                                            $typeClass = $typeColors[$row['mv']->type] ?? 'bg-gray-100 text-gray-600';
-                                        @endphp
-                                        <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $typeClass }}">
-                                            {{ str_replace('_', ' ', $row['mv']->type) }}
-                                        </span>
+                                        <span class="lot-chip">{{ str_replace('_', ' ', $row['mv']->type) }}</span>
                                     </td>
                                     <td class="px-4 py-2 text-gray-600 text-xs">
                                         @if($row['mv']->reference_type === 'job_order' && isset($jobOrders[$row['mv']->reference_id]))
-                                            <a href="{{ route('job-orders.show', $row['mv']->reference_id) }}" class="text-teal-700 hover:underline font-mono">{{ $row['refLabel'] }}</a>
+                                            <a href="{{ route('job-orders.show', $row['mv']->reference_id) }}" class="text-gray-900 underline font-mono">{{ $row['refLabel'] }}</a>
                                         @else
                                             <span class="text-gray-500">{{ $row['refLabel'] }}</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-2 text-right font-mono font-semibold {{ $row['isDebit'] ? 'text-rose-600' : 'text-gray-300' }}">
+                                    <td class="px-4 py-2 lot-w {{ $row['isDebit'] ? '' : 'text-gray-400' }}">
                                         {{ $row['isDebit'] ? '− ' . number_format($row['amount'], 3) . 'g' : '—' }}
                                     </td>
-                                    <td class="px-4 py-2 text-right font-mono font-semibold {{ $row['isCredit'] ? 'text-emerald-600' : 'text-gray-300' }}">
+                                    <td class="px-4 py-2 lot-w {{ $row['isCredit'] ? '' : 'text-gray-400' }}">
                                         {{ $row['isCredit'] ? '+ ' . number_format($row['amount'], 3) . 'g' : '—' }}
                                     </td>
-                                    <td class="px-4 py-2 text-right font-mono font-bold text-gray-800">
+                                    <td class="px-4 py-2 lot-w font-semibold">
                                         {{ number_format($row['balanceAfter'], 3) }}g
                                     </td>
                                 </tr>
@@ -170,43 +164,47 @@
                         </tbody>
                         <tfoot>
                             <tr class="bg-gray-50 border-t-2 border-gray-200">
-                                <td colspan="5" class="px-4 py-2 text-xs font-semibold text-gray-600 text-right">Current Balance</td>
-                                <td class="px-4 py-2 text-right font-mono font-bold text-emerald-700">{{ number_format($metalLot->fine_weight_remaining, 3) }}g</td>
+                                <td colspan="6" class="px-4 py-2 text-xs font-semibold text-gray-600 text-right">Current balance</td>
+                                <td class="px-4 py-2 lot-w font-semibold">{{ number_format($metalLot->fine_weight_remaining, 3) }}g</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
             @endif
-        </div>
+        </section>
 
         @can('vault.manage')
-        <div class="mt-6 bg-white rounded-lg border border-amber-200 shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-gray-900 mb-1">Correct vault balance</h3>
-            <p class="text-xs text-gray-500 mb-3">Use this only to fix a difference between the physical weight and the system. It records a tracked adjustment with your reason — it does not change past entries.</p>
-            <form method="POST" action="{{ route('vault.lots.adjust', $metalLot) }}" data-turbo-frame="_top"
-                  data-confirm-message="{{ __('Record this vault adjustment? It cannot be undone (only offset by another adjustment).') }}"
-                  class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-                @csrf
-                <div>
-                    <label for="vault-adjust-direction" class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
-                    <select name="direction" id="vault-adjust-direction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                        <option value="add">Add to vault (+)</option>
-                        <option value="remove">Remove from vault (−)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="vault-adjust-fine-weight" class="block text-xs font-medium text-gray-600 mb-1">Fine weight (g)</label>
-                    <input type="number" name="fine_weight" id="vault-adjust-fine-weight" step="0.0001" min="0.0001" required class="w-full rounded-md border-gray-300 shadow-sm text-sm font-mono">
-                </div>
-                <div class="sm:col-span-2">
-                    <label for="vault-adjust-reason" class="block text-xs font-medium text-gray-600 mb-1">Reason (required)</label>
-                    <input type="text" name="reason" id="vault-adjust-reason" maxlength="500" required placeholder="e.g. physical count correction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                </div>
-                <div class="sm:col-span-4">
-                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200">Record Adjustment</button>
-                </div>
-            </form>
-        </div>
+        <section class="lot-card" aria-labelledby="lot-adjust-title">
+            <header>
+                <h3 id="lot-adjust-title">Correct vault balance</h3>
+                <p>Use this only to fix a difference between the physical weight and the system. It records a tracked adjustment with your reason — it does not change past entries.</p>
+            </header>
+            <div class="lot-card-body">
+                <form method="POST" action="{{ route('vault.lots.adjust', $metalLot) }}" data-turbo-frame="_top"
+                      data-confirm-message="{{ __('Record this vault adjustment? It cannot be undone (only offset by another adjustment).') }}"
+                      class="lot-adjust">
+                    @csrf
+                    <div>
+                        <label for="vault-adjust-direction">Direction</label>
+                        <select name="direction" id="vault-adjust-direction">
+                            <option value="add">Add to vault (+)</option>
+                            <option value="remove">Remove from vault (−)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="vault-adjust-fine-weight">Fine weight (g)</label>
+                        <input type="number" name="fine_weight" id="vault-adjust-fine-weight" step="0.0001" min="0.0001" required class="font-mono">
+                    </div>
+                    <div>
+                        <label for="vault-adjust-reason">Reason (required)</label>
+                        <input type="text" name="reason" id="vault-adjust-reason" maxlength="500" required placeholder="e.g. physical count correction">
+                    </div>
+                    <div class="lot-adjust-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">Record adjustment</button>
+                    </div>
+                </form>
+            </div>
+        </section>
         @endcan
     </div>
 </x-app-layout>

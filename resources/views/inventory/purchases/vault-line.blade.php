@@ -20,18 +20,18 @@
     <div class="content-inner max-w-2xl">
 
         {{-- Line summary --}}
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 grid grid-cols-3 gap-4 text-sm">
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 grid grid-cols-3 gap-4 text-sm">
             <div>
-                <div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Metal / Purity</div>
-                <div class="font-semibold text-amber-900 mt-0.5 capitalize">{{ $metalType }} {{ $purityLabel }}</div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Metal / Purity</div>
+                <div class="font-semibold text-gray-900 mt-0.5 capitalize">{{ $metalType }} {{ $purityLabel }}</div>
             </div>
             <div>
-                <div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Gross Weight</div>
-                <div class="font-mono font-semibold text-amber-900 mt-0.5">{{ number_format($gross, 3) }}g</div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Gross Weight</div>
+                <div class="font-mono font-semibold text-gray-900 mt-0.5">{{ number_format($gross, 3) }}g</div>
             </div>
             <div>
-                <div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Fine Weight</div>
-                <div class="font-mono font-bold text-amber-900 mt-0.5">{{ number_format($fineWeight, 3) }}g</div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Fine Weight</div>
+                <div class="font-mono font-bold text-gray-900 mt-0.5">{{ number_format($fineWeight, 3) }}g</div>
             </div>
         </div>
 
@@ -44,7 +44,7 @@
                 <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Vault Action</div>
                 <div class="flex gap-3">
                     <label class="flex-1 flex items-start gap-3 border-2 rounded-xl p-3 cursor-pointer transition"
-                           :class="action === 'new_lot' ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300'">
+                           :class="action === 'new_lot' ? 'border-gray-700 bg-gray-50 ring-1 ring-gray-700' : 'border-gray-200 hover:border-gray-300'">
                         <input type="radio" name="vault_action" value="new_lot" x-model="action" class="mt-0.5">
                         <div>
                             <div class="text-sm font-semibold text-gray-800">Create New Lot</div>
@@ -52,7 +52,7 @@
                         </div>
                     </label>
                     <label class="flex-1 flex items-start gap-3 border-2 rounded-xl p-3 cursor-pointer transition"
-                           :class="action === 'existing_lot' ? 'border-teal-400 bg-teal-50' : 'border-gray-200 hover:border-gray-300'">
+                           :class="action === 'existing_lot' ? 'border-gray-700 bg-gray-50 ring-1 ring-gray-700' : 'border-gray-200 hover:border-gray-300'">
                         <input type="radio" name="vault_action" value="existing_lot" x-model="action" class="mt-0.5">
                         <div>
                             <div class="text-sm font-semibold text-gray-800">Add to Existing Lot</div>
@@ -99,7 +99,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
                     <textarea name="notes" rows="2"
-                              class="w-full rounded-lg border-gray-300 text-sm focus:ring-amber-400 focus:border-amber-400"
+                              class="w-full rounded-lg border-gray-300 text-sm focus:ring-gray-500 focus:border-gray-500"
                               placeholder="E.g. BIS hallmarked bar, assay certificate #...">{{ old('notes') }}</textarea>
                 </div>
             </div>
@@ -113,13 +113,13 @@
                 @else
                     <div class="space-y-2">
                         @foreach($existingLots as $lot)
-                            <label class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer hover:border-teal-300 hover:bg-teal-50 transition"
-                                   :class="$el.querySelector('input').checked ? 'border-teal-400 bg-teal-50' : 'border-gray-200'">
+                            <label class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer hover:border-gray-400 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-gray-500 transition"
+                                   :class="$el.querySelector('input').checked ? 'border-gray-700 bg-gray-50 ring-1 ring-gray-700' : 'border-gray-200'">
                                 <input type="radio" name="metal_lot_id" value="{{ $lot->id }}"
                                        {{ old('metal_lot_id') == $lot->id ? 'checked' : '' }}
-                                       class="text-teal-600">
+                                       class="text-gray-800">
                                 <div class="flex-1 min-w-0">
-                                    <span class="font-mono font-semibold text-teal-700">Lot #{{ $lot->lot_number }}</span>
+                                    <span class="font-mono font-semibold text-gray-900">Lot #{{ $lot->lot_number }}</span>
                                     <span class="text-xs text-gray-500 ml-2 capitalize">{{ $lot->metal_type }}</span>
                                     <span class="text-xs text-gray-500 ml-1">
                                         {{ rtrim(rtrim(number_format((float)$lot->purity, 2), '0'), '.') }}{{ $lot->metal_type === 'silver' ? '‰' : 'K' }}
