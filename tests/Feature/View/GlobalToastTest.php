@@ -23,35 +23,25 @@ use Tests\TestCase;
 class GlobalToastTest extends TestCase
 {
     /**
-     * On phones the toast lies over nothing. With the page in view it gets a
-     * strip of its own at the top: the page, its header included, moves down
-     * by the toast's height for as long as the toast shows (showToast() says
-     * how tall) and gets the strip back when it hides. Under the page header,
-     * where the toast sat before, it covered whatever a page starts with: the
-     * Stock page's tabs, the Invoices row, the POS filters.
+     * On phones the toast floats at the top of the screen and the page never moves (owner 2026-11-13, keeping the
+     * UI audit's F05 fix: the page used to move down by the toast's height, which the audit found jarring). It sits
+     * clear of the bottom edge, where bottom sheets keep their Cancel/Save row; for its few seconds it may lie over
+     * the top of the page.
      *
-     * With a modal, a sheet, a drawer or a dialog over the page there is
-     * nothing to move, so the toast goes to the highest place where it covers
+     * With a modal, a sheet, a drawer or a dialog over the page, the toast goes to the highest place where it covers
      * no control and no validation message of whatever is on top.
      */
-    public function test_on_phones_the_page_makes_room_for_the_toast_instead_of_lying_under_it(): void
+    public function test_on_phones_the_toast_floats_at_the_top_and_the_page_never_moves(): void
     {
-        $this->assertSame(1, preg_match(
-            '~@media \(max-width: 768px\) \{\s*\.global-toast \{([^}]*)\}\s*(?:/\*.*?\*/\s*)?\.content-area \{([^}]*)\}~s',
-            file_get_contents(resource_path('css/app.css')),
-            $rule
-        ), 'app.css has no rule for the toast and the page under it at phone widths.');
-
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertSame(1, preg_match('~@media \(max-width: 768px\) \{\s*\.global-toast \{([^}]*)\}~s', $css, $rule),
+            'app.css has no rule for the toast at phone widths.');
         $this->assertStringContainsString('bottom: auto;', $rule[1]);
         $this->assertStringContainsString('var(--toast-top', $rule[1]);
-        $this->assertStringContainsString('padding-top: var(--toast-space, 0px);', $rule[2]);
+        $this->assertDoesNotMatchRegularExpression('~\.content-area \{[^}]*--toast-space~', $css, 'The page must not move for a toast.');
 
         $js = file_get_contents(resource_path('js/app.js'));
-
-        // Room is made for exactly the toast, and given back with it.
-        $this->assertStringContainsString("root.style.setProperty('--toast-space', `\${toast.offsetHeight + 16}px`);", $js);
-        $this->assertSame(1, preg_match("~function hideToast\(toast\) \{[^}]*removeProperty\('--toast-space'\);~", $js),
-            'The strip is not given back when the toast hides.');
+        $this->assertStringNotContainsString("root.style.setProperty('--toast-space'", $js, 'No room is made: the toast floats.');
 
         // Over a modal the place is looked for, not assumed; with none clear the toast waits.
         $this->assertSame(1, preg_match('~const clear = clearToastTop\(toast, top\);\s*if \(clear === null\) return false;~', $js),
