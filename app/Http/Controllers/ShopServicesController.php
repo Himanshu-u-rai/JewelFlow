@@ -9,6 +9,7 @@ use App\Models\Platform\PlatformSetting;
 use App\Models\ShopEditionRequest;
 use App\Services\SubscriptionPaymentService;
 use App\Support\ShopEdition;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,24 +68,17 @@ class ShopServicesController extends Controller
             return back()->with('error', 'Your shop already has '.$validated['edition'].'.');
         }
 
+        // One pending request per shop, edition and action is a database rule (audit N4): a double submit that got
+        // past the look below is refused by the insert.
         $hasPending = ShopEditionRequest::where('shop_id', $shop->id)
             ->where('edition', $validated['edition'])
             ->where('action', ShopEditionRequest::ACTION_ADD)
             ->where('status', ShopEditionRequest::STATUS_PENDING)
             ->exists();
 
-        if ($hasPending) {
+        if ($hasPending || ! $this->fileRequest($shop->id, $user->id, ShopEditionRequest::ACTION_ADD, $validated['edition'], trim($validated['reason']))) {
             return back()->with('error', 'A request to add '.$validated['edition'].' is already pending review.');
         }
-
-        ShopEditionRequest::create([
-            'shop_id' => $shop->id,
-            'user_id' => $user->id,
-            'action'  => ShopEditionRequest::ACTION_ADD,
-            'edition' => $validated['edition'],
-            'reason'  => trim($validated['reason']),
-            'status'  => ShopEditionRequest::STATUS_PENDING,
-        ]);
 
         return back()->with('success', 'Request submitted. Our team will review and contact you within 1 business day.');
     }
@@ -323,15 +317,8 @@ class ShopServicesController extends Controller
         }
 
         if ($guard = $this->dataGuard($shop, $edition)) {
-            // Data guard hit — file a remove-request so support can help.
-            ShopEditionRequest::create([
-                'shop_id' => $shop->id,
-                'user_id' => $user->id,
-                'action'  => ShopEditionRequest::ACTION_REMOVE,
-                'edition' => $edition,
-                'reason'  => $validated['reason']." [blocked: {$guard}]",
-                'status'  => ShopEditionRequest::STATUS_PENDING,
-            ]);
+            // Data guard hit — file a remove-request so support can help (once: a pending one already notified them).
+            $this->fileRequest($shop->id, $user->id, ShopEditionRequest::ACTION_REMOVE, $edition, $validated['reason']." [blocked: {$guard}]");
 
             return back()->with('error', $guard.' Our team has been notified and will contact you to help close this out.');
         }
@@ -355,14 +342,34 @@ class ShopServicesController extends Controller
     {
         $user = Auth::user();
         abort_unless($editionRequest->shop_id === $user->shop_id, 403);
-        abort_unless($editionRequest->isPending(), 422, 'Only pending requests can be cancelled.');
 
-        $editionRequest->update([
+        $cancelled = ShopEditionRequest::decidePending($editionRequest->id, fn (ShopEditionRequest $pending) => $pending->update([
             'status'      => ShopEditionRequest::STATUS_CANCELLED,
             'reviewed_at' => now(),
-        ]);
+        ]));
 
-        return back()->with('success', 'Request cancelled.');
+        return $cancelled
+            ? back()->with('success', 'Request cancelled.')
+            : back()->with('error', 'This request was already decided.');
+    }
+
+    /** Files a pending request; false when one for this shop, edition and action is already pending. */
+    private function fileRequest(int $shopId, int $userId, string $action, string $edition, string $reason): bool
+    {
+        try {
+            DB::transaction(fn () => ShopEditionRequest::create([
+                'shop_id' => $shopId,
+                'user_id' => $userId,
+                'action'  => $action,
+                'edition' => $edition,
+                'reason'  => $reason,
+                'status'  => ShopEditionRequest::STATUS_PENDING,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            return false;
+        }
+
+        return true;
     }
 
     private function dataGuard($shop, string $edition): ?string

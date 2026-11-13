@@ -55,25 +55,21 @@ class ShopEditionRequestController extends Controller
             'review_notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        abort_unless($editionRequest->isPending(), 422, 'Request is not pending.');
-
-        $shop    = $editionRequest->shop;
-        $edition = $editionRequest->edition;
-        $notes   = $validated['review_notes'] ?? null;
-
-        if (! $shop) {
+        if (! $editionRequest->shop) {
             return back()->with('error', 'Shop no longer exists.');
         }
 
+        $notes = $validated['review_notes'] ?? null;
         $admin = auth('platform_admin')->user();
 
-        DB::transaction(function () use ($editionRequest, $shop, $edition, $notes, $admin, $request) {
+        $decided = ShopEditionRequest::decidePending($editionRequest->id, function (ShopEditionRequest $editionRequest) use ($notes, $admin, $request) {
+            [$shop, $edition] = [$editionRequest->shop, $editionRequest->edition];
             if ($editionRequest->action === ShopEditionRequest::ACTION_ADD) {
                 if (! $shop->hasEdition($edition)) {
                     ShopEdition::grantTo($shop, $edition, null);
                     if ($edition === ShopEdition::DHIRAN) {
                         DhiranSettings::withoutGlobalScope('shop')
-                            ->where('shop_id', $shop->id)->update(['is_enabled' => true]);
+                            ->where('shop_id', $shop->id)->update(['is_enabled' => DB::raw('true')]);
                     }
                 }
             } else {
@@ -81,7 +77,7 @@ class ShopEditionRequestController extends Controller
                     ShopEdition::revokeFrom($shop, $edition, null, $editionRequest->reason);
                     if ($edition === ShopEdition::DHIRAN) {
                         DhiranSettings::withoutGlobalScope('shop')
-                            ->where('shop_id', $shop->id)->update(['is_enabled' => '0']);
+                            ->where('shop_id', $shop->id)->update(['is_enabled' => DB::raw('false')]);
                     }
                 }
             }
@@ -104,6 +100,10 @@ class ShopEditionRequestController extends Controller
             );
         });
 
+        if (! $decided) {
+            return back()->with('error', 'This request was already decided.');
+        }
+
         return back()->with('success', 'Request approved and edition updated.');
     }
 
@@ -115,24 +115,28 @@ class ShopEditionRequestController extends Controller
             'review_notes' => ['required', 'string', 'min:4', 'max:500'],
         ]);
 
-        abort_unless($editionRequest->isPending(), 422, 'Request is not pending.');
+        $decided = ShopEditionRequest::decidePending($editionRequest->id, function (ShopEditionRequest $editionRequest) use ($validated, $request) {
+            $editionRequest->status       = ShopEditionRequest::STATUS_DENIED;
+            $editionRequest->reviewed_by  = auth('platform_admin')->id();
+            $editionRequest->reviewed_at  = now();
+            $editionRequest->review_notes = $validated['review_notes'];
+            $editionRequest->save();
 
-        $editionRequest->status       = ShopEditionRequest::STATUS_DENIED;
-        $editionRequest->reviewed_by  = auth('platform_admin')->id();
-        $editionRequest->reviewed_at  = now();
-        $editionRequest->review_notes = $validated['review_notes'];
-        $editionRequest->save();
+            $this->audit->log(
+                auth('platform_admin')->user(),
+                'shop.edition.request.denied',
+                Shop::class,
+                $editionRequest->shop_id,
+                ['action' => $editionRequest->action, 'edition' => $editionRequest->edition],
+                ['status' => 'denied'],
+                $validated['review_notes'],
+                $request
+            );
+        });
 
-        $this->audit->log(
-            auth('platform_admin')->user(),
-            'shop.edition.request.denied',
-            Shop::class,
-            $editionRequest->shop_id,
-            ['action' => $editionRequest->action, 'edition' => $editionRequest->edition],
-            ['status' => 'denied'],
-            $validated['review_notes'],
-            $request
-        );
+        if (! $decided) {
+            return back()->with('error', 'This request was already decided.');
+        }
 
         return back()->with('success', 'Request denied.');
     }

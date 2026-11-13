@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToShop;
 use App\Models\Platform\PlatformAdmin;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A shop owner's request to add or remove an edition.
@@ -68,5 +69,25 @@ class ShopEditionRequest extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    /**
+     * Decides a request under its row lock, only while it is still pending: approve, deny and the owner's cancel
+     * all go through here, so the first decision stands and the others see it (audit N4). False when it was
+     * decided meanwhile.
+     *
+     * @param  callable(self): void  $decide
+     */
+    public static function decidePending(int $id, callable $decide): bool
+    {
+        return DB::transaction(function () use ($id, $decide): bool {
+            $request = static::withoutGlobalScope('shop')->with('shop')->lockForUpdate()->find($id);
+            if (! $request?->isPending()) {
+                return false;
+            }
+            $decide($request);
+
+            return true;
+        });
     }
 }
