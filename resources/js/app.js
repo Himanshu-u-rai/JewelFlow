@@ -398,6 +398,7 @@ function ensureConfirmDialog() {
         confirmDialogEl.classList.add('hidden');
         confirmDialogEl.classList.remove('flex');
         confirmDialogEl.setAttribute('aria-hidden', 'true');
+        setPageBehindConfirmInert(false);
 
         if (confirmDialogResolve) {
             const resolver = confirmDialogResolve;
@@ -424,6 +425,21 @@ function ensureConfirmDialog() {
     return confirmDialogEl;
 }
 
+// The confirm is modal (audit L3): while it is open, everything else on the page is inert, so Tab cannot walk out
+// of it into the page behind and nothing behind it can be edited or submitted.
+let confirmInertElements = [];
+function setPageBehindConfirmInert(on) {
+    confirmInertElements.forEach((el) => { el.inert = false; });
+    confirmInertElements = [];
+    if (!on) return;
+    for (const el of document.body.children) {
+        if (el !== confirmDialogEl && !el.inert) {
+            el.inert = true;
+            confirmInertElements.push(el);
+        }
+    }
+}
+
 function openConfirmDialog(message) {
     const dialog = ensureConfirmDialog();
     const messageEl = dialog.querySelector('[data-confirm-message="true"]');
@@ -435,6 +451,7 @@ function openConfirmDialog(message) {
     dialog.classList.remove('hidden');
     dialog.classList.add('flex');
     dialog.setAttribute('aria-hidden', 'false');
+    setPageBehindConfirmInert(true);
 
     setTimeout(() => cancelButton.focus(), 20);
 
@@ -1631,7 +1648,12 @@ document.addEventListener('submit', async (event) => {
         form.dataset.confirmMessage || 'Are you sure you want to continue?'
     );
     if (!confirmed) return;
-
+    // A form that is no longer valid would be stopped by the browser before its submit event, leaving the one-shot
+    // mark below set and its NEXT submit unconfirmed (audit L3). Report it instead; the user submits again.
+    if (!form.noValidate && !form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
     confirmClearedForm = form;
     if (typeof form.requestSubmit === 'function') {
         form.requestSubmit();
@@ -1661,6 +1683,7 @@ document.addEventListener('turbo:before-cache', () => {
         confirmDialogEl.classList.add('hidden');
         confirmDialogEl.classList.remove('flex');
         confirmDialogEl.setAttribute('aria-hidden', 'true');
+        setPageBehindConfirmInert(false);
         // Detach so it is NOT captured in the Turbo cache snapshot (which would
         // leave a duplicate, listener-less copy in the restored page). It is
         // re-appended to the live body by ensureConfirmDialog() on next use.
