@@ -138,8 +138,14 @@ class SchemeService
             if ($amount <= 0) {
                 throw new LogicException('Payment amount must be greater than zero.');
             }
+            // Audit H3: the scheme collects its instalments and no more.
+            $remainingContribution = $locked->remainingContribution();
+            if ($amount > $remainingContribution + 0.01) {
+                throw new LogicException('Payment is more than the remaining contributions (₹' . number_format($remainingContribution, 2) . ').');
+            }
 
-            $nextInstallment = (int) $locked->installments_paid + 1;
+            // The instalment this money goes towards (part payments share one).
+            $nextInstallment = min((int) $locked->total_installments, (int) $locked->installments_paid + 1);
 
             $cashTransaction = CashTransaction::record([
                 'shop_id' => $locked->shop_id,
@@ -165,9 +171,10 @@ class SchemeService
                 'notes' => $notes,
             ]);
 
+            // Progress and maturity follow the money paid, not the number of payments (audit H3).
             $totalPaid = round((float) $locked->total_paid + $amount, 2);
-            $installmentsPaid = $nextInstallment;
-            $isMatured = $installmentsPaid >= (int) $locked->total_installments;
+            $installmentsPaid = $locked->installmentsCoveredBy($totalPaid);
+            $isMatured = $totalPaid >= $locked->contributionTarget() - 0.01;
 
             $updates = [
                 'total_paid' => $totalPaid,
@@ -263,7 +270,8 @@ class SchemeService
             SubscriptionGateService::assertShopWritable((int) $lockedEnrollment->shop_id);
             $this->assertFinancialLockOpen((int) $lockedEnrollment->shop_id, now()->toDateString());
 
-            if (!in_array($lockedEnrollment->status, ['active', 'matured', 'redeemed'], true)) {
+            // A redeemed enrollment is spent; a cancelled one was refunded.
+            if (!in_array($lockedEnrollment->status, ['active', 'matured'], true)) {
                 throw new LogicException('This enrollment cannot be redeemed in its current status.');
             }
 
@@ -319,7 +327,8 @@ class SchemeService
                 'redeemed_amount' => $newRedeemed,
                 'redemption_count' => (int) $lockedEnrollment->redemption_count + 1,
                 'redeemed_at' => $fullyRedeemed ? now() : $lockedEnrollment->redeemed_at,
-                'status' => $fullyRedeemed ? 'redeemed' : $lockedEnrollment->status,
+                // Only a matured scheme ends by being spent; a running one keeps collecting instalments (audit H3).
+                'status' => $fullyRedeemed && $lockedEnrollment->status === 'matured' ? 'redeemed' : $lockedEnrollment->status,
             ]);
 
             $this->appendLedgerEntry(
@@ -377,7 +386,7 @@ class SchemeService
             SubscriptionGateService::assertShopWritable((int) $locked->shop_id);
             $this->assertFinancialLockOpen((int) $locked->shop_id, now()->toDateString());
 
-            $fullyPaid   = (int) $locked->installments_paid >= (int) $locked->total_installments;
+            $fullyPaid   = $locked->isFullyPaid();
             $accrueBonus = $fullyPaid && ! $locked->is_bonus_accrued && (float) $locked->bonus_amount > 0;
 
             $updates = ['status' => 'matured'];

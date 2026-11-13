@@ -98,13 +98,42 @@ class SchemeEnrollment extends Model
         return max(0, $this->total_installments - $this->installments_paid);
     }
 
+    /**
+     * The bonus counts only once it has been accrued (audit H3): the flag is set, with its ledger entry, exactly when
+     * every instalment is paid. A status says nothing about it: a plan matured by date while under-paid, or one whose
+     * payments were spent before maturity, earned none.
+     */
     public function accruedBonusAmount(): float
     {
-        if ($this->status === 'matured' || $this->status === 'redeemed' || $this->is_bonus_accrued) {
-            return (float) $this->bonus_amount;
+        return $this->is_bonus_accrued ? (float) $this->bonus_amount : 0.0;
+    }
+
+    /** All instalments together. */
+    public function contributionTarget(): float
+    {
+        return round((float) $this->monthly_amount * (int) $this->total_installments, 2);
+    }
+
+    public function remainingContribution(): float
+    {
+        return max(0.0, round($this->contributionTarget() - (float) $this->total_paid, 2));
+    }
+
+    /** Every instalment paid, by money (not by number of payments). */
+    public function isFullyPaid(): bool
+    {
+        return $this->remainingContribution() <= 0.01;
+    }
+
+    /** Instalments fully covered by this much money. */
+    public function installmentsCoveredBy(float $paid): int
+    {
+        $monthly = (float) $this->monthly_amount;
+        if ($monthly <= 0) {
+            return 0;
         }
 
-        return 0.0;
+        return max(0, min((int) $this->total_installments, (int) floor(($paid + 0.005) / $monthly)));
     }
 
     public function redeemableAmount(): float
