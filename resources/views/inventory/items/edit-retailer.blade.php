@@ -511,6 +511,177 @@
         </form>
     </div>
 
+    {{-- The quick-add dialogs come before the script that binds them (a full page load runs it as it is read). --}}
+    {{-- New supplier modal (vendor or karigar) --}}
+    <div id="newSupplierModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
+                </div>
+            </div>
+            <div class="item-create-modal-tabs flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
+                <button type="button" id="supplierTabVendor"
+                        class="item-create-modal-tab is-active flex-1 px-4 py-2 transition-colors">
+                    Vendor
+                </button>
+                <button type="button" id="supplierTabKarigar"
+                        class="item-create-modal-tab flex-1 px-4 py-2 border-l border-gray-200 transition-colors hover:bg-gray-50">
+                    Karigar
+                </button>
+            </div>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label for="newSupplierInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="newSupplierInput" maxlength="255"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           placeholder="e.g. Mehta Jewellers, Rajesh Traders">
+                </div>
+                <div id="newSupplierError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+            </div>
+            <div class="item-create-modal-actions flex gap-3 pt-1">
+                <button type="button" id="newSupplierCancel"
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="newSupplierConfirm"
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
+                    Add &amp; Use
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- New category modal --}}
+    <div id="newCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
+                </div>
+            </div>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label for="newCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="newCategoryInput" maxlength="255"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           placeholder="e.g. Necklace, Bangles, Earrings">
+                </div>
+                <div id="newCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+            </div>
+            <div class="item-create-modal-actions flex gap-3 pt-1">
+                <button type="button" id="newCategoryCancel"
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="newCategoryConfirm"
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
+                    Add &amp; Use This Category
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- New sub-category modal --}}
+    <div id="newSubCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Sub-Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
+                </div>
+            </div>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label for="newSubCategoryParentDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+                    <input type="text" id="newSubCategoryParentDisplay" readonly
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                </div>
+                <div class="item-create-modal-field">
+                    <label for="newSubCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="newSubCategoryInput" maxlength="255"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           placeholder="e.g. Studs, Jhumkas, Hoops">
+                </div>
+                <div id="newSubCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+            </div>
+            <div class="item-create-modal-actions flex gap-3 pt-1">
+                <button type="button" id="newSubCategoryCancel"
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="newSubCategoryConfirm"
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
+                    Add &amp; Use This Sub-Category
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Custom purity modal --}}
+    <div id="customPurityModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <x-icon name="triangle-alert" class="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Purity</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
+                </div>
+            </div>
+
+            <div class="item-create-modal-note bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                New purity profiles added here will appear in <strong>Settings → Pricing</strong> and will be included in all future daily reprice runs.
+            </div>
+
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label for="customPurityMetalDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
+                    <input type="text" id="customPurityMetalDisplay" readonly
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                </div>
+                <div class="item-create-modal-field">
+                    <label for="customPurityInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
+                        Purity Value <span class="text-red-500">*</span>
+                        <span class="text-xs font-normal text-gray-400" id="customPurityHint"></span>
+                    </label>
+                    <input type="number" id="customPurityInput" step="0.001" min="0.001"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           placeholder="e.g. 20">
+                    <p class="mt-1 text-xs text-gray-400" id="customPuritySubhint"></p>
+                </div>
+                <div id="customPurityError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+            </div>
+
+            <div class="item-create-modal-actions flex gap-3 pt-1">
+                <button type="button" id="customPurityCancel"
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="customPurityConfirm"
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
+                    Add &amp; Use This Purity
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         var purityProfiles = @json($profileOptions);
         var resolvedRates = @json($resolvedRates);
@@ -565,8 +736,7 @@
 
             // Intercept "new category" sentinel
             if (categorySelect.value === '__new_category__') {
-                categorySelect.value = '';
-                refreshEditDropdown(categorySelect);
+                undoActionOption(categorySelect);
                 openNewCategoryModal();
                 return;
             }
@@ -841,8 +1011,7 @@
             // Intercept purity selection — open modal if custom is chosen
             document.getElementById('purity')?.addEventListener('change', function () {
                 if (this.value === '__custom__') {
-                    this.value = '';
-                    refreshEditDropdown(this);
+                    undoActionOption(this);
                     openCustomPurityModal();
                 } else {
                     refreshRetailerPricing();
@@ -859,16 +1028,15 @@
 
             document.getElementById('sub_category')?.addEventListener('change', function () {
                 if (this.value === '__new_sub_category__') {
-                    this.value = '';
-                    refreshEditDropdown(this);
+                    undoActionOption(this);
                     openNewSubCategoryModal();
                 }
             }, editListenerOptions);
 
             document.getElementById('supplier_picker')?.addEventListener('change', function () {
                 if (this.value === '__new_supplier__') {
-                    this.value = '';
-                    refreshEditDropdown(this);
+                    undoActionOption(this);
+                    syncSupplierHiddenFields(this.value);
                     openNewSupplierModal();
                     return;
                 }
@@ -967,593 +1135,8 @@
             }
         }
 
-        // ── New supplier modal ─────────────────────────────────────────────────
-
-        function openNewSupplierModal() {
-            document.getElementById('newSupplierInput').value = '';
-            document.getElementById('newSupplierError').classList.add('hidden');
-            document.getElementById('newSupplierError').textContent = '';
-            document.getElementById('newSupplierConfirm').disabled = false;
-            document.getElementById('newSupplierConfirm').textContent = 'Add & Use';
-            selectSupplierType('vendor');
-            document.getElementById('newSupplierModal').style.display = 'flex';
-            document.getElementById('newSupplierInput').focus();
-        }
-
-        function closeNewSupplierModal() {
-            document.getElementById('newSupplierModal').style.display = 'none';
-        }
-
-        function selectSupplierType(type) {
-            document.getElementById('newSupplierModal').dataset.supplierType = type;
-            const vendorTab = document.getElementById('supplierTabVendor');
-            const karigarTab = document.getElementById('supplierTabKarigar');
-            vendorTab.classList.toggle('is-active', type === 'vendor');
-            karigarTab.classList.toggle('is-active', type === 'karigar');
-            if (type === 'vendor') {
-                document.getElementById('newSupplierInput').placeholder = 'e.g. Mehta Jewellers, Rajesh Traders';
-            } else {
-                document.getElementById('newSupplierInput').placeholder = 'e.g. Ramesh Kumar, Krishna Ornaments';
-            }
-        }
-
-        document.getElementById('supplierTabVendor')?.addEventListener('click', () => selectSupplierType('vendor'));
-        document.getElementById('supplierTabKarigar')?.addEventListener('click', () => selectSupplierType('karigar'));
-        document.getElementById('newSupplierBackdrop')?.addEventListener('click', closeNewSupplierModal);
-        document.getElementById('newSupplierCancel')?.addEventListener('click', closeNewSupplierModal);
-
-        document.getElementById('newSupplierInput')?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newSupplierConfirm').click(); }
-            if (e.key === 'Escape') closeNewSupplierModal();
-        });
-
-        document.getElementById('newSupplierConfirm')?.addEventListener('click', function () {
-            const type = document.getElementById('newSupplierModal').dataset.supplierType || 'vendor';
-            const input = document.getElementById('newSupplierInput');
-            const errorEl = document.getElementById('newSupplierError');
-            const name = input.value.trim();
-
-            errorEl.classList.add('hidden');
-            errorEl.textContent = '';
-
-            if (!name) {
-                errorEl.textContent = 'Please enter a name.';
-                errorEl.classList.remove('hidden');
-                input.focus();
-                return;
-            }
-
-            const btn = this;
-            btn.disabled = true;
-            btn.textContent = 'Adding…';
-
-            const url = type === 'vendor'
-                ? '{{ route('vendors.store') }}'
-                : '{{ route('inventory.items.quick-add-karigar') }}';
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ name }),
-            })
-            .then(res => res.json().then(data => ({ ok: res.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) {
-                    errorEl.textContent = data.errors?.name?.[0] || data.error || 'Failed to add. Please try again.';
-                    errorEl.classList.remove('hidden');
-                    btn.disabled = false;
-                    btn.textContent = 'Add & Use';
-                    return;
-                }
-
-                const picker = document.getElementById('supplier_picker');
-                const optValue = type + ':' + data.id;
-                const opt = document.createElement('option');
-                opt.value = optValue;
-                opt.textContent = data.name;
-
-                let group = Array.from(picker.querySelectorAll('optgroup')).find(g =>
-                    g.label.toLowerCase() === (type === 'vendor' ? 'vendors' : 'karigars')
-                );
-                if (!group) {
-                    group = document.createElement('optgroup');
-                    group.label = type === 'vendor' ? 'Vendors' : 'Karigars';
-                    const sentinel = picker.querySelector('option[value="__new_supplier__"]');
-                    picker.insertBefore(group, sentinel);
-                }
-                group.appendChild(opt);
-                picker.value = optValue;
-                refreshEditDropdown(picker);
-                syncSupplierHiddenFields(optValue);
-
-                closeNewSupplierModal();
-            })
-            .catch(() => {
-                errorEl.textContent = 'Network error. Please try again.';
-                errorEl.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = 'Add & Use';
-            });
-        });
-
-        // ── New category modal ─────────────────────────────────────────────────
-
-        function openNewCategoryModal() {
-            document.getElementById('newCategoryInput').value = '';
-            document.getElementById('newCategoryError').classList.add('hidden');
-            document.getElementById('newCategoryError').textContent = '';
-            document.getElementById('newCategoryConfirm').disabled = false;
-            document.getElementById('newCategoryConfirm').textContent = 'Add & Use This Category';
-            document.getElementById('newCategoryModal').style.display = 'flex';
-            document.getElementById('newCategoryInput').focus();
-        }
-
-        function closeNewCategoryModal() {
-            document.getElementById('newCategoryModal').style.display = 'none';
-        }
-
-        document.getElementById('newCategoryBackdrop')?.addEventListener('click', closeNewCategoryModal);
-        document.getElementById('newCategoryCancel')?.addEventListener('click', closeNewCategoryModal);
-
-        document.getElementById('newCategoryInput')?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newCategoryConfirm').click(); }
-            if (e.key === 'Escape') closeNewCategoryModal();
-        });
-
-        document.getElementById('newCategoryConfirm')?.addEventListener('click', function () {
-            const input = document.getElementById('newCategoryInput');
-            const errorEl = document.getElementById('newCategoryError');
-            const name = input.value.trim();
-
-            errorEl.classList.add('hidden');
-            errorEl.textContent = '';
-
-            if (!name) {
-                errorEl.textContent = 'Please enter a category name.';
-                errorEl.classList.remove('hidden');
-                input.focus();
-                return;
-            }
-
-            const btn = this;
-            btn.disabled = true;
-            btn.textContent = 'Adding…';
-
-            fetch('{{ route('inventory.items.quick-add-category') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ name }),
-            })
-            .then(res => res.json().then(data => ({ ok: res.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) {
-                    errorEl.textContent = data.errors?.name?.[0] || data.error || 'Failed to add category.';
-                    errorEl.classList.remove('hidden');
-                    btn.disabled = false;
-                    btn.textContent = 'Add & Use This Category';
-                    return;
-                }
-
-                // Inject into JS data map
-                categoriesData[String(data.id)] = [];
-
-                // Append option to category select and select it
-                const categorySelect = document.getElementById('category');
-                const opt = document.createElement('option');
-                opt.value = data.name;
-                opt.textContent = data.name;
-                opt.setAttribute('data-category-id', String(data.id));
-                const sentinel = Array.from(categorySelect.options).find(o => o.value === '__new_category__');
-                categorySelect.insertBefore(opt, sentinel);
-                categorySelect.value = data.name;
-                refreshEditDropdown(categorySelect);
-
-                closeNewCategoryModal();
-                handleCategoryChange();
-            })
-            .catch(() => {
-                errorEl.textContent = 'Network error. Please try again.';
-                errorEl.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = 'Add & Use This Category';
-            });
-        });
-
-        // ── New sub-category modal ──────────────────────────────────────────────
-
-        function openNewSubCategoryModal() {
-            const categorySelect = document.getElementById('category');
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            const categoryName = selectedOption?.textContent?.trim() || '';
-            document.getElementById('newSubCategoryParentDisplay').value = categoryName || '(none selected)';
-            document.getElementById('newSubCategoryInput').value = '';
-            document.getElementById('newSubCategoryError').classList.add('hidden');
-            document.getElementById('newSubCategoryError').textContent = '';
-            document.getElementById('newSubCategoryConfirm').disabled = false;
-            document.getElementById('newSubCategoryConfirm').textContent = 'Add & Use This Sub-Category';
-            document.getElementById('newSubCategoryModal').style.display = 'flex';
-            document.getElementById('newSubCategoryInput').focus();
-        }
-
-        function closeNewSubCategoryModal() {
-            document.getElementById('newSubCategoryModal').style.display = 'none';
-        }
-
-        document.getElementById('newSubCategoryBackdrop')?.addEventListener('click', closeNewSubCategoryModal);
-        document.getElementById('newSubCategoryCancel')?.addEventListener('click', closeNewSubCategoryModal);
-
-        document.getElementById('newSubCategoryInput')?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newSubCategoryConfirm').click(); }
-            if (e.key === 'Escape') closeNewSubCategoryModal();
-        });
-
-        document.getElementById('newSubCategoryConfirm')?.addEventListener('click', function () {
-            const categorySelect = document.getElementById('category');
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            const categoryId = selectedOption?.getAttribute('data-category-id');
-            const input = document.getElementById('newSubCategoryInput');
-            const errorEl = document.getElementById('newSubCategoryError');
-            const name = input.value.trim();
-
-            errorEl.classList.add('hidden');
-            errorEl.textContent = '';
-
-            if (!categoryId) {
-                errorEl.textContent = 'Please select a category first.';
-                errorEl.classList.remove('hidden');
-                return;
-            }
-            if (!name) {
-                errorEl.textContent = 'Please enter a sub-category name.';
-                errorEl.classList.remove('hidden');
-                input.focus();
-                return;
-            }
-
-            const btn = this;
-            btn.disabled = true;
-            btn.textContent = 'Adding…';
-
-            fetch('{{ route('inventory.items.quick-add-sub-category') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ category_id: Number(categoryId), name }),
-            })
-            .then(res => res.json().then(data => ({ ok: res.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) {
-                    errorEl.textContent = data.errors?.name?.[0] || data.error || 'Failed to add sub-category.';
-                    errorEl.classList.remove('hidden');
-                    btn.disabled = false;
-                    btn.textContent = 'Add & Use This Sub-Category';
-                    return;
-                }
-
-                // Inject into JS data map
-                if (!categoriesData[categoryId]) categoriesData[categoryId] = [];
-                if (!categoriesData[categoryId].includes(data.name)) {
-                    categoriesData[categoryId].push(data.name);
-                }
-
-                // Rebuild sub-category dropdown and select the new entry
-                const subSelect = document.getElementById('sub_category');
-                subSelect.dataset.initialValue = data.name;
-                handleCategoryChange();
-                subSelect.value = data.name;
-                refreshEditDropdown(subSelect);
-
-                closeNewSubCategoryModal();
-            })
-            .catch(() => {
-                errorEl.textContent = 'Network error. Please try again.';
-                errorEl.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = 'Add & Use This Sub-Category';
-            });
-        });
-
-        // ── Custom purity modal ────────────────────────────────────────────────
-
-        function openCustomPurityModal() {
-            const metalType = document.getElementById('metal_type').value;
-            const isGold = metalType === 'gold';
-
-            document.getElementById('customPurityMetalDisplay').value =
-                metalType ? metalType.charAt(0).toUpperCase() + metalType.slice(1) : '';
-            document.getElementById('customPurityHint').textContent =
-                isGold ? '(0.001 – 24)' : '(0.001 – 1000)';
-            document.getElementById('customPuritySubhint').textContent =
-                isGold
-                    ? 'Enter karat value, e.g. 20 for 20K or 916 for BIS hallmark.'
-                    : 'Enter millesimal value, e.g. 958 for Britannia silver.';
-            document.getElementById('customPurityInput').value = '';
-            document.getElementById('customPurityInput').max = isGold ? 24 : 1000;
-            document.getElementById('customPurityError').classList.add('hidden');
-            document.getElementById('customPurityError').textContent = '';
-            document.getElementById('customPurityModal').style.display = 'flex';
-            document.getElementById('customPurityInput').focus();
-        }
-
-        function closeCustomPurityModal() {
-            document.getElementById('customPurityModal').style.display = 'none';
-        }
-
-        document.getElementById('customPurityBackdrop')?.addEventListener('click', closeCustomPurityModal);
-        document.getElementById('customPurityCancel')?.addEventListener('click', closeCustomPurityModal);
-
-        document.getElementById('customPurityInput')?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('customPurityConfirm').click();
-            }
-            if (e.key === 'Escape') closeCustomPurityModal();
-        });
-
-        document.getElementById('customPurityConfirm')?.addEventListener('click', function () {
-            const metalType = document.getElementById('metal_type').value;
-            const purityInput = document.getElementById('customPurityInput');
-            const errorEl = document.getElementById('customPurityError');
-            const purityValue = Number.parseFloat(purityInput.value);
-
-            errorEl.classList.add('hidden');
-            errorEl.textContent = '';
-
-            if (!Number.isFinite(purityValue) || purityValue <= 0) {
-                errorEl.textContent = 'Please enter a valid purity value greater than zero.';
-                errorEl.classList.remove('hidden');
-                purityInput.focus();
-                return;
-            }
-            if (metalType === 'gold' && purityValue > 24) {
-                errorEl.textContent = 'Gold purity cannot exceed 24K.';
-                errorEl.classList.remove('hidden');
-                purityInput.focus();
-                return;
-            }
-            if (metalType === 'silver' && purityValue > 1000) {
-                errorEl.textContent = 'Silver purity cannot exceed 1000.';
-                errorEl.classList.remove('hidden');
-                purityInput.focus();
-                return;
-            }
-
-            const btn = document.getElementById('customPurityConfirm');
-            btn.disabled = true;
-            btn.textContent = 'Adding…';
-
-            fetch('{{ route('inventory.items.quick-add-purity') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ metal_type: metalType, purity_value: purityValue }),
-            })
-            .then(res => res.json().then(data => ({ ok: res.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) {
-                    errorEl.textContent = data.error || 'Failed to add purity. Please try again.';
-                    errorEl.classList.remove('hidden');
-                    btn.disabled = false;
-                    btn.textContent = 'Add & Use This Purity';
-                    return;
-                }
-
-                // Inject into the local profiles map so future metal-type switches keep it
-                if (!purityProfiles[metalType]) purityProfiles[metalType] = [];
-                const alreadyExists = purityProfiles[metalType].some(p => p.value === data.value);
-                if (!alreadyExists) {
-                    purityProfiles[metalType].push({ value: data.value, label: data.label });
-                }
-
-                // Inject into the resolved rates map
-                if (!resolvedRates[metalType]) resolvedRates[metalType] = {};
-                resolvedRates[metalType][data.value] = {
-                    label: data.label,
-                    rate_per_gram: data.rate_per_gram,
-                };
-
-                // Rebuild the dropdown and select the new purity
-                const puritySelect = document.getElementById('purity');
-                puritySelect.dataset.initialValue = data.value;
-                populatePurityOptions();
-                puritySelect.value = data.value;
-                refreshEditDropdown(puritySelect);
-
-                closeCustomPurityModal();
-                refreshRetailerPricing();
-            })
-            .catch(() => {
-                errorEl.textContent = 'Network error. Please check your connection and try again.';
-                errorEl.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = 'Add & Use This Purity';
-            });
-        });
+        @include('inventory.items._quick_add_script', ['refreshDropdown' => 'refreshEditDropdown'])
     </script>
-
-    {{-- New supplier modal (vendor or karigar) --}}
-    <div id="newSupplierModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
-        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
-        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="item-create-modal-head flex items-start gap-3">
-                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
-                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
-                </div>
-            </div>
-            <div class="item-create-modal-tabs flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
-                <button type="button" id="supplierTabVendor"
-                        class="item-create-modal-tab is-active flex-1 px-4 py-2 transition-colors">
-                    Vendor
-                </button>
-                <button type="button" id="supplierTabKarigar"
-                        class="item-create-modal-tab flex-1 px-4 py-2 border-l border-gray-200 transition-colors hover:bg-gray-50">
-                    Karigar
-                </button>
-            </div>
-            <div class="item-create-modal-body space-y-3">
-                <div class="item-create-modal-field">
-                    <label for="newSupplierInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="newSupplierInput" maxlength="255"
-                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
-                           placeholder="e.g. Mehta Jewellers, Rajesh Traders">
-                </div>
-                <div id="newSupplierError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
-            </div>
-            <div class="item-create-modal-actions flex gap-3 pt-1">
-                <button type="button" id="newSupplierCancel"
-                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-                    Cancel
-                </button>
-                <button type="button" id="newSupplierConfirm"
-                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
-                    Add &amp; Use
-                </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- New category modal --}}
-    <div id="newCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
-        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="item-create-modal-head flex items-start gap-3">
-                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Category</h3>
-                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
-                </div>
-            </div>
-            <div class="item-create-modal-body space-y-3">
-                <div class="item-create-modal-field">
-                    <label for="newCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="newCategoryInput" maxlength="255"
-                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
-                           placeholder="e.g. Necklace, Bangles, Earrings">
-                </div>
-                <div id="newCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
-            </div>
-            <div class="item-create-modal-actions flex gap-3 pt-1">
-                <button type="button" id="newCategoryCancel"
-                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-                    Cancel
-                </button>
-                <button type="button" id="newCategoryConfirm"
-                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
-                    Add &amp; Use This Category
-                </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- New sub-category modal --}}
-    <div id="newSubCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
-        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="item-create-modal-head flex items-start gap-3">
-                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <x-icon name="plus" class="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Sub-Category</h3>
-                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
-                </div>
-            </div>
-            <div class="item-create-modal-body space-y-3">
-                <div class="item-create-modal-field">
-                    <label for="newSubCategoryParentDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
-                    <input type="text" id="newSubCategoryParentDisplay" readonly
-                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
-                </div>
-                <div class="item-create-modal-field">
-                    <label for="newSubCategoryInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="newSubCategoryInput" maxlength="255"
-                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
-                           placeholder="e.g. Studs, Jhumkas, Hoops">
-                </div>
-                <div id="newSubCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
-            </div>
-            <div class="item-create-modal-actions flex gap-3 pt-1">
-                <button type="button" id="newSubCategoryCancel"
-                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-                    Cancel
-                </button>
-                <button type="button" id="newSubCategoryConfirm"
-                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
-                    Add &amp; Use This Sub-Category
-                </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- Custom purity modal --}}
-    <div id="customPurityModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
-        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="item-create-modal-head flex items-start gap-3">
-                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <x-icon name="triangle-alert" class="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Purity</h3>
-                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
-                </div>
-            </div>
-
-            <div class="item-create-modal-note bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-                New purity profiles added here will appear in <strong>Settings → Pricing</strong> and will be included in all future daily reprice runs.
-            </div>
-
-            <div class="item-create-modal-body space-y-3">
-                <div class="item-create-modal-field">
-                    <label for="customPurityMetalDisplay" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
-                    <input type="text" id="customPurityMetalDisplay" readonly
-                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
-                </div>
-                <div class="item-create-modal-field">
-                    <label for="customPurityInput" class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
-                        Purity Value <span class="text-red-500">*</span>
-                        <span class="text-xs font-normal text-gray-400" id="customPurityHint"></span>
-                    </label>
-                    <input type="number" id="customPurityInput" step="0.001" min="0.001"
-                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
-                           placeholder="e.g. 20">
-                    <p class="mt-1 text-xs text-gray-400" id="customPuritySubhint"></p>
-                </div>
-                <div id="customPurityError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
-            </div>
-
-            <div class="item-create-modal-actions flex gap-3 pt-1">
-                <button type="button" id="customPurityCancel"
-                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-                    Cancel
-                </button>
-                <button type="button" id="customPurityConfirm"
-                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
-                    Add &amp; Use This Purity
-                </button>
-            </div>
-        </div>
-    </div>
 
     @include('inventory.items._metal_aware_pricing')
 </x-app-layout>
