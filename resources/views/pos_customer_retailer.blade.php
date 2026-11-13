@@ -2529,7 +2529,11 @@ function retailerPos() {
         items: [],
         stockCatalog: [],
         itemPickerOpen: false,
-        itemPickerLoading: false,
+        // Lookups in flight (audit M5): the spinner shows while any scan is still being looked up.
+        itemPickerLookups: 0,
+        get itemPickerLoading() {
+            return this.itemPickerLookups > 0;
+        },
         itemPickerQuery: '',
         itemPickerResults: [],
         itemPickerActiveIndex: -1,
@@ -2696,7 +2700,6 @@ function retailerPos() {
 
         closeItemPicker(reset = true) {
             this.itemPickerOpen = false;
-            this.itemPickerLoading = false;
             this.itemPickerActiveIndex = -1;
 
             if (reset) {
@@ -2853,7 +2856,7 @@ function retailerPos() {
             const query = String(barcode || '').trim();
             if (!query) return;
 
-            this.itemPickerLoading = true;
+            this.itemPickerLookups++;
 
             try {
                 const res = await fetch(`/api/item-by-barcode/${encodeURIComponent(query)}`);
@@ -2889,7 +2892,7 @@ function retailerPos() {
             } catch {
                 window.showToast('Error looking up barcode', 'error');
             } finally {
-                this.itemPickerLoading = false;
+                this.itemPickerLookups--;
             }
         },
 

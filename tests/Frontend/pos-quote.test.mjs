@@ -75,6 +75,17 @@ test('the retail POS sells only on a ready quote and shows a failed refresh', ()
     assert.match(read('resources/js/app.js'), /window\.createQuoteState = createQuoteState/);
 });
 
+// Audit M5 (2026-11-13), corrected by trying it in the browser: two scans of the SAME tag already add it once
+// (the duplicate check runs after the lookup returns, and the server refuses repeats). What did break: with two
+// tags scanned quickly, the first lookup to finish switched the spinner off while the other was still loading.
+test('the scan spinner stays on while any lookup is still running', () => {
+    const view = readFileSync(new URL('../../resources/views/pos_customer_retailer.blade.php', import.meta.url), 'utf8');
+    assert.match(view, /get itemPickerLoading\(\) \{\s*return this\.itemPickerLookups > 0;/);
+    assert.doesNotMatch(view, /this\.itemPickerLoading = /, 'no single flag shared by every lookup');
+    assert.match(view, /this\.itemPickerLookups\+\+;/);
+    assert.match(view, /this\.itemPickerLookups--;/);
+});
+
 function read(path) {
     return readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 }
