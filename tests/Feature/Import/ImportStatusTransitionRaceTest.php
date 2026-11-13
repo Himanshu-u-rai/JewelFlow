@@ -90,6 +90,39 @@ class ImportStatusTransitionRaceTest extends TestCase
         Storage::assertExists('imports/race.csv');
     }
 
+    /**
+     * Audit N6 (2026-11-13): the run wrote "queued" and committed it, then worked inside one transaction that also
+     * held the "failed" status the service wrote on error. Any failure rolled "failed" back: the import sat in
+     * "queued" for good, with no reason shown and no way to run it again. Now nothing is committed before the
+     * work; a failure is recorded after the rollback.
+     */
+    public function test_a_failed_run_ends_failed_with_its_reason(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $import = $this->previewImport($shop);
+        DB::table('import_rows')->insert([
+            'import_id' => $import->id, 'shop_id' => $shop->id, 'row_number' => 1, 'status' => 'valid',
+            'payload' => json_encode([]), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->as($owner, $shop, '/execute', $import, ['mode' => Import::MODE_STRICT]);
+
+        $row = DB::table('imports')->where('id', $import->id)->first();
+        $this->assertSame(Import::STATUS_FAILED, $row->status);
+        $this->assertNotEmpty(json_decode($row->execution_summary, true)['error'] ?? null, 'the reason is kept');
+    }
+
+    public function test_a_run_refused_before_it_starts_leaves_the_import_ready_to_run(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $import = $this->previewImport($shop);
+        DB::table('shop_rules')->updateOrInsert(['shop_id' => $shop->id], ['financial_lock_date' => now()->addDay()->toDateString()]);
+
+        $this->as($owner, $shop, '/execute', $import, ['mode' => Import::MODE_ROW]);
+
+        $this->assertSame(Import::STATUS_PREVIEW, DB::table('imports')->where('id', $import->id)->value('status'));
+    }
+
     public function test_a_preview_import_still_cancels(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

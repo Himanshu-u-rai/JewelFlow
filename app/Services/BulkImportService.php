@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\Csv;
+use App\Exceptions\ImportRunFailed;
 use App\Models\Category;
 use App\Models\Import;
 use App\Models\ImportRow;
@@ -305,44 +306,53 @@ class BulkImportService
                 'target' => ['type' => 'import', 'id' => $import->id],
             ]);
         } catch (\Throwable $e) {
-            $friendlyError = $this->humanizeError($e->getMessage());
-            if ($mode === Import::MODE_STRICT) {
-                ImportRow::where('import_id', $import->id)
-                    ->where('status', 'valid')
-                    ->update([
-                        'status' => 'failed',
-                        'error_message' => $friendlyError,
-                    ]);
-            }
+            $this->recordFailure($import, $mode, $e);
 
-            $import->update([
-                'status' => Import::STATUS_FAILED,
-                'finished_at' => now(),
-                'execution_summary' => [
-                    'mode' => $mode,
-                    'error' => $friendlyError,
-                    'processed_rows' => $processed,
-                ],
-                'error_file_path' => $this->writeErrorCsv($import, [
-                    ['row_number' => 0, 'error' => $friendlyError],
-                ]),
-            ]);
-
-            AccountingAuditService::log([
-                'shop_id' => $import->shop_id,
-                'user_id' => $import->created_by,
-                'action' => 'import.failed',
-                'model_type' => 'import',
-                'model_id' => $import->id,
-                'description' => strtoupper($import->type) . ' import failed',
-                'data' => ['error' => $friendlyError],
-                'target' => ['type' => 'import', 'id' => $import->id],
-            ]);
-
-            throw $e;
+            throw new ImportRunFailed($e);
         }
 
         return $import->fresh();
+    }
+
+    /**
+     * Marks a run that failed after it started. A caller whose own transaction rolled the run back (the job) calls
+     * this again once the rollback is done, or the import would sit in its pre-run status (audit N6).
+     */
+    public function recordFailure(Import $import, string $mode, \Throwable $e): void
+    {
+        $friendlyError = $this->humanizeError($e->getMessage());
+        if ($mode === Import::MODE_STRICT) {
+            ImportRow::where('import_id', $import->id)
+                ->where('status', 'valid')
+                ->update([
+                    'status' => 'failed',
+                    'error_message' => $friendlyError,
+                ]);
+        }
+
+        $import->update([
+            'status' => Import::STATUS_FAILED,
+            'finished_at' => now(),
+            'execution_summary' => [
+                'mode' => $mode,
+                'error' => $friendlyError,
+                'processed_rows' => ImportRow::where('import_id', $import->id)->where('status', 'imported')->count(),
+            ],
+            'error_file_path' => $this->writeErrorCsv($import, [
+                ['row_number' => 0, 'error' => $friendlyError],
+            ]),
+        ]);
+
+        AccountingAuditService::log([
+            'shop_id' => $import->shop_id,
+            'user_id' => $import->created_by,
+            'action' => 'import.failed',
+            'model_type' => 'import',
+            'model_id' => $import->id,
+            'description' => strtoupper($import->type) . ' import failed',
+            'data' => ['error' => $friendlyError],
+            'target' => ['type' => 'import', 'id' => $import->id],
+        ]);
     }
 
     private function processValidRow(Import $import, ImportRow $row): array

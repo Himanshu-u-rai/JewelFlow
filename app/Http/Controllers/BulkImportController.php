@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ImportRunFailed;
 use App\Jobs\ProcessBulkImportJob;
 use App\Models\Import;
 use App\Services\BulkImportService;
@@ -106,20 +107,25 @@ class BulkImportController extends Controller
             return back()->with('error', 'No valid rows to import.');
         }
 
-        // Only from preview: a cancel that landed since the check above stays cancelled (audit N3).
-        $queued = Import::whereKey($import->id)->where('status', Import::STATUS_PREVIEW)
-            ->update(['mode' => $request->input('mode'), 'status' => Import::STATUS_QUEUED]);
-        if ($queued === 0) {
-            return back()->with('error', 'Only preview imports can be executed.');
-        }
-
+        // Nothing is written before the run: the run claims the import from preview inside its own transaction, so
+        // a cancel that landed since the check above stays cancelled (audit N3) and a run that dies leaves the import
+        // ready to run again (audit N6). The outcome is read back from the import.
         try {
             ProcessBulkImportJob::dispatchSync($import->id, $request->input('mode'));
         } catch (LogicException $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', $e->getMessage()); // refused before it started
+        } catch (ImportRunFailed) {
+            // recorded on the import; reported below
         }
 
-        return redirect()->route('imports.show', $import)->with('success', 'Import completed successfully.');
+        $import->refresh();
+
+        return match ($import->status) {
+            Import::STATUS_COMPLETED => redirect()->route('imports.show', $import)->with('success', 'Import completed successfully.'),
+            Import::STATUS_FAILED => redirect()->route('imports.show', $import)
+                ->with('error', 'The import failed: ' . ($import->execution_summary['error'] ?? 'see the error file.')),
+            default => back()->with('error', 'Only preview imports can be executed.'),
+        };
     }
 
     public function downloadErrors(Import $import)
