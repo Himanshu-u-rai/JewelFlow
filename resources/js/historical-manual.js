@@ -1,3 +1,5 @@
+import { createLatestRequest } from './latest-request.js';
+
 export function registerHistoricalManual(Alpine) {
     Alpine.data('historicalManualForm', (config) => ({
         lines: [],
@@ -497,7 +499,7 @@ export function registerHistoricalManual(Alpine) {
         selectedLabel: config.selectedLabel || '',
         addOnPublish: Boolean(config.addOnPublish),
         archivedMatch: false,
-        request: null,
+        searches: createLatestRequest(),
 
         init() {
             this.updateStatus();
@@ -530,29 +532,33 @@ export function registerHistoricalManual(Alpine) {
 
             const query = this.search.trim();
             if (query.length < 2) {
+                // The text is gone: an answer still on its way must not reopen the list (audit M4).
+                this.searches.cancel();
                 this.results = [];
                 this.open = false;
+                this.loading = false;
                 return;
             }
 
-            if (this.request) this.request.abort();
-            this.request = new AbortController();
+            const ticket = this.searches.start();
             this.loading = true;
             this.open = true;
 
             try {
                 const response = await fetch(`${this.searchUrl}?q=${encodeURIComponent(query)}`, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    signal: this.request.signal,
+                    signal: ticket.signal,
                 });
                 const data = await response.json();
+                if (!this.searches.isLatest(ticket)) return; // a newer search owns the list
                 this.results = response.ok ? data.results || [] : [];
                 this.archivedMatch = data.status === 'archived_action_required';
                 this.open = true;
             } catch (error) {
-                if (error.name !== 'AbortError') this.open = false;
+                if (this.searches.isLatest(ticket) && error.name !== 'AbortError') this.open = false;
             } finally {
-                this.loading = false;
+                // Only the latest search may end the spinner.
+                if (this.searches.isLatest(ticket)) this.loading = false;
             }
         },
 

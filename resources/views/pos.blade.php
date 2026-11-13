@@ -2097,7 +2097,10 @@
     }
 
     /* ═══ CUSTOMER ═══ */
-    let custAbort = null;
+    // Latest search wins (audit M4): older answers, cleared text and other searches' timeouts never touch the list.
+    // Made at the first keystroke: on a full page load this script runs before app.js (a deferred module).
+    let custSearchState = null;
+    const custSearchRequests = () => (custSearchState ??= window.createLatestRequest());
     function getCustSearchEls(mode) {
         if (mode === 'mobile') {
             return {
@@ -2115,23 +2118,23 @@
         const { searchEl, dd } = getCustSearchEls(mode);
         if (!searchEl || !dd) return;
         const input = searchEl.value.trim();
-        if (!input) { dd.classList.remove('active'); searchEl.classList.remove('loading'); return; }
-
+        const custSearch = custSearchRequests();
         // Debounce API call
         clearTimeout(custSearchTimer);
+        if (!input) { custSearch.cancel(); dd.classList.remove('active'); searchEl.classList.remove('loading'); return; }
         custSearchTimer = setTimeout(async () => {
-            if (custAbort) custAbort.abort();
-            custAbort = new AbortController();
-            const timeoutId = setTimeout(() => custAbort.abort(), 8000);
+            const ticket = custSearch.start();
+            let timedOut = false;
+            const timeoutId = setTimeout(() => { timedOut = true; ticket.abort(); }, 8000);
             searchEl.classList.add('loading');
             try {
                 const res = await fetch(CUSTOMERS_API_URL + '?search=' + encodeURIComponent(input), {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    signal: custAbort.signal,
+                    signal: ticket.signal,
                 });
-                clearTimeout(timeoutId);
                 if (!res.ok) throw new Error('Search failed');
                 const customers = await res.json();
+                if (!custSearch.isLatest(ticket)) return;
                 dd.innerHTML = '';
                 dd.classList.add('active');
 
@@ -2151,7 +2154,9 @@
                 });
                 updateCustomerDropdownDirection(searchEl, dd);
             } catch(e) {
-                if (e.name === 'AbortError') {
+                // A search replaced by newer typing, or by clearing the box, says nothing.
+                if (!custSearch.isLatest(ticket)) return;
+                if (e.name === 'AbortError' && timedOut) {
                     dd.innerHTML = '<div class="cust-no-match">Search timed out — try again</div>';
                     dd.classList.add('active');
                     updateCustomerDropdownDirection(searchEl, dd);
@@ -2162,7 +2167,9 @@
                 dd.classList.add('active');
                 updateCustomerDropdownDirection(searchEl, dd);
             } finally {
-                searchEl.classList.remove('loading');
+                clearTimeout(timeoutId);
+                // Only the latest search ends the spinner.
+                if (custSearch.isLatest(ticket)) searchEl.classList.remove('loading');
             }
         }, 200);
 

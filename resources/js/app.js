@@ -16,6 +16,7 @@ import { createIndianAddress } from './indian-address';
 import { configureDialogDatePicker } from './date-picker-dialog';
 import { extractConfirmMessage } from './confirm-message';
 import { createQuoteState } from './pos-quote';
+import { createLatestRequest } from './latest-request';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -197,6 +198,8 @@ window.Alpine = Alpine;
 window.Turbo = Turbo;
 // The retail POS reads its price quote state through this (audit H4).
 window.createQuoteState = createQuoteState;
+// Type-ahead searches on inline pages (the POS customer search) keep only the latest answer (audit M4).
+window.createLatestRequest = createLatestRequest;
 
 registerHistoricalManual(Alpine);
 Alpine.data('reorderRuleEditor', createReorderEditor);
