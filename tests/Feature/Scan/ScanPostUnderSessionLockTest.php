@@ -71,6 +71,39 @@ class ScanPostUnderSessionLockTest extends TestCase
         $this->assertSame(1, ScanEvent::where('scan_session_id', $session->id)->count(), 'a double tap is one scan');
     }
 
+    /**
+     * Security review of 63892429: a filtered repeat answered "queued" and audited "barcode sent" with the earlier
+     * scan's id, so the trail showed a second send that never created anything. It now says what happened, in the
+     * name of whoever sent it, and points at the scan that does exist (the app tracks delivery by that id).
+     */
+    public function test_a_filtered_repeat_is_reported_and_audited_as_filtered_in_the_senders_name(): void
+    {
+        [$first, $shop, $session] = $this->scanSession();
+        $second = $this->createOwnerUser($shop, $first->role);
+        $send = function ($user) use ($session) {
+            $this->app['auth']->forgetGuards();
+
+            return $this->withHeaders([
+                'Authorization' => 'Bearer ' . $user->createToken('scanner')->plainTextToken,
+                'X-Idempotency-Key' => (string) \Illuminate\Support\Str::uuid(),
+            ])->postJson('/api/mobile/scan/send', ['token' => $session->token, 'barcode' => 'TAG-1'])->assertOk();
+        };
+
+        $sent = $send($first);
+        $repeat = $send($second);
+
+        $this->assertSame('queued', $sent->json('status'));
+        $this->assertSame('debounced', $repeat->json('status'));
+        $this->assertSame($sent->json('event_id'), $repeat->json('event_id'), 'the app keeps tracking the real scan');
+
+        $audit = DB::table('audit_logs')->where('shop_id', $shop->id)->where('action', 'like', 'mobile_scan_barcode_%')
+            ->orderBy('id')->get(['user_id', 'action']);
+        $this->assertSame([
+            [(int) $first->id, 'mobile_scan_barcode_sent'],
+            [(int) $second->id, 'mobile_scan_barcode_debounced'],
+        ], $audit->map(fn ($row) => [(int) $row->user_id, $row->action])->all());
+    }
+
     public function test_one_way_to_record_a_scan(): void
     {
         foreach (['app/Http/Controllers/ScanSessionController.php', 'app/Http/Controllers/Api/Mobile/ScanController.php'] as $file) {

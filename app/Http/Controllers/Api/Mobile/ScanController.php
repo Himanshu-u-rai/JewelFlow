@@ -127,14 +127,17 @@ class ScanController extends Controller
         if ($recorded === null) {
             return response()->json(['message' => 'Invalid or expired scan session.'], 404);
         }
-        $event = $recorded['event'];
+        // A filtered repeat creates nothing: say so, in the sender's name, pointing at the scan that does exist.
+        [$event, $debounced] = [$recorded['event'], $recorded['debounced']];
 
         $this->logAuditSafely(
             $request,
-            action: 'mobile_scan_barcode_sent',
+            action: $debounced ? 'mobile_scan_barcode_debounced' : 'mobile_scan_barcode_sent',
             modelType: 'ScanEvent',
             modelId: (int) $event->id,
-            description: 'Mobile scanner sent barcode to POS session.',
+            description: $debounced
+                ? 'Mobile scanner repeated a barcode within 2 seconds; the earlier scan stands.'
+                : 'Mobile scanner sent barcode to POS session.',
             data: [
                 'source' => 'mobile_app',
                 'session_id' => $session->id,
@@ -150,7 +153,7 @@ class ScanController extends Controller
         return response()->json([
             'event_id'      => $event->id,
             'barcode'       => $event->barcode,
-            'status'        => 'queued',
+            'status'        => $debounced ? 'debounced' : 'queued',
             'pos_listening' => $session->isPosListening(),
             'message'       => 'Barcode queued for POS.',
         ]);
