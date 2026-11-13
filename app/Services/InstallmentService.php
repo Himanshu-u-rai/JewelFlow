@@ -173,6 +173,68 @@ class InstallmentService
      *     historical written-off figure, and captured in the audit trail.
      * No cash, ledger, or vault entry is created — no money moved.
      */
+    /**
+     * Money still owed on a plan, from what was actually paid into it (not from remaining_amount, which the old EMI
+     * rule could force to 0).
+     */
+    public static function owedOn(InstallmentPlan $plan): float
+    {
+        $paid = (float) InstallmentPayment::where('plan_id', $plan->id)->sum('amount');
+
+        return round(max(0, (float) $plan->total_payable - $paid), 2);
+    }
+
+    /**
+     * Reopen a plan the old EMI rule closed while money was still owed (audit H2 data repair). A support correction
+     * (CONSTITUTION §3 Lane 2): run by a person, for one named plan, with a reason, and audited. No money moves; the
+     * plan gets back its true balance, the instalments that money covers, and its schedule's due date.
+     */
+    public function reopenEarlyClosedPlan(InstallmentPlan $plan, string $reason, ?int $actorId): InstallmentPlan
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new LogicException('A reason is required to reopen an EMI plan.');
+        }
+
+        // Runs in the plan's own shop context: a console correction has none, and tenant-scoped writes (the audit
+        // row) take their shop from it.
+        return \App\Support\TenantContext::runFor((int) $plan->shop_id, fn () => DB::transaction(function () use ($plan, $reason, $actorId) {
+            $locked = InstallmentPlan::withoutTenant()->whereKey($plan->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'completed') {
+                throw new LogicException("EMI plan #{$locked->id} is {$locked->status}, not completed.");
+            }
+            $owed = self::owedOn($locked);
+            if ($owed <= 0.01) {
+                throw new LogicException("EMI plan #{$locked->id} is fully paid; nothing to reopen.");
+            }
+
+            $before = $locked->only(['status', 'remaining_amount', 'emis_paid', 'next_due_date']);
+            $covered = $locked->emisCoveredWhenOwing($owed);
+            $locked->update([
+                'status' => 'active',
+                'remaining_amount' => $owed,
+                'emis_paid' => $covered,
+                'next_due_date' => $locked->dueDateOf($covered + 1)->toDateString(),
+            ]);
+
+            \App\Models\AuditLog::create([
+                'shop_id' => $locked->shop_id,
+                'user_id' => $actorId,
+                'action' => 'emi_plan_reopened',
+                'model_type' => 'installment_plan',
+                'model_id' => $locked->id,
+                'description' => "EMI plan #{$locked->id} reopened: closed early with ₹" . number_format($owed, 2) . ' still owed.',
+                'data' => [
+                    'reason' => $reason,
+                    'before' => $before,
+                    'after' => $locked->only(['status', 'remaining_amount', 'emis_paid', 'next_due_date']),
+                ],
+            ]);
+
+            return $locked->fresh();
+        }));
+    }
+
     public function markDefaulted(InstallmentPlan $plan, ?string $reason, int $userId): InstallmentPlan
     {
         return DB::transaction(function () use ($plan, $reason, $userId) {
