@@ -286,29 +286,12 @@ class ScanSessionController extends Controller
             return response()->json(['message' => $problem], 422);
         }
 
-        // Debounce: ignore same barcode scanned within last 2 seconds.
-        // Wrapped in a transaction with a lock so two simultaneous POSTs for the
-        // same barcode can't both pass the existence check.
-        $debounced = false;
-        DB::transaction(function () use ($session, $request, &$debounced) {
-            $recent = ScanEvent::where('scan_session_id', $session->id)
-                ->where('barcode', $request->barcode)
-                ->where('created_at', '>=', now()->subSeconds(2))
-                ->lockForUpdate()
-                ->exists();
-
-            if ($recent) {
-                $debounced = true;
-                return;
-            }
-
-            ScanEvent::create([
-                'scan_session_id' => $session->id,
-                'barcode'         => $request->barcode,
-            ]);
-        });
-
-        if ($debounced) {
+        // Under the session's lock: ended meanwhile → refused; same tag within 2 s → the earlier scan (audit N7/N13).
+        $recorded = ScanSession::recordScan((int) $session->id, (string) $request->barcode);
+        if ($recorded === null) {
+            return response()->json(['error' => 'Session expired or invalid.'], 410);
+        }
+        if ($recorded['debounced']) {
             return response()->json(['status' => 'debounced']);
         }
 

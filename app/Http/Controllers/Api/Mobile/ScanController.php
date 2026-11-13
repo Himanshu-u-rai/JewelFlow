@@ -117,14 +117,17 @@ class ScanController extends Controller
             return response()->json(['message' => $problem], 422);
         }
 
-        // Attribute every scan to the sending user + token (multi-scanner truth).
-        $event = ScanEvent::create([
-            'scan_session_id'    => $session->id,
-            'barcode'            => $request->barcode,
+        // Attribute every scan to the sending user + token (multi-scanner truth). Recorded under the session's lock,
+        // as the web phone page: ended meanwhile → refused; a repeat within 2 s → the earlier scan (audit N7/N13).
+        $recorded = ScanSession::recordScan((int) $session->id, (string) $request->barcode, [
             'processed'          => false,
             'posted_by_user_id'  => (int) $request->user()->id,
             'posted_by_token_id' => $request->user()->currentAccessToken()?->id,
         ]);
+        if ($recorded === null) {
+            return response()->json(['message' => 'Invalid or expired scan session.'], 404);
+        }
+        $event = $recorded['event'];
 
         $this->logAuditSafely(
             $request,

@@ -67,6 +67,30 @@ class ScanSession extends Model
             && $this->last_seen_at->gt(now()->subSeconds(self::POS_LISTENING_WINDOW_SECONDS));
     }
 
+    /**
+     * The one way a scan enters a session (web phone page and app; audit N7/N13). Decided under the session's row
+     * lock: a session ended meanwhile takes nothing (null), and the same tag within 2 seconds is the earlier scan
+     * (['event' => it, 'debounced' => true]). The lock is the session's, so it holds even when no scan exists yet.
+     *
+     * @return array{event: ScanEvent, debounced: bool}|null
+     */
+    public static function recordScan(int $sessionId, string $barcode, array $attribution = []): ?array
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($sessionId, $barcode, $attribution) {
+            $session = static::query()->whereKey($sessionId)->lockForUpdate()->first();
+            if (! $session || ! $session->isActive()) {
+                return null;
+            }
+            $recent = ScanEvent::where('scan_session_id', $sessionId)->where('barcode', $barcode)
+                ->where('created_at', '>=', now()->subSeconds(2))->latest('id')->first();
+            if ($recent) {
+                return ['event' => $recent, 'debounced' => true];
+            }
+
+            return ['event' => ScanEvent::create(['scan_session_id' => $sessionId, 'barcode' => $barcode] + $attribution), 'debounced' => false];
+        });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active')
