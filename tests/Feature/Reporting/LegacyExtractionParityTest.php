@@ -143,7 +143,13 @@ class LegacyExtractionParityTest extends TestCase
 
     private function repair(int $shopId, int $customerId, string $status, float $gross, float $cost, string $at): void
     {
+        // A delivered repair is a billed one (repairs_delivery_guard): stage it with its invoice.
+        $invoiceId = $status === 'delivered' ? TenantContext::runFor($shopId, fn () => \App\Services\InvoiceAccountingService::createFinalized([
+            'shop_id' => $shopId, 'customer_id' => $customerId, 'gold_rate' => 0, 'subtotal' => $cost, 'gst' => 0,
+            'gst_rate' => 0, 'wastage_charge' => 0, 'total' => $cost, 'round_off' => 0,
+        ])->id) : null;
         DB::table('repairs')->insert([
+            'invoice_id' => $invoiceId,
             'shop_id' => $shopId, 'customer_id' => $customerId,
             'repair_number' => random_int(100000, 999999), 'gross_weight' => $gross,
             'item_description' => 'test item', 'status' => $status,

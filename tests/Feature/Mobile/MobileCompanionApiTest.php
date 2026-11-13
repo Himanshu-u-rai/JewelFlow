@@ -181,8 +181,9 @@ class MobileCompanionApiTest extends TestCase
         Sanctum::actingAs($this->staff($shopA, ['repairs.view']), ['*']);
         $this->putJson("/api/mobile/repairs/{$repair->id}", ['item_quantity' => 3])->assertForbidden();
 
-        Repair::withoutGlobalScopes()->whereKey($repair->id)->update(['status' => 'delivered']);
+        // A delivered repair is a billed one (repairs_delivery_guard): deliver it through the app.
         Sanctum::actingAs($ownerA, ['*']);
+        $this->postJson("/api/mobile/repairs/{$repair->id}/deliver", ['amount' => 100])->assertOk();
         $this->putJson("/api/mobile/repairs/{$repair->id}", ['item_quantity' => 3])->assertStatus(422)
             ->assertJsonPath('message', 'Delivered repairs cannot be edited.');
         $this->assertNull($repair->fresh()->item_quantity);

@@ -186,11 +186,44 @@ class Repair extends Model
             }
         });
 
+        // Delivered <=> billed, and a delivered repair is final (audit H1, 2026-11-13). Whoever writes the row.
         static::saving(function (self $repair): void {
-            if ($repair->status === 'delivered' && empty($repair->invoice_id)) {
+            if ($repair->status === self::STATUS_DELIVERED && empty($repair->invoice_id)) {
                 throw new \DomainException('A repair cannot be marked delivered without a linked invoice. Use the Bill flow.');
             }
+            if ($repair->status !== self::STATUS_DELIVERED && ! empty($repair->invoice_id)) {
+                throw new \DomainException('Only a delivered repair carries an invoice.');
+            }
+            if ($repair->exists && $repair->getRawOriginal('status') === self::STATUS_DELIVERED
+                && $repair->isDirty(['status', 'invoice_id', 'final_cost', 'customer_id'])) {
+                throw new \DomainException('A delivered repair is billed and cannot be changed.');
+            }
         });
+
+        static::deleting(function (self $repair): void {
+            if ($repair->getRawOriginal('status') === self::STATUS_DELIVERED) {
+                throw new \DomainException('A delivered repair is billed and cannot be deleted.');
+            }
+        });
+    }
+
+    public const STATUS_DELIVERED = 'delivered';
+
+    /** Stages a repair moves through before it is delivered (delivery is its own, billed step). */
+    public const OPEN_STATUSES = ['received', 'in_repair', 'ready'];
+
+    /**
+     * Re-read this repair under a row lock inside the caller's transaction and refuse if it has been delivered
+     * meanwhile. Every write that depends on "not delivered yet" goes through here.
+     */
+    public static function lockOpen(int $id): self
+    {
+        $locked = static::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+        if ($locked->status === self::STATUS_DELIVERED) {
+            throw new \App\Exceptions\RepairAlreadyDelivered();
+        }
+
+        return $locked;
     }
 
     /** Labels for the challan's item details, in the order the challan lists them. */

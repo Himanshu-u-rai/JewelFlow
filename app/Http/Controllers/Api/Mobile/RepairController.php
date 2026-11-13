@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Exceptions\RepairAlreadyDelivered;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\CashTransaction;
 use App\Models\Customer;
 use App\Models\InvoicePayment;
 use App\Models\Repair;
-use App\Services\InvoiceAccountingService;
-use App\Services\PricingEngine;
+use App\Services\RepairDeliveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -260,12 +259,22 @@ class RepairController extends Controller
 
         // As the web: the customer check shares the write's transaction, so a
         // customer archived mid-request cannot be attached.
-        DB::transaction(function () use ($model, $validated, $shopId) {
-            if (isset($validated['customer_id'])) {
-                Customer::lockActiveOrFail($shopId, (int) $validated['customer_id'], 'customer_id', (int) $model->customer_id);
+        try {
+            DB::transaction(function () use ($model, $validated, $shopId) {
+                // Re-read under lock: a delivery that landed after this request loaded the repair wins.
+                $locked = Repair::lockOpen((int) $model->id);
+                if (isset($validated['customer_id'])) {
+                    Customer::lockActiveOrFail($shopId, (int) $validated['customer_id'], 'customer_id', (int) $locked->customer_id);
+                }
+                $locked->update($validated);
+            });
+        } catch (RepairAlreadyDelivered) {
+            if (! empty($validated['image_path'])) {
+                (clone $model)->forceFill(['image_path' => $validated['image_path'], 'image' => $validated['image_path']])->deleteImageFile();
             }
-            $model->update($validated);
-        });
+
+            return response()->json(['message' => 'Delivered repairs cannot be edited.'], 422);
+        }
         if ($photoChanged) {
             $before->deleteImageFile();
         }
@@ -374,102 +383,27 @@ class RepairController extends Controller
             'payment_mode' => ['nullable', Rule::in(['cash', 'upi', 'bank', 'wallet', 'other'])],
         ]);
 
-        $includeGst = $request->boolean('include_gst');
-        $amount = (float) $validated['amount'];
-        $defaultGstRate = (float) ($request->user()->shop->gst_rate ?? config('business.gst_rate_default'));
-        $gstRate = $includeGst ? (float) ($validated['gst_rate'] ?? $defaultGstRate) : 0.0;
-
-        $engine = app(PricingEngine::class);
-        $breakdown = $engine->computeRepair($shopId, $amount, $includeGst, $gstRate);
-
-        $subtotal = $breakdown->subtotal;
-        $gstAmount = $breakdown->gst;
-        $gstRate = $breakdown->gstRate;
-        $totalAmount = $breakdown->finalTotal;
-        $roundOff = $breakdown->roundingAdjustment;
-
         $paymentMode = $validated['payment_mode'] ?? InvoicePayment::MODE_CASH;
 
-        [$updatedRepair, $invoice] = DB::transaction(function () use (
-            $repair,
-            $request,
-            $shopId,
-            $subtotal,
-            $gstRate,
-            $gstAmount,
-            $totalAmount,
-            $roundOff,
-            $paymentMode
-        ) {
-            $lockedRepair = Repair::query()->where('id', $repair->id)->lockForUpdate()->firstOrFail();
-
-            if ($lockedRepair->status === 'delivered') {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'status' => 'Repair is already delivered.',
-                ]);
-            }
-
-            $invoice = InvoiceAccountingService::createFinalized([
-                'shop_id' => $shopId,
-                'customer_id' => $lockedRepair->customer_id,
-                'gold_rate' => 0,
-                'subtotal' => $subtotal,
-                'gst' => $gstAmount,
-                'gst_rate' => $gstRate,
-                'wastage_charge' => 0,
-                'total' => $totalAmount,
-                'round_off' => $roundOff,
-            ]);
-
-            InvoicePayment::record([
-                'invoice_id' => $invoice->id,
-                'shop_id' => $shopId,
-                'mode' => $paymentMode,
-                'amount' => $totalAmount,
-            ]);
-
-            if ($paymentMode === InvoicePayment::MODE_CASH) {
-                CashTransaction::record([
-                    'shop_id' => $shopId,
-                    'user_id' => (int) $request->user()->id,
-                    'type' => 'in',
-                    'amount' => $totalAmount,
-                    'source_type' => 'invoice',
-                    'source_id' => $invoice->id,
-                    'invoice_id' => $invoice->id,
-                    'description' => 'Repair delivery - ' . $lockedRepair->item_description,
-                    'reference_type' => 'invoice',
-                    'reference_id' => $invoice->id,
-                ]);
-            }
-
-            $lockedRepair->final_cost = $totalAmount;
-            $lockedRepair->invoice_id = $invoice->id;
-            $lockedRepair->status = 'delivered';
-            $lockedRepair->save();
-
-            AuditLog::create([
-                'shop_id' => $shopId,
-                'user_id' => (int) $request->user()->id,
-                'action' => 'repair_deliver',
-                'model_type' => 'repair',
-                'model_id' => (int) $lockedRepair->id,
-                'description' => 'Repair delivered and billed from mobile app.',
-                'data' => [
-                    'source' => 'mobile_app',
-                    'repair_number' => $lockedRepair->repair_number,
-                    'subtotal' => $subtotal,
-                    'gst_rate' => $gstRate,
-                    'gst' => $gstAmount,
-                    'round_off' => $roundOff,
-                    'amount' => $totalAmount,
-                    'payment_mode' => $paymentMode,
-                    'invoice_id' => $invoice->id,
-                ],
-            ]);
-
-            return [$lockedRepair, $invoice];
-        });
+        // One delivery path for web and app (audit H1): lock, re-check, bill once.
+        try {
+            $result = app(RepairDeliveryService::class)->deliver(
+                $repair,
+                (float) $validated['amount'],
+                $request->boolean('include_gst'),
+                isset($validated['gst_rate']) ? (float) $validated['gst_rate'] : null,
+                $paymentMode,
+                (int) $request->user()->id,
+                RepairDeliveryService::SOURCE_APP,
+            );
+        } catch (RepairAlreadyDelivered $e) {
+            throw $e->toValidation();
+        }
+        $updatedRepair = $result['repair'];
+        $invoice = $result['invoice'];
+        $gstRate = $result['gst_rate'];
+        $gstAmount = $result['gst'];
+        $totalAmount = $result['total'];
 
         return response()->json([
             'id' => $updatedRepair->id,

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Exceptions\RepairAlreadyDelivered;
 use App\Models\InvoicePayment;
 use App\Models\Repair;
-use App\Services\InvoiceAccountingService;
-use App\Services\PricingEngine;
+use App\Services\RepairDeliveryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -243,26 +243,25 @@ class RepairController extends Controller
             'remove_image'     => 'nullable|boolean',
         ]);
 
+        // The old photo is removed only after the edit commits; a refused edit keeps it (and drops the new upload).
         $existingImagePath = $repair->resolveImagePath();
+        $dropOldImage = false;
         if ($request->hasFile('image')) {
-            if ($existingImagePath) {
-                $repair->deleteImageFile();
-            }
             $newPath = $this->storeUploadedRepairImage($request, $shopId);
             $validated['image_path'] = $newPath;
             $validated['image'] = $newPath;
+            $dropOldImage = (bool) $existingImagePath;
         } elseif (!empty($validated['image_base64'])) {
-            if ($existingImagePath) {
-                $repair->deleteImageFile();
-            }
             $newPath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
             $validated['image_path'] = $newPath;
             $validated['image'] = $newPath;
+            $dropOldImage = (bool) $existingImagePath;
         } elseif ($request->boolean('remove_image') && $existingImagePath) {
-            $repair->deleteImageFile();
             $validated['image_path'] = null;
             $validated['image'] = null;
+            $dropOldImage = true;
         }
+        $oldImageHolder = $dropOldImage ? (clone $repair) : null;
 
         unset($validated['image_base64'], $validated['remove_image']);
 
@@ -270,16 +269,28 @@ class RepairController extends Controller
         // race that archives the newly picked customer cannot slip past layer 1.
         // The customer already on this repair stays allowed; re-tagging it to a
         // different archived customer is rejected (see activeOrCurrentExistsRule).
-        DB::transaction(function () use ($repair, $validated, $shopId) {
-            Customer::lockActiveOrFail(
-                (int) $shopId,
-                (int) $validated['customer_id'],
-                'customer_id',
-                (int) $repair->customer_id,
-            );
+        try {
+            DB::transaction(function () use ($repair, $validated, $shopId, $oldImageHolder) {
+                $locked = Repair::lockOpen((int) $repair->id);
+                Customer::lockActiveOrFail(
+                    (int) $shopId,
+                    (int) $validated['customer_id'],
+                    'customer_id',
+                    (int) $locked->customer_id,
+                );
 
-            $repair->update($validated);
-        });
+                $locked->update($validated);
+                if ($oldImageHolder) {
+                    DB::afterCommit(fn () => $oldImageHolder->deleteImageFile());
+                }
+            });
+        } catch (RepairAlreadyDelivered) {
+            if (! empty($validated['image_path'])) {
+                Storage::disk($this->repairImageDisk())->delete($validated['image_path']);
+            }
+
+            return redirect()->route('repairs.index')->with('error', 'Delivered repairs cannot be edited.');
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -300,10 +311,14 @@ class RepairController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['received', 'in_repair', 'ready'])],
+            'status' => ['required', Rule::in(Repair::OPEN_STATUSES)],
         ]);
 
-        $repair->update(['status' => $validated['status']]);
+        try {
+            DB::transaction(fn () => Repair::lockOpen((int) $repair->id)->update(['status' => $validated['status']]));
+        } catch (RepairAlreadyDelivered) {
+            return back()->with('error', 'Delivered repairs cannot be changed.');
+        }
 
         return back()->with('success', 'Status updated to "' . ucwords(str_replace('_', ' ', $validated['status'])) . '".');
     }
@@ -312,9 +327,7 @@ class RepairController extends Controller
     {
         $this->authorize('update', $repair);
 
-        $shopId = auth()->user()->shop_id;
-
-        if ($repair->status === 'delivered') {
+        if ($repair->status === Repair::STATUS_DELIVERED) {
             return back()->with('error', 'Repair is already delivered.');
         }
 
@@ -324,79 +337,20 @@ class RepairController extends Controller
             'gst_rate'    => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $includeGst = $request->boolean('include_gst');
-        $amount     = (float) $validated['amount'];
-        $gstRate    = $includeGst
-            ? (float) ($validated['gst_rate'] ?? (auth()->user()->shop->gst_rate ?? config('business.gst_rate_default')))
-            : 0.0;
-
-        $engine    = app(PricingEngine::class);
-        $breakdown = $engine->computeRepair($shopId, $amount, $includeGst, $gstRate);
-
-        $subtotal    = $breakdown->subtotal;
-        $gstAmount   = $breakdown->gst;
-        $gstRate     = $breakdown->gstRate;
-        $totalAmount = $breakdown->finalTotal;
-        $roundOff    = $breakdown->roundingAdjustment;
-
-        $invoice = DB::transaction(function () use ($shopId, $repair, $subtotal, $gstRate, $gstAmount, $totalAmount, $roundOff) {
-            $invoice = InvoiceAccountingService::createFinalized([
-                'shop_id'        => $shopId,
-                'customer_id'    => $repair->customer_id,
-                'gold_rate'      => 0,
-                'subtotal'       => $subtotal,
-                'gst'            => $gstAmount,
-                'gst_rate'       => $gstRate,
-                'wastage_charge' => 0,
-                'total'          => $totalAmount,
-                'round_off'      => $roundOff,
-            ]);
-
-            // Record the payment — repair service is always collected as cash.
-            InvoicePayment::record([
-                'invoice_id' => $invoice->id,
-                'shop_id'    => $shopId,
-                'mode'       => InvoicePayment::MODE_CASH,
-                'amount'     => $totalAmount,
-            ]);
-
-            \App\Models\CashTransaction::record([
-                'shop_id'          => $shopId,
-                'user_id'          => auth()->id(),
-                'type'             => 'in',
-                'amount'           => $totalAmount,
-                'source_type'      => 'invoice',
-                'source_id'        => $invoice->id,
-                'invoice_id'       => $invoice->id,
-                'payment_mode'     => 'cash',
-                'description'      => 'Repair delivery - ' . $repair->item_description,
-                'reference_type'   => 'invoice',
-                'reference_id'     => $invoice->id,
-            ]);
-
-            $repair->final_cost = $totalAmount;
-            $repair->invoice_id = $invoice->id;
-            $repair->status     = 'delivered';
-            $repair->save();
-
-            \App\Models\AuditLog::create([
-                'shop_id'     => $shopId,
-                'user_id'     => auth()->id(),
-                'action'      => 'repair_deliver',
-                'model_type'  => 'repair',
-                'model_id'    => $repair->id,
-                'data'        => [
-                    'subtotal'   => $subtotal,
-                    'gst_rate'   => $gstRate,
-                    'gst'        => $gstAmount,
-                    'round_off'  => $roundOff,
-                    'amount'     => $totalAmount,
-                    'invoice_id' => $invoice->id,
-                ],
-            ]);
-
-            return $invoice;
-        });
+        // Repair service on the web is always collected as cash.
+        try {
+            $invoice = app(RepairDeliveryService::class)->deliver(
+                $repair,
+                (float) $validated['amount'],
+                $request->boolean('include_gst'),
+                isset($validated['gst_rate']) ? (float) $validated['gst_rate'] : null,
+                InvoicePayment::MODE_CASH,
+                (int) auth()->id(),
+                RepairDeliveryService::SOURCE_WEB,
+            )['invoice'];
+        } catch (RepairAlreadyDelivered) {
+            return back()->with('error', 'Repair is already delivered.');
+        }
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Repair delivered and billed successfully (Invoice ' . $invoice->invoice_number . ').');
@@ -410,9 +364,16 @@ class RepairController extends Controller
             return redirect()->route('repairs.index')->with('error', 'Delivered repairs cannot be deleted.');
         }
 
-        $repair->deleteImageFile();
-
-        $repair->delete();
+        try {
+            DB::transaction(function () use ($repair) {
+                $locked = Repair::lockOpen((int) $repair->id);
+                $locked->delete();
+                // The file goes only once the row is gone; a refused delete keeps the photo.
+                DB::afterCommit(fn () => $locked->deleteImageFile());
+            });
+        } catch (RepairAlreadyDelivered) {
+            return redirect()->route('repairs.index')->with('error', 'Delivered repairs cannot be deleted.');
+        }
 
         return redirect()->route('repairs.index')->with('success', 'Repair deleted successfully.');
     }
