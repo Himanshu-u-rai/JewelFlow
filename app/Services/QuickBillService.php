@@ -52,6 +52,8 @@ class QuickBillService
     public function update(QuickBill $quickBill, Shop $shop, User $user, array $payload): QuickBill
     {
         return DB::transaction(function () use ($quickBill, $shop, $user, $payload): QuickBill {
+            // Decide on the bill as it is now (audit N2): a void or issue that landed after the page loaded wins.
+            $quickBill = QuickBill::lockForUpdate()->findOrFail($quickBill->id);
             $result = $this->persist($quickBill, $shop, $user, $payload);
 
             AuditLog::create([
