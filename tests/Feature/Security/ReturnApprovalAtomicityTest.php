@@ -354,4 +354,65 @@ class ReturnApprovalAtomicityTest extends TestCase
         $response->assertStatus(200);
         $this->assertNotNull($line->fresh()->returned_at, 'an approved return stamps the line');
     }
+
+    // ── Audit M2 (2026-11-13): approve and reject decide under the return's lock ──
+
+    /** A manager approving from a page loaded before another manager rejected must not refund it anyway. */
+    public function test_a_return_rejected_meanwhile_cannot_be_approved(): void
+    {
+        [$owner, $shop, $invoice, , $order] = $this->pendingReturn();
+        TenantContext::set((int) $shop->id);
+        $this->actingAs($owner);
+        $stale = $order->fresh();
+        $service = app(\App\Services\Returns\ReturnService::class);
+        $service->rejectReturn($order->fresh(), (int) $owner->id, 'Item was damaged by the customer');
+
+        try {
+            $service->approveReturn($stale, (int) $owner->id);
+            $this->fail('A rejected return was approved and refunded.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('pending-approval', $e->getMessage());
+        }
+
+        $this->assertSame(0, ReturnOrder::withoutGlobalScopes()->where('invoice_id', $invoice->id)
+            ->where('status', ReturnOrder::STATUS_SETTLED)->count(), 'nothing settled');
+        $this->assertSame(0, CreditNote::withoutGlobalScopes()->where('shop_id', $shop->id)->count(), 'no credit note');
+        $this->assertStringStartsWith('Rejected by approver', $order->fresh()->cancellation_reason);
+    }
+
+    /** Break attempt: a second request for an item that already awaits approval is refused, not queued twice. */
+    public function test_an_item_awaiting_approval_cannot_be_requested_again(): void
+    {
+        [$owner, $shop, $invoice, $line] = $this->pendingReturn();
+        TenantContext::set((int) $shop->id);
+        $this->actingAs($owner);
+
+        try {
+            app(\App\Services\Returns\ReturnService::class)->createPendingApproval(
+                $invoice->fresh(), [$line->id => ['disposition' => 'restocked', 'condition' => 'good']], 'Again', (int) $owner->id);
+            $this->fail('The same item was queued for approval twice.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('already awaiting approval', $e->getMessage());
+        }
+        $this->assertSame(1, ReturnOrder::withoutGlobalScopes()->where('invoice_id', $invoice->id)
+            ->where('status', ReturnOrder::STATUS_PENDING_APPROVAL)->count());
+    }
+
+    /** ...and a rejection from a stale page must not relabel a return that was approved and refunded. */
+    public function test_a_return_approved_meanwhile_cannot_be_rejected(): void
+    {
+        [$owner, $shop, , , $order] = $this->pendingReturn();
+        TenantContext::set((int) $shop->id);
+        $this->actingAs($owner);
+        $stale = $order->fresh();
+        $service = app(\App\Services\Returns\ReturnService::class);
+        $service->approveReturn($order->fresh(), (int) $owner->id);
+
+        $this->expectException(\LogicException::class);
+        try {
+            $service->rejectReturn($stale, (int) $owner->id, 'Too late, already decided');
+        } finally {
+            $this->assertSame('Superseded by approval-triggered return.', $order->fresh()->cancellation_reason);
+        }
+    }
 }

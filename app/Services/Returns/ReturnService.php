@@ -489,20 +489,36 @@ class ReturnService
         SubscriptionGateService::assertShopWritable((int) $invoice->shop_id);
         InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, now()->toDateString());
 
-        $returnOrder = new ReturnOrder();
-        $returnOrder->forceFill([
-            'shop_id'            => $invoice->shop_id,
-            'invoice_id'         => $invoice->id,
-            'customer_id'        => $invoice->customer_id,
-            'return_type'        => ReturnOrder::TYPE_CUSTOMER_RETURN,
-            'status'             => ReturnOrder::STATUS_PENDING_APPROVAL,
-            'reason'             => $reason,
-            'refund_settlement'  => $refundSettlement,
-            'pending_data'       => ['selections' => $selections, 'reason' => $reason, 'line_overrides' => $lineOverrides],
-            'created_by_user_id' => $userId,
-        ])->save();
+        return DB::transaction(function () use ($invoice, $selections, $reason, $userId, $refundSettlement, $lineOverrides) {
+            // Audit M2: one request per item at a time. The invoice row lock serialises two requests for its items.
+            Invoice::withoutGlobalScopes()->whereKey($invoice->id)->lockForUpdate()->first();
+            $requested = array_map('intval', array_keys($selections));
+            $pending = ReturnOrder::withoutGlobalScopes()
+                ->where('invoice_id', $invoice->id)
+                ->where('status', ReturnOrder::STATUS_PENDING_APPROVAL)
+                ->get();
+            foreach ($pending as $other) {
+                $overlap = array_intersect($requested, array_map('intval', array_keys($other->pending_data['selections'] ?? [])));
+                if ($overlap !== []) {
+                    throw new LogicException("This item is already awaiting approval on return #{$other->id}.");
+                }
+            }
 
-        return $returnOrder;
+            $returnOrder = new ReturnOrder();
+            $returnOrder->forceFill([
+                'shop_id'            => $invoice->shop_id,
+                'invoice_id'         => $invoice->id,
+                'customer_id'        => $invoice->customer_id,
+                'return_type'        => ReturnOrder::TYPE_CUSTOMER_RETURN,
+                'status'             => ReturnOrder::STATUS_PENDING_APPROVAL,
+                'reason'             => $reason,
+                'refund_settlement'  => $refundSettlement,
+                'pending_data'       => ['selections' => $selections, 'reason' => $reason, 'line_overrides' => $lineOverrides],
+                'created_by_user_id' => $userId,
+            ])->save();
+
+            return $returnOrder;
+        });
     }
 
     public function redisposeItem(
@@ -697,26 +713,40 @@ class ReturnService
         return $overrides;
     }
 
+    /**
+     * Re-read the return under a row lock inside the caller's transaction and refuse unless it is still awaiting
+     * approval (audit M2). Approve and reject both decide here, so a page loaded before the other decision cannot
+     * refund a rejected return or relabel an approved one.
+     */
+    private function lockPendingApproval(int $returnOrderId, string $verb): ReturnOrder
+    {
+        $locked = ReturnOrder::withoutGlobalScopes()->whereKey($returnOrderId)->lockForUpdate()->first();
+        if (! $locked || $locked->status !== ReturnOrder::STATUS_PENDING_APPROVAL) {
+            throw new LogicException("Only pending-approval returns can be {$verb}.");
+        }
+
+        return $locked;
+    }
+
     public function approveReturn(ReturnOrder $returnOrder, int $approverId, array $approverLineOverrides = []): ReturnOrder
     {
         if ($returnOrder->status !== ReturnOrder::STATUS_PENDING_APPROVAL) {
             throw new LogicException('Only pending-approval returns can be approved.');
         }
-        $invoice    = Invoice::findOrFail($returnOrder->invoice_id);
-        $data       = $returnOrder->pending_data ?? [];
-        $selections = $data['selections'] ?? [];
-        $reason     = $data['reason'] ?? $returnOrder->reason ?? '';
-        $refundSettlement = $returnOrder->refund_settlement ?? self::REFUND_SETTLEMENT_CASH;
 
-        $lineOverrides = !empty($approverLineOverrides)
-            ? $approverLineOverrides
-            : ($data['line_overrides'] ?? []);
+        return DB::transaction(function () use ($returnOrder, $approverId, $approverLineOverrides) {
+            $locked     = $this->lockPendingApproval((int) $returnOrder->id, 'approved');
+            $invoice    = Invoice::findOrFail($locked->invoice_id);
+            $data       = $locked->pending_data ?? [];
+            $selections = $data['selections'] ?? [];
+            $reason     = $data['reason'] ?? $locked->reason ?? '';
+            $refundSettlement = $locked->refund_settlement ?? self::REFUND_SETTLEMENT_CASH;
+            $lineOverrides = ! empty($approverLineOverrides)
+                ? $approverLineOverrides
+                : ($data['line_overrides'] ?? []);
 
-        return DB::transaction(function () use (
-            $returnOrder, $invoice, $selections, $reason, $approverId, $refundSettlement, $lineOverrides
-        ) {
             // Cancel the pending header — createPartialReturn will create a new settled one.
-            DB::table('return_orders')->where('id', $returnOrder->id)->update([
+            DB::table('return_orders')->where('id', $locked->id)->update([
                 'status'              => ReturnOrder::STATUS_CANCELLED,
                 'cancellation_reason' => 'Superseded by approval-triggered return.',
                 'updated_at'          => now(),
@@ -743,11 +773,14 @@ class ReturnService
         if ($returnOrder->status !== ReturnOrder::STATUS_PENDING_APPROVAL) {
             throw new LogicException('Only pending-approval returns can be rejected.');
         }
-        DB::table('return_orders')->where('id', $returnOrder->id)->update([
-            'status'              => ReturnOrder::STATUS_CANCELLED,
-            'cancellation_reason' => 'Rejected by approver: ' . $reason,
-            'updated_at'          => now(),
-        ]);
+        DB::transaction(function () use ($returnOrder, $reason) {
+            $locked = $this->lockPendingApproval((int) $returnOrder->id, 'rejected');
+            DB::table('return_orders')->where('id', $locked->id)->update([
+                'status'              => ReturnOrder::STATUS_CANCELLED,
+                'cancellation_reason' => 'Rejected by approver: ' . $reason,
+                'updated_at'          => now(),
+            ]);
+        });
         try {
             AuditLog::create([
                 'shop_id'     => $returnOrder->shop_id,
