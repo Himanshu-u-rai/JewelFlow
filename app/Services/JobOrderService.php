@@ -23,6 +23,93 @@ class JobOrderService
 {
     public const TOLERANCE_FINE_GRAMS = 0.001;
 
+    /**
+     * A repair or rework job takes one piece to the karigar (audit M1): from these statuses it goes "with_karigar"
+     * while the job is open, and comes back to SOURCE_ITEM_BACK when the job completes or is cancelled.
+     */
+    private const SOURCE_ITEM_FROM = [
+        JobOrder::JOB_TYPE_REPAIR => ['in_stock'],
+        JobOrder::JOB_TYPE_REWORK => ['returned', 'pending_restock'],
+    ];
+
+    private const SOURCE_ITEM_BACK = [
+        JobOrder::JOB_TYPE_REPAIR => 'in_stock',
+        JobOrder::JOB_TYPE_REWORK => 'returned',
+    ];
+
+    /** Lock the job's piece and send it to the karigar; refuses a piece that is sold, gone, or already out. */
+    private function takeSourceItem(array $data, int $shopId): void
+    {
+        $itemId = $data['source_item_id'] ?? null;
+        if (! $itemId) {
+            return;
+        }
+        $type = $data['job_type'] ?? JobOrder::JOB_TYPE_MANUFACTURE;
+        if (! isset(self::SOURCE_ITEM_FROM[$type])) {
+            throw new LogicException('Only a repair or rework job takes an item to the karigar.');
+        }
+
+        $item = Item::withoutTenant()->where('shop_id', $shopId)->whereKey($itemId)->lockForUpdate()->firstOrFail();
+        if (! in_array($item->status, self::SOURCE_ITEM_FROM[$type], true)) {
+            throw new LogicException("Item {$item->barcode} is " . str_replace('_', ' ', (string) $item->status) . " and cannot be sent for {$type}.");
+        }
+        $item->status = 'with_karigar';
+        $item->save();
+    }
+
+    /**
+     * Bring the job's piece back when the job ends (completed or cancelled). Called from JobOrder's own status
+     * change, so every path that ends a job releases its piece. A piece another open job holds stays out.
+     */
+    public function releaseSourceItem(JobOrder $job): void
+    {
+        if (! $job->source_item_id || ! isset(self::SOURCE_ITEM_BACK[$job->job_type])) {
+            return;
+        }
+        $item = Item::withoutTenant()->where('shop_id', $job->shop_id)->whereKey($job->source_item_id)->lockForUpdate()->first();
+        if (! $item || $item->status !== 'with_karigar' || $this->openJobHolding($item, $job->id)) {
+            return;
+        }
+        $item->status = self::SOURCE_ITEM_BACK[$job->job_type];
+        $item->save();
+    }
+
+    /**
+     * The control centre's correction for a piece an ended job left "with_karigar" (data from before jobs released
+     * their pieces). Refused while any open job holds the piece: it is really at the karigar.
+     *
+     * @return string the status the piece went back to
+     */
+    public function freeLeftBehindItem(Item $item): string
+    {
+        return DB::transaction(function () use ($item) {
+            $locked = Item::withoutTenant()->where('shop_id', $item->shop_id)->whereKey($item->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'with_karigar') {
+                throw new LogicException('Item is not with a karigar.');
+            }
+            if ($holding = $this->openJobHolding($locked)) {
+                throw new LogicException("Item is still at the karigar on job {$holding->job_order_number}.");
+            }
+            $last = JobOrder::withoutTenant()->where('shop_id', $locked->shop_id)->where('source_item_id', $locked->id)
+                ->whereIn('job_type', array_keys(self::SOURCE_ITEM_BACK))->latest('id')->first();
+            if (! $last) {
+                throw new LogicException('No repair or rework job sent this item out.');
+            }
+            $locked->status = self::SOURCE_ITEM_BACK[$last->job_type];
+            $locked->save();
+
+            return $locked->status;
+        });
+    }
+
+    private function openJobHolding(Item $item, ?int $exceptJobId = null): ?JobOrder
+    {
+        return JobOrder::withoutTenant()->where('shop_id', $item->shop_id)->where('source_item_id', $item->id)
+            ->when($exceptJobId, fn ($q) => $q->where('id', '!=', $exceptJobId))
+            ->whereIn('status', [JobOrder::STATUS_ISSUED, JobOrder::STATUS_PARTIAL_RETURN])
+            ->first();
+    }
+
     // Gold purity is in Karats (24 = pure); silver is fineness (999 = pure).
     private function fineWeight(float $net, float $purity, string $metalType): float
     {
@@ -76,6 +163,8 @@ class JobOrderService
 
             $allowedWastage     = (float) ($data['allowed_wastage_percent'] ?? 0);
             $expectedReturnFine = round($totalFine * (1 - $allowedWastage / 100), 6);
+
+            $this->takeSourceItem($data, $shopId);
 
             $jobOrderNumber = BusinessIdentifierService::nextJobOrderIdentifier($shopId)['number'];
             $challanNumber  = BusinessIdentifierService::nextChallanIdentifier($shopId)['number'];

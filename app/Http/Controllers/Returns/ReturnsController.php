@@ -574,23 +574,14 @@ class ReturnsController extends Controller
     {
         $shopId = auth()->user()->shop_id;
         abort_if($item->shop_id !== $shopId, 403);
-        abort_if($item->status !== 'with_karigar', 422, 'Item is not in with_karigar status.');
 
-        $cancelledJob = \App\Models\JobOrder::where('source_item_id', $item->id)
-            ->where('shop_id', $shopId)
-            ->where('status', \App\Models\JobOrder::STATUS_CANCELLED)
-            ->whereIn('job_type', [
-                \App\Models\JobOrder::JOB_TYPE_REPAIR,
-                \App\Models\JobOrder::JOB_TYPE_REWORK,
-            ])
-            ->latest()
-            ->firstOrFail();
-
-        $restoredStatus = $cancelledJob->job_type === \App\Models\JobOrder::JOB_TYPE_REPAIR
-            ? 'in_stock'
-            : 'returned';
-
-        $item->update(['status' => $restoredStatus]);
+        // Audit M1: decided under the item's lock by the service that owns the piece's trips to the karigar; refused
+        // while any open job still holds it (it used to take the latest cancelled job and ignore a newer open one).
+        try {
+            $restoredStatus = app(\App\Services\JobOrderService::class)->freeLeftBehindItem($item);
+        } catch (\LogicException $e) {
+            abort(422, $e->getMessage());
+        }
 
         return redirect()->route('returns.control-center')
             ->with('success', 'Item ' . $item->barcode . ' status corrected to ' . $restoredStatus . '.');

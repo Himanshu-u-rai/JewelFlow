@@ -166,6 +166,16 @@ class JobOrder extends Model
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    protected static function booted(): void
+    {
+        // Audit M1: whatever ends a job (receipt, acknowledged completion, cancellation) brings its piece back.
+        static::updated(function (self $job): void {
+            if ($job->wasChanged('status') && ! $job->isOpen()) {
+                app(\App\Services\JobOrderService::class)->releaseSourceItem($job);
+            }
+        });
+    }
+
     public function isOpen(): bool
     {
         return in_array($this->status, [
