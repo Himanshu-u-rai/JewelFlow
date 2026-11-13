@@ -25,12 +25,23 @@ use Illuminate\Validation\Rule;
  * vault, customer/supplier/karigar opening). Locking now just flips state and
  * snapshots — no canonical rows yet, so it is safe to ship incrementally.
  */
-class OnboardingController extends Controller
+class OnboardingController extends Controller implements \Illuminate\Routing\Controllers\HasMiddleware
 {
     /**
      * One-step-per-page wizard order (?step=). Missing/unknown → first step.
      */
     private const WIZARD_STEPS = ['customers', 'cash', 'stock', 'vault', 'balances', 'suppliers', 'review'];
+
+    /**
+     * Every change to a batch is decided on the batch re-read under its row lock (audit N14). Locking (posting)
+     * takes its own lock and claim.
+     */
+    public static function middleware(): array
+    {
+        return [
+            new \Illuminate\Routing\Controllers\Middleware(\App\Http\Middleware\LockEditableOnboardingBatch::class, except: ['lock']),
+        ];
+    }
 
     /**
      * Owner-only. Middleware gates the capability; this is defense-in-depth,
@@ -180,6 +191,10 @@ class OnboardingController extends Controller
         // App-level friendly guard; the partial unique index is the race backstop.
         if (OnboardingBatch::whereNotIn('status', OnboardingBatch::TERMINAL)->exists()) {
             return back()->withErrors(['start_date' => 'An onboarding batch is already in progress.']);
+        }
+        // Opening balances are posted once per shop (audit N14); the one-locked-per-shop index backs this.
+        if (OnboardingBatch::where('status', OnboardingBatch::STATUS_LOCKED)->exists()) {
+            return back()->withErrors(['start_date' => 'Opening balances for this shop are already posted.']);
         }
 
         $batch = OnboardingBatch::create([

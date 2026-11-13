@@ -106,17 +106,19 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
     /** A receivable opening-balance row, backed by a throwaway OnboardingBatch (FK-required). */
     private function makeOpeningBalance(int $shopId, int $customerId, string $asOfDate, float $amount = 0.0): CustomerOpeningBalance
     {
-        // status: locked — a terminal state, so it doesn't collide with the
-        // "one active batch per shop" unique index when a test needs several
-        // opening-balance rows (each backed by its own throwaway batch) for
-        // the same shop.
-        $onboarding = new OnboardingBatch();
-        $onboarding->forceFill([
-            'shop_id'    => $shopId,
-            'as_of_date' => $asOfDate,
-            'start_date' => $asOfDate,
-            'status'     => 'locked',
-        ])->save();
+        // A shop has one posted (locked) onboarding batch (audit N14: one-locked-per-shop index), so several
+        // opening-balance rows for a shop hang on that one batch; each row keeps its own as_of_date for the
+        // evaluator's "latest cutoff wins" rule.
+        $onboarding = OnboardingBatch::withoutTenant()->where('shop_id', $shopId)->where('status', 'locked')->first();
+        if (! $onboarding) {
+            $onboarding = new OnboardingBatch();
+            $onboarding->forceFill([
+                'shop_id'    => $shopId,
+                'as_of_date' => $asOfDate,
+                'start_date' => $asOfDate,
+                'status'     => 'locked',
+            ])->save();
+        }
 
         $row = new CustomerOpeningBalance();
         $row->forceFill([
