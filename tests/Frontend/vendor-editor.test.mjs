@@ -47,8 +47,16 @@ test('Popup keeps the nine vendor fields, CSRF, native PUT/POST and explicit rea
     assert.match(form, /@csrf/);
     assert.match(form, /name="_method" value="PUT"/);
     assert.match(form, /name="_vendor_editor" value="1"/);
-    for (const name of ['name', 'contact_person', 'mobile', 'email', 'city', 'state', 'gst_number', 'address', 'notes']) {
+    for (const name of ['name', 'contact_person', 'mobile', 'email', 'gst_number', 'address', 'notes']) {
         assert.equal([...form.matchAll(new RegExp(`name="${name}"`, 'g'))].length, 1, name);
+    }
+    // City and state come from the shared address component (F15), once each, with the saved values passed in.
+    assert.equal([...form.matchAll(/<x-indian-address\b/g)].length, 1);
+    assert.match(form, /:city="old\('city', \$vendor\?->city\)"/);
+    assert.match(form, /:state="old\('state', \$vendor\?->state\)"/);
+    const address = read('resources/views/components/indian-address.blade.php');
+    for (const name of ['city', 'state']) {
+        assert.equal([...address.matchAll(new RegExp(`name="${name}"`, 'g'))].length, 1, name);
     }
     assert.doesNotMatch(form, /name="is_active"/);
     assert.match(form, /data-editor-errors/);
