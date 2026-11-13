@@ -1530,7 +1530,9 @@
     }
 </style>
 
-<div class="pos-page" x-data="retailerPos()">
+<div class="pos-page" x-data="retailerPos()"
+     {{-- Back/forward cache restores the page as it was left ("Processing…"): it is usable again (audit L2). --}}
+     @pageshow.window="if ($event.persisted) { selling = false; complianceSaving = false; }">
     <!-- ─── Header ──────────────────────────────── -->
     <div class="pos-header">
         <div class="pos-header-left">
@@ -3516,7 +3518,9 @@ function retailerPos() {
                     }),
                 });
 
-                const data = await res.json();
+                // Read the answer whatever its shape: an expired session (419) or a server failure is not JSON, and
+                // must not be reported as a network problem (audit L2).
+                const data = await res.json().catch(() => ({}));
 
                 // Phase 3a: quote went stale between display and submit (offer
                 // expired, item price moved, etc.). Server returns 409 with a
@@ -3567,7 +3571,16 @@ function retailerPos() {
                         this.$dispatch('open-modal', 'compliance-modal');
                         return;
                     }
-                    this.saleError = data.message || 'Sale failed';
+                    this.saleError = res.status === 419
+                        ? 'Your session has expired. Reload the page and sign in again; nothing was sold.'
+                        : (data.message || `Sale failed (error ${res.status}). Nothing was sold; please try again.`);
+                    this.selling = false;
+                    return;
+                }
+
+                // An answer without an invoice (a login page after a lost session) is not a sale.
+                if (!data.invoice_id) {
+                    this.saleError = 'The server did not confirm the sale. Reload the page and check the invoice list before selling again.';
                     this.selling = false;
                     return;
                 }

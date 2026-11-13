@@ -2222,13 +2222,31 @@
         checkoutInProgress = true;
         ['btnCheckout', 'btnCheckoutMobile'].forEach(id => {
             const b = document.getElementById(id);
-            if (b) { b.disabled = true; b.textContent = 'Redirecting…'; }
+            if (b) { b.dataset.label ??= b.innerHTML; b.disabled = true; b.textContent = 'Redirecting…'; }
         });
         sessionStorage.removeItem(CART_STORAGE_KEY);
         sessionStorage.removeItem(CUSTOMER_STORAGE_KEY);
         const params = cartIds.map(id => 'item_ids[]=' + id).join('&');
         window.location.href = POS_CUSTOMER_BASE + '/' + selectedCust.id + '?' + params;
     }
+
+    // Back/forward cache restores this page as it was left ("Redirecting…", cart storage cleared): make it usable
+    // again with the cart still on screen (audit L1).
+    function resetCheckout() {
+        checkoutInProgress = false;
+        ['btnCheckout', 'btnCheckoutMobile'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b && b.dataset.label !== undefined) b.innerHTML = b.dataset.label;
+        });
+        save();
+        updateCheckoutBtn();
+    }
+    // Only the visit whose page is on screen acts: Turbo keeps earlier visits' listeners, with their old carts.
+    const checkoutButton = document.getElementById('btnCheckout');
+    window.addEventListener('pageshow', (event) => {
+        if (!event.persisted || !checkoutButton?.isConnected) return;
+        resetCheckout();
+    });
 
     /* ═══ ADD CUSTOMER MODAL ═══ */
     function showModal() { document.getElementById('addCustModal').classList.add('active'); }
