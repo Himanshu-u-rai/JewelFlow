@@ -15,6 +15,7 @@ import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
 import { createIndianAddress } from './indian-address';
 import { configureDialogDatePicker } from './date-picker-dialog';
 import { extractConfirmMessage } from './confirm-message';
+import { createQuoteState } from './pos-quote';
 
 initializeCustomerPhotos();
 initializeChallanShare();
@@ -194,6 +195,8 @@ window.fetch = function(input, init) {
 
 window.Alpine = Alpine;
 window.Turbo = Turbo;
+// The retail POS reads its price quote state through this (audit H4).
+window.createQuoteState = createQuoteState;
 
 registerHistoricalManual(Alpine);
 Alpine.data('reorderRuleEditor', createReorderEditor);

@@ -225,6 +225,8 @@ class PosController extends Controller
             $validated['quote_id'] ?? null,
             $validated['quote_signature'] ?? null,
             (int) auth()->id(),
+            [(int) $validated['item_id']],
+            (int) $validated['customer_id'],
         );
         if (isset($resolution['idempotent_response'])) {
             return $resolution['idempotent_response'];
@@ -304,6 +306,7 @@ class PosController extends Controller
             'item_ids'   => 'required|array|min:1',
             'item_ids.*' => [
                 'required',
+                'distinct', // the same tag twice is a double scan, not two pieces
                 'integer',
                 Rule::exists('items', 'id')->where('shop_id', auth()->user()->shop_id),
             ],
@@ -359,6 +362,8 @@ class PosController extends Controller
             $validated['quote_id'] ?? null,
             $validated['quote_signature'] ?? null,
             (int) auth()->id(),
+            $validated['item_ids'],
+            (int) $validated['customer_id'],
         );
         if (isset($resolution['idempotent_response'])) {
             return $resolution['idempotent_response'];
@@ -779,6 +784,7 @@ class PosController extends Controller
                 'item_ids'   => 'required|array|min:1',
                 'item_ids.*' => [
                     'required',
+                    'distinct', // the same tag twice is a double scan, not two pieces
                     'integer',
                     Rule::exists('items', 'id')->where('shop_id', $shopId),
                 ],

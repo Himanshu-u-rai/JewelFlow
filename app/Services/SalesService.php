@@ -264,7 +264,7 @@ class SalesService
 
             // Validate payment total covers invoice (1 rupee tolerance for rounding)
             if ($creditOffset <= 0 && abs($paymentTotal - (float) $invoice->total) > 1.00) {
-                throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");
+                throw ValidationException::withMessages(['payments' => "Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})"]);
             }
 
             // Deduct customer gold if used

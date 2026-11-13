@@ -2168,6 +2168,8 @@
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
                     </div>
                 </div>
+                <p x-show="posQuoteV2Enabled && quote.status === 'pending' && items.length > 0" class="text-xs text-gray-500 mt-2 text-center">Updating price…</p>
+                <p x-show="quoteError" class="text-sm text-red-600 mt-3 text-center" role="alert" x-text="quoteError"></p>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
         </div>
@@ -2306,6 +2308,8 @@
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
                     </div>
                 </div>
+                <p x-show="posQuoteV2Enabled && quote.status === 'pending' && items.length > 0" class="text-xs text-gray-500 mt-2 text-center">Updating price…</p>
+                <p x-show="quoteError" class="text-sm text-red-600 mt-3 text-center" role="alert" x-text="quoteError"></p>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
         </div>
@@ -2573,8 +2577,9 @@ function retailerPos() {
         currentQuoteBreakdownJson: null,
         currentQuoteExpiresAt: null,
         currentQuoteInput: null,
-        quoteFetchInFlight: false,
-        quoteFetchDebounceTimer: null,
+        // One explicit quote state (resources/js/pos-quote.js): pending / ready / failed, tied to the inputs it priced.
+        quote: window.createQuoteState(),
+        quoteTimer: null,
         quoteError: '',
         quoteRoundingMethod: 'none',
         quoteRoundingNearest: 1,
@@ -2975,12 +2980,12 @@ function retailerPos() {
         /* ── Quote v2: debounced fetch ──────────── */
         fetchQuoteDebounced() {
             if (!this.posQuoteV2Enabled) return;
-            if (this.quoteFetchDebounceTimer) {
-                clearTimeout(this.quoteFetchDebounceTimer);
-                this.quoteFetchDebounceTimer = null;
-            }
+            clearTimeout(this.quoteTimer);
+            this.quoteTimer = null;
+            this.quoteError = '';
             if (this.items.length === 0) {
                 // Empty cart — clear any stale quote so the UI shows ₹0 totals.
+                this.quote.clear();
                 this.currentQuoteId = null;
                 this.currentQuoteSignature = null;
                 this.currentQuoteBreakdownJson = null;
@@ -2993,19 +2998,17 @@ function retailerPos() {
                 this.quoteRoundingAdjustment = 0;
                 return;
             }
-            this.quoteFetchDebounceTimer = setTimeout(() => {
+            // Waiting for the debounce already counts as "price not ready": Complete Sale stays off.
+            this.quote.wait();
+            this.quoteTimer = setTimeout(() => {
+                this.quoteTimer = null;
                 this.fetchQuote();
             }, 150);
         },
 
-        async fetchQuote() {
-            if (!this.posQuoteV2Enabled) return;
-            if (this.items.length === 0) return;
-
-            this.quoteFetchInFlight = true;
-            this.quoteError = '';
-
-            const payload = {
+        /** What the quote prices; also what a quote must match before the sale may use it. */
+        quotePayload() {
+            return {
                 mode: 'retailer',
                 customer_id: {{ $customer->id }},
                 item_ids: this.items.map(i => i.id),
@@ -3017,6 +3020,14 @@ function retailerPos() {
                     amount: this.appliedRedemptionAmount(),
                 } : null,
             };
+        },
+
+        async fetchQuote() {
+            if (!this.posQuoteV2Enabled) return;
+            if (this.items.length === 0) return;
+
+            const payload = this.quotePayload();
+            const ticket = this.quote.request(payload);
 
             try {
                 const res = await fetch(this.posQuoteUrl, {
@@ -3027,14 +3038,17 @@ function retailerPos() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify(payload),
+                    signal: ticket.signal,
                 });
 
                 const data = await res.json().catch(() => ({}));
 
+                // An answer to an older request (the cart or discount changed since) is dropped.
+                if (!this.quote.settle(ticket, res.ok)) return;
+
                 if (!res.ok) {
-                    this.quoteError = data.message || 'Could not refresh price.';
-                    // Leave displayed totals untouched so the cashier sees a
-                    // stale-but-coherent screen rather than zeros.
+                    // Totals stay as they were for reference, but the failed state blocks the sale.
+                    this.quoteError = data.message || 'Could not refresh price. Change the cart or discount to try again.';
                     return;
                 }
 
@@ -3062,10 +3076,10 @@ function retailerPos() {
                     this.roundOff = Number(b.rounding_adjustment);
                 }
             } catch (e) {
-                this.quoteError = 'Network error while refreshing price.';
-                // Intentionally do not zero out totals on network errors.
-            } finally {
-                this.quoteFetchInFlight = false;
+                // A request aborted because a newer one replaced it is not an error.
+                if (this.quote.settle(ticket, false)) {
+                    this.quoteError = 'Network error while refreshing price. Change the cart or discount to try again.';
+                }
             }
         },
 
@@ -3429,6 +3443,9 @@ function retailerPos() {
                 return false;
             }
 
+            // The sale bills the quote's numbers: only a quote that priced exactly what is on screen may be used.
+            if (this.posQuoteV2Enabled && !this.quote.readyFor(this.quotePayload())) return false;
+
             const hasAnySettlement = this.payments.length > 0 || this.appliedRedemptionAmount() > 0;
             if (!hasAnySettlement) return false;
 
@@ -3448,6 +3465,7 @@ function retailerPos() {
             if (!this.canSell()) return;
             this.selling = true;
             this.saleError = '';
+            const soldPayload = this.quotePayload();
 
             // Phase 2: persist the latest quote so it's durable before sale.
             // Failures are logged but do NOT block the sale — Phase 2 is
@@ -3507,6 +3525,9 @@ function retailerPos() {
                     this.currentQuoteSignature  = data.new_quote.signature;
                     this.currentQuoteBreakdownJson = data.new_quote.breakdown_json;
                     this.currentQuoteExpiresAt  = data.new_quote.expires_at;
+                    // The fresh quote priced the cart that was sent; it stands unless the screen changed meanwhile.
+                    this.currentQuoteInput      = soldPayload;
+                    this.quote.adopt(soldPayload);
                     const bd = data.new_quote.breakdown || {};
                     this.sellingPrice           = bd.subtotal ?? this.sellingPrice;
                     this.gst                    = bd.gst ?? this.gst;

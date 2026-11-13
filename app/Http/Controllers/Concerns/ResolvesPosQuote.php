@@ -23,7 +23,11 @@ trait ResolvesPosQuote
      *   stale_response?: \Illuminate\Http\JsonResponse,
      * }
      */
-    protected function resolveSaleQuote(int $shopId, ?string $quoteId, ?string $signature, ?int $userId = null): array
+    /**
+     * @param  array<int|string>  $saleItemIds  the items this sale bills
+     * @param  int  $saleCustomerId  the customer this sale bills
+     */
+    protected function resolveSaleQuote(int $shopId, ?string $quoteId, ?string $signature, ?int $userId, array $saleItemIds, int $saleCustomerId): array
     {
         if (! $quoteId) {
             return ['quote' => null];
@@ -38,6 +42,12 @@ trait ResolvesPosQuote
                 'error'   => 'quote_not_found',
                 'message' => 'Quote not recognised. Refresh the cart to get a fresh price.',
             ], 409)];
+        }
+
+        // Audit H4: the sale takes its money from the quote and its items and customer from the request, so the
+        // two must be the same bill. Checked first: a spent quote replayed for another cart is not a double click.
+        if (! $this->quoteMatchesSale($quote, $saleItemIds, $saleCustomerId)) {
+            return ['stale_response' => $this->staleQuoteResponse($quote, $userId, $saleItemIds, $saleCustomerId)];
         }
 
         if ($quote->isConsumed()) {
@@ -81,11 +91,32 @@ trait ResolvesPosQuote
         ];
     }
 
-    protected function staleQuoteResponse(PosQuote $quote, ?int $userId = null): \Illuminate\Http\JsonResponse
+    /** The quote's signed lines and customer are exactly the sale's (order and repeats aside). */
+    private function quoteMatchesSale(PosQuote $quote, array $saleItemIds, int $saleCustomerId): bool
+    {
+        $signed = $quote->breakdown();
+        $quoted = collect($signed['lines'] ?? [])->pluck('item_id')->map(fn ($id) => (int) $id);
+        $sold = collect($saleItemIds)->map(fn ($id) => (int) $id);
+
+        return (int) ($signed['customer_id'] ?? 0) === $saleCustomerId
+            && $quoted->count() === $sold->count()
+            && $quoted->sort()->values()->all() === $sold->sort()->values()->all();
+    }
+
+    /**
+     * A fresh quote with the stale one's discount and offer choices. When the sale's cart differs, it is priced for
+     * the sale's own items and customer, so the cashier confirms the bill that will actually be made.
+     */
+    protected function staleQuoteResponse(PosQuote $quote, ?int $userId = null, ?array $saleItemIds = null, ?int $saleCustomerId = null): \Illuminate\Http\JsonResponse
     {
         $engine = app(PricingEngine::class);
+        $input = $quote->input_payload;
+        if ($saleItemIds !== null) {
+            $input['item_ids'] = array_values(array_map('intval', $saleItemIds));
+            $input['customer_id'] = $saleCustomerId;
+        }
         $issued = $engine->quote(
-            QuoteInput::fromArray($quote->input_payload),
+            QuoteInput::fromArray($input),
             $userId,
         );
 

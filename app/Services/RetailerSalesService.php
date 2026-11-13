@@ -211,7 +211,7 @@ class RetailerSalesService
                 $weeklyLotService = null;
 
                 if ($mode === 'emi') {
-                    throw new \Exception('EMI checkout must be completed from the EMI form.');
+                    throw ValidationException::withMessages(['payments' => 'EMI checkout must be completed from the EMI form.']);
                 }
 
                 $amount = round((float) ($p['amount'] ?? 0), 2);
@@ -335,7 +335,8 @@ class RetailerSalesService
                 // Only metal value may overshoot the bill. A cash/UPI/bank
                 // overpayment is still an entry mistake — reject as before.
                 if ($excess - $metalPaid > 0.01) {
-                    throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");
+                    // Wrong amounts are the cashier's input (422), not a server error (audit H4 break test).
+                    throw ValidationException::withMessages(['payments' => "Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})"]);
                 }
 
                 if ($customerId <= 0) {
@@ -373,7 +374,7 @@ class RetailerSalesService
 
             // Validate payment total covers invoice total (0.01 tolerance for floating point noise)
             if (abs($paymentTotal - (float) $invoice->total) > 0.01) {
-                throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");
+                throw ValidationException::withMessages(['payments' => "Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})"]);
             }
 
             // Mark all items sold
