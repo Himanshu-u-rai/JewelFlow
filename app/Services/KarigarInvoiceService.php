@@ -142,6 +142,9 @@ class KarigarInvoiceService
                 if ($amount <= 0) {
                     throw new LogicException('Payment amount must be greater than zero.');
                 }
+                if (preg_match(self::RESERVED_REFERENCE, (string) ($data['reference'] ?? ''))) {
+                    throw new LogicException('That reference is reserved for the app\'s own entries; use another.');
+                }
                 $total += $amount;
             }
             $due = round((float) $locked->total_after_tax - (float) $locked->payments()->sum('amount'), 2);
@@ -171,33 +174,39 @@ class KarigarInvoiceService
     }
 
     // ── Advances: used by compensating entries (owner 2026-11-13) ───────────────────────────────────────────
-    // karigar_payments is append-only (CONSTITUTION trigger #11): an advance row is never edited. Using it appends
-    // ADVANCE-USED:{id} (minus, no invoice) and FROM-ADVANCE:{id} (plus, on the invoice); reversing a payment made
-    // from an advance appends ADVANCE-RESTORED:{id} (plus, no invoice). Each pair cancels out: no cash moves.
+    // karigar_payments is append-only (CONSTITUTION trigger #11): an advance row is never edited. Using it appends an
+    // ADVANCE_USED row (minus, no invoice) and a FROM_ADVANCE row (plus, on the invoice); reversing a payment made
+    // from an advance appends an ADVANCE_RESTORED row (plus, no invoice). Each pair cancels out: no cash moves.
+    // The marking lives in system-only columns (entry_type, source_payment_id), never in the `reference` a user
+    // types (security review of d734d188); user references may not use the reserved prefixes either.
 
-    public const ADVANCE_USED = 'ADVANCE-USED:';
-    public const FROM_ADVANCE = 'FROM-ADVANCE:';
-    public const ADVANCE_RESTORED = 'ADVANCE-RESTORED:';
+    public const ENTRY_ADVANCE_USED = 'advance_used';
+    public const ENTRY_FROM_ADVANCE = 'from_advance';
+    public const ENTRY_ADVANCE_RESTORED = 'advance_restored';
+    public const ENTRY_REVERSAL = 'reversal';
 
-    /** An original advance: paid to the karigar with no invoice, and not one of the bookkeeping rows above. */
+    /** Prefixes the app's own rows carry in `reference` (shown to people); a user may not type them. */
+    private const RESERVED_REFERENCE = '/^\s*(ADVANCE-USED|FROM-ADVANCE|ADVANCE-RESTORED|REVERSAL)\s*:/i';
+
+    /** An original advance: paid to the karigar with no invoice, and not one of the app's bookkeeping rows. */
     private function originalAdvances(int $shopId): \Illuminate\Database\Eloquent\Builder
     {
         return KarigarPayment::query()
             ->where('shop_id', $shopId)
             ->whereNull('karigar_invoice_id')
-            ->where('amount', '>', 0)
-            ->where(fn ($q) => $q->whereNull('reference')
-                ->orWhere(fn ($q) => $q->where('reference', 'not like', self::ADVANCE_USED . '%')
-                    ->where('reference', 'not like', self::ADVANCE_RESTORED . '%')));
+            ->whereNull('entry_type')
+            ->where('amount', '>', 0);
     }
 
-    /** What is left of an advance: its amount, less what was used, plus what was given back by reversals. */
+    /** What is left of an advance: its amount, less what was used, plus what reversals gave back. */
     private function advanceLeft(KarigarPayment $advance): float
     {
         $moved = (float) KarigarPayment::query()
             ->where('shop_id', $advance->shop_id)
+            ->where('karigar_id', $advance->karigar_id)
             ->whereNull('karigar_invoice_id')
-            ->whereIn('reference', [self::ADVANCE_USED . $advance->id, self::ADVANCE_RESTORED . $advance->id])
+            ->where('source_payment_id', $advance->id)
+            ->whereIn('entry_type', [self::ENTRY_ADVANCE_USED, self::ENTRY_ADVANCE_RESTORED])
             ->sum('amount');
 
         return round(max(0, (float) $advance->amount + $moved), 2);
@@ -246,11 +255,15 @@ class KarigarInvoiceService
             'paid_on' => now()->toDateString(), 'created_by_user_id' => $userId,
         ];
         KarigarPayment::record($common + [
-            'karigar_invoice_id' => null, 'amount' => -$use, 'reference' => self::ADVANCE_USED . $advance->id,
+            'karigar_invoice_id' => null, 'amount' => -$use,
+            'entry_type' => self::ENTRY_ADVANCE_USED, 'source_payment_id' => $advance->id,
+            'reference' => 'ADVANCE-USED:' . $advance->id,
             'notes' => "Advance #{$advance->id} used on invoice {$locked->karigar_invoice_number}",
         ]);
         KarigarPayment::record($common + [
-            'karigar_invoice_id' => $locked->id, 'amount' => $use, 'reference' => self::FROM_ADVANCE . $advance->id,
+            'karigar_invoice_id' => $locked->id, 'amount' => $use,
+            'entry_type' => self::ENTRY_FROM_ADVANCE, 'source_payment_id' => $advance->id,
+            'reference' => 'FROM-ADVANCE:' . $advance->id,
             'notes' => "Paid from advance #{$advance->id}",
         ]);
     }
@@ -314,9 +327,14 @@ class KarigarInvoiceService
             }
 
             $marker = 'REVERSAL:' . $payment->id;
+            // Already reversed: by a reversal row the app marked (system column), or by one made before that column
+            // existed. Those carry the marker AND a negative amount, which a person cannot enter (minimum 0.01), so
+            // a typed marker cannot block a genuine reversal.
             if (KarigarPayment::query()
                 ->where('karigar_invoice_id', $locked->id)
-                ->where('reference', $marker)
+                ->where(fn ($q) => $q
+                    ->where(fn ($q) => $q->where('entry_type', self::ENTRY_REVERSAL)->where('source_payment_id', $payment->id))
+                    ->orWhere(fn ($q) => $q->whereNull('entry_type')->where('reference', $marker)->where('amount', '<', 0)))
                 ->exists()) {
                 throw new LogicException('This payment has already been reversed.');
             }
@@ -329,13 +347,15 @@ class KarigarInvoiceService
                 'amount'             => -1 * (float) $payment->amount,
                 'mode'               => $payment->mode,
                 'reference'          => $marker,
+                'entry_type'         => self::ENTRY_REVERSAL,
+                'source_payment_id'  => $payment->id,
                 'paid_on'            => now()->toDateString(),
                 'notes'              => 'Reversal of payment #' . $payment->id . ($reason ? ': ' . $reason : ''),
                 'created_by_user_id' => $userId,
             ]);
 
-            // A payment made from an advance goes back to that advance (it was never cash on this day).
-            if (str_starts_with((string) $payment->reference, self::FROM_ADVANCE)) {
+            // A payment the app made from an advance goes back to that advance (it was never cash on this day).
+            if ($payment->entry_type === self::ENTRY_FROM_ADVANCE && $payment->source_payment_id) {
                 KarigarPayment::record([
                     'shop_id'            => $locked->shop_id,
                     'karigar_id'         => $locked->karigar_id,
@@ -343,7 +363,9 @@ class KarigarInvoiceService
                     'payment_method_id'  => $payment->payment_method_id,
                     'amount'             => (float) $payment->amount,
                     'mode'               => $payment->mode,
-                    'reference'          => self::ADVANCE_RESTORED . substr((string) $payment->reference, strlen(self::FROM_ADVANCE)),
+                    'reference'          => 'ADVANCE-RESTORED:' . $payment->source_payment_id,
+                    'entry_type'         => self::ENTRY_ADVANCE_RESTORED,
+                    'source_payment_id'  => $payment->source_payment_id,
                     'paid_on'            => now()->toDateString(),
                     'notes'              => 'Advance given back by reversal of payment #' . $payment->id,
                     'created_by_user_id' => $userId,

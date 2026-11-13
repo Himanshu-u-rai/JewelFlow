@@ -250,7 +250,8 @@ class KarigarInvoiceController extends Controller
             'payments.*.amount'             => 'required|numeric|min:0.01',
             'payments.*.mode'               => 'required|string|max:20',
             'payments.*.payment_method_id'  => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],
-            'payments.*.reference'          => 'nullable|string|max:255',
+            // The app's own entries use these prefixes; a typed reference may not (security review of d734d188).
+            'payments.*.reference'          => ['nullable', 'string', 'max:255', 'not_regex:/^\s*(ADVANCE-USED|FROM-ADVANCE|ADVANCE-RESTORED|REVERSAL)\s*:/i'],
             'payments.*.paid_on'            => 'required|date',
         ]);
 

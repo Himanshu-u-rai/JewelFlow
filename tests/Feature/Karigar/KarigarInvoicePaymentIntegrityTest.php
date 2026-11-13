@@ -183,6 +183,48 @@ class KarigarInvoicePaymentIntegrityTest extends TestCase
         $this->assertEqualsWithDelta(1500, $this->karigarTotalPaid($karigar), 0.001, 'still only the one advance paid out');
     }
 
+    /**
+     * Security review of d734d188: the bookkeeping was keyed off `reference`, which users type. A real payment
+     * entered with reference "FROM-ADVANCE:<id>" and then reversed minted advance credit from nothing. Bookkeeping
+     * now lives in system-only columns, and user references cannot use the reserved prefixes.
+     */
+    public function test_a_typed_reference_cannot_mint_advance_credit(): void
+    {
+        [$user, $shop, $karigar, $invoice] = $this->invoice();
+        $advance = $this->advance($shop, $karigar, 1000);
+        $this->billWith($user, $shop, $karigar, 'KI-A', 5000, [$advance->id]); // the advance is now spent
+
+        try {
+            $this->service()->recordPayments($invoice, [$this->split(500) + ['reference' => 'FROM-ADVANCE:' . $advance->id]], $user->id);
+            $this->fail('A reserved bookkeeping prefix was accepted as a user reference.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('reserved', $e->getMessage());
+        }
+
+        // Even a row that carries the text (an old or imported one) is not bookkeeping: reversing it gives nothing back.
+        $typed = KarigarPayment::record([
+            'shop_id' => $shop->id, 'karigar_id' => $karigar->id, 'karigar_invoice_id' => $invoice->id, 'amount' => 500,
+            'mode' => 'cash', 'paid_on' => now()->toDateString(), 'reference' => 'FROM-ADVANCE:' . $advance->id,
+        ]);
+        $this->service()->reversePayment($invoice->fresh(), $typed, 'test', $user->id);
+
+        $this->assertSame([], $this->service()->availableAdvances($shop->id, $karigar->id)->all(), 'no advance credit appeared');
+        $this->assertEqualsWithDelta(1000, $this->karigarTotalPaid($karigar), 0.001, 'the advance, and the 500 paid then reversed');
+    }
+
+    public function test_a_typed_reversal_marker_cannot_block_a_reversal(): void
+    {
+        [$user, $shop, $karigar, $invoice] = $this->invoice();
+        [$paid] = $this->service()->recordPayments($invoice, [$this->split(1000)], $user->id);
+        KarigarPayment::record([
+            'shop_id' => $shop->id, 'karigar_id' => $karigar->id, 'karigar_invoice_id' => $invoice->id, 'amount' => 1,
+            'mode' => 'cash', 'paid_on' => now()->toDateString(), 'reference' => 'REVERSAL:' . $paid->id,
+        ]);
+
+        $this->service()->reversePayment($invoice->fresh(), $paid, 'genuine', $user->id);
+        $this->assertEqualsWithDelta(1, (float) $invoice->fresh()->amount_paid, 0.001);
+    }
+
     public function test_the_form_lists_only_advances_with_money_left(): void
     {
         [$user, $shop, $karigar] = $this->invoice();
