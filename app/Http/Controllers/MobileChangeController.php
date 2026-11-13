@@ -149,11 +149,15 @@ class MobileChangeController extends Controller
             return back()->with('error', 'This code has expired. Please request a new one.');
         }
 
-        $pending->increment('attempts');
+        // Each guess takes a slot in the database, refused once they are gone: guesses sent at once each count, so
+        // the cap holds however many arrive together (audit N18). The read above is only a starting point.
+        $slot = MobileChangeRequest::whereKey($pending->id)->whereNull('consumed_at')
+            ->where('attempts', '<', self::MAX_ATTEMPTS - 1)
+            ->increment('attempts');
 
-        if ($pending->attempts >= self::MAX_ATTEMPTS) {
-            $pending->update(['consumed_at' => now()]);
-            return back()->with('error', 'Too many invalid attempts. Please start over.');
+        if ($slot === 0) {
+            MobileChangeRequest::whereKey($pending->id)->whereNull('consumed_at')->update(['consumed_at' => now()]);
+            return back()->with('error', 'Too many invalid attempts, or this code was already used. Please start over.');
         }
 
         if (! Hash::check($validated['otp'], $pending->otp_hash)) {
@@ -176,20 +180,29 @@ class MobileChangeController extends Controller
         $oldMobile = $user->mobile_number;
         $newMobile = $pending->new_mobile_number;
 
-        DB::transaction(function () use ($user, $pending, $newMobile) {
+        $applied = DB::transaction(function () use ($user, $pending, $newMobile): bool {
+            // Only one submit consumes the request; a second right code finds it used.
+            $consumed = MobileChangeRequest::whereKey($pending->id)->whereNull('consumed_at')
+                ->update(['verified_at' => now(), 'consumed_at' => now()]);
+            if ($consumed === 0) {
+                return false;
+            }
+
             $user->forceFill([
                 'mobile_number'  => $newMobile,
                 'remember_token' => \Illuminate\Support\Str::random(60),
             ])->save();
 
-            $pending->update([
-                'verified_at' => now(),
-                'consumed_at' => now(),
-            ]);
+            // End the user's other sessions (as the admin's mobile change does). logoutOtherDevices() needs the
+            // plaintext password, which the code form does not send.
+            DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', request()->session()->getId())->delete();
 
-            // Invalidate all other sessions.
-            Auth::logoutOtherDevices(request()->input('current_password') ?? '');
+            return true;
         });
+
+        if (! $applied) {
+            return back()->with('error', 'This code was already used. Please start over.');
+        }
 
         Mail::to($user->email)->send(new MobileChangedNotificationMail(
             oldMobileMasked: $this->maskMobile($oldMobile ?? ''),
