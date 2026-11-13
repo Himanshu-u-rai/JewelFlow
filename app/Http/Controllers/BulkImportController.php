@@ -106,10 +106,12 @@ class BulkImportController extends Controller
             return back()->with('error', 'No valid rows to import.');
         }
 
-        $import->update([
-            'mode' => $request->input('mode'),
-            'status' => Import::STATUS_QUEUED,
-        ]);
+        // Only from preview: a cancel that landed since the check above stays cancelled (audit N3).
+        $queued = Import::whereKey($import->id)->where('status', Import::STATUS_PREVIEW)
+            ->update(['mode' => $request->input('mode'), 'status' => Import::STATUS_QUEUED]);
+        if ($queued === 0) {
+            return back()->with('error', 'Only preview imports can be executed.');
+        }
 
         try {
             ProcessBulkImportJob::dispatchSync($import->id, $request->input('mode'));
@@ -132,11 +134,14 @@ class BulkImportController extends Controller
     {
         abort_if($import->shop_id !== auth()->user()->shop_id, 403);
 
-        if (!in_array($import->status, [Import::STATUS_PREVIEW, Import::STATUS_QUEUED], true)) {
+        // Only from preview/queued, checked in the write itself: a worker that claimed the import meanwhile holds its
+        // row until done, and the import is then running or finished, never cancelled under it (audit N3).
+        $cancelled = Import::whereKey($import->id)
+            ->whereIn('status', [Import::STATUS_PREVIEW, Import::STATUS_QUEUED])
+            ->update(['status' => Import::STATUS_CANCELLED]);
+        if ($cancelled === 0) {
             return back()->with('error', 'Only preview or queued imports can be cancelled.');
         }
-
-        $import->update(['status' => Import::STATUS_CANCELLED]);
 
         if ($import->file_path && Storage::exists($import->file_path)) {
             Storage::delete($import->file_path);
