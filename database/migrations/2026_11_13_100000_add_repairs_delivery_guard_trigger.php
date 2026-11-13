@@ -14,6 +14,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // CONSTITUTION §4 Rule 2: never install the guard over rows that already break it. An open repair carrying an
+        // invoice must be looked at by a person first. (Delivered rows without an invoice are legacy and allowed.)
+        $violating = DB::table('repairs')->where('status', '<>', 'delivered')->whereNotNull('invoice_id')->orderBy('id')->pluck('id');
+        if ($violating->isNotEmpty()) {
+            throw new \RuntimeException('repairs_delivery_guard: open repairs carry an invoice; resolve them first. repair ids: '
+                . $violating->implode(', '));
+        }
+
         DB::unprepared(<<<'SQL'
             CREATE OR REPLACE FUNCTION repairs_delivery_guard()
             RETURNS trigger AS $$
