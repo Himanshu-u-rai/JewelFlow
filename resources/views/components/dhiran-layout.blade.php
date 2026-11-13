@@ -84,7 +84,7 @@
             <div class="dh-foot">
                 <div class="dh-foot-user">{{ auth()->user()->name ?? \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) }}</div>
                 <div class="dh-foot-shop">{{ auth()->user()->shop?->name ?? 'Dhiran account' }}</div>
-                <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top">
+                <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top" data-confirm-message="Sign out of Dhiran?">
                     @csrf
                     <button type="submit" class="dh-logout">Sign out</button>
                 </form>
