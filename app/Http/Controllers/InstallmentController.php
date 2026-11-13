@@ -353,13 +353,19 @@ class InstallmentController extends Controller
             }
         }
 
-        $this->installmentService->recordPayment(
-            $plan,
-            $data['amount'],
-            $data['payment_method'],
-            $data['notes'] ?? null,
-            $methodId,
-        );
+        // The service decides under the plan's row lock (more than the balance, or a plan closed a moment ago):
+        // its refusal is an answer on the form, not a server error, as the app's endpoint already answers.
+        try {
+            $this->installmentService->recordPayment(
+                $plan,
+                $data['amount'],
+                $data['payment_method'],
+                $data['notes'] ?? null,
+                $methodId,
+            );
+        } catch (\LogicException $e) {
+            return back()->withErrors(['amount' => $e->getMessage()])->withInput();
+        }
 
         return redirect()->route('installments.show', $plan)
             ->with('success', 'EMI payment recorded.');

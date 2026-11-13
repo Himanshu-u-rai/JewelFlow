@@ -93,6 +93,27 @@ class InstallmentPlan extends Model
         return max(0, (float) $this->remaining_amount);
     }
 
+    /**
+     * Instalments fully covered by the money paid when this much is still owed (audit H2). Never all of them while
+     * anything is owed: the last instalment absorbs rounding, so the plan finishes only with its money.
+     */
+    public function emisCoveredWhenOwing(float $remaining): int
+    {
+        $paid = (float) $this->total_payable - $remaining;
+        $emi = (float) $this->emi_amount;
+        if ($emi <= 0) {
+            return 0;
+        }
+
+        return max(0, min($this->total_emis - 1, (int) floor(($paid + 0.005) / $emi)));
+    }
+
+    /** Due date of instalment $n (1 = first): the same day of the month, $n months after the plan began. */
+    public function dueDateOf(int $n): \Illuminate\Support\Carbon
+    {
+        return $this->created_at->copy()->startOfDay()->addMonthsNoOverflow($n);
+    }
+
     public function remainingEmis(): int
     {
         return max(0, $this->total_emis - $this->emis_paid);

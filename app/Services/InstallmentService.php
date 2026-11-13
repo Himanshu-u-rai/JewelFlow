@@ -57,7 +57,8 @@ class InstallmentService
                 'emi_amount' => $emiAmount,
                 'total_emis' => $totalEmis,
                 'emis_paid' => 0,
-                'next_due_date' => now()->addMonth()->toDateString(),
+                // Instalment 1 on the plan's schedule (InstallmentPlan::dueDateOf): Jan 31 → Feb 28, not Mar 3.
+                'next_due_date' => now()->startOfDay()->addMonthsNoOverflow(1)->toDateString(),
                 'status' => 'active',
             ]);
         });
@@ -97,20 +98,22 @@ class InstallmentService
                 'notes' => $notes,
             ]);
 
-            $lockedPlan->increment('emis_paid');
-            $lockedPlan->refresh();
-            $remaining = max(0, (float) $lockedPlan->remaining_amount - $amount);
+            // Audit H2: progress follows the money, not the number of payments. The plan completes only when it is
+            // paid; "EMIs paid" is how many instalments the money covers; the next due date is the schedule's.
+            $remaining = round(max(0, (float) $lockedPlan->remaining_amount - $amount), 2);
 
-            // Update next due date
-            if ($lockedPlan->emis_paid >= $lockedPlan->total_emis || $remaining <= 0.01) {
+            if ($remaining <= 0.01) {
                 $lockedPlan->update([
                     'status' => 'completed',
+                    'emis_paid' => $lockedPlan->total_emis,
                     'next_due_date' => null,
                     'remaining_amount' => 0,
                 ]);
             } else {
+                $covered = $lockedPlan->emisCoveredWhenOwing($remaining);
                 $lockedPlan->update([
-                    'next_due_date' => now()->addMonth()->toDateString(),
+                    'emis_paid' => $covered,
+                    'next_due_date' => $lockedPlan->dueDateOf($covered + 1)->toDateString(),
                     'remaining_amount' => $remaining,
                 ]);
             }
