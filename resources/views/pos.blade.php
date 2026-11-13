@@ -2382,6 +2382,8 @@
         return Array.isArray(window.__posAllItems) ? window.__posAllItems : [];
     }
 
+    // This page's own scan panel: timers of a page Turbo has replaced stop themselves (audit N1).
+    const scanPanelEl = document.getElementById('scanModal');
     let scanToken        = null;
     let pollTimer        = null;
     let countdownTimer   = null;
@@ -2552,6 +2554,7 @@
         if (countdownWrap) countdownWrap.style.display = '';
 
         countdownTimer = setInterval(() => {
+            if (!scanPanelEl?.isConnected) { clearInterval(countdownTimer); return; }
             if (!expiresAt) {
                 el.textContent = '--';
                 if (endsAtEl) endsAtEl.textContent = '';
@@ -2615,10 +2618,15 @@
 
     // ── Polling loop (1.5s) ───────────────────────────
     function startPolling() {
-        if (!scanToken) return;
+        if (!scanToken || pollTimer) return;
         const POLL_URL = POLL_URL_TEMPLATE.replace('__TOKEN__', encodeURIComponent(scanToken));
 
-        pollTimer = setInterval(async () => {
+        // One poll at a time, each scheduled after the last finished (audit N5), and only while this page's own scan
+        // panel is on screen: once Turbo replaced the page, its loop ends quietly (audit N1). The session lives on, so
+        // the POS resumes it when the cashier comes back.
+        const tick = async () => {
+            pollTimer = null;
+            if (!scanPanelEl?.isConnected) return;
             if (!sessionActive) { stopPolling(); return; }
             try {
                 const res = await fetch(POLL_URL, {
@@ -2660,17 +2668,10 @@
                     return;
                 }
 
-                // Track real mobile connection from server
-                if (data.mobile_connected && !mobileConnected) {
-                    mobileConnected = true;
-                    setScanStatus('active', 'Connected');
-                    updateActionButton();
-                } else if (!data.mobile_connected) {
-                    // Also when the phone disconnects: stop showing "Connected".
-                    mobileConnected = false;
-                    setScanStatus('waiting', 'Scan QR to Connect');
-                    updateActionButton();
-                }
+                // The badge always shows what the server says now, so an earlier failed poll cannot stick (audit N5).
+                mobileConnected = !!data.mobile_connected;
+                setScanStatus(mobileConnected ? 'active' : 'waiting', mobileConnected ? 'Connected' : 'Scan QR to Connect');
+                updateActionButton();
 
                 // Connected-scanner roster (multi-scanner: who is feeding this cart)
                 renderConnectedScanners(data.scanners);
@@ -2696,12 +2697,15 @@
                 }
             } catch(e) {
                 setScanStatus('expired', 'Connection issue');
+            } finally {
+                if (sessionActive && scanPanelEl?.isConnected) pollTimer = setTimeout(tick, 1500);
             }
-        }, 1500);
+        };
+        pollTimer = setTimeout(tick, 1500);
     }
 
     function stopPolling() {
-        if (pollTimer)    { clearInterval(pollTimer);    pollTimer = null; }
+        if (pollTimer)    { clearTimeout(pollTimer);    pollTimer = null; }
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         sessionActive = false;
         mobileConnected = false;
