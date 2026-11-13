@@ -3515,6 +3515,8 @@ function retailerPos() {
                         // invoice (idempotency).
                         quote_id: this.posQuoteV2Enabled ? this.currentQuoteId : null,
                         quote_signature: this.posQuoteV2Enabled ? this.currentQuoteSignature : null,
+                        // Audit N16: the inputs on screen; the server bills only a quote priced on exactly these.
+                        quote_input: this.posQuoteV2Enabled ? soldPayload : null,
                     }),
                 });
 

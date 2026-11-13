@@ -158,6 +158,50 @@ class PosQuoteCartBindingTest extends TestCase
         $this->assertSame('in_stock', $a->fresh()->status);
     }
 
+    /**
+     * Audit N16 (2026-11-13): the sale bills the quote's discount, offer and redemption, but only items and customer
+     * were compared. The web sale now states the price inputs it is paying for (quote_input, the payload its quote
+     * check uses); a quote priced on other inputs gets a fresh quote for the sale's own inputs instead of a bill.
+     */
+    public function test_a_quote_for_another_discount_cannot_bill_the_sale(): void
+    {
+        [$user, $shop, $customer, $a] = $this->shopWithTwoItems();
+        $q = $this->quote($user, $customer->id, [$a->id], 1000);
+
+        $res = $this->actingAs($user)->postJson('/pos/sell', [
+            'customer_id' => $customer->id, 'item_ids' => [$a->id], 'discount' => 500, 'round_off' => 0,
+            'payments' => [['mode' => 'cash', 'amount' => 50000]],
+            'quote_id' => $q['quote_id'], 'quote_signature' => $q['signature'],
+            'quote_input' => ['mode' => 'retailer', 'customer_id' => $customer->id, 'item_ids' => [$a->id], 'manual_discount' => 500],
+        ]);
+
+        $res->assertStatus(409)->assertJsonPath('error', 'quote_stale');
+        $this->assertEqualsWithDelta(500, (float) $res->json('new_quote.breakdown.manual_discount'), 0.01, 'priced on the discount being sold');
+        $this->assertSame(0, $this->invoices($shop));
+    }
+
+    public function test_a_sale_stating_the_quoted_inputs_bills(): void
+    {
+        [$user, $shop, $customer, $a, $b] = $this->shopWithTwoItems();
+        $q = $this->quote($user, $customer->id, [$b->id, $a->id], 1000);
+
+        $this->actingAs($user)->postJson('/pos/sell', [
+            'customer_id' => $customer->id, 'item_ids' => [$a->id, $b->id], 'discount' => 1000, 'round_off' => 0,
+            'payments' => [['mode' => 'cash', 'amount' => (float) $q['breakdown']['final_total']]],
+            'quote_id' => $q['quote_id'], 'quote_signature' => $q['signature'],
+            // Same inputs, items in another order and numbers as strings, as a browser may send them.
+            'quote_input' => ['mode' => 'retailer', 'customer_id' => (string) $customer->id, 'item_ids' => [$a->id, $b->id],
+                'manual_discount' => '1000', 'manual_discount_percent' => null, 'offer_scheme_id' => null, 'scheme_redemption' => null],
+        ])->assertOk();
+        $this->assertSame(1, $this->invoices($shop));
+    }
+
+    public function test_the_retail_pos_sends_the_inputs_it_is_paying_for(): void
+    {
+        $view = file_get_contents(resource_path('views/pos_customer_retailer.blade.php'));
+        $this->assertMatchesRegularExpression('/quote_input:\s*this\.posQuoteV2Enabled \? soldPayload : null/', $view);
+    }
+
     public function test_the_app_sale_is_bound_to_its_quote_too(): void
     {
         [$user, $shop, $customer, $a, $b] = $this->shopWithTwoItems();

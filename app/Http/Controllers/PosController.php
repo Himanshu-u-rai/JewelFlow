@@ -350,6 +350,15 @@ class PosController extends Controller
             // success (idempotent — double-clicks return the original invoice).
             'quote_id'        => 'nullable|string|max:40',
             'quote_signature' => 'nullable|string|max:80',
+            // Audit N16: the price inputs the cashier is paying for; must be what the quote priced.
+            'quote_input'                            => 'nullable|array',
+            'quote_input.item_ids'                   => 'nullable|array',
+            'quote_input.manual_discount'            => 'nullable|numeric|min:0',
+            'quote_input.manual_discount_percent'    => 'nullable|numeric|min:0|max:100',
+            'quote_input.offer_scheme_id'            => 'nullable|integer',
+            'quote_input.scheme_redemption'          => 'nullable|array',
+            'quote_input.scheme_redemption.enrollment_id' => 'nullable|integer',
+            'quote_input.scheme_redemption.amount'   => 'nullable|numeric|min:0',
         ]);
 
         // Quote resolution (Phase 3a). Returns either:
@@ -364,6 +373,7 @@ class PosController extends Controller
             (int) auth()->id(),
             $validated['item_ids'],
             (int) $validated['customer_id'],
+            isset($validated['quote_input']) ? $request->input('quote_input') : null,
         );
         if (isset($resolution['idempotent_response'])) {
             return $resolution['idempotent_response'];
