@@ -653,9 +653,18 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
             $this->installmentCashCount((int) $shop->id, (int) $plan->id),
             'DUPLICATE CASH: the retry booked a second EMI cash-in',
         );
+        // Progress follows the money since audit H2 (EMIs paid = instalments the money covers), so "counted once"
+        // means the balance fell by exactly one payment and EMIs paid is what that one payment covers.
+        $after = InstallmentPlan::withoutTenant()->whereKey($plan->id)->firstOrFail();
+        $this->assertEqualsWithDelta(
+            (float) $plan->total_payable - 5000,
+            (float) $after->remaining_amount,
+            0.01,
+            'DOUBLE-COUNTED EMI: the balance fell twice for one customer payment',
+        );
         $this->assertSame(
-            1,
-            (int) InstallmentPlan::withoutTenant()->whereKey($plan->id)->value('emis_paid'),
+            $after->emisCoveredWhenOwing((float) $plan->total_payable - 5000),
+            (int) $after->emis_paid,
             'DOUBLE-COUNTED EMI: emis_paid advanced twice for one customer payment',
         );
     }
