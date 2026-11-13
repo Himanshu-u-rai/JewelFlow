@@ -170,16 +170,14 @@ class SubscriptionGateService
             return [true, $status, ''];
         }
 
+        // Same reading as EnsureSubscriptionIsActive (audit M3): grace is its own status, so an `expired` row has
+        // none left, and a `read_only` subscription row is a legacy lapse. Read-only belongs to administrator holds.
         if ($status === 'expired') {
-            if ($subscription->grace_ends_at && now()->toDateString() <= $subscription->grace_ends_at->toDateString()) {
-                return [false, 'read_only', 'Subscription expired and grace/read-only period is active. Writes are blocked.'];
-            }
-
             return [false, 'expired', 'Subscription expired and grace period ended. Write operations are blocked.'];
         }
 
         if ($status === 'read_only') {
-            return [false, 'read_only', 'Subscription is in read-only mode. Write operations are blocked.'];
+            return [false, 'expired', 'Subscription lapsed. Write operations are blocked.'];
         }
 
         if (in_array($status, ['suspended', 'cancelled'], true)) {

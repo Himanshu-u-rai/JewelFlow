@@ -168,6 +168,33 @@ class SubscriptionServiceEnforcementTest extends TestCase
         TenantContext::runFor($shop->id, fn () => SubscriptionGateService::assertShopWritable($shop->id));
     }
 
+    /**
+     * Audit M3 (2026-11-13): the write gate still softened an expired subscription inside grace_ends_at into
+     * "read-only", a state the access middleware reserves for administrator holds (it suspends and routes to
+     * renewal). Writes were blocked either way, but the gate recorded a state the shop was not in. The two now
+     * answer the same for every status.
+     */
+    public function test_the_write_gate_and_the_access_middleware_agree_on_every_subscription_status(): void
+    {
+        $middleware = app(\App\Http\Middleware\EnsureSubscriptionIsActive::class);
+        $access = new \ReflectionMethod($middleware, 'resolveSubscriptionAccess');
+
+        foreach (['active', 'trial', 'grace', 'expired', 'read_only', 'suspended', 'cancelled'] as $status) {
+            [$shop] = $this->createTenantWithSubscription($status, now()->addDays(3)->toDateString());
+            $subscription = ShopSubscription::where('shop_id', $shop->id)->latest('id')->firstOrFail();
+            [, $blocked] = $access->invoke($middleware, $subscription);
+
+            try {
+                SubscriptionGateService::assertShopWritable($shop->id);
+                $writable = true;
+            } catch (LogicException $e) {
+                $writable = false;
+                $this->assertStringNotContainsString('read-only', $e->getMessage(), "{$status}: not an administrator hold");
+            }
+            $this->assertSame(! $blocked, $writable, "gate and middleware disagree on '{$status}'");
+        }
+    }
+
     private function createTenantWithSubscription(string $status, ?string $graceEndsAt = null): array
     {
         $shop = Shop::create([
