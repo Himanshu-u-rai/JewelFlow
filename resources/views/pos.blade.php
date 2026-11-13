@@ -1681,7 +1681,7 @@
                     <div class="scan-qr-spinner"></div>
                     <span>Generating…</span>
                 </div>
-                <img id="scanQrImg" src="" alt="QR Code" style="display:none;">
+                <div id="scanQrCanvas" style="width:196px;height:196px;display:none;"></div>
             </div>
 
             <p class="scan-modal-hint" id="scanModalHint">Open camera on your phone and scan the QR code above.<br>Items will appear in the cart automatically.</p>
@@ -2384,6 +2384,8 @@
 
     // This page's own scan panel: timers of a page Turbo has replaced stop themselves (audit N1).
     const scanPanelEl = document.getElementById('scanModal');
+    let pollEpoch = 0;
+    let pollLive = false;
     let scanToken        = null;
     let pollTimer        = null;
     let countdownTimer   = null;
@@ -2618,7 +2620,10 @@
 
     // ── Polling loop (1.5s) ───────────────────────────
     function startPolling() {
-        if (!scanToken || pollTimer) return;
+        if (!scanToken || pollLive) return;
+        pollLive = true;
+        // Each loop has an epoch; stopPolling() ends it, so an in-flight poll of a stopped loop never reschedules.
+        const epoch = ++pollEpoch;
         const POLL_URL = POLL_URL_TEMPLATE.replace('__TOKEN__', encodeURIComponent(scanToken));
 
         // One poll at a time, each scheduled after the last finished (audit N5), and only while this page's own scan
@@ -2626,7 +2631,7 @@
         // the POS resumes it when the cashier comes back.
         const tick = async () => {
             pollTimer = null;
-            if (!scanPanelEl?.isConnected) return;
+            if (epoch !== pollEpoch || !scanPanelEl?.isConnected) return;
             if (!sessionActive) { stopPolling(); return; }
             try {
                 const res = await fetch(POLL_URL, {
@@ -2698,13 +2703,15 @@
             } catch(e) {
                 setScanStatus('expired', 'Connection issue');
             } finally {
-                if (sessionActive && scanPanelEl?.isConnected) pollTimer = setTimeout(tick, 1500);
+                if (epoch === pollEpoch && sessionActive && scanPanelEl?.isConnected) pollTimer = setTimeout(tick, 1500);
             }
         };
         pollTimer = setTimeout(tick, 1500);
     }
 
     function stopPolling() {
+        pollEpoch++;
+        pollLive = false;
         if (pollTimer)    { clearTimeout(pollTimer);    pollTimer = null; }
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         sessionActive = false;
@@ -2732,7 +2739,9 @@
 
         // Reset modal state
         document.getElementById('scanQrLoading').style.display = 'flex';
-        document.getElementById('scanQrImg').style.display = 'none';
+        const qrCanvas = document.getElementById('scanQrCanvas');
+        qrCanvas.innerHTML = '';
+        qrCanvas.style.display = 'none';
         document.getElementById('scanRecentWrap').style.display = 'none';
         document.getElementById('scanRecentList').innerHTML = '';
         document.getElementById('scanCountdown').textContent = '--';
@@ -2771,11 +2780,12 @@
             saveScanState();
 
             // Generate QR code client-side
-            const qrWrap = document.getElementById('scanQrWrap');
-            qrWrap.innerHTML = '<div id="scanQrCanvas" style="width:196px;height:196px;"></div>';
+            // Only the canvas's own content changes: the spinner stays for the next session's reset.
+            document.getElementById('scanQrLoading').style.display = 'none';
+            qrCanvas.style.display = '';
 
             try {
-                new QRCode(document.getElementById('scanQrCanvas'), {
+                new QRCode(qrCanvas, {
                     text: data.scan_url,
                     width: 196,
                     height: 196,
