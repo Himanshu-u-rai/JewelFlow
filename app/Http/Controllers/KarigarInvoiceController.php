@@ -57,19 +57,15 @@ class KarigarInvoiceController extends Controller
 
         $shopId = auth()->user()->shop_id;
 
-        // Unlinked advance payments per karigar (so the form can show them)
-        $unlinkedAdvances = KarigarPayment::query()
-            ->where('shop_id', $shopId)
-            ->whereNull('karigar_invoice_id')
-            ->orderBy('paid_on')
-            ->get(['id', 'karigar_id', 'amount', 'paid_on', 'mode', 'reference', 'job_order_id'])
+        // Advances with money left, per karigar (so the form can offer them). "amount" is what is left to use.
+        $unlinkedAdvances = $this->service->availableAdvances((int) $shopId)
             ->groupBy('karigar_id')
-            ->map(fn ($g) => $g->map(fn ($p) => [
-                'id'         => $p->id,
-                'amount'     => (float) $p->amount,
-                'paid_on'    => $p->paid_on->format('d M Y'),
-                'mode'       => $p->mode,
-                'reference'  => $p->reference,
+            ->map(fn ($g) => $g->map(fn ($a) => [
+                'id'         => $a['id'],
+                'amount'     => $a['available'],
+                'paid_on'    => $a['paid_on'],
+                'mode'       => $a['mode'],
+                'reference'  => $a['reference'],
             ])->values());
 
         $advancesByKarigar = $unlinkedAdvances->toJson();
@@ -222,19 +218,13 @@ class KarigarInvoiceController extends Controller
     {
         $this->authorizeShop($karigarInvoice);
 
-        if ($karigarInvoice->payments()->exists()) {
-            return back()->with('error', 'Cannot delete an invoice with recorded payments.');
+        // Decided under the invoice's row lock, so a payment landing meanwhile keeps the invoice (audit N15). The
+        // attachment is removed from the disk the row records, after the delete commits.
+        try {
+            $this->service->delete($karigarInvoice);
+        } catch (\LogicException $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        // Delete from whichever disk the row records — hard-coding 'public' here
-        // would leave every private-disk attachment orphaned on disk after the
-        // row is gone.
-        if ($karigarInvoice->invoice_file_path && $karigarInvoice->invoice_file_disk) {
-            Storage::disk($karigarInvoice->invoice_file_disk)->delete($karigarInvoice->invoice_file_path);
-        }
-
-        $karigarInvoice->lines()->delete();
-        $karigarInvoice->delete();
 
         return redirect()->route('karigar-invoices.index')->with('success', 'Invoice deleted.');
     }
@@ -264,8 +254,11 @@ class KarigarInvoiceController extends Controller
             'payments.*.paid_on'            => 'required|date',
         ]);
 
-        foreach ($validated['payments'] as $split) {
-            $this->service->recordPayment($karigarInvoice, $split, (int) auth()->id());
+        // All splits together or none, never more than is due (audit N15).
+        try {
+            $this->service->recordPayments($karigarInvoice, $validated['payments'], (int) auth()->id());
+        } catch (\LogicException $e) {
+            return back()->withErrors(['payments' => $e->getMessage()])->withInput();
         }
 
         $count = count($validated['payments']);

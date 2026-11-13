@@ -57,27 +57,14 @@ class KarigarInvoiceService
             $invoice->discrepancy_flags = $this->validate($invoice);
             $invoice->save();
 
-            // Apply any selected advance payments to this invoice
+            // Apply any selected advances to this invoice (owner 2026-11-13: compensating entries).
             $advanceIds = array_filter((array) ($data['advance_payment_ids'] ?? []));
             if (! empty($advanceIds)) {
+                $locked = $this->lockInvoice($invoice);
                 foreach ($advanceIds as $payId) {
-                    $payment = KarigarPayment::query()
-                        ->where('shop_id', $shopId)
-                        ->where('karigar_id', (int) $data['karigar_id'])
-                        ->whereNull('karigar_invoice_id')
-                        ->where('id', (int) $payId)
-                        ->first();
-                    if ($payment) {
-                        $payment->karigar_invoice_id = $invoice->id;
-                        $payment->save();
-                    }
+                    $this->applyAdvance($locked, (int) $payId, $userId);
                 }
-                $totalPaid = (float) $invoice->payments()->sum('amount');
-                $invoice->amount_paid = $totalPaid;
-                $invoice->payment_status = $totalPaid + self::AMOUNT_TOLERANCE >= (float) $invoice->total_after_tax
-                    ? KarigarInvoice::PAYMENT_PAID
-                    : ($totalPaid > 0 ? KarigarInvoice::PAYMENT_PARTIAL : KarigarInvoice::PAYMENT_UNPAID);
-                $invoice->save();
+                $this->refreshPaymentState($locked);
             }
 
             return $invoice->fresh(['lines', 'karigar', 'jobOrder']);
@@ -87,7 +74,9 @@ class KarigarInvoiceService
     public function update(KarigarInvoice $invoice, array $data, array $lines, ?UploadedFile $invoiceFile): KarigarInvoice
     {
         return DB::transaction(function () use ($invoice, $data, $lines, $invoiceFile) {
-            if ($invoice->payment_status !== KarigarInvoice::PAYMENT_UNPAID) {
+            // Decided on the locked invoice and its payments, not on the status the page loaded (audit N15).
+            $invoice = $this->lockInvoice($invoice);
+            if ($invoice->payments()->exists()) {
                 throw new LogicException('Cannot edit an invoice that has recorded payments.');
             }
 
@@ -132,38 +121,171 @@ class KarigarInvoiceService
 
     public function recordPayment(KarigarInvoice $invoice, array $data, int $userId): KarigarPayment
     {
-        return DB::transaction(function () use ($invoice, $data, $userId) {
-            $amount = (float) ($data['amount'] ?? 0);
-            if ($amount <= 0) {
-                throw new LogicException('Payment amount must be greater than zero.');
+        return $this->recordPayments($invoice, [$data], $userId)[0];
+    }
+
+    /**
+     * Record one payment, possibly split across modes, against the invoice re-read under its row lock (audit N15):
+     * all splits or none, never more than is due, and amount_paid / payment_status recomputed from the payments
+     * actually on the invoice.
+     *
+     * @return list<KarigarPayment>
+     */
+    public function recordPayments(KarigarInvoice $invoice, array $splits, int $userId): array
+    {
+        return DB::transaction(function () use ($invoice, $splits, $userId) {
+            $locked = $this->lockInvoice($invoice);
+
+            $total = 0.0;
+            foreach ($splits as $data) {
+                $amount = round((float) ($data['amount'] ?? 0), 2);
+                if ($amount <= 0) {
+                    throw new LogicException('Payment amount must be greater than zero.');
+                }
+                $total += $amount;
+            }
+            $due = round((float) $locked->total_after_tax - (float) $locked->payments()->sum('amount'), 2);
+            if ($total > $due + self::AMOUNT_TOLERANCE) {
+                throw new LogicException('Payment of ₹' . number_format($total, 2) . ' is more than the ₹' . number_format(max(0, $due), 2) . ' due on this invoice.');
             }
 
-            $payment = KarigarPayment::record([
-                'shop_id' => $invoice->shop_id,
-                'karigar_id' => $invoice->karigar_id,
-                'karigar_invoice_id' => $invoice->id,
-                'payment_method_id' => $data['payment_method_id'] ?? null,
-                'amount' => $amount,
-                'mode' => $data['mode'] ?? 'cash',
-                'reference' => $data['reference'] ?? null,
-                'paid_on' => $data['paid_on'] ?? now()->toDateString(),
-                'notes' => $data['notes'] ?? null,
-                'created_by_user_id' => $userId,
-            ]);
-
-            $totalPaid = (float) $invoice->payments()->sum('amount');
-            $invoice->amount_paid = $totalPaid;
-
-            if ($totalPaid + self::AMOUNT_TOLERANCE >= (float) $invoice->total_after_tax) {
-                $invoice->payment_status = KarigarInvoice::PAYMENT_PAID;
-            } elseif ($totalPaid > 0) {
-                $invoice->payment_status = KarigarInvoice::PAYMENT_PARTIAL;
-            } else {
-                $invoice->payment_status = KarigarInvoice::PAYMENT_UNPAID;
+            $payments = [];
+            foreach ($splits as $data) {
+                $payments[] = KarigarPayment::record([
+                    'shop_id' => $locked->shop_id,
+                    'karigar_id' => $locked->karigar_id,
+                    'karigar_invoice_id' => $locked->id,
+                    'payment_method_id' => $data['payment_method_id'] ?? null,
+                    'amount' => round((float) $data['amount'], 2),
+                    'mode' => $data['mode'] ?? 'cash',
+                    'reference' => $data['reference'] ?? null,
+                    'paid_on' => $data['paid_on'] ?? now()->toDateString(),
+                    'notes' => $data['notes'] ?? null,
+                    'created_by_user_id' => $userId,
+                ]);
             }
-            $invoice->save();
+            $this->refreshPaymentState($locked);
 
-            return $payment;
+            return $payments;
+        });
+    }
+
+    // ── Advances: used by compensating entries (owner 2026-11-13) ───────────────────────────────────────────
+    // karigar_payments is append-only (CONSTITUTION trigger #11): an advance row is never edited. Using it appends
+    // ADVANCE-USED:{id} (minus, no invoice) and FROM-ADVANCE:{id} (plus, on the invoice); reversing a payment made
+    // from an advance appends ADVANCE-RESTORED:{id} (plus, no invoice). Each pair cancels out: no cash moves.
+
+    public const ADVANCE_USED = 'ADVANCE-USED:';
+    public const FROM_ADVANCE = 'FROM-ADVANCE:';
+    public const ADVANCE_RESTORED = 'ADVANCE-RESTORED:';
+
+    /** An original advance: paid to the karigar with no invoice, and not one of the bookkeeping rows above. */
+    private function originalAdvances(int $shopId): \Illuminate\Database\Eloquent\Builder
+    {
+        return KarigarPayment::query()
+            ->where('shop_id', $shopId)
+            ->whereNull('karigar_invoice_id')
+            ->where('amount', '>', 0)
+            ->where(fn ($q) => $q->whereNull('reference')
+                ->orWhere(fn ($q) => $q->where('reference', 'not like', self::ADVANCE_USED . '%')
+                    ->where('reference', 'not like', self::ADVANCE_RESTORED . '%')));
+    }
+
+    /** What is left of an advance: its amount, less what was used, plus what was given back by reversals. */
+    private function advanceLeft(KarigarPayment $advance): float
+    {
+        $moved = (float) KarigarPayment::query()
+            ->where('shop_id', $advance->shop_id)
+            ->whereNull('karigar_invoice_id')
+            ->whereIn('reference', [self::ADVANCE_USED . $advance->id, self::ADVANCE_RESTORED . $advance->id])
+            ->sum('amount');
+
+        return round(max(0, (float) $advance->amount + $moved), 2);
+    }
+
+    /**
+     * Advances with money left, for the invoice form.
+     *
+     * @return \Illuminate\Support\Collection<int, array{id: int, karigar_id: int, amount: float, available: float, paid_on: string, mode: string, reference: ?string}>
+     */
+    public function availableAdvances(int $shopId, ?int $karigarId = null): \Illuminate\Support\Collection
+    {
+        return $this->originalAdvances($shopId)
+            ->when($karigarId, fn ($q) => $q->where('karigar_id', $karigarId))
+            ->orderBy('paid_on')->orderBy('id')
+            ->get()
+            ->map(fn (KarigarPayment $p) => [
+                'id' => (int) $p->id, 'karigar_id' => (int) $p->karigar_id, 'amount' => (float) $p->amount,
+                'available' => $this->advanceLeft($p), 'paid_on' => $p->paid_on->format('d M Y'),
+                'mode' => $p->mode, 'reference' => $p->reference,
+            ])
+            ->filter(fn ($a) => $a['available'] > self::AMOUNT_TOLERANCE)
+            ->values();
+    }
+
+    /** Use what is left of one advance (up to what the locked invoice still owes), once, under the advance's lock. */
+    private function applyAdvance(KarigarInvoice $locked, int $advanceId, int $userId): void
+    {
+        $advance = $this->originalAdvances((int) $locked->shop_id)
+            ->where('karigar_id', $locked->karigar_id)
+            ->whereKey($advanceId)
+            ->lockForUpdate()
+            ->first();
+        if (! $advance) {
+            return;
+        }
+        $due = round((float) $locked->total_after_tax - (float) $locked->payments()->sum('amount'), 2);
+        $use = round(min($this->advanceLeft($advance), $due), 2);
+        if ($use <= self::AMOUNT_TOLERANCE) {
+            return;
+        }
+
+        $common = [
+            'shop_id' => $locked->shop_id, 'karigar_id' => $locked->karigar_id,
+            'payment_method_id' => $advance->payment_method_id, 'mode' => $advance->mode,
+            'paid_on' => now()->toDateString(), 'created_by_user_id' => $userId,
+        ];
+        KarigarPayment::record($common + [
+            'karigar_invoice_id' => null, 'amount' => -$use, 'reference' => self::ADVANCE_USED . $advance->id,
+            'notes' => "Advance #{$advance->id} used on invoice {$locked->karigar_invoice_number}",
+        ]);
+        KarigarPayment::record($common + [
+            'karigar_invoice_id' => $locked->id, 'amount' => $use, 'reference' => self::FROM_ADVANCE . $advance->id,
+            'notes' => "Paid from advance #{$advance->id}",
+        ]);
+    }
+
+    /** The invoice re-read under its row lock: every money decision on it is made on this copy. */
+    private function lockInvoice(KarigarInvoice $invoice): KarigarInvoice
+    {
+        return KarigarInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+    }
+
+    /** amount_paid and payment_status always follow the payments on the (locked) invoice. */
+    private function refreshPaymentState(KarigarInvoice $locked): void
+    {
+        $totalPaid = round((float) $locked->payments()->sum('amount'), 2);
+        $locked->amount_paid = $totalPaid;
+        $locked->payment_status = $totalPaid + self::AMOUNT_TOLERANCE >= (float) $locked->total_after_tax
+            ? KarigarInvoice::PAYMENT_PAID
+            : ($totalPaid > 0 ? KarigarInvoice::PAYMENT_PARTIAL : KarigarInvoice::PAYMENT_UNPAID);
+        $locked->save();
+    }
+
+    /** Delete an invoice that has no payments, decided under its row lock. */
+    public function delete(KarigarInvoice $invoice): void
+    {
+        DB::transaction(function () use ($invoice) {
+            $locked = $this->lockInvoice($invoice);
+            if ($locked->payments()->exists()) {
+                throw new LogicException('Cannot delete an invoice with recorded payments.');
+            }
+            $file = [$locked->invoice_file_disk, $locked->invoice_file_path];
+            $locked->lines()->delete();
+            $locked->delete();
+            if ($file[0] && $file[1]) {
+                DB::afterCommit(fn () => Storage::disk($file[0])->delete($file[1]));
+            }
         });
     }
 
@@ -211,6 +333,22 @@ class KarigarInvoiceService
                 'notes'              => 'Reversal of payment #' . $payment->id . ($reason ? ': ' . $reason : ''),
                 'created_by_user_id' => $userId,
             ]);
+
+            // A payment made from an advance goes back to that advance (it was never cash on this day).
+            if (str_starts_with((string) $payment->reference, self::FROM_ADVANCE)) {
+                KarigarPayment::record([
+                    'shop_id'            => $locked->shop_id,
+                    'karigar_id'         => $locked->karigar_id,
+                    'karigar_invoice_id' => null,
+                    'payment_method_id'  => $payment->payment_method_id,
+                    'amount'             => (float) $payment->amount,
+                    'mode'               => $payment->mode,
+                    'reference'          => self::ADVANCE_RESTORED . substr((string) $payment->reference, strlen(self::FROM_ADVANCE)),
+                    'paid_on'            => now()->toDateString(),
+                    'notes'              => 'Advance given back by reversal of payment #' . $payment->id,
+                    'created_by_user_id' => $userId,
+                ]);
+            }
 
             $totalPaid = (float) $locked->payments()->sum('amount');
             $locked->amount_paid = $totalPaid;
