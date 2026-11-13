@@ -284,21 +284,15 @@
     @endif
 
     @if(!$expired)
-    <!-- html5-qrcode CDN with fallback -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script>
-    if (typeof Html5Qrcode === 'undefined') {
-        var s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js';
-        document.head.appendChild(s);
-    }
-    </script>
+    {{-- html5-qrcode 2.3.8 (Apache-2.0), vendored: the CSP allows scripts only from this site. --}}
+    <script src="{{ asset('js/html5-qrcode.min.js') }}"></script>
     <script>
     (function() {
         const TOKEN       = @json($token);
         const POST_URL    = @json(route('scan.post'));
         const CSRF        = @json(csrf_token());
-        const EXPIRY      = new Date(@json($session->expires_at->toIso8601String()));
+        // ponytail: no local expiry clock. The server keeps the session alive while the POS polls and answers 410
+        // once it has ended (audit N19).
 
         let html5QrCode   = null;
         let lastBarcode   = null;
@@ -353,18 +347,6 @@
             }
         }
 
-        // ── Session expiry watchdog ───────────────────────
-        function checkExpiry() {
-            if (new Date() >= EXPIRY) {
-                sessionActive = false;
-                if (html5QrCode) html5QrCode.stop().catch(() => {});
-                document.getElementById('expiredOverlay').style.display = 'flex';
-                document.getElementById('statusBadge').textContent = '● Expired';
-                document.getElementById('statusBadge').className = 'scanner-badge expired';
-            }
-        }
-        setInterval(checkExpiry, 5000);
-
         // ── Debounce: ignore same barcode within 2s ───────
         function isDuplicate(barcode) {
             const now = Date.now();
@@ -400,7 +382,10 @@
 
                 if (res.status === 410) {
                     sessionActive = false;
+                    if (html5QrCode) html5QrCode.stop().catch(() => {});
                     document.getElementById('expiredOverlay').style.display = 'flex';
+                    document.getElementById('statusBadge').textContent = '● Expired';
+                    document.getElementById('statusBadge').className = 'scanner-badge expired';
                     return;
                 }
 
@@ -419,7 +404,9 @@
                 }
 
             } catch(err) {
-                setStatus('Network error — will retry next scan', 'error');
+                // Nothing was sent: let the same tag be scanned again at once (the 2 s repeat filter would hide it).
+                lastBarcode = null;
+                setStatus('✗ Not sent: ' + barcode + ' — check the connection and scan again', 'error');
                 setTimeout(() => setStatus('Point camera at a barcode to scan'), 2000);
             }
         }
