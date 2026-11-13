@@ -15,6 +15,17 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // §4 Rule 2: advance bookkeeping rows written before these columns (reference text only) would be read as
+        // ordinary payments, and append-only rows cannot be backfilled. Stop and name them for a person instead.
+        // (Old REVERSAL rows are fine: they are recognised by marker AND negative amount.)
+        $unmarked = \Illuminate\Support\Facades\DB::table('karigar_payments')
+            ->where('reference', '~*', '^\s*(ADVANCE-USED|FROM-ADVANCE|ADVANCE-RESTORED)\s*:')
+            ->orderBy('id')->pluck('id');
+        if ($unmarked->isNotEmpty()) {
+            throw new \RuntimeException('karigar_payments entry_type: advance bookkeeping rows without a type; resolve them first. payment ids: '
+                . $unmarked->implode(', '));
+        }
+
         Schema::table('karigar_payments', function (Blueprint $table) {
             $table->string('entry_type', 30)->nullable()->after('reference');
             $table->foreignId('source_payment_id')->nullable()->after('entry_type')
