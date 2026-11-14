@@ -185,7 +185,15 @@ class Shop extends Model
      */
     public function suspensionIsAdministrative(): bool
     {
-        return $this->suspended_by !== null;
+        if ($this->suspended_by !== null) {
+            return true;
+        }
+
+        // A pending GDPR deletion is an administrative decision even if the stamp was
+        // lost (e.g. withdrawn by the restriction tool), so every path that asks
+        // "may a payment/job/middleware lift this?" gets "no" (audit N22 follow-up).
+        // Only a restricted shop is asked, so ordinary active requests cost no query.
+        return ($this->access_mode !== 'active' || ! $this->is_active) && $this->hasGdprDeletionPending();
     }
 
     /**

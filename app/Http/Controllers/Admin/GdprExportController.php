@@ -74,6 +74,7 @@ class GdprExportController extends Controller
             'suspension_reason' => 'GDPR deletion scheduled: ' . $validated['reason'],
             'suspended_at'     => now(),
             'suspended_by'     => $actor->id,
+            'suspended_until'  => null, // a deletion is not time-boxed (audit N22 follow-up)
         ]);
 
         // Record a platform_setting marker so a future cleanup command can find these shops

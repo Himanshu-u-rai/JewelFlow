@@ -55,7 +55,8 @@ class EnsureAccountIsActive
 
         if ($accessMode === 'suspended') {
             $until = $shop->suspended_until;
-            if ($until && now()->greaterThan($until)) {
+            // A pending GDPR deletion outlives any earlier time box (audit N22 follow-up).
+            if ($until && now()->greaterThan($until) && ! $shop->hasGdprDeletionPending()) {
                 // Auto-clear an expired TIME-BOXED suspension. suspended_by must be
                 // cleared with it: the restriction it attributes no longer exists, and
                 // a surviving stamp classifies the shop as administratively held
