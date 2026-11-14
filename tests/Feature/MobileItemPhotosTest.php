@@ -62,6 +62,29 @@ class MobileItemPhotosTest extends TestCase
         }
     }
 
+    /**
+     * Found fixing audit N8: the retail create rules (StoreItemMobileRequest) did not list image_upload_id, so
+     * validation dropped it and a photo sent through the upload flow was silently not attached. The edit path and
+     * the manufacturer create already accepted it.
+     */
+    public function test_a_photo_sent_through_the_upload_flow_is_attached_to_a_new_retail_item(): void
+    {
+        $this->retailer();
+        $user = auth()->user();
+        Storage::disk('public')->put('uploads/originals/up.png', base64_decode($this->png()));
+        \App\Models\PendingUpload::create([
+            'shop_id' => $user->shop_id, 'user_id' => $user->id, 'kind' => 'item_image', 'content_type' => 'image/png',
+            'declared_size_bytes' => 100, 'upload_token' => 'up-photo-1', 'status' => 'ready',
+            'original_path' => 'uploads/originals/up.png', 'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->newItem(['image_upload_id' => 'up-photo-1'])->assertCreated();
+
+        $item = Item::withoutTenant()->where('barcode', 'PHOTO-1')->firstOrFail();
+        $this->assertSame('uploads/originals/up.png', $item->image);
+        $this->assertSame($item->id, (int) \App\Models\PendingUpload::where('upload_token', 'up-photo-1')->value('consumed_by_id'));
+    }
+
     public function test_more_than_four_photos_is_refused_like_the_web(): void
     {
         $this->retailer();
