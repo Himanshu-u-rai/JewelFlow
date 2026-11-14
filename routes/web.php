@@ -225,6 +225,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('realm:erp')
         ->name('dashboard');
 
+    // The header bell, read again in place (on opening, after a download, on a slow timer). Each row inside is
+    // gated by its own permission in ShopNoticeService; "Clear" touches only this user's download messages.
+    Route::get('/notices', [\App\Http\Controllers\NoticeController::class, 'show'])
+        ->middleware('throttle:60,1')->name('notices.show');
+    Route::post('/notices/downloads/clear', [\App\Http\Controllers\NoticeController::class, 'clearDownloads'])
+        ->middleware('throttle:30,1')->name('notices.downloads.clear');
+
     // Masters Hub — permission/edition-aware index of existing master-data
     // screens. `edition:retailer,manufacturer` blocks Dhiran-only shops (no
     // applicable masters); realm:erp keeps it inside the ERP product.

@@ -6,13 +6,19 @@ use App\Models\Category;
 use App\Models\ReorderRule;
 use App\Models\ShopPreferences;
 use App\Models\User;
+use App\Notifications\Reporting\ExportReadyNotification;
+use App\Services\Reporting\ExportAuditService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
- * The header bell's notices: the dashboard's warnings (repair backlog, low
- * stock, overdue EMIs) and every low-stock rule — the set the app's Shop
- * notices page shows. Everyone who could read them on the dashboard still
- * can; a notice links only where the user may go.
+ * The one bell (owner request, 2026-11-14): the dashboard's warnings (repair
+ * backlog, low stock, overdue EMIs), items needing a price review, the user's
+ * finished exports ready to download, and every low-stock rule. Everyone who
+ * could read a notice before still can; a row shows or links only where the
+ * user may go. The app's Shop notices page shows the warnings and reorder
+ * rules; pricing and downloads are for the app to follow.
  */
 class ShopNoticeService
 {
@@ -23,7 +29,7 @@ class ShopNoticeService
     ];
 
     /**
-     * @return array{warnings: list<array>, reorder: list<array>, count: int, reorder_count: int, reorder_href: ?string}
+     * @return array{warnings: list<array>, pricing: ?array, downloads: list<array>, reorder: list<array>, count: int, reorder_count: int, reorder_href: ?string}
      */
     public static function forUser(User $user): array
     {
@@ -55,13 +61,52 @@ class ShopNoticeService
             'href' => $canStock ? self::stockLink($alert, $categoryIds) : null,
         ], $alerts);
 
+        // Items needing a price review: one row, however many items (the stock list's review drawer lists them).
+        $pricingCount = $isRetailer && $canStock ? app(ShopPricingService::class)->pricingAlertCount($shopId) : 0;
+        $pricing = $pricingCount > 0 ? [
+            'title' => $pricingCount === 1 ? '1 item needs a price review' : "{$pricingCount} items need a price review",
+            'meta' => 'Not repriced after the last rate change',
+            'href' => route('inventory.items.index', ['alerts' => 'pricing']),
+        ] : null;
+
+        $downloads = self::readyDownloads($user);
+
         return [
             'warnings' => $warnings,
+            'pricing' => $pricing,
+            'downloads' => $downloads,
             'reorder' => $reorder,
-            'count' => count($warnings) + count($reorder),
+            // The badge counts the rows the bell shows.
+            'count' => count($warnings) + ($pricing ? 1 : 0) + count($downloads) + count($reorder),
             'reorder_count' => count($reorder),
             'reorder_href' => $isRetailer && $canStock ? route('reorder.index') : null,
         ];
+    }
+
+    /**
+     * Finished background exports this user asked for and has not downloaded or cleared yet. A message, not a state:
+     * downloading (ExportDownloadController) or clearing marks it read. A link past its expiry is never offered.
+     *
+     * @return list<array{title: string, meta: ?string, href: string}>
+     */
+    private static function readyDownloads(User $user): array
+    {
+        return app(ExportAuditService::class)->readyNotificationsFor($user)
+            ->filter(fn ($note) => empty($note->data['expires_at']) || Carbon::parse($note->data['expires_at'])->isFuture())
+            ->filter(fn ($note) => ! empty($note->data['download_url']))
+            ->map(fn ($note) => [
+                'title' => Str::headline($note->data['report_key'] ?? 'Export') . ' is ready to download',
+                'meta' => empty($note->data['expires_at']) ? null
+                    : 'Link expires ' . Carbon::parse($note->data['expires_at'])->diffForHumans(),
+                'href' => $note->data['download_url'],
+            ])
+            ->values()->all();
+    }
+
+    /** Marks this user's ready-download messages read (the bell's "Clear"); downloading one marks just that one. */
+    public static function clearDownloads(User $user): void
+    {
+        $user->unreadNotifications()->where('type', ExportReadyNotification::class)->update(['read_at' => now()]);
     }
 
     /** Cached like the dashboard's own figures (5 minutes). */

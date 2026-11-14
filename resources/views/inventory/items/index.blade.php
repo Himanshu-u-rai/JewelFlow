@@ -1,19 +1,7 @@
 <x-app-layout>
     <div class="inventory-items-workspace">
     <x-stock-workspace-header active="items">
-            @if($isRetailer && $pricingAlertCount > 0)
-            <button type="button"
-                    id="pricing-alert-bell"
-                    onclick="if(window.__pricingAlerts){window.__pricingAlerts.open();}else{document.addEventListener('alpine:initialized',function(){window.__pricingAlerts&&window.__pricingAlerts.open();},{once:true});}"
-                    class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
-                    title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention"
-                    aria-label="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
-                <x-icon name="bell" class="w-5 h-5" />
-                <span class="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
-                    {{ $pricingAlertCount > 99 ? '99+' : $pricingAlertCount }}
-                </span>
-            </button>
-            @endif
+            {{-- No bell of its own: the header bell carries "items need a price review" and opens the drawer below. --}}
             @can('inventory.create')
                 <a href="{{ route('inventory.items.create') }}"
                     class="btn btn-success btn-sm inventory-items-create-btn" aria-label="Create Item">
@@ -24,11 +12,11 @@
     </x-stock-workspace-header>
 
     @if($isRetailer && $pricingAlertCount > 0)
-    @php $paStorageKey = 'pa_dismissed_' . (int) auth()->user()->shop_id . '_' . now()->toDateString(); @endphp
-    {{-- Pricing Alert Drawer — own Alpine scope so it doesn't interfere with page x-data --}}
+    {{-- Pricing Alert Drawer — own Alpine scope so it doesn't interfere with page x-data. Opened from the header
+         bell's "items need a price review" row (?alerts=pricing). --}}
     <div
         id="pricing-alert-drawer"
-        x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}', '{{ $paStorageKey }}')"
+        x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}')"
         @keydown.escape.window="isOpen && close()"
     >
         {{-- Backdrop --}}
@@ -128,7 +116,7 @@
     </div>
 
     <script>
-    function pricingAlertDrawer(initialCount, alertsUrl, storageKey) {
+    function pricingAlertDrawer(initialCount, alertsUrl) {
         return {
             isOpen: false,
             // idle | loading | loaded | error (audit N9): a failure is not "no alerts".
@@ -136,24 +124,18 @@
             _inflight: null,
             count: initialCount,
             items: [],
-            _storageKey: storageKey,
 
             // Alpine calls init() by itself. (An x-init="init()" beside it ran this twice:
             // the panel opened twice and asked for the list twice.)
             init() {
-                // Expose open() on window so the bell button (rendered outside this
-                // x-data scope in x-page-header) can call it after Alpine initialises.
-                window.__pricingAlerts = this;
-
                 // Leaving the page ends this panel. Alpine normally destroys a page's
                 // components when Turbo swaps the page, but not on the page a session
-                // started on, where this instance and its Escape handler live on. Closed,
-                // it stays silent ("isOpen && close()") instead of marking today's alerts
-                // dismissed from whatever page Escape is pressed on next.
+                // started on, where this instance and its Escape handler live on.
                 document.addEventListener('turbo:before-cache', () => { this.isOpen = false; }, { once: true });
 
-                // Auto-open once per day — skip if already dismissed this session
-                if (this.count > 0 && !localStorage.getItem(this._storageKey)) {
+                // The header bell's "items need a price review" row sends the user here with ?alerts=pricing.
+                // No once-a-day pop-up any more: the bell carries the count on every page.
+                if (this.count > 0 && new URLSearchParams(window.location?.search ?? '').get('alerts') === 'pricing') {
                     this.open();
                 }
             },
@@ -171,7 +153,13 @@
 
             close() {
                 this.isOpen = false;
-                localStorage.setItem(this._storageKey, '1');
+                // Drop the bell's ?alerts=pricing from the address, so a reload does not reopen the drawer.
+                const params = new URLSearchParams(window.location?.search ?? '');
+                if (params.has('alerts')) {
+                    params.delete('alerts');
+                    const query = params.toString();
+                    window.history?.replaceState(window.history.state, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash);
+                }
             },
 
             fetchItems() {

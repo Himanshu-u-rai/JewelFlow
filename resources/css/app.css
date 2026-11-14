@@ -30990,6 +30990,46 @@ a.notice-bell-item:focus-visible {
     color: var(--jf-danger-strong);
 }
 
+/* One bell for everything (2026-11-14): a section heads its rows and may carry one action (Clear on downloads). */
+.notice-bell-section {
+    justify-content: space-between;
+}
+
+.notice-bell-section > p {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.notice-bell-section-action {
+    padding: 2px 8px;
+    border: 0;
+    border-radius: var(--jf-radius);
+    background: none;
+    color: var(--jf-erp-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+}
+
+.notice-bell-section-action:hover {
+    background: var(--jf-gold-soft);
+}
+
+.notice-bell-section-action:focus-visible {
+    outline: none;
+    box-shadow: var(--jf-focus-ring);
+}
+
+.notice-bell-icon--info {
+    background: var(--jf-info-bg);
+    color: var(--jf-info-ink);
+}
+
 .notice-bell-text {
     flex: 1 1 auto;
     min-width: 0;

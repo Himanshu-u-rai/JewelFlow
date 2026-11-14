@@ -676,20 +676,29 @@ class ShopPricingService
             return ['count' => 0, 'items' => collect()];
         }
 
-        $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
-
-        $items = Item::withoutTenant()
-            ->where('shop_id', $shopId)
-            ->where('status', 'in_stock')
-            ->where(function ($query): void {
-                $query->whereNull('metal_type')
-                    ->orWhereRaw($this->booleanComparisonSql('pricing_review_required', true));
-            })
+        $items = $this->pricingAlertQuery($shop)
             ->orderByDesc('updated_at')
             ->limit(100)
             ->get(['id', 'barcode', 'design', 'category', 'purity', 'metal_type', 'pricing_review_notes']);
 
         return ['count' => $items->count(), 'items' => $items];
+    }
+
+    /** How many in-stock items need a price review (exact; the drawer lists the first 100). For the header bell. */
+    public function pricingAlertCount(Shop|int $shop): int
+    {
+        return $this->hasRetailerPricingItemColumns() ? $this->pricingAlertQuery($shop)->count() : 0;
+    }
+
+    private function pricingAlertQuery(Shop|int $shop)
+    {
+        return Item::withoutTenant()
+            ->where('shop_id', $shop instanceof Shop ? (int) $shop->id : (int) $shop)
+            ->where('status', 'in_stock')
+            ->where(function ($query): void {
+                $query->whereNull('metal_type')
+                    ->orWhereRaw($this->booleanComparisonSql('pricing_review_required', true));
+            });
     }
 
     public function legacyItemsNeedingReview(Shop|int $shop): Collection
