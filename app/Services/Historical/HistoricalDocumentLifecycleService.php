@@ -136,6 +136,16 @@ class HistoricalDocumentLifecycleService
         }
 
         DB::transaction(function () use ($batch): void {
+            // Lock the batch and check again: a publish in flight holds this row, so rollback waits for it and then
+            // sees it published (audit N21). The check above only answers early.
+            $locked = HistoricalImportBatch::query()->whereKey($batch->getKey())->lockForUpdate()->first();
+            if ($locked === null || $locked->isPublished()) {
+                throw new LogicException(
+                    "Historical import batch #{$batch->id} is published and cannot be rolled back. "
+                    . 'Void or supersede the affected documents instead.'
+                );
+            }
+
             // Rows reference documents with ON DELETE NO ACTION — detach first.
             HistoricalImportRow::query()
                 ->where('historical_import_batch_id', $batch->getKey())

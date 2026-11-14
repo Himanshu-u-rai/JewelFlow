@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use LogicException;
 use Throwable;
 
 /**
@@ -315,7 +316,11 @@ class HistoricalImportController extends Controller
             return back()->with('error', 'A published batch cannot be rolled back. Void or supersede its documents instead.');
         }
 
-        $this->lifecycle->rollback($batch);
+        try {
+            $this->lifecycle->rollback($batch);
+        } catch (LogicException) {
+            return back()->with('error', 'A published batch cannot be rolled back. Void or supersede its documents instead.');
+        }
 
         return redirect()
             ->route('historical.index')

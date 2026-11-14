@@ -114,6 +114,40 @@ class HistoricalPublishClaimTest extends TestCase
             ->where('status', HistoricalSalesDocument::STATUS_PUBLISHED)->count());
     }
 
+    /**
+     * Audit N21 (2026-11-13): rollback checked "not published" on the batch as first read, then deleted. A publish
+     * landing in between left the delete to the database guard, which refused it with a raw error page. Rollback
+     * now locks the batch and checks again, so it waits for a publish in flight and then refuses in words.
+     */
+    public function test_a_rollback_racing_a_publish_refuses_cleanly_and_keeps_the_batch(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->reviewBatch($shop->id);
+        $done = false;
+        Event::listen('eloquent.retrieved: ' . HistoricalImportBatch::class, function (HistoricalImportBatch $loaded) use ($batch, &$done) {
+            if ($done || $loaded->id !== $batch->id) {
+                return;
+            }
+            $done = true; // another request publishes right after this one loaded the batch
+            DB::table('historical_import_batches')->where('id', $batch->id)->update(['status' => HistoricalImportBatch::STATUS_PUBLISHING]);
+            DB::table('historical_import_batches')->where('id', $batch->id)->update(['status' => HistoricalImportBatch::STATUS_PUBLISHED, 'published_at' => now()]);
+        });
+
+        $this->actingAs($owner)->delete(route('historical.batches.destroy', $batch->id))->assertSessionHas('error');
+
+        $this->assertSame(HistoricalImportBatch::STATUS_PUBLISHED, $this->stateOf($batch));
+    }
+
+    public function test_an_unpublished_batch_still_rolls_back(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->reviewBatch($shop->id);
+
+        $this->actingAs($owner)->delete(route('historical.batches.destroy', $batch->id))->assertSessionHas('success');
+
+        $this->assertFalse(DB::table('historical_import_batches')->where('id', $batch->id)->exists());
+    }
+
     public function test_the_migration_returns_a_stranded_batch_to_review(): void
     {
         [, $shop] = $this->createRetailerTenant();
