@@ -84,9 +84,9 @@ test('Failed collection creation keeps its recovery message after button state r
     assert.ok(handler);
     let note = '';
     const button = { disabled: false, textContent: 'Create Collection' };
-    const run = new Function('currentSelectionKey', 'latestCollectionLink', 'latestCollectionKey', 'createOrReuseCollectionLink', 'setBulkNote', 'selectedIds', 'updateSelectionUI', 'createCollectionBtn', `return async event => {${handler}}`)(
+    const run = new Function('currentSelectionKey', 'latestCollectionLink', 'latestCollectionKey', 'createOrReuseCollectionLink', 'setBulkNote', 'selectedIds', 'updateSelectionUI', 'createCollectionBtn', 'collectionRequest', `return async event => {${handler}}`)(
         () => '1', '', '', async () => { throw new Error('Network unavailable. Try again.'); },
-        message => { note = message; }, new Set(['1']), () => { note = 'Normal selection hint'; }, button,
+        message => { note = message; }, new Set(['1']), () => { note = 'Normal selection hint'; }, button, null,
     );
     await run({ currentTarget: button });
     assert.equal(note, 'Network unavailable. Try again.');

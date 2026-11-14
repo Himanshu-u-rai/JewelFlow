@@ -315,6 +315,8 @@
 
             let latestCollectionLink = '';
             let latestCollectionKey = '';
+            // (audit N12) Create and Send share this one in-flight request and lock together.
+            let collectionRequest = null;
 
             // wa.me needs E.164 digits. A bare 10-digit Indian mobile — which is what
             // the app now stores and what an operator types — is not routable on its
@@ -513,12 +515,12 @@
                 }
 
                 if (createCollectionBtn) {
-                    createCollectionBtn.disabled = count === 0;
+                    createCollectionBtn.disabled = count === 0 || !!collectionRequest;
                     createCollectionBtn.textContent = hasCollectionForCurrentSelection ? 'View Collection' : 'Create Collection';
                 }
 
                 if (shareSelectedBtn) {
-                    shareSelectedBtn.disabled = count === 0;
+                    shareSelectedBtn.disabled = count === 0 || !!collectionRequest;
                 }
 
                 if (collectionRow) {
@@ -632,7 +634,17 @@
             });
             document.addEventListener('turbo:before-cache', () => { modal.close(); closeAllMenus(); }, { once: true });
 
-            const createOrReuseCollectionLink = async () => {
+            const createOrReuseCollectionLink = () => {
+                if (collectionRequest) return collectionRequest;
+                collectionRequest = requestCollectionLink().finally(() => {
+                    collectionRequest = null;
+                    updateSelectionUI();
+                });
+                updateSelectionUI();
+                return collectionRequest;
+            };
+
+            const requestCollectionLink = async () => {
                 const selectionKey = currentSelectionKey();
                 if (!selectionKey) {
                     throw new Error('Select products first.');
@@ -783,18 +795,19 @@
                     return;
                 }
 
+                if (collectionRequest) return;
+
                 const oldLabel = button.textContent;
                 let errorMessage = '';
-                button.disabled = true;
-                button.textContent = 'Creating...';
 
                 try {
-                    await createOrReuseCollectionLink();
+                    const pending = createOrReuseCollectionLink();
+                    button.textContent = 'Creating...';
+                    await pending;
                     setBulkNote(`Collection created for ${selectedIds.size} selected product${selectedIds.size > 1 ? 's' : ''}.`);
                 } catch (error) {
                     errorMessage = error.message || 'Could not create collection link.';
                 } finally {
-                    button.disabled = false;
                     updateSelectionUI();
                     button.textContent = createCollectionBtn?.textContent || oldLabel;
                     if (errorMessage) setBulkNote(errorMessage, true);
@@ -803,12 +816,14 @@
 
             shareSelectedBtn?.addEventListener('click', async (event) => {
                 const button = event.currentTarget;
+                if (collectionRequest) return;
+
                 const oldLabel = button.textContent;
-                button.disabled = true;
-                button.textContent = 'Preparing...';
 
                 try {
-                    const link = await createOrReuseCollectionLink();
+                    const pending = createOrReuseCollectionLink();
+                    button.textContent = 'Preparing...';
+                    const link = await pending;
                     const message = buildCollectionMessage(link, selectedIds.size);
                     const waPhone = normalizePhone(phoneInput?.value || '');
                     const encoded = encodeURIComponent(message);
@@ -817,7 +832,6 @@
                 } catch (error) {
                     setBulkNote(error.message || 'Could not prepare the WhatsApp share.', true);
                 } finally {
-                    button.disabled = false;
                     button.textContent = oldLabel;
                 }
             });

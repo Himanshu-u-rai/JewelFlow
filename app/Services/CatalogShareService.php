@@ -314,7 +314,30 @@ class CatalogShareService
 
         $this->validateItemsBelongToShop($shop->id, $itemIds);
 
+        sort($itemIds);
+
         return DB::transaction(function () use ($shop, $user, $itemIds, $title) {
+            // (audit N12) Create and Send hit this together: serialise per shop+user+selection and hand back the
+            // collection a moments-ago identical request already made, so one selection never mints two.
+            DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [
+                'catalog-collection:'.$shop->id.':'.$user->id.':'.implode(',', $itemIds),
+            ]);
+            $existing = PublicCatalogCollection::where('shop_id', $shop->id)
+                ->where('created_by_user_id', $user->id)
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->notExpired()
+                ->orderByDesc('id')
+                ->get()
+                ->first(function ($c) use ($itemIds) {
+                    $ids = array_map('intval', $c->item_ids ?? []);
+                    sort($ids);
+
+                    return $ids === $itemIds;
+                });
+            if ($existing) {
+                return $existing;
+            }
+
             $collection = PublicCatalogCollection::create([
                 'shop_id'             => $shop->id,
                 'created_by_user_id'  => $user->id,

@@ -38,6 +38,26 @@ class CatalogWorkspaceTest extends TestCase
         $this->assertCount(23, $collection->item_ids);
     }
 
+    // (audit N12) Create and Send share one request path: the same selection must not mint a second collection.
+    public function test_repeating_the_same_selection_reuses_the_collection_instead_of_creating_another(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $a = $this->createItem($shop->id, null, ['category' => 'Ring'])->id;
+        $b = $this->createItem($shop->id, null, ['category' => 'Ring'])->id;
+        $c = $this->createItem($shop->id, null, ['category' => 'Ring'])->id;
+        $this->actingAs($owner);
+
+        $first = $this->postJson(route('catalog.collections.store'), ['item_ids' => [$a, $b]])->assertOk()->json('url');
+        $again = $this->postJson(route('catalog.collections.store'), ['item_ids' => [$b, $a]])->assertOk()->json('url');
+
+        $this->assertSame($first, $again);
+        $this->assertSame(1, TenantContext::runFor($shop->id, fn () => PublicCatalogCollection::count()));
+
+        $other = $this->postJson(route('catalog.collections.store'), ['item_ids' => [$a, $c]])->assertOk()->json('url');
+        $this->assertNotSame($first, $other);
+        $this->assertSame(2, TenantContext::runFor($shop->id, fn () => PublicCatalogCollection::count()));
+    }
+
     public function test_empty_state_and_silver_purity_use_existing_stock_truth_and_permission_gate(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
