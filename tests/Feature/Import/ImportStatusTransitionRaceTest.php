@@ -112,6 +112,68 @@ class ImportStatusTransitionRaceTest extends TestCase
         $this->assertNotEmpty(json_decode($row->execution_summary, true)['error'] ?? null, 'the reason is kept');
     }
 
+    private function failingRow(Import $import, Shop $shop, array $payload = []): void
+    {
+        DB::table('import_rows')->insert([
+            'import_id' => $import->id, 'shop_id' => $shop->id, 'row_number' => 1, 'status' => 'valid',
+            'payload' => json_encode($payload), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * Security review of 59215794: an error the code did not anticipate (a PHP or database error) reached the user
+     * word for word, in the row's error, the error file and the page. Only messages written for users pass now.
+     */
+    public function test_an_internal_error_is_never_shown_to_the_user(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $import = $this->previewImport($shop);
+        $this->failingRow($import, $shop, ['barcode' => 'X1', 'category' => 'Gold', 'metal_type' => 'gold']); // PHP: Undefined array key
+
+        $response = $this->as($owner, $shop, '/execute', $import, ['mode' => Import::MODE_STRICT]);
+
+        $shown = json_encode([
+            session('error'),
+            DB::table('imports')->where('id', $import->id)->value('execution_summary'),
+            DB::table('import_rows')->where('import_id', $import->id)->value('error_message'),
+            Storage::get('imports/errors/import-' . $import->id . '-errors.csv'),
+        ]);
+        $response->assertSessionHas('error');
+        $this->assertStringNotContainsString('Undefined array key', $shown);
+        $this->assertStringNotContainsString('SQLSTATE', $shown);
+    }
+
+    /**
+     * Security review of 59215794: the failure is recorded after the run rolled back, when the import is no longer
+     * held; a cancel landing in that moment was overwritten with "failed". The failure is recorded only on an
+     * import still waiting to run.
+     */
+    public function test_a_cancel_landing_after_the_rollback_stays_cancelled(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $import = $this->previewImport($shop);
+        $this->failingRow($import, $shop);
+        [$ran, $cancelled] = [false, false];
+        Event::listen('eloquent.retrieved: ' . Import::class, function (Import $loaded) use ($import, &$ran, &$cancelled) {
+            if ($loaded->id !== $import->id || $cancelled) {
+                return;
+            }
+            // Level 1 is the test's own transaction: a load inside the run is deeper; the first load back at level 1
+            // after it is the failure write, once the run rolled back.
+            if (DB::transactionLevel() > 1) {
+                $ran = true;
+            } elseif ($ran) {
+                $cancelled = true;
+                DB::table('imports')->where('id', $import->id)->update(['status' => Import::STATUS_CANCELLED]);
+            }
+        });
+
+        $this->as($owner, $shop, '/execute', $import, ['mode' => Import::MODE_STRICT]);
+
+        $this->assertTrue($cancelled, 'the cancel landed after the rollback');
+        $this->assertSame(Import::STATUS_CANCELLED, DB::table('imports')->where('id', $import->id)->value('status'));
+    }
+
     public function test_a_run_refused_before_it_starts_leaves_the_import_ready_to_run(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

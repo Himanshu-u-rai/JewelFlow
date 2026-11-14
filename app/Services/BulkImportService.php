@@ -261,7 +261,7 @@ class BulkImportService
                             });
                         } catch (\Throwable $e) {
                             $failed++;
-                            $friendlyError = $this->humanizeError($e->getMessage());
+                            $friendlyError = $this->humanizeError($e);
                             $errors[] = ['row_number' => $row->row_number, 'error' => $friendlyError];
                             $row->update([
                                 'status' => 'failed',
@@ -316,11 +316,32 @@ class BulkImportService
 
     /**
      * Marks a run that failed after it started. A caller whose own transaction rolled the run back (the job) calls
-     * this again once the rollback is done, or the import would sit in its pre-run status (audit N6).
+     * this again once the rollback is done, or the import would sit in its pre-run status (audit N6). Recorded only
+     * on an import still waiting to run or running: after the rollback nothing holds it, and a cancel that landed
+     * meanwhile stands. The error file has one path per import, so a second call rewrites it.
      */
     public function recordFailure(Import $import, string $mode, \Throwable $e): void
     {
-        $friendlyError = $this->humanizeError($e->getMessage());
+        $friendlyError = $this->humanizeError($e);
+
+        $marked = Import::withoutTenant()->whereKey($import->id)
+            ->whereIn('status', [Import::STATUS_PREVIEW, Import::STATUS_QUEUED, Import::STATUS_RUNNING])
+            ->update([
+                'status' => Import::STATUS_FAILED,
+                'finished_at' => now(),
+                'execution_summary' => json_encode([
+                    'mode' => $mode,
+                    'error' => $friendlyError,
+                    'processed_rows' => ImportRow::where('import_id', $import->id)->where('status', 'imported')->count(),
+                ]),
+                'error_file_path' => $this->writeErrorCsv($import, [
+                    ['row_number' => 0, 'error' => $friendlyError],
+                ]),
+            ]);
+        if ($marked === 0) {
+            return;
+        }
+
         if ($mode === Import::MODE_STRICT) {
             ImportRow::where('import_id', $import->id)
                 ->where('status', 'valid')
@@ -329,19 +350,6 @@ class BulkImportService
                     'error_message' => $friendlyError,
                 ]);
         }
-
-        $import->update([
-            'status' => Import::STATUS_FAILED,
-            'finished_at' => now(),
-            'execution_summary' => [
-                'mode' => $mode,
-                'error' => $friendlyError,
-                'processed_rows' => ImportRow::where('import_id', $import->id)->where('status', 'imported')->count(),
-            ],
-            'error_file_path' => $this->writeErrorCsv($import, [
-                ['row_number' => 0, 'error' => $friendlyError],
-            ]),
-        ]);
 
         AccountingAuditService::log([
             'shop_id' => $import->shop_id,
@@ -1006,9 +1014,14 @@ class BulkImportService
         $this->pricing->assertRetailerPricingReady($shop);
     }
 
-    private function humanizeError(string $message): string
+    /**
+     * What the user is told about a failed row or run. Known causes get a fixed sentence; otherwise only messages
+     * this code wrote for users (LogicException) pass. Anything else (a PHP or database error) is logged and the
+     * user sees a generic sentence: its text can carry SQL, table names or values.
+     */
+    private function humanizeError(\Throwable $e): string
     {
-        $message = trim($message);
+        $message = trim($e->getMessage());
 
         if ($message === '') {
             return 'Row failed due to invalid data. Please check this row and try again.';
@@ -1042,6 +1055,12 @@ class BulkImportService
             return \App\Support\NotAvailable::unlessOwner('This shop is not allowed to import right now (read-only or suspended).');
         }
 
-        return $message;
+        if ($e instanceof LogicException) {
+            return $message;
+        }
+
+        report($e);
+
+        return 'This row could not be imported because of an unexpected error. Check its values, or contact support if it keeps failing.';
     }
 }
