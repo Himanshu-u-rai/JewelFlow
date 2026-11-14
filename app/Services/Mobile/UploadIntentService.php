@@ -110,22 +110,31 @@ class UploadIntentService
 
         try {
             return $this->storeClaimed($upload, $rawBytes);
-        } catch (\RuntimeException $e) {
-            throw $e; // storeClaimed already marked the row failed
         } catch (\Throwable $e) {
-            // Disk or DB error mid-write: hand the intent back so the client can retry the PUT.
+            // Any failure after the claim (a refused MIME type, a disk or database error): remove what was written,
+            // since the row records no path yet and prune would never find it. A claim still "uploaded" goes back
+            // to pending so the client can retry the PUT; a refused file stays failed.
+            Storage::disk('public')->delete($this->storagePaths($upload));
             PendingUpload::whereKey($upload->getKey())->where('status', 'uploaded')->update(['status' => 'pending']);
             throw $e;
         }
     }
 
+    /** Where an intent's original and thumbnail are written: one place, so a failed store can remove both. */
+    private function storagePaths(PendingUpload $upload): array
+    {
+        $ext = self::ALLOWED_CONTENT_TYPES[$upload->content_type] ?? 'jpg';
+
+        return [
+            "uploads/originals/{$upload->shop_id}/{$upload->upload_token}.{$ext}",
+            "uploads/thumbnails/{$upload->shop_id}/{$upload->upload_token}.webp",
+        ];
+    }
+
     private function storeClaimed(PendingUpload $upload, string $rawBytes): PendingUpload
     {
-        $ext       = self::ALLOWED_CONTENT_TYPES[$upload->content_type] ?? 'jpg';
-        $token      = $upload->upload_token;
-        $shopId     = $upload->shop_id;
-        $origPath   = "uploads/originals/{$shopId}/{$token}.{$ext}";
-        $thumbPath  = "uploads/thumbnails/{$shopId}/{$token}.webp";
+        $token = $upload->upload_token;
+        [$origPath, $thumbPath] = $this->storagePaths($upload);
 
         // Write original bytes to disk first so finfo can read the actual file.
         Storage::disk('public')->put($origPath, $rawBytes);

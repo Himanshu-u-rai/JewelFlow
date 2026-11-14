@@ -101,6 +101,50 @@ class UploadIntentStateRaceTest extends TestCase
      * expired) with "expired over 24 hours ago", which can never match: unused ready photos were never pruned and
      * their files stayed on disk for good. A used photo is never pruned.
      */
+    /**
+     * Security review of b5a81831: a database error while finishing a store left the claimed row "uploaded" and
+     * its files on disk; the row recorded no path, so prune could never find them. Now the files go and the
+     * intent goes back to pending for a retry.
+     */
+    public function test_a_store_that_fails_after_writing_leaves_no_files_and_can_be_retried(): void
+    {
+        $upload = $this->intent('pending', ['original_path' => null]);
+        \Illuminate\Support\Facades\Event::listen('eloquent.updating: ' . PendingUpload::class, function (PendingUpload $row) {
+            if ($row->status === 'ready') {
+                throw new \Illuminate\Database\QueryException('pgsql', 'update pending_uploads', [], new \Exception('connection lost'));
+            }
+        });
+
+        try {
+            app(UploadIntentService::class)->store(PendingUpload::find($upload->id), $this->png());
+            $this->fail('the store should have failed');
+        } catch (\Illuminate\Database\QueryException) {
+        }
+
+        $this->assertSame('pending', DB::table('pending_uploads')->where('id', $upload->id)->value('status'));
+        $this->assertSame([], Storage::disk('public')->allFiles('uploads'), 'nothing left on disk');
+    }
+
+    /** Security review of b5a81831: prune deleted from its snapshot; a row that changed since is left alone. */
+    public function test_prune_leaves_an_upload_that_changed_after_it_was_selected(): void
+    {
+        $upload = $this->intent('ready');
+        DB::table('pending_uploads')->where('id', $upload->id)->update(['expires_at' => now()->subHours(25)]);
+        Storage::disk('public')->put('uploads/originals/n8.png', 'png');
+        $done = false;
+        \Illuminate\Support\Facades\Event::listen('eloquent.retrieved: ' . PendingUpload::class, function (PendingUpload $loaded) use ($upload, &$done) {
+            if (! $done && $loaded->id === $upload->id) {
+                $done = true;
+                DB::table('pending_uploads')->where('id', $upload->id)->update(['consumed_at' => now(), 'consumed_by_type' => Item::class, 'consumed_by_id' => 114]);
+            }
+        });
+
+        $this->artisan('mobile:prune-uploads')->assertSuccessful();
+
+        $this->assertTrue(DB::table('pending_uploads')->where('id', $upload->id)->exists());
+        Storage::disk('public')->assertExists('uploads/originals/n8.png');
+    }
+
     public function test_prune_removes_an_unused_ready_upload_a_day_past_expiry_and_keeps_a_used_one(): void
     {
         $unused = $this->intent('ready');

@@ -55,16 +55,23 @@ class PruneExpiredUploads extends Command
                 continue;
             }
 
-            // Delete disk files.
+            // The row first, and only if it is still as selected (same status, still unused): a row that changed
+            // since keeps its files. Then its files.
+            $deleted = PendingUpload::whereKey($upload->getKey())
+                ->where('status', $upload->status)
+                ->whereNull('consumed_at')
+                ->delete();
+            if ($deleted === 0) {
+                continue;
+            }
+            $deletedRows++;
+
             foreach ([$upload->original_path, $upload->thumbnail_path] as $path) {
                 if ($path && Storage::disk('public')->exists($path)) {
                     Storage::disk('public')->delete($path);
                     $deletedFiles++;
                 }
             }
-
-            $upload->delete();
-            $deletedRows++;
         }
 
         if (! $dry) {
