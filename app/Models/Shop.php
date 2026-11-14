@@ -416,6 +416,30 @@ class Shop extends Model
     }
 
     /**
+     * Which of these shops have a GDPR deletion pending (marker written by
+     * GdprExportController::scheduleDelete). The single place every unsuspend
+     * path asks (audit N22); withdrawing a deletion = removing its marker.
+     *
+     * @param  array<int,int>  $shopIds
+     * @return array<int,int>
+     */
+    public static function gdprDeletionPendingAmong(array $shopIds): array
+    {
+        if ($shopIds === []) {
+            return [];
+        }
+        $keys = array_map(fn ($id) => 'gdpr_pending_delete_shop_' . (int) $id, $shopIds);
+
+        return DB::table('platform_settings')->whereIn('key', $keys)->pluck('key')
+            ->map(fn ($k) => (int) substr($k, strlen('gdpr_pending_delete_shop_')))->all();
+    }
+
+    public function hasGdprDeletionPending(): bool
+    {
+        return $this->exists && self::gdprDeletionPendingAmong([(int) $this->id]) !== [];
+    }
+
+    /**
      * Auto-seed a shop_editions row whenever a Shop is created with a
      * retailer/manufacturer shop_type. Keeps the invariant "every shop has
      * at least one active edition row" true without requiring every write
@@ -423,6 +447,14 @@ class Shop extends Model
      */
     protected static function booted(): void
     {
+        // Model-level backstop for every Eloquent unsuspend (audit N22). Raw DB::table
+        // updates skip it, so the bulk action filters with gdprDeletionPendingAmong().
+        static::saving(function (Shop $shop): void {
+            if ($shop->exists && $shop->isDirty('access_mode') && $shop->access_mode === 'active' && $shop->hasGdprDeletionPending()) {
+                throw new \DomainException("Shop {$shop->id} has a pending GDPR deletion and cannot be reactivated.");
+            }
+        });
+
         static::saving(function (Shop $shop): void {
             if (!empty($shop->owner_email)) {
                 $shop->owner_email = strtolower(trim($shop->owner_email));

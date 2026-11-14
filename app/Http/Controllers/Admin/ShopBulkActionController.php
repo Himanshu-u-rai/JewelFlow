@@ -59,6 +59,12 @@ class ShopBulkActionController extends Controller
                 return back()->with('success', count($shopIds) . ' shop(s) suspended.');
 
             case 'unsuspend':
+                // A shop under a pending GDPR deletion stays suspended (audit N22); say which.
+                $blocked   = Shop::gdprDeletionPendingAmong($shopIds);
+                $shopIds   = array_values(array_diff($shopIds, $blocked));
+                $skipNames = $blocked === [] ? [] : Shop::whereIn('id', $blocked)->pluck('name', 'id')
+                    ->map(fn ($name, $id) => "{$name} (#{$id})")->values()->all();
+
                 DB::table('shops')
                     ->whereIn('id', $shopIds)
                     ->update([
@@ -78,12 +84,17 @@ class ShopBulkActionController extends Controller
                     Shop::class,
                     null,
                     null,
-                    ['shop_ids' => $shopIds, 'access_mode' => 'active'],
+                    ['shop_ids' => $shopIds, 'access_mode' => 'active', 'skipped_gdpr_pending' => $blocked],
                     'Bulk unsuspend',
                     $request
                 );
 
-                return back()->with('success', count($shopIds) . ' shop(s) unsuspended.');
+                $redirect = back()->with('success', count($shopIds) . ' shop(s) unsuspended.');
+
+                return $skipNames === [] ? $redirect : $redirect->with(
+                    'warning',
+                    count($skipNames) . ' shop(s) skipped, GDPR deletion pending: ' . implode(', ', $skipNames) . '.'
+                );
 
             case 'assign_plan':
                 $planId = (int) $validated['plan_id'];

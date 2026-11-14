@@ -142,6 +142,13 @@ class ShopManagementController extends Controller
             ]);
         }
 
+        // A pending GDPR deletion is never silently undone (audit N22); platform admins may see why.
+        if ($accessMode === 'active' && $shop->hasGdprDeletionPending()) {
+            return back()->withInput()->withErrors([
+                'access_mode' => "Cannot activate {$shop->name}: a GDPR deletion is pending. Withdraw the deletion request first.",
+            ]);
+        }
+
         // This generic toggle must not promise access the subscription can't
         // back — otherwise EnsureSubscriptionIsActive reconciles it straight
         // back to read_only on the very next request, making the shop look
