@@ -611,7 +611,8 @@ class HistoricalDocumentAttachmentTest extends TestCase
         // Ordinary offboarding is untouched by the RESTRICT. Via the model, not
         // the query builder — Postgres rejects the builder's integer 0 for a
         // boolean column, which is a binding quirk, not the behavior under test.
-        $remover->forceFill(['is_active' => false])->save();
+        // Both columns together, as the staff flow offboards (audit N23 refuses one without the other).
+        $remover->forceFill(['is_active' => false, 'employment_status' => 'terminated'])->save();
         $this->assertFalse((bool) $remover->fresh()->is_active, 'Deactivating the remover must still be allowed.');
     }
 
