@@ -2,6 +2,7 @@
 
 namespace App\Services\Mobile;
 
+use App\Exceptions\UploadNotConsumable;
 use App\Models\PendingUpload;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -91,16 +92,36 @@ class UploadIntentService
      */
     public function store(PendingUpload $upload, string $rawBytes): PendingUpload
     {
-        if ($upload->status !== 'pending') {
-            throw new \LogicException("Upload {$upload->upload_token} is not in 'pending' state (current: {$upload->status}).");
+        // (audit N8) Claim pending -> uploaded in one conditional UPDATE: the state and the expiry are checked on the
+        // current row, so a concurrent store, expiry or prune cannot be overwritten, and only one PUT writes the files.
+        $claimed = PendingUpload::whereKey($upload->getKey())
+            ->where('status', 'pending')
+            ->where('expires_at', '>=', now())
+            ->update(['status' => 'uploaded', 'updated_at' => now()]);
+
+        if ($claimed !== 1) {
+            $current = PendingUpload::whereKey($upload->getKey())->first();
+            if ($current && $current->status === 'pending') {
+                PendingUpload::whereKey($current->getKey())->where('status', 'pending')->update(['status' => 'expired']);
+                throw new \RuntimeException('Upload token has expired.');
+            }
+            throw new \LogicException("Upload {$upload->upload_token} is not in 'pending' state (current: " . ($current->status ?? 'gone') . ').');
         }
 
-        if ($upload->isExpired()) {
-            $upload->update(['status' => 'expired']);
-            throw new \RuntimeException('Upload token has expired.');
+        try {
+            return $this->storeClaimed($upload, $rawBytes);
+        } catch (\RuntimeException $e) {
+            throw $e; // storeClaimed already marked the row failed
+        } catch (\Throwable $e) {
+            // Disk or DB error mid-write: hand the intent back so the client can retry the PUT.
+            PendingUpload::whereKey($upload->getKey())->where('status', 'uploaded')->update(['status' => 'pending']);
+            throw $e;
         }
+    }
 
-        $ext        = self::ALLOWED_CONTENT_TYPES[$upload->content_type] ?? 'jpg';
+    private function storeClaimed(PendingUpload $upload, string $rawBytes): PendingUpload
+    {
+        $ext       = self::ALLOWED_CONTENT_TYPES[$upload->content_type] ?? 'jpg';
         $token      = $upload->upload_token;
         $shopId     = $upload->shop_id;
         $origPath   = "uploads/originals/{$shopId}/{$token}.{$ext}";
@@ -144,19 +165,25 @@ class UploadIntentService
      */
     public function consume(PendingUpload $upload, Model $consumer): void
     {
-        if ($upload->status !== 'ready') {
-            throw new \LogicException("Upload must be in 'ready' state to consume. Current: {$upload->status}.");
+        // (audit N8) One conditional UPDATE decides the winner on the current row, not on the copy the caller loaded:
+        // a second consume, or an expiry in between, matches no row. Callers run this inside the transaction that
+        // creates the consumer, so losing rolls that back too.
+        $claimed = PendingUpload::whereKey($upload->getKey())
+            ->where('status', 'ready')
+            ->whereNull('consumed_at')
+            ->where('expires_at', '>=', now())
+            ->update([
+                'consumed_at'      => now(),
+                'consumed_by_type' => get_class($consumer),
+                'consumed_by_id'   => $consumer->getKey(),
+                'updated_at'       => now(),
+            ]);
+
+        if ($claimed !== 1) {
+            throw new UploadNotConsumable("Upload {$upload->upload_token} is not ready, was already consumed, or has expired.");
         }
 
-        if ($upload->consumed_at !== null) {
-            throw new \LogicException("Upload {$upload->upload_token} has already been consumed.");
-        }
-
-        $upload->update([
-            'consumed_at'      => now(),
-            'consumed_by_type' => get_class($consumer),
-            'consumed_by_id'   => $consumer->getKey(),
-        ]);
+        $upload->refresh();
     }
 
     /**

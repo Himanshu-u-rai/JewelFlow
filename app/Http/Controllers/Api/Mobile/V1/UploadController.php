@@ -114,6 +114,11 @@ class UploadController extends Controller
             return response()->json([
                 'errors' => [['code' => 'upload_failed', 'message' => $e->getMessage()]],
             ], 422);
+        } catch (\LogicException) {
+            // (audit N8) A concurrent PUT or expiry took the intent between the check above and the claim.
+            return response()->json([
+                'errors' => [['code' => 'upload_not_writable', 'message' => 'Upload can no longer receive bytes.']],
+            ], 409);
         }
 
         return response()->json($this->present($upload));

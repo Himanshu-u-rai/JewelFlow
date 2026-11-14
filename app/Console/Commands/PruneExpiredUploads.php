@@ -24,7 +24,10 @@ class PruneExpiredUploads extends Command
             ->get();
 
         // 2. Ready rows that were never consumed after a 24-hour grace window.
-        $unconsumed = PendingUpload::consumable()
+        // Not consumable(): that scope means "not expired", which no row 24 hours past expiry is, so this matched
+        // nothing and unused photos were never pruned. An expired upload can no longer be consumed (audit N8).
+        $unconsumed = PendingUpload::where('status', 'ready')
+            ->whereNull('consumed_at')
             ->where('expires_at', '<', now()->subHours(24))
             ->get();
 

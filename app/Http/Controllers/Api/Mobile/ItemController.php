@@ -294,7 +294,14 @@ class ItemController extends Controller
         // Drop the transport-only fields so they don't leak into the model update.
         unset($validated['image_base64'], $validated['image_upload_id'], $validated['remove_image'], $validated['remove_images'], $validated['images_base64']);
 
-        DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage, $finalGallery) {
+        try {
+        DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage, $finalGallery, $uploadToConsume) {
+            // (audit N8) Claim the upload first, in this transaction: if another request took it or it expired
+            // since the check above, nothing below (row update, photo deletion) happens.
+            if ($uploadToConsume !== null) {
+                app(UploadIntentService::class)->consume($uploadToConsume, $item);
+            }
+
             // MASTERS PART 3: same guard as the web edit form.
             Vendor::lockActiveOrFail(
                 (int) $item->shop_id,
@@ -384,9 +391,8 @@ class ItemController extends Controller
                 ]),
             ]);
         });
-
-        if ($uploadToConsume !== null) {
-            app(UploadIntentService::class)->consume($uploadToConsume, $item);
+        } catch (\App\Exceptions\UploadNotConsumable) {
+            return response()->json(['message' => 'Upload ID is invalid, not ready, or already consumed.'], 422);
         }
 
         $item->refresh();
@@ -580,7 +586,8 @@ class ItemController extends Controller
 
         $netMetalWeight = $pricingPayload['net_metal_weight'] ?? ($validated['gross_weight'] - ($validated['stone_weight'] ?? 0));
 
-        $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath, $imagePaths) {
+        try {
+        $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath, $imagePaths, $storeUploadToConsume) {
             // MASTERS PART 3: same guard as the web create form.
             Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
             // MASTERS PART 6 (correction): same race-safe check for the karigar.
@@ -641,11 +648,15 @@ class ItemController extends Controller
                 ],
             ]);
 
+            // (audit N8) Claim the upload in this transaction: a lost claim rolls the item back.
+            if ($storeUploadToConsume !== null) {
+                app(UploadIntentService::class)->consume($storeUploadToConsume, $item);
+            }
+
             return $item;
         });
-
-        if ($storeUploadToConsume !== null) {
-            app(UploadIntentService::class)->consume($storeUploadToConsume, $item);
+        } catch (\App\Exceptions\UploadNotConsumable) {
+            return response()->json(['message' => 'Upload ID is invalid, not ready, or already consumed.'], 422);
         }
 
         return response()->json(array_merge(
