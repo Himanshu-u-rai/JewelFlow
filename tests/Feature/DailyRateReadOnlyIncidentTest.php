@@ -375,7 +375,7 @@ class DailyRateReadOnlyIncidentTest extends TestCase
     public function test_inactive_user_pricing_submission_still_logs_out_without_flashing_input(): void
     {
         [$user] = $this->createRetailerTenant();
-        $user->forceFill(['is_active' => false])->save();
+        $user->forceFill(['is_active' => false, 'employment_status' => 'suspended'])->save();
 
         $this->actingAs($user->fresh())
             ->post(route('settings.pricing.save-rates'), ['password' => 'not-for-the-session'])

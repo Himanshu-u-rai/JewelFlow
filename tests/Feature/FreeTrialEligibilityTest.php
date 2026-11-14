@@ -653,7 +653,7 @@ class FreeTrialEligibilityTest extends TestCase
         config(['platform.enforce_subscriptions' => true]);
         $admin = $this->platformAdmin;
         [$shop, $user] = $this->heldShop('suspended', $admin, 'Shop closed at owner request');
-        $user->forceFill(['is_active' => false])->save();
+        $user->forceFill(['is_active' => false, 'employment_status' => 'suspended'])->save();
         $this->history($shop, $user, 'cancelled', true);
 
         $this->grantAsAdmin($admin, $shop, $this->plan())->assertRedirect();

@@ -206,7 +206,7 @@ class StaffManagementTest extends TestCase
     {
         [, $shop, $roles] = $this->tenant();
         $staff = $this->userWithRole($shop, $roles['staff'], '9876600070');
-        $staff->forceFill(['is_active' => false])->save();
+        $staff->forceFill(['is_active' => false, 'employment_status' => 'terminated'])->save();
 
         $res = $this->post(self::ERP . '/login', ['mobile_number' => '9876600070', 'password' => 'password']);
         $res->assertSessionHas('login_modal', 'account_inactive');

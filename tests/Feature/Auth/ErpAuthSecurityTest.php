@@ -51,6 +51,7 @@ class ErpAuthSecurityTest extends TestCase
                 'password' => Hash::make('password'),
                 'realm' => 'erp',
                 'is_active' => $active,
+                'employment_status' => $active ? 'active' : 'suspended',
             ])->save();
         });
 

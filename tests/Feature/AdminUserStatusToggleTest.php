@@ -42,15 +42,19 @@ class AdminUserStatusToggleTest extends TestCase
             $role->save();
         }
 
-        return User::create([
+        // employment_status is not mass-assignable; create() would drop it (audit N23).
+        $user = new User([
             'name'              => 'Toggle Target',
             'mobile_number'     => '9876512300',
             'password'          => Hash::make('Secret123!'),
             'shop_id'           => $shopId,
             'role_id'           => $role->id,
-            'employment_status' => $employment,
             'is_active'         => $employment === 'active',
         ]);
+        $user->employment_status = $employment;
+        $user->save();
+
+        return $user;
     }
 
     public function test_deactivate_persists_as_suspension_not_reverted(): void

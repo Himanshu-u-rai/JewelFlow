@@ -174,7 +174,7 @@ class MobileRolePermissionEnforcementTest extends TestCase
         $this->assertNotSame(403, $this->getJson('/api/mobile/customers')->getStatusCode());
 
         // Owner deactivates the employee in the web app.
-        $user->forceFill(['is_active' => false])->save();
+        $user->forceFill(['is_active' => false, 'employment_status' => 'suspended'])->save();
 
         // Same valid token, but the account is off → 403.
         $this->getJson('/api/mobile/customers')->assertStatus(403);
