@@ -73,6 +73,34 @@ class ExportNotificationDeliveryTest extends TestCase
         });
     }
 
+    /**
+     * Audit N20 (2026-11-13): the job marked its export failed only in its own catch. A worker killed or timed out
+     * never reaches it; the queue then gives up on the job and calls failed(), which did not exist: the export sat
+     * "queued" for good, the user waiting for a file that would never come.
+     */
+    public function test_an_export_whose_job_the_queue_gave_up_on_ends_failed(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [$id, $payload] = $this->queued($owner, $shop);
+
+        (new GenerateQueuedExportJob($payload))->failed(new \Illuminate\Queue\MaxAttemptsExceededException('worker timed out'));
+
+        $export = $this->export($id);
+        $this->assertSame(ExportAuditService::STATUS_FAILED, $export->status);
+        $this->assertStringNotContainsString('worker timed out', (string) $export->error, 'no internal text for the user');
+    }
+
+    public function test_a_finished_export_stays_finished_when_a_late_failure_arrives(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [$id, $payload] = $this->queued($owner, $shop);
+        GenerateQueuedExportJob::dispatchSync($payload);
+
+        (new GenerateQueuedExportJob($payload))->failed(new \RuntimeException('late'));
+
+        $this->assertSame(ExportAuditService::STATUS_DONE, $this->export($id)->status);
+    }
+
     private function export(int $id): ReportExport
     {
         return ReportExport::withoutGlobalScopes()->findOrFail($id);

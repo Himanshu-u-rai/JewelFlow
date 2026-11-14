@@ -111,4 +111,23 @@ class GenerateQueuedExportJob implements ShouldQueue
             $audit->deliverReadyNotification($export->fresh());
         });
     }
+
+    /**
+     * The queue gave up on this job: a worker killed or timed out never reaches the catch above, so this is the only
+     * place such an export learns it ended (audit N20). Only a still-waiting export changes: one that finished or
+     * already failed stays as it is. The reason the user sees is fixed; the cause goes to the log.
+     */
+    public function failed(Throwable $e): void
+    {
+        report($e);
+
+        ReportExport::withoutGlobalScopes()
+            ->whereKey($this->payload['export_id'])
+            ->whereIn('status', [ExportAuditService::STATUS_QUEUED, ExportAuditService::STATUS_PROCESSING])
+            ->update([
+                'status' => ExportAuditService::STATUS_FAILED,
+                'error' => 'The export stopped before it finished. Please export again.',
+                'finished_at' => now(),
+            ]);
+    }
 }
