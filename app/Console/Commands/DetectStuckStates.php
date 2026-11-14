@@ -8,12 +8,15 @@ use Illuminate\Support\Facades\DB;
 /**
  * Phase R4 — Detect items and workflows stuck in transient states.
  *
- * Five checks:
+ * Eight checks:
  *   S1 — Items stuck in pending_restock > 14 days
  *   S2 — Items stuck in with_karigar without open job order > 30 days
  *   S3 — Job orders in partial_return status > 21 days
  *   S4 — Draft return orders > 7 days
  *   S5 — Repair jobs stuck in received/in_repair status > 21 days
+ *   S6 — Bulk imports left queued/running > 1 hour
+ *   S7 — Historical batches left publishing > 1 hour
+ *   S8 — Report exports left queued/processing > 1 hour
  *
  * Safe to run on production (all read-only queries).
  *
@@ -230,6 +233,40 @@ class DetectStuckStates extends Command
             $totalStuck += count($stuckRepairs);
         }
 
+        // ── S6–S8: background work left waiting > 1 hour (audit N6/N20) ───
+        // None of these states is committed by a live run any more; a row found here was left by a run that died
+        // before those fixes, or by a cause not yet known.
+        $totalStuck += $this->leftWaiting('S6', 'import(s) left queued or running', DB::select("
+            SELECT id, import_reference AS reference, status, updated_at FROM imports
+            WHERE shop_id = ? AND status IN ('queued', 'running') AND updated_at < NOW() - INTERVAL '1 hour'
+            ORDER BY updated_at", [$shopId]));
+        $totalStuck += $this->leftWaiting('S7', 'Historical batch(es) left publishing', DB::select("
+            SELECT id, label AS reference, status, updated_at FROM historical_import_batches
+            WHERE shop_id = ? AND status = 'publishing' AND updated_at < NOW() - INTERVAL '1 hour'
+            ORDER BY updated_at", [$shopId]));
+        $totalStuck += $this->leftWaiting('S8', 'report export(s) left queued', DB::select("
+            SELECT id, report_key AS reference, status, updated_at FROM report_exports
+            WHERE shop_id = ? AND status IN ('queued', 'processing') AND updated_at < NOW() - INTERVAL '1 hour'
+            ORDER BY updated_at", [$shopId]));
+
         return $totalStuck;
+    }
+
+    /** @param array<int, object> $rows */
+    private function leftWaiting(string $check, string $what, array $rows): int
+    {
+        $this->newLine();
+        $this->info("Check {$check} — {$what} > 1 hour:");
+
+        if (empty($rows)) {
+            $this->line('  <fg=green>✓</> None found.');
+
+            return 0;
+        }
+
+        $this->warn('  ' . count($rows) . " {$what} > 1 hour:");
+        $this->table(['ID', 'Reference', 'Status', 'Updated At'], array_map(fn ($r) => [$r->id, $r->reference, $r->status, $r->updated_at], $rows));
+
+        return count($rows);
     }
 }
