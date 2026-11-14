@@ -18,6 +18,8 @@ use Tests\TestCase;
  * 'active' while is_active=false, an inconsistent lifecycle state. The fix moves
  * employment_status in lockstep — admin deactivate = reversible 'suspended',
  * preserving a stronger 'terminated' state if the shop already set it.
+ * (Since M15 the observer is registered, and since audit N23 it refuses an
+ * inconsistent save instead of reverting it.)
  *
  * These assertions exercise the exact writes the fixed controller performs and
  * confirm the resulting state is consistent and login-blocking.
@@ -91,8 +93,8 @@ class AdminUserStatusToggleTest extends TestCase
         // M15: the observer that enforces is_active ↔ employment_status was
         // dormant (registered nowhere). It is now registered in AppServiceProvider
         // (verified at runtime). Source-level guard so the registration can't be
-        // silently dropped. (The PHPUnit harness does not exercise model observers
-        // — all of this app's observers are validated at runtime, not in-suite.)
+        // silently dropped. The suite does run it: UserActiveEmploymentConsistencyTest
+        // proves the observer refuses an inconsistent save (audit N23).
         $provider = file_get_contents(app_path('Providers/AppServiceProvider.php'));
         $this->assertStringContainsString(
             'User::observe(\App\Observers\UserObserver::class)',
