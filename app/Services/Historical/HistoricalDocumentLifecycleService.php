@@ -48,42 +48,22 @@ class HistoricalDocumentLifecycleService
         return true;
     }
 
-    /** Release a failed publish run so the batch is not stranded in `publishing`. */
-    public function releaseClaim(HistoricalImportBatch $batch): void
+    /**
+     * Claim and publish in ONE transaction: the `publishing` claim is never committed on its own, so a publish that
+     * fails or dies (crash, timeout) rolls back to the batch as it was. A second publisher waits on the claimed row,
+     * then finds it published (audit N6). Null when the batch was not claimable.
+     */
+    public function claimAndPublish(HistoricalImportBatch $batch, ?int $actorId = null): ?HistoricalImportBatch
     {
-        HistoricalImportBatch::query()
-            ->whereKey($batch->getKey())
-            ->where('status', HistoricalImportBatch::STATUS_PUBLISHING)
-            ->update(['status' => HistoricalImportBatch::STATUS_REVIEW, 'updated_at' => now()]);
-
-        $batch->refresh();
+        return DB::transaction(fn () => $this->claimForPublishing($batch) ? $this->publishClaimed($batch, $actorId) : null);
     }
 
-    /**
-     * Claim, publish, and release-if-stranded — the self-contained path for a
-     * caller that has not already taken the claim (Batch 1 tests, console).
-     *
-     * The HTTP controller does NOT use this: it owns the claim so it can put
-     * releaseClaim() in its own `finally` (Phase 5), which is why the claim and
-     * the work are separable below.
-     */
+    /** claimAndPublish() for callers that expect the batch to be publishable (console, manual bill). */
     public function publish(HistoricalImportBatch $batch, ?int $actorId = null): HistoricalImportBatch
     {
-        if (! $this->claimForPublishing($batch)) {
-            throw new LogicException(
-                "Historical import batch #{$batch->id} is not claimable for publishing (status: {$batch->status})."
-            );
-        }
-
-        try {
-            return $this->publishClaimed($batch, $actorId);
-        } finally {
-            // A throw inside the transaction leaves the batch in `publishing`;
-            // hand it back to `review` so it is never stranded.
-            if ($batch->fresh()?->status === HistoricalImportBatch::STATUS_PUBLISHING) {
-                $this->releaseClaim($batch);
-            }
-        }
+        return $this->claimAndPublish($batch, $actorId) ?? throw new LogicException(
+            "Historical import batch #{$batch->id} is not claimable for publishing (status: {$batch->fresh()?->status})."
+        );
     }
 
     /**

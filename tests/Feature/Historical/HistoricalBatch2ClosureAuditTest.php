@@ -972,9 +972,8 @@ class HistoricalBatch2ClosureAuditTest extends TestCase
                 ->whereIn('status', HistoricalImportBatch::EDITABLE)
                 ->update(['status' => HistoricalImportBatch::STATUS_PUBLISHING]);
             $this->assertSame(0, $racedRows, 'A second UPDATE with the same WHERE guard must match zero rows.');
-
-            $lifecycle->releaseClaim($batch);
-            $this->assertSame(HistoricalImportBatch::STATUS_REVIEW, $batch->fresh()->status);
+            // No release step: the claim lives inside the publish transaction, so a failed publish rolls it back
+            // (audit N6, HistoricalPublishClaimTest).
         });
     }
 

@@ -282,28 +282,23 @@ class HistoricalImportController extends Controller
             return back()->with('error', $blocker);
         }
 
-        // Take the claim HERE so releaseClaim() can live in this method's finally.
-        if (! $this->lifecycle->claimForPublishing($batch)) {
-            $batch->refresh();
-
-            return $batch->isPublished()
-                ? redirect()->route('historical.batches.show', $batch)->with('success', 'This batch is already published.')
-                : back()->with('error', 'This batch is currently being published by another request.');
-        }
-
+        // Claim and work in one transaction: a failed or dead publish rolls back to review (audit N6).
         try {
-            $this->lifecycle->publishClaimed($batch, (int) $request->user()->id);
+            $published = $this->lifecycle->claimAndPublish($batch, (int) $request->user()->id);
         } catch (Throwable $e) {
             Log::error('Historical batch publish failed', ['batch' => $batch->id, 'error' => $e->getMessage()]);
 
             return redirect()
                 ->route('historical.batches.show', $batch)
                 ->with('error', 'Publishing failed and no records were published. Please try again.');
-        } finally {
-            // Stranded in `publishing` (a throw before commit) → hand back to review.
-            if ($batch->fresh()?->status === HistoricalImportBatch::STATUS_PUBLISHING) {
-                $this->lifecycle->releaseClaim($batch);
-            }
+        }
+
+        if ($published === null) {
+            $batch->refresh();
+
+            return $batch->isPublished()
+                ? redirect()->route('historical.batches.show', $batch)->with('success', 'This batch is already published.')
+                : back()->with('error', 'This batch can no longer be published.');
         }
 
         return redirect()
