@@ -128,6 +128,12 @@ function initializePhoto(root) {
     let canSwitch = false;
     let switching = false;
 
+    // Buttons this controller's save/remove action disabled, with their prior state.
+    let held = null;
+    const releaseButtons = () => {
+        held?.forEach((wasDisabled, button) => { button.disabled = wasDisabled; });
+        held = null;
+    };
     const buttons = (action) => root.querySelectorAll(`[data-photo-action="${action}"]`);
     const show = (action, visible) => buttons(action).forEach(button => { button.hidden = !visible; });
     const fail = (message) => {
@@ -282,7 +288,9 @@ function initializePhoto(root) {
         const removing = mode === 'remove';
         generation++;
         busy = true;
-        root.querySelectorAll('button').forEach(button => { button.disabled = true; });
+        // Remember each button's own state so only what this action disabled is re-enabled (audit N11).
+        held = new Map();
+        root.querySelectorAll('button').forEach(button => { held.set(button, button.disabled); button.disabled = true; });
         let message = 'The photo change could not be confirmed. Check the current photo before retrying.';
         status.textContent = removing ? 'Removing photo…' : 'Processing and saving photo…';
         try {
@@ -318,10 +326,8 @@ function initializePhoto(root) {
         } finally {
             generation++;
             busy = false;
-            if (alive) {
-                root.querySelectorAll('button').forEach(button => { button.disabled = false; });
-                restoreFocus();
-            }
+            releaseButtons();
+            if (alive) restoreFocus();
         }
     };
 
@@ -389,7 +395,7 @@ function initializePhoto(root) {
             alive = false;
             close();
             listeners.abort();
-            root.querySelectorAll('button').forEach(button => { button.disabled = false; });
+            releaseButtons();
             if (selectedUrl) URL.revokeObjectURL(selectedUrl);
         },
     };
