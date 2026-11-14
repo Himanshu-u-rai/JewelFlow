@@ -121,9 +121,13 @@ class CashTransaction extends Model
      * The account columns for a cash row written alongside a payment that chose
      * one (sale tenders, EMI payments), so the cash book can show and filter it.
      */
-    public static function accountColumns(?int $paymentMethodId): array
+    public static function accountColumns(int $shopId, ?int $paymentMethodId): array
     {
-        $method = $paymentMethodId ? ShopPaymentMethod::withoutTenant()->find($paymentMethodId) : null;
+        // Bound to the row's own shop: another shop's method is refused, never copied into this cash book.
+        $method = $paymentMethodId
+            ? ShopPaymentMethod::withoutTenant()->where('shop_id', $shopId)->find($paymentMethodId)
+                ?? throw new \LogicException("Payment method {$paymentMethodId} does not belong to shop {$shopId}.")
+            : null;
 
         return [
             'payment_method_id' => $method?->id,

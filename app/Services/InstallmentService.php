@@ -150,7 +150,7 @@ class InstallmentService
                     'source_id' => $lockedPlan->id,
                     'invoice_id' => $invoice->id,
                     'payment_mode' => $invoiceMode,
-                    ...CashTransaction::accountColumns($paymentMethodId),
+                    ...CashTransaction::accountColumns((int) $lockedPlan->shop_id, $paymentMethodId),
                     'description' => "EMI installment payment - Invoice {$invoice->invoice_number}",
                 ]);
             }
@@ -489,7 +489,7 @@ class InstallmentService
             'source_id' => $invoice->id,
             'invoice_id' => $invoice->id,
             'payment_mode' => $mode,
-            ...CashTransaction::accountColumns($paymentMethodId),
+            ...CashTransaction::accountColumns((int) $invoice->shop_id, $paymentMethodId),
             'description' => "{$note} - Invoice {$invoice->invoice_number}",
         ]);
     }

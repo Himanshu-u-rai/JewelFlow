@@ -252,7 +252,7 @@ class InvoiceDueService
                 'source_id' => $locked->id,
                 'invoice_id' => $locked->id,
                 'payment_mode' => $input['mode'],
-                ...CashTransaction::accountColumns($methodId ? (int) $methodId : null),
+                ...CashTransaction::accountColumns((int) $locked->shop_id, $methodId ? (int) $methodId : null),
                 'description' => 'Invoice payment - ' . $locked->invoice_number,
                 'reference_type' => 'invoice',
                 'reference_id' => $locked->id,
