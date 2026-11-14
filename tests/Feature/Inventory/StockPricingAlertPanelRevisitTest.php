@@ -42,7 +42,7 @@ class StockPricingAlertPanelRevisitTest extends TestCase
 
         preg_match_all('~<template x-(?:for|if)="[^"]*"[^>]*>\s*<[a-z]+\b([^>]*)>~', $panel, $drawn);
 
-        $this->assertCount(3, $drawn[1], 'the panel has three templates: loading, empty, and the rows');
+        $this->assertCount(4, $drawn[1], 'the panel has four templates: loading, error, empty, and the rows');
         foreach ($drawn[1] as $attributes) {
             $this->assertStringContainsString('data-turbo-temporary', $attributes,
                 'a template draws a node that Turbo would cache and Alpine would find orphaned on Back');

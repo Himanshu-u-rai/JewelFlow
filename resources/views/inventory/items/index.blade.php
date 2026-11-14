@@ -87,10 +87,16 @@
                  with no list around them: Alpine throws "item is not defined" for every binding in
                  every row, then draws the list again beside the dead copies. --}}
             <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
-                <template x-if="loading">
+                <template x-if="state === 'loading'">
                     <div data-turbo-temporary class="flex items-center justify-center py-12 text-gray-400 text-sm">Loading…</div>
                 </template>
-                <template x-if="!loading && items.length === 0">
+                <template x-if="state === 'error'">
+                    <div data-turbo-temporary class="flex flex-col items-center justify-center py-12 gap-3 text-sm text-red-600" role="alert">
+                        <span>The alerts could not be loaded.</span>
+                        <button type="button" @click="retry()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">Try again</button>
+                    </div>
+                </template>
+                <template x-if="state === 'loaded' && items.length === 0">
                     <div data-turbo-temporary class="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
                         <x-icon name="circle-check" class="w-8 h-8" stroke-width="1.5" />
                         <span>All items repriced successfully!</span>
@@ -125,7 +131,9 @@
     function pricingAlertDrawer(initialCount, alertsUrl, storageKey) {
         return {
             isOpen: false,
-            loading: false,
+            // idle | loading | loaded | error (audit N9): a failure is not "no alerts".
+            state: 'idle',
+            _inflight: null,
             count: initialCount,
             items: [],
             _storageKey: storageKey,
@@ -152,9 +160,13 @@
 
             open() {
                 this.isOpen = true;
-                if (this.items.length === 0) {
+                if (this.state === 'idle' || this.state === 'error') {
                     this.fetchItems();
                 }
+            },
+
+            retry() {
+                this.fetchItems();
             },
 
             close() {
@@ -163,9 +175,11 @@
             },
 
             fetchItems() {
-                this.loading = true;
+                // One load at a time: a second call while loading reuses it.
+                if (this._inflight) return this._inflight;
+                this.state = 'loading';
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                fetch(alertsUrl, {
+                this._inflight = fetch(alertsUrl, {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -179,12 +193,14 @@
                 .then(data => {
                     this.count = data.count ?? 0;
                     this.items = Array.isArray(data.items) ? data.items : [];
+                    this.state = 'loaded';
                 })
                 .catch(() => {
-                    // Network / server error — badge count on the bell is still visible
-                    this.items = [];
+                    // Keep the bell count; show the error and let the user retry.
+                    this.state = 'error';
                 })
-                .finally(() => { this.loading = false; });
+                .finally(() => { this._inflight = null; });
+                return this._inflight;
             },
         };
     }
