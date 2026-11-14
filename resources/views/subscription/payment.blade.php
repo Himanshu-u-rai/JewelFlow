@@ -565,12 +565,39 @@
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
-        document.getElementById('pay-btn').addEventListener('click', async function () {
-            const btn = this;
+        (function () {
+            const btn = document.getElementById('pay-btn');
             const errorBox = document.getElementById('pay-error');
             const payLabel = btn.dataset.label || 'Pay ₹{{ number_format($price, 0) }}';
-            btn.disabled = true;
-            btn.textContent = 'Opening Razorpay...';
+
+            // One state for the whole flow (audit N10): idle -> starting -> paying -> submitting.
+            // The button is drawn from it, so no step can leave it stuck by hand.
+            let state = 'idle';
+            const labels = {
+                idle: payLabel,
+                starting: 'Opening Razorpay...',
+                paying: 'Payment in progress...',
+                submitting: 'Confirming payment...',
+            };
+            const setState = (next) => {
+                state = next;
+                btn.disabled = next !== 'idle';
+                btn.textContent = labels[next];
+            };
+            const showError = (message) => {
+                errorBox.textContent = message;
+                errorBox.style.display = 'block';
+            };
+
+            // Back (bfcache) or a Turbo restore can bring this page back mid-flow.
+            const reset = () => setState('idle');
+            window.addEventListener('pageshow', reset);
+            document.addEventListener('turbo:load', reset);
+            document.addEventListener('turbo:before-cache', reset);
+
+            btn.addEventListener('click', async function () {
+            if (state !== 'idle') return;
+            setState('starting');
             errorBox.style.display = 'none';
 
             try {
@@ -584,7 +611,16 @@
                     body: JSON.stringify({}),
                 });
 
-                const data = await res.json();
+                // An expired session or a proxy error answers with an HTML page, not JSON.
+                if (res.status === 419) {
+                    throw new Error('Your session expired. Reload the page and try again.');
+                }
+                let data;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    throw new Error('Something went wrong. Reload the page and try again.');
+                }
 
                 if (!res.ok || data.error) {
                     throw new Error(data.error || 'Payment initiation failed.');
@@ -607,25 +643,27 @@
                         document.getElementById('rzp_payment_id').value = response.razorpay_payment_id;
                         document.getElementById('rzp_order_id').value = response.razorpay_order_id;
                         document.getElementById('rzp_signature').value = response.razorpay_signature;
+                        setState('submitting');
                         document.getElementById('payment-form').submit();
                     },
                     modal: {
-                        ondismiss: function () {
-                            btn.disabled = false;
-                            btn.textContent = payLabel;
-                        }
+                        ondismiss: reset
                     }
                 };
 
                 const rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (failure) {
+                    showError(failure?.error?.description || 'The payment failed. Please try again.');
+                    reset();
+                });
+                setState('paying');
                 rzp.open();
             } catch (err) {
-                errorBox.textContent = err.message;
-                errorBox.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = payLabel;
+                showError(err.message);
+                reset();
             }
-        });
+            });
+        })();
     </script>
 </body>
 </html>
