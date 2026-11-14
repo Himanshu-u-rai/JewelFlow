@@ -672,3 +672,4 @@ c2b686fc7a	ok-platform	console lots:mark-metal: lists every shop's lots with no 
 2ad2bd6d81	ok-platform	console emi:early-closed, read-only: the payments joined on the plan id of that same listing (read: EmiEarlyClosedCheck.php, 2026-11-14)
 f7fed07b8c	ok-platform	console emi:reopen-early-closed: only the plan ids the operator named on the command line; the reopen then runs in that plan's own shop context with a mandatory audited reason (read: EmiReopenEarlyClosed.php, 2026-11-14)
 299266a30b	ok-platform	console repairs:relocate-images: every repair's photo path, to move files public to private disk (no tenant data written or shown) (read: RelocateRepairImages.php, 2026-11-14)
+45af6d50e5	ok-context	CashTransaction::accountColumns(): bound to the shop of the cash row being written (each caller passes that row's shop_id); any other shop's method throws (read: d6dae10b, 2026-11-14)
