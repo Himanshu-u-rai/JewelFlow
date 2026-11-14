@@ -29,6 +29,8 @@ use Illuminate\View\View;
 class AccountController extends Controller
 {
     private const OTP_TTL_MINUTES = 10;
+    private const OTP_MAX_GUESSES = 6;
+    private const OTP_GUESS_WINDOW_SECONDS = 900;
 
     public function __construct(private PlatformAuditService $audit)
     {
@@ -50,6 +52,19 @@ class AccountController extends Controller
     {
         $admin->forceFill(['password_changed_at' => now()])->save();
         $request->session()->put(EnsurePlatformAdminPasswordFresh::SESSION_KEY, $admin->password_changed_at->getTimestamp());
+    }
+
+    /** Counts this guess BEFORE its code is checked, so guesses sent at the same moment each take their own slot and
+     *  at most OTP_MAX_GUESSES codes are ever checked in the window. add() makes the counter once (the window runs
+     *  from the first guess) and increment() is atomic and never resets it. Not RateLimiter::hit(): when its add()
+     *  loses a race it can put the count back to 1 over a parallel increment, losing a guess. A counter that has
+     *  just expired refuses the guess (the next one starts a new window). */
+    private function takeGuessSlot(string $key): bool
+    {
+        Cache::add($key, 0, self::OTP_GUESS_WINDOW_SECONDS);
+        $guesses = Cache::increment($key);
+
+        return $guesses !== false && $guesses <= self::OTP_MAX_GUESSES;
     }
 
     private function requireCurrentPassword(Request $request, PlatformAdmin $admin): bool
@@ -100,13 +115,12 @@ class AccountController extends Controller
         }
 
         $key = 'admin-email-change-verify|' . $admin->id;
-        if (RateLimiter::tooManyAttempts($key, 6)) {
+        if (! $this->takeGuessSlot($key)) {
             return back()->withErrors(['otp' => 'Too many attempts. Try again later.']);
         }
 
         $hash = Cache::get('admin-email-change-otp:' . $admin->id);
         if (! $hash || ! Hash::check($request->input('otp'), $hash)) {
-            RateLimiter::hit($key, 900);
             $this->audit->log($admin, 'platform_admin.email_change_failed', PlatformAdmin::class, $admin->id, null, null, null, $request);
             return back()->withErrors(['otp' => 'That code is invalid or has expired.']);
         }
@@ -120,7 +134,7 @@ class AccountController extends Controller
         ])->save();
 
         Cache::forget('admin-email-change-otp:' . $admin->id);
-        RateLimiter::clear($key);
+        Cache::forget($key);
         $this->revokeOtherSessions($request, $admin);
         $this->audit->log($admin, 'platform_admin.email_changed', PlatformAdmin::class, $admin->id, ['email' => $oldEmail], ['email' => $newEmail], null, $request);
         $this->notifyChange($oldEmail, $newEmail, 'email', $newEmail);
@@ -175,13 +189,12 @@ class AccountController extends Controller
         }
 
         $key = 'admin-mobile-change-verify|' . $admin->id;
-        if (RateLimiter::tooManyAttempts($key, 6)) {
+        if (! $this->takeGuessSlot($key)) {
             return back()->withErrors(['otp' => 'Too many attempts. Try again later.']);
         }
 
         $hash = Cache::get('admin-mobile-change-otp:' . $admin->id);
         if (! $hash || ! Hash::check($request->input('otp'), $hash)) {
-            RateLimiter::hit($key, 900);
             $this->audit->log($admin, 'platform_admin.mobile_change_failed', PlatformAdmin::class, $admin->id, null, null, null, $request);
             return back()->withErrors(['otp' => 'That code is invalid or has expired.']);
         }
@@ -191,7 +204,7 @@ class AccountController extends Controller
         $admin->forceFill(['mobile_number' => $new, 'pending_mobile' => null])->save();
 
         Cache::forget('admin-mobile-change-otp:' . $admin->id);
-        RateLimiter::clear($key);
+        Cache::forget($key);
         $this->revokeOtherSessions($request, $admin);
         $this->audit->log($admin, 'platform_admin.mobile_changed', PlatformAdmin::class, $admin->id, ['mobile_number' => $old], ['mobile_number' => $new], null, $request);
         $this->notifyChange($admin->email, $admin->email, 'mobile number', $new);
