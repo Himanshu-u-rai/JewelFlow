@@ -16,8 +16,13 @@ function setup(respond) {
     const els = {};
     const el = (id) => (els[id] ??= { id, value: '', textContent: '', disabled: false, style: {}, dataset: {}, listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, submit() { this.submitted = true; } });
     els['pay-btn'] = Object.assign(el('pay-btn'), { dataset: { label: 'Pay 999' }, textContent: 'Pay 999' });
-    const win = { listeners: {}, addEventListener(t, f) { this.listeners[t] = f; } };
-    const doc = { listeners: {}, getElementById: el, addEventListener(t, f) { this.listeners[t] = f; }, querySelector: () => ({ content: 'tok' }) };
+    // Listeners honour { signal }, as the browser does: an aborted signal removes them.
+    function addEventListener(t, f, opts) {
+        this.listeners[t] = f;
+        opts?.signal?.addEventListener('abort', () => { if (this.listeners[t] === f) delete this.listeners[t]; });
+    }
+    const win = { listeners: {}, addEventListener };
+    const doc = { listeners: {}, getElementById: el, addEventListener, querySelector: () => ({ content: 'tok' }) };
     const instances = [];
     class Razorpay {
         constructor(options) { this.options = options; this.handlers = {}; instances.push(this); }
@@ -68,15 +73,34 @@ test('Turbo restore also resets it', async () => {
     assert.equal(f.btn.disabled, false);
 });
 
-test('dismissing Razorpay resets; a failed payment shows a message and resets', async () => {
+test('dismissing Razorpay resets the button', async () => {
     const f = setup(() => res(200, order));
     await f.btn.listeners.click.call(f.btn);
     f.instances[0].options.modal.ondismiss();
     assert.equal(f.btn.disabled, false);
+    assert.equal(f.btn.textContent, 'Pay 999');
+});
+
+// Razorpay keeps its window open after a failed payment so the customer can retry there; the Pay button under it
+// re-enabled at once, so a click could start a second checkout beside the first. It now waits for the window to close.
+test('a failed payment shows why and keeps Pay locked until Razorpay closes', async () => {
+    const f = setup(() => res(200, order));
     await f.btn.listeners.click.call(f.btn);
-    f.instances[1].handlers['payment.failed']({ error: { description: 'Card declined' } });
+    f.instances[0].handlers['payment.failed']({ error: { description: 'Card declined' } });
     assert.match(f.err.textContent, /Card declined/);
+    assert.equal(f.btn.disabled, true, 'Razorpay is still open');
+    f.instances[0].options.modal.ondismiss();
     assert.equal(f.btn.disabled, false);
+});
+
+// Turbo keeps window and document across visits: every visit to this page added another set of listeners.
+test('leaving the page drops its listeners, and the cached copy shows an idle button', async () => {
+    const f = setup(() => res(200, order));
+    await f.btn.listeners.click.call(f.btn);
+    f.doc.listeners['turbo:before-cache']();
+    assert.equal(f.btn.disabled, false, 'the snapshot Turbo keeps is idle');
+    assert.deepEqual(Object.keys(f.win.listeners), [], 'no pageshow listener left behind');
+    assert.deepEqual(Object.keys(f.doc.listeners), [], 'no Turbo listener left behind');
 });
 
 test('a second click while the flow is running does nothing', async () => {

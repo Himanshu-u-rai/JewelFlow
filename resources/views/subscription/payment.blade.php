@@ -589,11 +589,13 @@
                 errorBox.style.display = 'block';
             };
 
-            // Back (bfcache) or a Turbo restore can bring this page back mid-flow.
+            // Back (bfcache) or a Turbo restore can bring this page back mid-flow. Turbo keeps window and document
+            // across visits, so these listeners live for this visit only: leaving drops them (and caches an idle button).
             const reset = () => setState('idle');
-            window.addEventListener('pageshow', reset);
-            document.addEventListener('turbo:load', reset);
-            document.addEventListener('turbo:before-cache', reset);
+            const visit = new AbortController();
+            window.addEventListener('pageshow', reset, { signal: visit.signal });
+            document.addEventListener('turbo:load', reset, { signal: visit.signal });
+            document.addEventListener('turbo:before-cache', () => { reset(); visit.abort(); }, { signal: visit.signal });
 
             btn.addEventListener('click', async function () {
             if (state !== 'idle') return;
@@ -652,9 +654,10 @@
                 };
 
                 const rzp = new Razorpay(options);
+                // Razorpay stays open after a failure so the customer can retry there; Pay unlocks when it closes
+                // (ondismiss), never under it, or a click would start a second checkout.
                 rzp.on('payment.failed', function (failure) {
                     showError(failure?.error?.description || 'The payment failed. Please try again.');
-                    reset();
                 });
                 setState('paying');
                 rzp.open();
