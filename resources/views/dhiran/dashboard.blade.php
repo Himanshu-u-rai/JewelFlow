@@ -44,24 +44,34 @@
             />
         @endif
 
-        {{-- Owner 2026-11-11: small, simple figures (no big cards, icons, bars or panels); each opens the list behind it. --}}
+        {{-- Owner 2026-11-11: small, simple figures (no big cards, icons, bars or panels); each opens the list behind it.
+             Owner 2026-11-15: six, not twelve. The details still worth a glance ride along as a figure's sub-line
+             (each part: [value, data-dash key or null, text after it]); interest this FY, due in 30 days and awaiting
+             evidence stay on the Reports and Loans pages. --}}
         @php
             $inr = fn ($v) => '₹' . \App\Support\IndianNumber::format($v);
             $grams = fn ($v) => \App\Support\IndianNumber::format($v, 3) . ' g';
             $late90 = $dash['overdue']['90+'];
+            $open = $dash['open_count'];
             $stats = [
-                ['Open loans', $dash['open_count'], null, 'open-count', route('dhiran.loans', ['status' => 'active']), false, 'file-text'],
-                ['Money lent out', $inr($dash['money_out']), null, 'money-out', route('dhiran.loans', ['status' => 'active']), false, 'banknote'],
-                ['Total owed', $inr($dash['owed']), 'with interest and penalty', 'owed', route('dhiran.reports.active'), false, 'wallet'],
-                ['Interest this month', $inr($dash['interest_month']), null, 'interest-month', route('dhiran.reports.interest', ['period' => 'this_month']), false, 'calculator'],
-                ['Interest ' . $dash['fy_label'], $inr($dash['interest_fy']), null, 'interest-fy', route('dhiran.reports.interest', ['period' => 'this_fy']), false, 'calendar'],
-                ['Awaiting evidence', $dash['pending'], null, 'pending', route('dhiran.loans', ['status' => 'pending_evidence']), $dash['pending'] > 0, 'camera'],
-                ['Overdue', $dash['overdue_count'], $inr($dash['overdue_owed']) . ' owed', 'overdue-count', route('dhiran.reports.overdue'), $dash['overdue_count'] > 0, 'clock'],
-                ['Over 90 days late', $late90['n'], $inr($late90['owed']) . ' owed', 'overdue-90+', $late90['url'], $late90['n'] > 0, 'triangle-alert'],
-                ['Due in 7 days', $dash['maturing']['7']['n'], $inr($dash['maturing']['7']['owed']), 'maturing-7', $dash['maturing']['7']['url'], false, 'calendar-clock'],
-                ['Due in 30 days', $dash['maturing']['30']['n'], $inr($dash['maturing']['30']['owed']), 'maturing-30', $dash['maturing']['30']['url'], false, 'calendar'],
-                ['Gold held (fine)', $grams($dash['held']['gold']->fine ?? 0), null, 'fine-gold', route('dhiran.loans', ['metal' => 'gold', 'status' => 'active']), false, 'weight'],
-                ['Silver held (fine)', $grams($dash['held']['silver']->fine ?? 0), null, 'fine-silver', route('dhiran.loans', ['metal' => 'silver', 'status' => 'active']), false, 'coins'],
+                ['Money lent out', $inr($dash['money_out']), [[$open, 'open-count', $open === 1 ? ' open loan' : ' open loans']],
+                    'money-out', route('dhiran.loans', ['status' => 'active']), false, 'banknote'],
+                ['Total owed', $inr($dash['owed']), [['with interest and penalty', null, '']],
+                    'owed', route('dhiran.reports.active'), false, 'wallet'],
+                ['Interest this month', $inr($dash['interest_month']), [],
+                    'interest-month', route('dhiran.reports.interest', ['period' => 'this_month']), false, 'calculator'],
+                // A sub-line only says something when its count is not zero ("₹0 owed" is noise).
+                ['Overdue', $dash['overdue_count'], array_values(array_filter([
+                        $dash['overdue_count'] > 0 ? [$inr($dash['overdue_owed']), null, ' owed'] : null,
+                        $late90['n'] > 0 ? [$late90['n'], 'overdue-90+', ' over 90 days'] : null,
+                    ])),
+                    'overdue-count', route('dhiran.reports.overdue'), $dash['overdue_count'] > 0, 'clock'],
+                ['Due in 7 days', $dash['maturing']['7']['n'],
+                    $dash['maturing']['7']['n'] > 0 ? [[$inr($dash['maturing']['7']['owed']), null, ' owed']] : [],
+                    'maturing-7', $dash['maturing']['7']['url'], false, 'calendar-clock'],
+                ['Gold held (fine)', $grams($dash['held']['gold']->fine ?? 0),
+                    ($dash['held']['silver']->fine ?? 0) > 0 ? [[$grams($dash['held']['silver']->fine), 'fine-silver', ' silver']] : [],
+                    'fine-gold', route('dhiran.loans', ['metal' => 'gold', 'status' => 'active']), false, 'weight'],
             ];
         @endphp
 
@@ -70,7 +80,9 @@
                 <a href="{{ $url }}" class="dd-stat {{ $flag ? 'is-flagged' : '' }}">
                     <span class="dd-stat-label"><x-icon :name="$icon" size="14" />{{ $label }}</span>
                     <span class="dd-stat-value" data-dash="{{ $key }}">{{ $value }}</span>
-                    @if($sub)<span class="dd-stat-sub">{{ $sub }}</span>@endif
+                    @if($sub)
+                        <span class="dd-stat-sub">@foreach($sub as $i => [$part, $partKey, $after]){{ $i > 0 ? ' · ' : '' }}@if($partKey)<span data-dash="{{ $partKey }}">{{ $part }}</span>@else{{ $part }}@endif{{ $after }}@endforeach</span>
+                    @endif
                 </a>
             @endforeach
         </section>

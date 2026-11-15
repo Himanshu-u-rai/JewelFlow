@@ -99,7 +99,6 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         foreach (array_keys(\App\Services\Dhiran\DhiranListFilters::OVERDUE) as $band) {
             $overdueBands[$band] = $byFilter(['overdue' => $band]);
         }
-        $fy = (new \App\Services\Reporting\Filters\FilterResolver())->resolve(\App\Services\Reporting\Filters\DatePreset::ThisFy);
         $held = DhiranLoanItem::query()
             ->join('dhiran_loans as l', 'l.id', '=', 'dhiran_loan_items.dhiran_loan_id')
             ->where('l.shop_id', $shopId)->whereIn('l.status', $open)
@@ -113,14 +112,12 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             'money_out'      => (float) $openSums->principal,
             'owed'           => (float) $openSums->owed,
             'interest_month' => $thisMonthInterest,
-            'interest_fy'    => (float) DhiranPayment::where('shop_id', $shopId)
-                ->whereBetween('payment_date', [$fy->from->toDateString(), $fy->to->toDateString()])->sum('interest_component'),
-            'fy_label'       => $fy->label,
             'overdue'        => $overdueBands,
             'overdue_count'  => array_sum(array_column($overdueBands, 'n')),
             'overdue_owed'   => array_sum(array_column($overdueBands, 'owed')),
-            'maturing'       => ['7' => $byFilter(['maturing' => '7']), '30' => $byFilter(['maturing' => '30'])],
-            'pending'        => DhiranLoan::where('shop_id', $shopId)->where('status', 'pending_evidence')->count(),
+            // Owner 2026-11-15: six figures; interest this FY, due in 30 days and awaiting evidence are no longer
+            // computed here (they stay on the Reports and Loans pages).
+            'maturing'       => ['7' => $byFilter(['maturing' => '7'])],
             'held'           => $held,
         ];
 

@@ -69,31 +69,34 @@ class DhiranDashboardFiguresTest extends TestCase
         });
 
         $fig = fn (string $key) => preg_match('/data-dash="' . preg_quote($key, '/') . '"[^>]*>\s*([^<]+?)\s*</', $html, $m) ? $m[1] : null;
+        // Owner 2026-11-15: twelve figures were too crowded; six stay, the details a lender still needs ride along as
+        // a figure's sub-line (open loans, loans over 90 days late, silver held).
         $this->assertSame('₹2,40,000', $fig('money-out'), 'principal still out on the 5 open loans, Indian grouping');
-        $this->assertSame('5', $fig('open-count'));
+        $this->assertSame('5', $fig('open-count'), 'under money lent out');
         $this->assertGreaterThan(0, $interestPart);
         $this->assertSame('₹' . \App\Support\IndianNumber::format($interestPart), $fig('interest-month'));
-        $this->assertSame('₹' . \App\Support\IndianNumber::format($interestPart), $fig('interest-fy'));
         $this->assertSame('2', $fig('overdue-count'));
-        $this->assertSame('0', $fig('overdue-90+'));
+        $this->assertNull($fig('overdue-90+'), 'the "over 90 days" sub-line appears only when a loan is that late');
         $this->assertSame('1', $fig('maturing-7'));
-        $this->assertSame('1', $fig('maturing-30'));
-        $this->assertSame('0', $fig('pending'));
         $this->assertSame('183.333 g', $fig('fine-gold'), '4 open gold loans × 50 g of 22K');
-        $this->assertSame('4,625.000 g', $fig('fine-silver'));
+        $this->assertSame('4,625.000 g', $fig('fine-silver'), 'under gold held');
+        foreach (['interest-fy', 'maturing-30', 'pending'] as $dropped) {
+            $this->assertNull($fig($dropped), "{$dropped} is no longer on the dashboard");
+        }
 
         // Each figure opens the list behind it, with the same filter.
-        foreach (['overdue=90%2B', 'maturing=7', 'maturing=30', 'status=active', 'status=pending_evidence'] as $q) {
-            $this->assertStringContainsString(e(route('dhiran.loans') . '?' . $q), $html, "links to {$q}");
+        foreach (['maturing=7', 'status=active', 'metal=gold'] as $q) {
+            $this->assertStringContainsString($q, $html, "links to {$q}");
         }
-        $this->assertStringContainsString(e(route('dhiran.reports.interest') . '?period=this_fy'), $html);
+        $this->assertStringContainsString(e(route('dhiran.reports.overdue')), $html);
+        $this->assertStringContainsString(e(route('dhiran.reports.interest') . '?period=this_month'), $html);
         $this->assertStringContainsString('View all loans', $html);
 
         // Owner 2026-11-11: small, simple figures in one strip, not big KPI cards, icons, bars or panels.
         $this->assertStringContainsString('data-dash-glance', $html);
-        $this->assertSame(12, preg_match_all('/class="dd-stat[ "]/', $html), 'twelve small figures');
+        $this->assertSame(6, preg_match_all('/class="dd-stat[ "]/', $html), 'six small figures');
         // ...each with a small plain icon beside its label, as elsewhere in the app (owner 2026-11-11).
-        $this->assertSame(12, preg_match_all('/<span class="dd-stat-label">\s*<svg/', $html), 'an icon on every figure');
+        $this->assertSame(6, preg_match_all('/<span class="dd-stat-label">\s*<svg/', $html), 'an icon on every figure');
         foreach (['dd-kpi-card', 'dd-bar', 'dd-panel', 'dd-kpi-icon'] as $gone) {
             $this->assertStringNotContainsString($gone, $html);
         }
