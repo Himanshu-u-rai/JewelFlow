@@ -2135,6 +2135,9 @@
         .sub-status-page .sub-billing-table td {
             display: block;
             width: 100%;
+            /* stacked cards take the phone's width: the table's desktop min-width (720px) kept them 390px wider
+               than the screen (2026-11-15) */
+            min-width: 0;
         }
         .sub-status-page .sub-billing-table tr {
             padding: 4px 16px 12px;
