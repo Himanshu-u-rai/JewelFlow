@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\ReorderRule;
+use App\Models\Reporting\ReportExport;
 use App\Models\ShopPreferences;
 use App\Models\User;
 use App\Notifications\Reporting\ExportReadyNotification;
@@ -62,7 +63,7 @@ class ShopNoticeService
         ], $alerts);
 
         // Items needing a price review: one row, however many items (the stock list's review drawer lists them).
-        $pricingCount = $isRetailer && $canStock ? app(ShopPricingService::class)->pricingAlertCount($shopId) : 0;
+        $pricingCount = self::pricingReviewCount($user);
         $pricing = $pricingCount > 0 ? [
             'title' => $pricingCount === 1 ? '1 item needs a price review' : "{$pricingCount} items need a price review",
             'meta' => 'Not repriced after the last rate change',
@@ -83,22 +84,38 @@ class ShopNoticeService
         ];
     }
 
+    /** In-stock items needing a price review, for retail users with stock access (0 otherwise). Web bell and app. */
+    public static function pricingReviewCount(User $user): int
+    {
+        return $user->shop?->isRetailer() && $user->can('inventory.view')
+            ? app(ShopPricingService::class)->pricingAlertCount((int) $user->shop_id)
+            : 0;
+    }
+
     /**
      * Finished background exports this user asked for and has not downloaded or cleared yet. A message, not a state:
-     * downloading (ExportDownloadController) or clearing marks it read. A link past its expiry is never offered.
+     * downloading (the web's signed link or the app's token download) or clearing marks it read. A link past its
+     * expiry is never offered. `href` is the web's signed link; the app downloads by `export_id`.
      *
-     * @return list<array{title: string, meta: ?string, href: string}>
+     * @return list<array{title: string, meta: ?string, href: string, export_id: int, file_name: string, expires_at: ?string}>
      */
-    private static function readyDownloads(User $user): array
+    public static function readyDownloads(User $user): array
     {
-        return app(ExportAuditService::class)->readyNotificationsFor($user)
+        $notes = app(ExportAuditService::class)->readyNotificationsFor($user)
             ->filter(fn ($note) => empty($note->data['expires_at']) || Carbon::parse($note->data['expires_at'])->isFuture())
-            ->filter(fn ($note) => ! empty($note->data['download_url']))
+            ->filter(fn ($note) => ! empty($note->data['download_url']) && ! empty($note->data['export_id']));
+        $files = ReportExport::whereIn('id', $notes->map(fn ($note) => (int) $note->data['export_id']))->pluck('file_path', 'id');
+
+        return $notes
+            ->filter(fn ($note) => ! empty($files[(int) $note->data['export_id']]))
             ->map(fn ($note) => [
                 'title' => Str::headline($note->data['report_key'] ?? 'Export') . ' is ready to download',
                 'meta' => empty($note->data['expires_at']) ? null
                     : 'Link expires ' . Carbon::parse($note->data['expires_at'])->diffForHumans(),
                 'href' => $note->data['download_url'],
+                'export_id' => (int) $note->data['export_id'],
+                'file_name' => basename((string) $files[(int) $note->data['export_id']]),
+                'expires_at' => $note->data['expires_at'] ?? null,
             ])
             ->values()->all();
     }

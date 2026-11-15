@@ -25,6 +25,14 @@ class NoticeController extends Controller
         return $this->bell($request);
     }
 
+    /** The app's Shop notices "Clear" on Ready downloads (the app reloads its dashboard after). */
+    public function clearDownloadsForApp(Request $request): JsonResponse
+    {
+        ShopNoticeService::clearDownloads($request->user());
+
+        return response()->json(['downloads' => []]);
+    }
+
     private function bell(Request $request): JsonResponse
     {
         $notices = ShopNoticeService::forUser($request->user());

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardMetricsService;
+use App\Services\ShopNoticeService;
 use App\Services\ShopPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,15 @@ class DashboardController extends Controller
                     $metrics,
                     (int) ($shop?->preferences?->low_stock_threshold ?? 20),
                 ),
+                // The web's one bell (2026-11-14): items needing a price review (retail, stock access) and this user's
+                // finished exports. The app downloads by export id with its own token (/exports/{id}/download).
+                'pricing_review_count' => ShopNoticeService::pricingReviewCount($request->user()),
+                'downloads' => array_map(fn (array $d): array => [
+                    'export_id' => $d['export_id'],
+                    'title' => $d['title'],
+                    'file_name' => $d['file_name'],
+                    'expires_at' => $d['expires_at'],
+                ], ShopNoticeService::readyDownloads($request->user())),
             ],
             'trend' => $figures ? ($metrics['trendData'] ?? []) : [],
             'is_retailer' => (bool) ($metrics['isRetailer'] ?? false),

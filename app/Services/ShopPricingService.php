@@ -694,11 +694,7 @@ class ShopPricingService
     {
         return Item::withoutTenant()
             ->where('shop_id', $shop instanceof Shop ? (int) $shop->id : (int) $shop)
-            ->where('status', 'in_stock')
-            ->where(function ($query): void {
-                $query->whereNull('metal_type')
-                    ->orWhereRaw($this->booleanComparisonSql('pricing_review_required', true));
-            });
+            ->needsPriceReview();
     }
 
     public function legacyItemsNeedingReview(Shop|int $shop): Collection

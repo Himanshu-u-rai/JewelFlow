@@ -27,6 +27,11 @@ class StockController extends Controller
             $query->where('status', 'in_stock');
         }
 
+        // The Shop notices row "items need a price review" opens Stock with just those (the web's review drawer).
+        if ($request->boolean('pricing_review')) {
+            $query->needsPriceReview();
+        }
+
         // Filter by category
         if ($request->filled('category')) {
             $query->where('category', 'ilike', $request->category);

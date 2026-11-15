@@ -57,6 +57,14 @@ class UnifiedNoticeBellTest extends TestCase
 
     private function readyExport(User $user, array $over = []): string
     {
+        // The export the message points at (a message whose export is gone is never offered: its link would 404).
+        $exportId = DB::table('report_exports')->insertGetId([
+            'shop_id' => $user->shop_id, 'user_id' => $user->id, 'report_key' => 'sales-register', 'report_version' => '1',
+            'format' => 'csv', 'mode' => 'queued', 'status' => 'done', 'sensitive_included' => DB::raw('false'),
+            'file_disk' => 'local', 'file_path' => "exports/{$user->shop_id}/sales-register.csv",
+            'generated_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $over += ['export_id' => $exportId];
         $id = (string) Str::uuid();
         DB::table('notifications')->insert([
             'id' => $id, 'type' => ExportReadyNotification::class,

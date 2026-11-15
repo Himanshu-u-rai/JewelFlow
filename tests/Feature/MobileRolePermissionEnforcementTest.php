@@ -133,6 +133,9 @@ class MobileRolePermissionEnforcementTest extends TestCase
             // manager permissions are configurable — closing/reopening the shop
             // must never be grantable through a role permission.
             'api/mobile/shop/access',
+            // Shop notices "Clear" marks the caller's own ready-download messages read (as the web bell's
+            // Clear); it writes nothing of anyone else's or the shop's, so it needs no permission.
+            'api/mobile/notices/downloads/clear',
         ];
 
         $ungated = [];

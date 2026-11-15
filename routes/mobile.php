@@ -56,6 +56,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->middleware(['throttle:api-pos-read']);
 
+        // Shop notices' Ready downloads, as the web bell: the file through the web's own checks (shop, report
+        // permissions, sensitive columns, expiry; marks the message read), with the app token instead of a signed
+        // web link; and Clear, for this user's messages only.
+        Route::get('/exports/{export}/download', [\App\Http\Controllers\Reporting\ExportDownloadController::class, 'download'])
+            ->middleware(['throttle:api-pos-read'])->name('mobile.exports.download');
+        Route::post('/notices/downloads/clear', [\App\Http\Controllers\NoticeController::class, 'clearDownloadsForApp'])
+            ->middleware(['throttle:api-pos-read'])->name('mobile.notices.downloads.clear');
+
         // Items
         Route::get('/items/search', [ItemController::class, 'search'])
             ->middleware(['throttle:api-pos-read', 'can:inventory.view']);

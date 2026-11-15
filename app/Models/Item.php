@@ -141,6 +141,16 @@ class Item extends Model
         return $query->where('status', 'in_stock');
     }
 
+    /**
+     * In-stock items whose price needs a review: no metal type, or not repriced after the last rate change. One rule
+     * for the web's review drawer, the bell's count and the app's Stock filter.
+     */
+    public function scopeNeedsPriceReview($query)
+    {
+        return $query->where('status', 'in_stock')
+            ->where(fn ($q) => $q->whereNull('metal_type')->orWhereRaw('pricing_review_required = true'));
+    }
+
     public function scopeWithHuid($query)
     {
         return $query->whereNotNull('huid');

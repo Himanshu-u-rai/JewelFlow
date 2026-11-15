@@ -43,6 +43,8 @@ class MobileApiBreakSweepTest extends TestCase
         'POST api/mobile/v1/sessions/unlock',
         // Today's rates, counts and notices, as the web dashboard; money figures stay withheld (checked below).
         'GET api/mobile/dashboard',
+        // Marks the caller's own ready-download messages read; nothing of anyone else's, nothing of the shop's.
+        'POST api/mobile/notices/downloads/clear',
     ];
 
     /** Unique strings planted in the victim shop's records. */
