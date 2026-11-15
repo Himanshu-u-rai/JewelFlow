@@ -20,6 +20,8 @@
 
         .ki-show-stack {
             display: grid;
+            /* one column the width of the page, not of the widest content inside (900px at 1024, 2026-11-15) */
+            grid-template-columns: minmax(0, 1fr);
             gap: 18px;
         }
 
@@ -542,7 +544,9 @@
 
         .ki-show-payment-row {
             display: grid !important;
-            grid-template-columns: minmax(110px, .8fr) minmax(140px, 1fr) minmax(170px, 1.1fr) minmax(150px, 1fr) minmax(140px, .9fr) auto;
+            /* as many fields per row as fit (each at least 140px), the rest wrap: six fixed minimums (~760px) ran
+               116px out of the 470px main column at 1024 (2026-11-15) */
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
             align-items: end;
             gap: 10px;
             border: 1px solid var(--ki-show-border);
@@ -606,7 +610,8 @@
 
         @media (max-width: 1180px) {
             .ki-show-layout {
-                grid-template-columns: 1fr;
+                /* minmax(0, 1fr): the page's width; a bare 1fr grows to the widest content (900px at 1024) */
+                grid-template-columns: minmax(0, 1fr);
             }
 
             .ki-show-kpi-grid {
@@ -664,7 +669,7 @@
 
             .ki-show-line-card-grid,
             .ki-show-payment-card-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
                 gap: 8px;
             }
 
@@ -673,7 +678,7 @@
             }
 
             .ki-show-payment-row {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
 
             .ki-show-page .ki-payment-splits .ki-split-mode,
@@ -690,7 +695,7 @@
 
         @media (max-width: 420px) {
             .ki-show-kpi-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
         }
     </style>

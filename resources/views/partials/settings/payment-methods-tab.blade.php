@@ -116,6 +116,9 @@
         padding: 12px;
         margin-bottom: 10px;
         background: #ffffff;
+        /* the row stacks by the card's own width (below), not the screen's: at 1024px the settings layout made the
+           card 424px and the actions sat 64px outside it (2026-11-15) */
+        container-type: inline-size;
     }
     .pm-card-row {
         display: grid;
@@ -143,6 +146,19 @@
         justify-content: flex-end;
         gap: 8px;
         flex-wrap: nowrap;
+    }
+    /* After the base rules it overrides: a card narrower than its row (520px) stacks name, detail and actions. */
+    @container (max-width: 520px) {
+        .pm-card-row {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .pm-method-actions {
+            justify-content: space-between;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+        }
     }
     .pm-empty {
         font-size: 13px;
@@ -298,16 +314,6 @@
         .pm-summary {
             width: 100%;
             min-width: 0;
-        }
-        .pm-card-row {
-            grid-template-columns: 1fr;
-            align-items: stretch;
-            gap: 8px;
-        }
-        .pm-method-actions {
-            justify-content: space-between;
-            padding-top: 8px;
-            border-top: 1px solid #e2e8f0;
         }
         .pm-section-header {
             align-items: flex-start;
