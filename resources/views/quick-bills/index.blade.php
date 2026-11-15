@@ -825,7 +825,9 @@
             }
 
             .qb-toolbar {
-                grid-template-columns: minmax(260px, 1fr) auto auto;
+                /* fields reflow by the room they need (the two date boxes need 264px): three fixed tracks squeezed the
+                   date pair 47px out of its column at 1024px */
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 264px), 1fr));
             }
 
             .qb-toolbar .qb-btn-row {

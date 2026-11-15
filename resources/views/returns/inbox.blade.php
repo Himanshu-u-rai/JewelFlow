@@ -1280,6 +1280,17 @@
         .returns-index-page .returns-filter-shell {
             width: 100%;
         }
+
+        /* the five fixed minimums (751px) outgrew the stacked register (726px at 1024): fields reflow, the buttons
+           take their own row */
+        .returns-index-page .returns-register-toolbar {
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)) !important;
+        }
+
+        .returns-index-page .returns-register-toolbar .ri-filter-actions {
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+        }
     }
 
     @media (max-width: 768px) {

@@ -678,7 +678,9 @@
 
 .returns-create-line__controls {
     display: grid;
-    grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(180px, 0.8fr);
+    /* the fields reflow by the line card's room: three fixed minimums (600px) outgrew the 537px card beside the
+       summary rail at 1309px */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: 10px;
     margin-top: 12px;
 }
@@ -5304,6 +5306,9 @@ body.admin-shell {
 @media (max-width: 768px) {
     .content-header > :first-child:not(.content-header-nav),
     .content-header > .content-header-nav + * {
+        /* basis 0: the row wraps by the title's 9rem, not its full text, so a long name still keeps the actions
+           beside it when they fit (compact phone headers wrap since 2026-11-15) */
+        flex-basis: 0;
         min-width: min(100%, 9rem);
     }
 }
@@ -5314,6 +5319,8 @@ body.admin-shell {
 
 .content-header .page-actions {
     flex: 0 0 auto;
+    /* a row of buttons wider than the header wraps inside itself */
+    max-width: 100%;
 }
 
 .content-header .page-actions form {
@@ -11562,11 +11569,16 @@ body.admin-shell {
     align-items: center;
 }
 
-.inventory-item-edit-page .item-edit-preview-box,
-.inventory-item-edit-page .item-edit-preview-image,
-.inventory-item-edit-page .item-edit-preview-placeholder {
+.inventory-item-edit-page .item-edit-preview-box {
     width: 132px;
     height: 132px;
+}
+
+/* the image fills the box inside its border: sized like the box, it was cut 2px by the box's own border */
+.inventory-item-edit-page .item-edit-preview-image,
+.inventory-item-edit-page .item-edit-preview-placeholder {
+    width: 100%;
+    height: 100%;
 }
 
 .inventory-item-edit-page .item-edit-preview-box {
@@ -12212,9 +12224,7 @@ body.admin-shell {
         gap: 12px;
     }
 
-    .inventory-item-edit-page .item-edit-preview-box,
-    .inventory-item-edit-page .item-edit-preview-image,
-    .inventory-item-edit-page .item-edit-preview-placeholder {
+    .inventory-item-edit-page .item-edit-preview-box {
         width: 96px;
         height: 96px;
     }
@@ -17329,7 +17339,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .repairs-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17372,7 +17382,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .categories-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17415,7 +17425,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .customers-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17458,7 +17468,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .customers-show-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17614,7 +17624,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .vendors-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17657,7 +17667,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .vendors-create-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17709,7 +17719,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .vendors-edit-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17761,7 +17771,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .vendors-show-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -17876,7 +17886,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .invoices-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18109,7 +18119,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .cashbook-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18180,7 +18190,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .closing-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18313,7 +18323,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .installments-index-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18458,7 +18468,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .inventory-items-create-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18501,7 +18511,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .customers-create-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18545,7 +18555,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .schemes-page-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18589,7 +18599,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .schemes-show-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18639,7 +18649,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .schemes-create-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18691,7 +18701,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .emi-create-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -18734,7 +18744,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .repairs-report-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 10px;
     }
@@ -21333,7 +21343,7 @@ input::-webkit-calendar-picker-indicator {
 @media (max-width: 768px) {
     .content-header.ops-treatment-header {
         display: flex;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
         padding: 18px 16px 16px;
@@ -22815,7 +22825,7 @@ input[type="date"] {
 
 @media (max-width: 768px) {
     .emi-create-header {
-        flex-wrap: nowrap !important;
+        flex-wrap: wrap !important;
         align-items: center !important;
         gap: 8px !important;
     }
@@ -24693,7 +24703,7 @@ input[type="date"] {
 
 @media (max-width: 768px) {
     .loyalty-adjust-header {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
@@ -27212,6 +27222,10 @@ input[type="date"] {
 .invoice-show-totals-box > div {
     min-height: 58px;
     min-width: 0;
+    /* a tile too narrow for label and amount side by side (two per row on phones) puts the amount on its own line */
+    flex-wrap: wrap;
+    column-gap: 12px;
+    row-gap: 2px;
     padding: 10px 12px;
     border: 1px solid var(--invoice-show-line-soft);
     border-radius: 10px;
@@ -27245,6 +27259,10 @@ input[type="date"] {
     flex-shrink: 0;
     white-space: nowrap;
     text-align: right;
+}
+
+.invoice-show-totals-box > div > strong {
+    margin-left: auto;
 }
 
 .invoice-show-totals-box .invoice-show-total-row {
