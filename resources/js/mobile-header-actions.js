@@ -1,4 +1,4 @@
-// Phone page headers stay one row (owner, 2026-11-15):
+// Phone and tablet page headers stay one row (owner, 2026-11-15):
 //   - Back, Cancel and parent links ("All reports", "← Vault") are hidden: the phone and the browser have their own
 //     back. A record page (its path ends in an id) keeps one as an arrow, since it is usually reached by saving a
 //     form and the phone's back would return to that form.
@@ -8,7 +8,8 @@
 // data-mobile-back="keep|hide" on the header. data-mobile-header="manual" leaves a header alone.
 // The header keeps the real buttons (hidden on phones); the floating button holds stand-ins that forward the click.
 
-const PHONE = '(max-width: 768px)';
+// Phones and tablets (owner extended it to tablets, 2026-11-15); the app's tablet layout ends at 1024px.
+const PHONE = '(max-width: 1024px)';
 const PAGE_FAB_NAVS = '.customers-show-mobile-fab-nav, .dash-mobile-fab-nav, .invoice-emi-mobile-fab-nav, .pos-mobile-fab-nav';
 const BACK = /^(←|back\b|cancel\b|all\s)/i;
 const PRIMARY = /^(\+\s*)?(add|new|create|issue|enroll|start)\b/i;
@@ -19,44 +20,90 @@ export function isRecordPage(path) {
     return /\/(\d+|[0-9A-HJKMNP-TV-Z]{26})\/?$/.test(path);
 }
 
-// Phones: a page about a record (an id anywhere in its path) keeps its subtitle, which carries that record's details
-// ("13 Nov 2026", "Karigar: … · DC: …"). Any other page's subtitle describes the page, so it waits behind an info
-// button beside the title (owner, 2026-11-15). data-mobile-subtitle="keep|info" on the header decides instead.
-export function subtitleMode(path, data = {}) {
-    if (data.mobileSubtitle === 'keep' || data.mobileSubtitle === 'info') return data.mobileSubtitle;
-    return /\/(\d+|[0-9A-HJKMNP-TV-Z]{26})(\/|$)/.test(path) ? 'keep' : 'info';
+// Phones and tablets: only a sentence that describes the page waits behind the info button beside the title.
+// Information stays in sight (owner, 2026-11-15: "be logical before you move a thing in i button"):
+//   - a page about a record (an id anywhere in its path) shows that record's details ("Karigar: … · DC: …");
+//   - a subtitle with a number in it is a date, a period or an amount ("01 Nov 2026 – 30 Nov 2026 · Detailed").
+// data-mobile-subtitle="keep|info|hide" on the header decides instead; "hide" is for a page that shows the same
+// information elsewhere on phones (the dashboard's date sits in its shop profile there).
+export function subtitleMode(path, data = {}, text = '') {
+    if (['keep', 'info', 'hide'].includes(data.mobileSubtitle)) return data.mobileSubtitle;
+    if (/\/(\d+|[0-9A-HJKMNP-TV-Z]{26})(\/|$)/.test(path)) return 'keep';
+    return /\d/.test(text) ? 'keep' : 'info';
 }
 
 const INFO = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+const CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
 let infoIds = 0;
 
 function tuckSubtitle(header) {
-    if (subtitleMode(window.location.pathname, header.dataset) !== 'info') return;
     const title = header.querySelector('.page-title');
     const subtitle = header.querySelector('.page-subtitle');
     if (!title || !subtitle || !subtitle.textContent.trim()) return;
 
-    if (!subtitle.id) {
-        infoIds += 1;
-        subtitle.id = `jf-page-about-${infoIds}`;
-        subtitle.dataset.jfIdAdded = 'true';
+    const mode = subtitleMode(window.location.pathname, header.dataset, subtitle.textContent);
+    if (mode === 'keep') return;
+    if (mode === 'hide') {
+        subtitle.classList.add('jf-subtitle-tucked');
+        subtitle.style.setProperty('display', 'none', 'important');
+        return;
     }
+
+    // The description opens as a floating card under the header, with its own close button (owner, 2026-11-15):
+    // the header never grows. Inline and important: page CSS shows some subtitles with !important.
     subtitle.classList.add('jf-subtitle-tucked');
+    subtitle.style.setProperty('display', 'none', 'important');
+
+    infoIds += 1;
+    const card = document.createElement('div');
+    card.className = 'jf-page-about';
+    card.id = `jf-page-about-${infoIds}`;
+    card.hidden = true;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', 'About this page');
+    const text = document.createElement('p');
+    text.className = 'jf-page-about-text';
+    text.textContent = subtitle.textContent.replace(/\s+/g, ' ').trim();
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'jf-page-about-close';
+    close.setAttribute('aria-label', 'Close');
+    close.insertAdjacentHTML('afterbegin', CLOSE);
+    card.append(text, close);
+    document.body.appendChild(card);
 
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'jf-header-info';
     button.setAttribute('aria-label', 'About this page');
     button.setAttribute('aria-expanded', 'false');
-    button.setAttribute('aria-controls', subtitle.id);
+    button.setAttribute('aria-controls', card.id);
     button.insertAdjacentHTML('afterbegin', INFO);
-    // Inline and important, both ways: page CSS hides some subtitles with !important.
-    const show = (open) => {
-        button.setAttribute('aria-expanded', open ? 'true' : 'false');
-        subtitle.style.setProperty('display', open ? 'block' : 'none', 'important');
+
+    const onOutside = (event) => {
+        if (!card.contains(event.target) && !button.contains(event.target)) setOpen(false);
     };
-    show(false);
-    button.addEventListener('click', () => show(button.getAttribute('aria-expanded') !== 'true'));
+    const onKey = (event) => {
+        if (event.key === 'Escape') setOpen(false, true);
+    };
+    function setOpen(open, returnFocus = false) {
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        card.hidden = !open;
+        if (open) {
+            // Under the header, wherever the page has scrolled it (the header is sticky on most pages).
+            card.style.top = `${Math.max(8, Math.round(header.getBoundingClientRect().bottom) + 8)}px`;
+            document.addEventListener('pointerdown', onOutside, true);
+            document.addEventListener('keydown', onKey);
+            close.focus({ preventScroll: true });
+        } else {
+            document.removeEventListener('pointerdown', onOutside, true);
+            document.removeEventListener('keydown', onKey);
+            if (returnFocus) button.focus({ preventScroll: true });
+        }
+    }
+    button.addEventListener('click', () => setOpen(button.getAttribute('aria-expanded') !== 'true'));
+    close.addEventListener('click', () => setOpen(false, true));
+    card.jfClose = () => setOpen(false);
     title.appendChild(button);
 }
 
@@ -210,14 +257,14 @@ function makeIconOnly(node, label, isBack) {
 }
 
 export function cleanupMobileHeaderActionFabs() {
+    document.querySelectorAll('.jf-page-about').forEach((card) => {
+        if (typeof card.jfClose === 'function') card.jfClose();
+        card.remove();
+    });
     document.querySelectorAll('.jf-header-mobile-fab, .jf-header-fab-proxy, .jf-header-back-arrow, .jf-header-info').forEach((node) => node.remove());
     document.querySelectorAll('.jf-subtitle-tucked').forEach((node) => {
         node.classList.remove('jf-subtitle-tucked');
         node.style.removeProperty('display');
-        if (node.dataset.jfIdAdded) {
-            node.removeAttribute('id');
-            delete node.dataset.jfIdAdded;
-        }
     });
     document.querySelectorAll('[data-jf-header-hidden]').forEach((node) => {
         node.style.removeProperty('display');
@@ -257,7 +304,8 @@ export function initMobileHeaderActionFabs() {
             data: node.dataset,
             parent: node.matches('a') && isParentLink(node.getAttribute('href'), window.location.pathname, window.location.origin),
         }));
-        if (!entries.length) return;
+        // A header holding only a status badge still takes the one-row layout below.
+        if (!entries.length && !shown.some((node) => node.matches('.header-badge') || !node.querySelector('a, button, nav, form, select, input'))) return;
 
         const plan = classifyHeaderActions(entries, { recordPage, backPolicy: header.dataset.mobileBack || null });
 
@@ -265,8 +313,10 @@ export function initMobileHeaderActionFabs() {
         if (Array.from(header.classList).every((name) => name === 'content-header')) header.classList.add('jf-header-auto-mobile');
 
         actions.classList.add('jf-header-fab-source');
-        const groups = shown.filter((node) => !isAction(node));
-        groups.forEach((node) => node.classList.add('jf-header-fab-pinned'));
+        // A badge or status chip (nothing to press inside) sits in the one-row layout; a tab strip does not.
+        const isChip = (node) => node.matches('.header-badge') || !node.querySelector('a, button, nav, form, select, input');
+        const groups = shown.filter((node) => !isAction(node) && !isChip(node));
+        shown.filter((node) => !isAction(node)).forEach((node) => node.classList.add('jf-header-fab-pinned'));
         // Only icons left: one row, whatever grid the page gave its header for full-width buttons. A header that
         // still holds a group (a tab strip, a status) keeps its own layout.
         if (!groups.length) header.classList.add('jf-header-compact');

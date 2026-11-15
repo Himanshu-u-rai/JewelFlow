@@ -901,6 +901,17 @@
             text-overflow: ellipsis;
         }
 
+        /* today's date: in the header on desktop, here on phones and tablets (the header has no room) */
+        .dash-shop-info .dash-shop-today {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-shop-info .dash-shop-today {
+                display: block;
+            }
+        }
+
         .dash-shop-info .dash-meta strong {
             color: var(--dash-action);
             font-weight: 700;
@@ -3494,10 +3505,12 @@
         }
     @endphp
 
+    {{-- Phones and tablets show today's date in the shop profile instead (mobile-header-actions.js). --}}
     <x-page-header
         title="Dashboard"
         :subtitle="now()->format('l, d M Y')"
         class="dash-header"
+        data-mobile-subtitle="hide"
     >
         <x-slot:actions>
             <button type="button" class="dash-command-desktop-trigger" data-dash-command-trigger aria-label="Search pages and records">
@@ -4199,6 +4212,8 @@
                 <div class="dash-shop-info">
                     <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : (\App\Support\Mobile::forDisplay($shop?->owner_mobile) ?: '—') }}</p>
                     <p class="dash-meta" style="font-size: 11px;"><strong>Phone</strong>{{ $shop?->phone ?? '—' }}</p>
+                    {{-- The header shows the date on desktop; phones and tablets show it here. --}}
+                    <p class="dash-meta dash-shop-today" style="font-size: 11px;"><strong>Today</strong>{{ now()->format('l, d M Y') }}</p>
                     @if($shop?->city || $shop?->state)
                         <p class="dash-meta" style="font-size: 11px;"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
                     @endif

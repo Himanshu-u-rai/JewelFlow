@@ -76,6 +76,17 @@ test('a page about a record keeps its subtitle; any other page tucks it behind t
     assert.equal(subtitleMode('/invoices/3', { mobileSubtitle: 'info' }), 'info');
 });
 
+test('a subtitle holding a date or number is information and stays; only descriptions go behind the button', () => {
+    assert.equal(subtitleMode('/report/gst', {}, '01 Nov 2026 – 30 Nov 2026 · Standard'), 'keep');
+    assert.equal(subtitleMode('/report/daily', {}, '15 Nov 2026 · Detailed'), 'keep');
+    assert.equal(subtitleMode('/masters', {}, 'Reusable business records used across sales, inventory, purchasing and manufacturing.'), 'info');
+    assert.equal(subtitleMode('/job-orders', {}, 'Bullion issued to karigars'), 'info');
+});
+
+test('a page may hide its subtitle on phones when the page shows it elsewhere (the dashboard date)', () => {
+    assert.equal(subtitleMode('/dashboard', { mobileSubtitle: 'hide' }, 'Sunday, 15 Nov 2026'), 'hide');
+});
+
 test('markup decides over the label', () => {
     const r = classifyHeaderActions([
         a('Job Orders', { mobileAction: 'back' }),

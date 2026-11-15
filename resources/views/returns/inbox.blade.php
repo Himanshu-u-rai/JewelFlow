@@ -1079,6 +1079,14 @@
         animation: none !important;
         box-shadow: none !important;
         transform: none !important;
+        container-type: inline-size;
+    }
+
+    /* a card too narrow for its icon and a whole amount (147px at 820px) drops the icon; the amount never breaks */
+    @container (max-width: 170px) {
+        .returns-index-page .returns-kpi-card > .flex > :first-child:has(> svg) {
+            display: none;
+        }
     }
 
     .returns-index-page .returns-kpi-card .ri-kpi-label {

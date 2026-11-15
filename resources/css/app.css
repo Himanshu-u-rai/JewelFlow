@@ -5433,114 +5433,6 @@ body.admin-shell {
     box-shadow: var(--jf-shadow-sm);
 }
 
-.inventory-items-create-header {
-    background:
-        radial-gradient(120% 220% at 0% 0%, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.02) 45%, transparent 70%),
-        rgba(255, 255, 255, 0.92);
-    border-bottom-color: rgba(245, 158, 11, 0.20);
-}
-
-.customers-create-header {
-    background:
-        radial-gradient(120% 220% at 0% 0%, rgba(22, 163, 74, 0.10) 0%, rgba(22, 163, 74, 0.02) 45%, transparent 70%),
-        rgba(255, 255, 255, 0.92);
-    border-bottom-color: rgba(22, 163, 74, 0.22);
-}
-
-.schemes-page-header,
-.schemes-create-header {
-    background:
-        radial-gradient(120% 220% at 0% 0%, rgba(14, 116, 144, 0.10) 0%, rgba(14, 116, 144, 0.02) 45%, transparent 70%),
-        rgba(255, 255, 255, 0.92);
-    border-bottom-color: rgba(14, 116, 144, 0.22);
-}
-
-.emi-create-header {
-    background:
-        radial-gradient(120% 220% at 0% 0%, rgba(13, 148, 136, 0.10) 0%, rgba(13, 148, 136, 0.02) 45%, transparent 70%),
-        rgba(255, 255, 255, 0.92);
-    border-bottom-color: rgba(13, 148, 136, 0.22);
-}
-
-.repairs-report-header {
-    background:
-        radial-gradient(120% 220% at 0% 0%, rgba(20, 33, 61, 0.08) 0%, rgba(20, 33, 61, 0.02) 48%, transparent 72%),
-        rgba(255, 255, 255, 0.92);
-    border-bottom-color: rgba(20, 33, 61, 0.16);
-}
-
-.inventory-items-create-header::before,
-.customers-create-header::before,
-.schemes-page-header::before,
-.schemes-create-header::before,
-.emi-create-header::before,
-.repairs-report-header::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 2px;
-}
-
-.inventory-items-create-header::before {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.85), rgba(245, 158, 11, 0.28) 52%, transparent 92%);
-}
-
-.customers-create-header::before {
-    background: linear-gradient(90deg, rgba(22, 163, 74, 0.82), rgba(22, 163, 74, 0.26) 52%, transparent 92%);
-}
-
-.schemes-page-header::before,
-.schemes-create-header::before {
-    background: linear-gradient(90deg, rgba(14, 116, 144, 0.82), rgba(14, 116, 144, 0.26) 52%, transparent 92%);
-}
-
-.emi-create-header::before {
-    background: linear-gradient(90deg, rgba(13, 148, 136, 0.82), rgba(13, 148, 136, 0.26) 52%, transparent 92%);
-}
-
-.repairs-report-header::before {
-    background: linear-gradient(90deg, rgba(20, 33, 61, 0.82), rgba(20, 33, 61, 0.26) 56%, transparent 92%);
-}
-
-.inventory-items-create-header .page-title,
-.customers-create-header .page-title,
-.schemes-page-header .page-title,
-.schemes-create-header .page-title,
-.emi-create-header .page-title,
-.repairs-report-header .page-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    letter-spacing: 0;
-    color: var(--jf-ink);
-}
-
-.inventory-items-create-header .page-title::before,
-.repairs-report-header .page-title::before {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3px 8px;
-    border-radius: var(--jf-radius-pill);
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    line-height: 1;
-}
-
-.inventory-items-create-header .page-title::before {
-    content: 'Inventory';
-    color: #92400e;
-    background: rgba(245, 158, 11, 0.2);
-    border: 1px solid rgba(245, 158, 11, 0.35);
-}
-
-.repairs-report-header .page-title::before {
-    display: none;
-    content: none;
-}
 
 .inventory-items-create-header > :nth-child(2) > p,
 .customers-create-header > :nth-child(2) > p,
@@ -9195,6 +9087,8 @@ body.admin-shell {
 /* Retailer Stock Items register redesign. Scoped to the Stock Items tab only. */
 .inventory-items-page .items-stock-register--retailer {
     display: grid;
+    /* the page's width: the implicit auto column grew to the register table (862px in a 552px page at 820px) */
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
 }
 
@@ -14387,9 +14281,6 @@ input::-webkit-calendar-picker-indicator {
     overflow: visible;
 }
 
-.schemes-page-header.customers-page-header::before {
-    display: none !important;
-}
 
 .content-inner.schemes-index-page {
     --app-card-shadow: none;
@@ -14519,11 +14410,6 @@ input::-webkit-calendar-picker-indicator {
     overflow: visible;
 }
 
-.schemes-page-header.customers-page-header::before,
-.schemes-form-header.customers-page-header::before,
-.schemes-show-header.customers-page-header::before {
-    display: none !important;
-}
 
 .schemes-page-header.customers-page-header .page-title,
 .schemes-form-header.customers-page-header .page-title,
@@ -17326,6 +17212,10 @@ input::-webkit-calendar-picker-indicator {
         margin-right: 4px;
     }
 
+}
+
+/* Phones and tablets: one-row page headers (mobile-header-actions.js; tablets since 2026-11-15) */
+@media (max-width: 1024px) {
     .jf-header-fab-source > :not(.jf-header-fab-pinned) {
         display: none !important;
     }
@@ -17342,13 +17232,14 @@ input::-webkit-calendar-picker-indicator {
         display: inline !important;
     }
 
-    /* the actions that stay in a phone header show only their icon (the name stays as aria-label) */
+    /* the actions that stay in the header show only their icon (the name stays as aria-label); 40px like the
+       tablet bell, 44px on phones (the header size standard) */
     .jf-header-fab-source > .jf-header-icon-only {
         justify-content: center;
-        width: 38px;
-        min-width: 38px;
-        height: 38px;
-        min-height: 38px;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        min-height: 40px;
         padding: 0 !important;
         gap: 0 !important;
         font-size: 0 !important;
@@ -17402,6 +17293,9 @@ input::-webkit-calendar-picker-indicator {
     .jf-header-mobile-fab {
         display: block;
     }
+}
+
+@media (max-width: 768px) {
 
     .repairs-page-header {
         flex-wrap: wrap;
@@ -22488,10 +22382,6 @@ input[type="date"] {
     overflow: visible !important;
 }
 
-.emi-create-header::before {
-    display: none !important;
-    content: none !important;
-}
 
 .emi-create-header .page-title {
     color: #111827 !important;
@@ -23897,10 +23787,6 @@ input[type="date"] {
     overflow: visible;
 }
 
-.customers-create-header::before {
-    display: none !important;
-    content: none !important;
-}
 
 .customers-create-header .page-title {
     color: #111827 !important;
@@ -25892,9 +25778,6 @@ input[type="date"] {
     overflow: visible;
 }
 
-.installments-index-header.customers-page-header::before {
-    display: none !important;
-}
 
 .installments-index-header .page-title {
     color: #111827;
@@ -32129,10 +32012,18 @@ body.app-shell .content-header:not(.dh-page-header) {
     body.app-shell .content-header:not(.dh-page-header) {
         padding-top: 16px !important;
         padding-bottom: 16px !important;
+        padding-left: 24px !important;
     }
 
     body.app-shell .content-header:not(.dh-page-header) .page-title {
         font-size: 20px !important;
+    }
+}
+
+/* tablets: the bell is in the row, so both sides take the same edge (pages used 24px or 32px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    body.app-shell .content-header:not(.dh-page-header) {
+        padding-right: 24px !important;
     }
 }
 
@@ -32203,6 +32094,145 @@ body.app-shell .content-header:not(.dh-page-header) {
 .jf-header-info:focus-visible {
     outline: 2px solid var(--jf-gold-deep);
     outline-offset: 1px;
+}
+
+/* the description itself: a floating card under the header with its own close button; the header never grows */
+.jf-page-about {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    z-index: 60;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 12px 8px 12px 14px;
+    border: 1px solid var(--jf-border);
+    border-radius: 12px;
+    background: var(--jf-surface);
+    box-shadow: 0 16px 32px -12px rgba(15, 23, 42, 0.28);
+    animation: jf-page-about-in 140ms ease-out;
+}
+
+.jf-page-about[hidden] {
+    display: none;
+}
+
+.jf-page-about-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding-top: 5px;
+    color: var(--jf-text);
+    font-size: 13px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.jf-page-about-close {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--jf-text-muted);
+    cursor: pointer;
+}
+
+.jf-page-about-close:hover,
+.jf-page-about-close:focus-visible {
+    background: var(--jf-surface-soft);
+    color: var(--jf-ink);
+}
+
+@keyframes jf-page-about-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jf-page-about { animation: none; }
+}
+
+/* Phones and tablets: the title sits level with the header's buttons, flush left, with no margins of its own
+   (pages had added 2px nudges, centring and top margins) */
+@media (max-width: 1024px) {
+    body.app-shell .content-header:not(.dh-page-header) > .content-header-nav + *,
+    body.app-shell .content-header:not(.dh-page-header) > :first-child:not(.content-header-nav) {
+        align-self: center;
+        margin: 0 !important;
+        text-align: left !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-title {
+        margin: 0 !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+    }
+
+    /* a title row a page centred (exchange) starts at the left too */
+    body.app-shell .content-header:not(.dh-page-header) :has(> .page-title) {
+        justify-content: flex-start !important;
+    }
+
+    /* the description card opens on tap; the title keeps one line of its own */
+    body.app-shell .content-header:not(.dh-page-header) .page-title:has(> .jf-header-info) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-title > .jf-header-info {
+        margin: -6px 0;
+        flex: 0 0 auto;
+    }
+}
+
+/* Tablets: the customer and Stock view tabs swipe in one row beside the title, as on phones below them
+   (they wrapped to two or three rows and pushed Add and the bell onto rows of their own) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    body.app-shell .content-header.customers-directory-header > .page-actions {
+        flex: 1 1 0;
+        min-width: 0;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+    }
+
+    body.app-shell .content-header.customers-directory-header .customers-view-toggle {
+        flex: 0 1 auto;
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    body.app-shell .content-header.customers-directory-header .customers-view-tab,
+    body.app-shell .inventory-items-header .items-header-nav :is(.items-view-tab, .items-page-link) {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    body.app-shell .inventory-items-header .items-header-nav {
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    body.app-shell .inventory-items-header .items-header-nav .items-view-toggle {
+        flex-wrap: nowrap;
+        width: max-content;
+        max-width: none;
+    }
 }
 
 /* the smallest phones: menu, two 44px icons and the bell leave 7.5rem for the title, not 9rem */
