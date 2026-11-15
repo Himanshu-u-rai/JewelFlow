@@ -3124,6 +3124,10 @@ body.admin-shell {
     display: none;
     align-items: center;
     align-self: flex-start;
+    /* Never narrower than the menu button it holds: squeezed by the title, the button stuck out over it by
+       up to 14px on ~40 pages (2026-11-15). */
+    flex: none;
+    min-width: max-content;
 }
 
 .mobile-menu-btn {
@@ -3268,7 +3272,7 @@ body.drawer-open {
     }
 
     .content-header-nav {
-        margin-right: 2px;
+        /* no margin: the header's gap spaces it (a margin pushed the button out of grid headers' 44px column) */
         padding-top: 1px;
     }
 
@@ -5286,10 +5290,22 @@ body.admin-shell {
    Week 2-4 Completion Sweep (UI only)
    ------------------------------------------------ */
 
-/* Header consistency across all tenant pages */
-.content-header > :first-child {
+/* Header consistency across all tenant pages: the title block takes the free room and may shrink. It is named,
+   not counted: the first child is the menu wrapper (shown on phones), which this rule used to squeeze below its
+   button, over the title (2026-11-15). */
+.content-header > :first-child:not(.content-header-nav),
+.content-header > .content-header-nav + * {
     min-width: 0;
     flex: 1 1 auto;
+}
+
+/* Phones: a readable title (9rem) before the actions beside it. When both do not fit, the actions wrap to the next
+   row instead of crushing the title below one word (55px at 360px). */
+@media (max-width: 768px) {
+    .content-header > :first-child:not(.content-header-nav),
+    .content-header > .content-header-nav + * {
+        min-width: min(100%, 9rem);
+    }
 }
 
 .content-header .page-title {
@@ -17239,7 +17255,8 @@ input::-webkit-calendar-picker-indicator {
 
 @media (max-width: 768px) {
     .content-header.jf-header-auto-mobile {
-        flex-wrap: nowrap;
+        /* one row while it fits; the actions take the next row rather than squeezing the title (2026-11-15) */
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
     }
