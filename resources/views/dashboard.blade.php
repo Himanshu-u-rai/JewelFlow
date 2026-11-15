@@ -688,6 +688,11 @@
             gap: 12px;
         }
 
+        /* A grid item is never narrower than its content by default; the card's content adapts instead. */
+        .dash-top-grid > * {
+            min-width: 0;
+        }
+
         .dash-col-shop {
             grid-column: span 6;
             padding: 14px;
@@ -1257,23 +1262,27 @@
                 radial-gradient(circle at 34% 28%, #ffffff 0%, #e2e8f0 58%, #94a3b8 100%);
         }
 
+        /* The price sizes to the room its card actually has (a size container), up to 27px: the card's width depends
+           on the grid, and a fixed 27px price ran out of a 235px card ("₹14,005.00/g", 2026-11-15). */
         .dash-metal-rate-copy {
             min-width: 0;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             gap: 4px;
+            container-type: inline-size;
         }
 
         .dash-metal-rate-value {
             margin-top: 0;
-            font-size: 27px;
+            font-size: clamp(16px, 14cqi, 27px);
             line-height: 1;
             white-space: nowrap;
             display: flex;
             align-items: baseline;
             justify-content: flex-start;
-            flex-wrap: nowrap;
+            /* last resort for a very long price: "/g" goes under the number, never outside the card */
+            flex-wrap: wrap;
             gap: 2px;
             font-variant-numeric: tabular-nums;
             letter-spacing: 0;
@@ -1334,9 +1343,12 @@
             color: #b42318;
         }
 
+        /* As many tiles per row as fit at their content's width (192px: icon + "PENDING REPAIRS"), not always five:
+           five squeezed tiles cut "Overdue EMIs · Open" between 1080 and 1309px. Phones and tablets keep their
+           2-column rule below. */
         .dash-mini-grid {
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 192px), 1fr));
             gap: 12px;
         }
 
@@ -2827,7 +2839,7 @@
             }
 
             .dash-col-metal .dash-metal-rate-value {
-                font-size: 24px;
+                font-size: clamp(16px, 14cqi, 24px);
                 line-height: 1.1;
             }
 
@@ -3320,7 +3332,7 @@
             }
 
             .dash-col-metal .dash-metal-rate-value {
-                font-size: 22px;
+                font-size: clamp(16px, 14cqi, 22px);
             }
 
             .dash-col-metal .dash-metal-coin {
