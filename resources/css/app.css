@@ -21821,6 +21821,9 @@ input, select {
     border-bottom: 1px solid var(--retailer-profile-border);
     background: var(--retailer-profile-soft);
     padding: 14px 16px;
+    /* the form stacks by this panel's width: beside the profile column at 1024-1180px the panel is 384-500px and
+       the four fixed columns (514px) ran the Adjust button 146px outside it */
+    container-type: inline-size;
 }
 
 .customers-show-retailer-adjust-form {
@@ -21828,6 +21831,12 @@ input, select {
     grid-template-columns: 130px 110px minmax(180px, 1fr) auto;
     gap: 10px;
     align-items: end;
+}
+
+@container (max-width: 540px) {
+    .customers-show-retailer-adjust-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .customers-show-retailer-adjust-form label {
