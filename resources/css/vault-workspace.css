@@ -182,9 +182,9 @@
     .vault-page #vault-lots-table { display: block; min-width: 0; }
     /* Visually hide, not display:none: keep headers for assistive technology.
        Explicit table roles preserve semantics when rows become card grids. */
-    /* Visually hidden, the whole pattern: clip-path hides the paint only, so without overflow the 637px header row
+    /* Visually hidden, the whole pattern: clip-path hides the paint only, so without overflow clipping the 637px header row
        still widened the page by 262px on phones (2026-11-15). */
-    .vault-page .vault-table > thead { position: absolute; width: 1px; block-size: 1px; overflow: hidden; white-space: nowrap; clip-path: inset(50%); }
+    .vault-page .vault-table > thead { position: absolute; width: 1px; block-size: 1px; overflow: clip; white-space: nowrap; clip-path: inset(50%); }
     .vault-page .vault-table > tbody { display: block; padding: 0 12px 12px; }
     .vault-page .vault-table > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: 12px 0; border-bottom: 1px solid var(--jf-border); }
     .vault-page .vault-table > tbody > tr:last-child { border-bottom: 0; }
