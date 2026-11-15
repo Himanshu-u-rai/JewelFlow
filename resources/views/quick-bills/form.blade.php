@@ -24,10 +24,6 @@
             <h1 class="page-title">{{ $editing ? 'Edit Quick Bill' : 'New Quick Bill' }}</h1>
         </div>
         <div class="page-actions flex flex-wrap items-center gap-2">
-            @if($editing)
-                <span class="qb-form-header-pill">{{ $quickBill->bill_number }}</span>
-                <span class="qb-form-header-pill is-status">{{ ucfirst($quickBill->status) }}</span>
-            @endif
             @can('quick_bills.view')
                 <a href="{{ route('quick-bills.index') }}" aria-label="Quick Bill register" title="Quick Bill register" class="qb-form-back-action inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                     <x-icon name="list" size="16" />
@@ -150,6 +146,14 @@
         .qb-form-header-pill.is-status {
             background: var(--qb-soft);
             color: var(--qb-ink);
+        }
+
+        .qb-form-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .qb-edit-page {
@@ -460,6 +464,13 @@
         roundOff: @js((float) old('round_off', $quickBill->round_off ?? 0)),
         reviewOpen: @js($reviewPanelOpen),
     })" x-effect="document.body.classList.toggle('overflow-hidden', reviewOpen)" @keydown.escape.window="closeReview()">
+        @if($editing)
+            {{-- Which bill and its status: the first line of the page, not header chips (they crowded the header). --}}
+            <div class="qb-form-meta" aria-label="Bill">
+                <span class="qb-form-header-pill">{{ $quickBill->bill_number }}</span>
+                <span class="qb-form-header-pill is-status">{{ ucfirst($quickBill->status) }}</span>
+            </div>
+        @endif
         @if($errors->any())
             <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
                 <div class="mb-2 font-semibold">Please fix the highlighted quick bill details.</div>

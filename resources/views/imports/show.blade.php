@@ -9,7 +9,6 @@
         class="import-show-header"
         :title="'Import ' . $importReference"
         :subtitle="$importTypeLabel . ' import - Status: ' . $importStatusLabel"
-        :badge="$importStatusLabel"
     >
         <x-slot:actions>
             @if($import->error_file_path)
@@ -50,13 +49,6 @@
         .import-show-header .page-subtitle {
             color: #64748b;
             font-weight: 500;
-        }
-
-        .import-show-header .header-badge {
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            color: #9a3412;
-            font-weight: 600;
         }
 
         .import-show-header-action {
@@ -453,14 +445,6 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-            }
-
-            .import-show-header .page-subtitle {
-                display: none;
-            }
-
-            .import-show-header .header-badge {
-                display: none;
             }
 
             .import-show-header .page-actions {
