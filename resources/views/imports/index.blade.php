@@ -636,7 +636,6 @@
         class="ops-treatment-header"
         title="Bulk Imports"
         subtitle="Upload in the right CSV format, preview results, then execute safely."
-        badge="CSV Templates Ready"
     />
 
     <div class="content-inner space-y-6 ops-treatment-page imports-page">
