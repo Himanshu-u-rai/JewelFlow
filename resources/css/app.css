@@ -7058,6 +7058,12 @@ body.admin-shell {
     flex-shrink: 0;
 }
 
+/* a stand-in copies the header action's icon without the CSS that sized it there */
+.jf-header-fab-proxy svg {
+    width: 16px;
+    height: 16px;
+}
+
 .jf-header-mobile-fab-link.is-danger {
     border-color: rgba(239, 68, 68, 0.24);
     color: #b91c1c;
@@ -17192,23 +17198,25 @@ input::-webkit-calendar-picker-indicator {
         display: none;
     }
 
+    /* one row the thumb swipes, as Stock's tabs: a two-by-two grid made the header three rows tall (2026-11-15) */
     .ui-toggle-strip.customers-view-toggle {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
         width: 100%;
         max-width: 100%;
-        flex-wrap: wrap;
-        overflow: visible;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
         padding: 4px;
         gap: 6px;
     }
 
     .customers-view-toggle .customers-view-tab {
-        width: 100%;
-        min-width: 0;
-        justify-content: flex-start;
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 40px;
+        white-space: nowrap;
         font-size: 12px;
-        padding: 8px 10px;
+        padding: 8px 12px;
     }
 
     .customers-view-toggle .customers-view-tab svg {
@@ -17332,6 +17340,63 @@ input::-webkit-calendar-picker-indicator {
     .jf-header-fab-source > .jf-header-fab-pinned [class*="md:inline"],
     .jf-header-fab-source > .jf-header-fab-pinned [class*="lg:inline"] {
         display: inline !important;
+    }
+
+    /* the actions that stay in a phone header show only their icon (the name stays as aria-label) */
+    .jf-header-fab-source > .jf-header-icon-only {
+        justify-content: center;
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+        min-height: 38px;
+        padding: 0 !important;
+        gap: 0 !important;
+        font-size: 0 !important;
+    }
+
+    /* beats the pinned rule above that shows responsive "sm:inline" label spans */
+    .jf-header-fab-source > .jf-header-fab-pinned.jf-header-icon-only *:not(svg):not(svg *):not(:has(svg)) {
+        display: none !important;
+    }
+
+    /* with only icons left, the actions sit beside the title: the base phone rule gave every third header child
+       its own full row */
+    .content-header > .page-actions.jf-header-fab-source {
+        flex: 0 0 auto;
+        width: auto;
+        margin-left: auto;
+    }
+
+    /* only icons left (mobile-header-actions.js): one flex row over the grids pages built for full-width buttons */
+    body.app-shell .content-header.jf-header-compact {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    body.app-shell .content-header.jf-header-compact > .content-header-nav + * {
+        flex: 1 1 0;
+        min-width: min(100%, 9rem);
+        text-align: left;
+    }
+
+    /* the icons and the bell (in flow on some pages) size to themselves: the base phone rule gives each its own row */
+    body.app-shell .content-header.jf-header-compact > .content-header-nav + * ~ * {
+        flex: 0 0 auto;
+    }
+
+    /* pages gave their phone actions a full-width row or a button grid; icons need neither */
+    body.app-shell .content-header.jf-header-compact > .page-actions.jf-header-fab-source {
+        display: flex !important;
+        width: auto !important;
+        margin-left: auto;
+        gap: 6px;
+    }
+
+    .jf-header-fab-source > .jf-header-icon-only svg {
+        width: 18px;
+        height: 18px;
+        margin: 0 !important;
     }
 
     .jf-header-mobile-fab {
@@ -31158,18 +31223,20 @@ a.notice-bell-item:focus-visible {
        menu button, and the header keeps that corner free (some pages set
        their header padding with !important). */
     .content-header.content-header:has(> .notice-bell) {
-        padding-right: 58px !important;
+        /* 12px edge + the 44px bell + 8px gap */
+        padding-right: 64px !important;
     }
 
     .content-header > .notice-bell {
         position: absolute;
-        top: 14px;
+        top: 12px;
         right: 12px;
     }
 
+    /* every phone header control is 44px (the header size standard at the end of this file) */
     .notice-bell-toggle {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
     }
 
     .notice-bell-panel {
@@ -32020,4 +32087,99 @@ a.notice-bell-item:focus-visible {
     .inventory-purchases-page .sp-date-range { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .inventory-purchases-page .sp-date-field input { min-height: 44px; font-size: 16px; }
     .inventory-purchases-page .sp-mobile-card .btn { min-height: 44px; flex: 1 1 auto; }
+}
+
+/* ── Page header size standard (owner, 2026-11-15) ───────────────────────────────────────────────────────────
+   One size for every retail page header's title, subtitle, buttons and icons: about thirty page families had set
+   their own (titles 17-22px at 600 or 700, buttons 36-44px, icons 13-18px, corners 6-16px). Last in the file and
+   important on purpose, so a family rule cannot drift from it again. Dhiran has its own header. */
+body.app-shell .content-header:not(.dh-page-header) .page-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0 !important;
+}
+
+body.app-shell .content-header:not(.dh-page-header) .page-subtitle {
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+}
+
+body.app-shell .content-header:not(.dh-page-header) .page-actions > :is(a, button):not(.jf-header-icon-only),
+body.app-shell .content-header:not(.dh-page-header) .page-actions > form > button:not(.jf-header-icon-only) {
+    min-height: 40px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+}
+
+body.app-shell .content-header:not(.dh-page-header) .page-actions > :is(a, button):not(.jf-header-icon-only) svg,
+body.app-shell .content-header:not(.dh-page-header) .page-actions > form > button:not(.jf-header-icon-only) svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+body.app-shell .content-header:not(.dh-page-header) {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+}
+
+@media (max-width: 1024px) {
+    body.app-shell .content-header:not(.dh-page-header) {
+        padding-top: 16px !important;
+        padding-bottom: 16px !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-title {
+        font-size: 20px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* the right side stays the bell's (its own rule reserves it) */
+    body.app-shell .content-header:not(.dh-page-header) {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+        padding-left: 12px !important;
+        column-gap: 8px !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-title {
+        font-size: 17px !important;
+        line-height: 1.2 !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-subtitle {
+        font-size: 12px !important;
+    }
+
+    /* every control in a phone header is one 44px touch target: menu, icon actions, bell */
+    body.app-shell .content-header:not(.dh-page-header) .mobile-menu-btn,
+    body.app-shell .content-header:not(.dh-page-header) .page-actions > .jf-header-icon-only,
+    body.app-shell .content-header:not(.dh-page-header) .page-actions > form > .jf-header-icon-only {
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .page-actions > .jf-header-icon-only svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    body.app-shell .content-header:not(.dh-page-header) .notice-bell-toggle {
+        width: 44px !important;
+        height: 44px !important;
+    }
+}
+
+/* the smallest phones: menu, two 44px icons and the bell leave 7.5rem for the title, not 9rem */
+@media (max-width: 400px) {
+    body.app-shell .content-header.jf-header-compact > .content-header-nav + * {
+        min-width: min(100%, 7.5rem);
+    }
 }
