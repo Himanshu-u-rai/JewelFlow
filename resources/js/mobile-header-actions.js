@@ -19,6 +19,47 @@ export function isRecordPage(path) {
     return /\/(\d+|[0-9A-HJKMNP-TV-Z]{26})\/?$/.test(path);
 }
 
+// Phones: a page about a record (an id anywhere in its path) keeps its subtitle, which carries that record's details
+// ("13 Nov 2026", "Karigar: … · DC: …"). Any other page's subtitle describes the page, so it waits behind an info
+// button beside the title (owner, 2026-11-15). data-mobile-subtitle="keep|info" on the header decides instead.
+export function subtitleMode(path, data = {}) {
+    if (data.mobileSubtitle === 'keep' || data.mobileSubtitle === 'info') return data.mobileSubtitle;
+    return /\/(\d+|[0-9A-HJKMNP-TV-Z]{26})(\/|$)/.test(path) ? 'keep' : 'info';
+}
+
+const INFO = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+let infoIds = 0;
+
+function tuckSubtitle(header) {
+    if (subtitleMode(window.location.pathname, header.dataset) !== 'info') return;
+    const title = header.querySelector('.page-title');
+    const subtitle = header.querySelector('.page-subtitle');
+    if (!title || !subtitle || !subtitle.textContent.trim()) return;
+
+    if (!subtitle.id) {
+        infoIds += 1;
+        subtitle.id = `jf-page-about-${infoIds}`;
+        subtitle.dataset.jfIdAdded = 'true';
+    }
+    subtitle.classList.add('jf-subtitle-tucked');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'jf-header-info';
+    button.setAttribute('aria-label', 'About this page');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', subtitle.id);
+    button.insertAdjacentHTML('afterbegin', INFO);
+    // Inline and important, both ways: page CSS hides some subtitles with !important.
+    const show = (open) => {
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        subtitle.style.setProperty('display', open ? 'block' : 'none', 'important');
+    };
+    show(false);
+    button.addEventListener('click', () => show(button.getAttribute('aria-expanded') !== 'true'));
+    title.appendChild(button);
+}
+
 // A link up to a parent of the current path ("Job Orders" on /job-orders/1) is a Back, whatever its label.
 export function isParentLink(href, path, origin = 'http://local.invalid') {
     if (!href) return false;
@@ -169,7 +210,15 @@ function makeIconOnly(node, label, isBack) {
 }
 
 export function cleanupMobileHeaderActionFabs() {
-    document.querySelectorAll('.jf-header-mobile-fab, .jf-header-fab-proxy, .jf-header-back-arrow').forEach((node) => node.remove());
+    document.querySelectorAll('.jf-header-mobile-fab, .jf-header-fab-proxy, .jf-header-back-arrow, .jf-header-info').forEach((node) => node.remove());
+    document.querySelectorAll('.jf-subtitle-tucked').forEach((node) => {
+        node.classList.remove('jf-subtitle-tucked');
+        node.style.removeProperty('display');
+        if (node.dataset.jfIdAdded) {
+            node.removeAttribute('id');
+            delete node.dataset.jfIdAdded;
+        }
+    });
     document.querySelectorAll('[data-jf-header-hidden]').forEach((node) => {
         node.style.removeProperty('display');
         delete node.dataset.jfHeaderHidden;
@@ -193,6 +242,8 @@ export function initMobileHeaderActionFabs() {
     document.querySelectorAll('.content-header').forEach((header) => {
         if (header.closest('.admin-shell') || header.classList.contains('dh-page-header')) return;
         if (header.dataset.mobileHeader === 'manual') return;
+
+        tuckSubtitle(header);
 
         const actions = header.querySelector(':scope > .page-actions');
         if (!actions || actions.querySelector('input:not([type="hidden"]), select, textarea')) return;

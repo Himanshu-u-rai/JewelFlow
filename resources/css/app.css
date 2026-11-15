@@ -32177,6 +32177,34 @@ body.app-shell .content-header:not(.dh-page-header) {
     }
 }
 
+/* the info button that holds a page's description on phones (mobile-header-actions.js): beside the title text,
+   a 32px target that does not make the title line taller */
+.jf-header-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: -6px 0 -6px 2px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--jf-text-muted);
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.jf-header-info[aria-expanded="true"] {
+    color: var(--jf-ink);
+    background: var(--jf-surface-soft);
+}
+
+.jf-header-info:focus-visible {
+    outline: 2px solid var(--jf-gold-deep);
+    outline-offset: 1px;
+}
+
 /* the smallest phones: menu, two 44px icons and the bell leave 7.5rem for the title, not 9rem */
 @media (max-width: 400px) {
     body.app-shell .content-header.jf-header-compact > .content-header-nav + * {

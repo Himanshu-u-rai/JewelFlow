@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classifyHeaderActions, isParentLink, isRecordPage } from '../../resources/js/mobile-header-actions.js';
+import { classifyHeaderActions, isParentLink, isRecordPage, subtitleMode } from '../../resources/js/mobile-header-actions.js';
 
 const a = (label, data = {}) => ({ label, data });
 const names = (list) => list.map((item) => item.label);
@@ -63,6 +63,17 @@ test('a link up to a parent path counts as Back whatever it is called', () => {
     const r = classifyHeaderActions([{ label: 'Job Orders', data: {}, parent: true }, a('Print Challan')], { recordPage: false });
     assert.deepEqual(names(r.back), ['Job Orders']);
     assert.deepEqual(names(r.fab), ['Print Challan']);
+});
+
+test('a page about a record keeps its subtitle; any other page tucks it behind the info button', () => {
+    assert.equal(subtitleMode('/masters', {}), 'info');
+    assert.equal(subtitleMode('/karigars/create', {}), 'info');
+    assert.equal(subtitleMode('/dashboard', {}), 'info');
+    assert.equal(subtitleMode('/invoices/3', {}), 'keep');
+    assert.equal(subtitleMode('/invoices/3/returns/create', {}), 'keep', 'the record id is anywhere in the path');
+    assert.equal(subtitleMode('/customers/7/store-credit/adjust', {}), 'keep');
+    assert.equal(subtitleMode('/masters', { mobileSubtitle: 'keep' }), 'keep', 'markup decides');
+    assert.equal(subtitleMode('/invoices/3', { mobileSubtitle: 'info' }), 'info');
 });
 
 test('markup decides over the label', () => {
