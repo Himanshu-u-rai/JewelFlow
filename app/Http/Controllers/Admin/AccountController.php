@@ -8,6 +8,7 @@ use App\Mail\EmailOtpMail;
 use App\Models\Platform\PlatformAdmin;
 use App\Rules\IndianMobileRule;
 use App\Services\PlatformAuditService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,14 +56,22 @@ class AccountController extends Controller
     }
 
     /** Counts this guess BEFORE its code is checked, so guesses sent at the same moment each take their own slot and
-     *  at most OTP_MAX_GUESSES codes are ever checked in the window. add() makes the counter once (the window runs
-     *  from the first guess) and increment() is atomic and never resets it. Not RateLimiter::hit(): when its add()
-     *  loses a race it can put the count back to 1 over a parallel increment, losing a guess. A counter that has
-     *  just expired refuses the guess (the next one starts a new window). */
+     *  at most OTP_MAX_GUESSES codes are ever checked in the window. The count is taken under a cache lock: the file
+     *  store's increment() reads then writes, so without it two guesses could write the same count. add() makes the
+     *  counter once (the window runs from the first guess) and increment() never resets it. Not RateLimiter::hit():
+     *  when its add() loses a race it can put the count back to 1, losing a guess. Fails closed: a guess that cannot
+     *  be counted (lock busy for 2 s, or the counter expired mid-count) is refused, not checked. */
     private function takeGuessSlot(string $key): bool
     {
-        Cache::add($key, 0, self::OTP_GUESS_WINDOW_SECONDS);
-        $guesses = Cache::increment($key);
+        try {
+            $guesses = Cache::lock($key . ':lock', 5)->block(2, function () use ($key) {
+                Cache::add($key, 0, self::OTP_GUESS_WINDOW_SECONDS);
+
+                return Cache::increment($key);
+            });
+        } catch (LockTimeoutException) {
+            return false;
+        }
 
         return $guesses !== false && $guesses <= self::OTP_MAX_GUESSES;
     }

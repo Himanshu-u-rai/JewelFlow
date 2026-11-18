@@ -122,54 +122,54 @@ class PlatformAdminContactVerifyAttemptsTest extends TestCase
     }
 
     /**
-     * Found proving the fix with real processes: RateLimiter::hit() was not enough. When its add() finds the counter
-     * already made by a parallel guess and its own increment reads 1, it puts 1 back, overwriting an increment that
-     * landed in between, so a counted guess is lost. On the database cache store (production's), guess A has made the
-     * counter but not counted yet; B counts (1); C counts (2) before B's put; B's put would write 1 again.
+     * Counting first is not enough unless the count itself is never lost, and real processes lost counts twice:
+     * RateLimiter::hit() on the database store (when its add() loses a race it puts 1 back over a parallel
+     * increment), and the file store (CACHE_STORE=file in .env.example and the release rehearsals), whose increment()
+     * reads the file and writes it back: 7-11 of 30 checked. The count is now taken under a cache lock, so it holds on
+     * any store. Here the store reads, a parallel guess lands, then the store writes.
      */
-    private function assertNoGuessIsLostWhileTheCounterIsMade(string $channel): void
+    private function assertCountHoldsOnAStoreThatReadsThenWrites(string $channel): void
     {
-        // As in production, everything counts on the database store (the limiter was built on the array store at boot).
-        config(['cache.default' => 'database']);
-        $this->app->forgetInstance(\Illuminate\Cache\RateLimiter::class);
-        \Illuminate\Support\Facades\RateLimiter::clearResolvedInstance(\Illuminate\Cache\RateLimiter::class);
+        $store = new class extends \Illuminate\Cache\ArrayStore {
+            public ?\Closure $between = null;
+
+            public function increment($key, $value = 1)
+            {
+                $count = (int) $this->get($key);
+                if ($this->between) {
+                    [$hook, $this->between] = [$this->between, null];
+                    $hook($key);
+                }
+                $this->storage[$key]['value'] = $count + $value;
+
+                return $count + $value;
+            }
+        };
+        Cache::extend('reads-then-writes', fn ($app) => Cache::repository($store));
+        config(['cache.stores.reads-then-writes' => ['driver' => 'reads-then-writes'], 'cache.default' => 'reads-then-writes']);
+
         $admin = $this->pendingChange($channel);
         $c = self::CHANNELS[$channel];
-        $counter = config('cache.prefix') . "admin-{$channel}-change-verify|{$admin->id}";
+        $store->between = fn () => $this->guess($admin, $channel, '000002');   // lands while 000001 is counted
 
-        $made = $counted = false;
-        DB::listen(function ($query) use ($admin, $channel, $counter, &$made, &$counted) {
-            if (! in_array($counter, $query->bindings, true)) {
-                return;
-            }
-            if (! $made && str_starts_with($query->sql, 'insert into "cache"')) {
-                $made = true;                                      // A made the counter, B arrives
-                $this->guess($admin, $channel, '000002');
-            } elseif (! $counted && str_starts_with($query->sql, 'update "cache"')) {
-                $counted = true;                                   // B counted, C arrives
-                $this->guess($admin, $channel, '000003');
-            }
-        });
-        $this->guess($admin, $channel, '000001');                  // A
-        $this->assertTrue($made && $counted, 'the interleaving ran');
-
-        foreach (['000004', '000005', '000006'] as $wrong) {
+        $this->guess($admin, $channel, '000001');
+        foreach (['000003', '000004', '000005', '000006', '000007'] as $wrong) {
             $this->guess($admin, $channel, $wrong);
         }
-        $this->guess($admin, $channel, self::RIGHT)->assertSessionHasErrors(['otp' => 'Too many attempts. Try again later.']);
+        $this->guess($admin, $channel, self::RIGHT);
 
-        $this->assertNotSame($c['new'], $admin->fresh()->{$c['column']}, 'a seventh guess is never checked');
-        $this->assertSame(6, $this->checkedGuesses($admin, $channel));
+        $this->assertNotSame($c['new'], $admin->fresh()->{$c['column']});
+        $this->assertSame(6, $this->checkedGuesses($admin, $channel), 'never more than six codes checked');
     }
 
-    public function test_email_code_guesses_made_together_are_all_counted(): void
+    public function test_email_code_count_holds_on_a_store_that_reads_then_writes(): void
     {
-        $this->assertNoGuessIsLostWhileTheCounterIsMade('email');
+        $this->assertCountHoldsOnAStoreThatReadsThenWrites('email');
     }
 
-    public function test_mobile_code_guesses_made_together_are_all_counted(): void
+    public function test_mobile_code_count_holds_on_a_store_that_reads_then_writes(): void
     {
-        $this->assertNoGuessIsLostWhileTheCounterIsMade('mobile');
+        $this->assertCountHoldsOnAStoreThatReadsThenWrites('mobile');
     }
 
     private function assertSixGuessesOneAtATime(string $channel, int $wrong, bool $rightApplies): void
