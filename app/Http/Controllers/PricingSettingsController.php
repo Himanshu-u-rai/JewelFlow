@@ -52,6 +52,17 @@ class PricingSettingsController extends Controller
             ? route('dashboard')
             : route('settings.edit', ['tab' => 'pricing']);
 
+        // Items repricing cannot price (no metal type, or a failed earlier reprice) used to be reported only in
+        // the review list at the bottom of the Pricing tab, under a success message. Say it here instead.
+        $unpriced = Item::query()->where('shop_id', $shop->id)->needsPriceReview()->count();
+        if ($unpriced > 0) {
+            return redirect($redirectRoute)->with('warning', trans_choice(
+                'Today\'s rates are saved, but :count item in stock can\'t be priced yet. See "Items needing a price" in Settings → Pricing.|Today\'s rates are saved, but :count items in stock can\'t be priced yet. See "Items needing a price" in Settings → Pricing.',
+                $unpriced,
+                ['count' => $unpriced]
+            ));
+        }
+
         return redirect($redirectRoute)
             ->with('success', 'Today\'s pricing rates were saved and stock repricing has been queued.');
     }

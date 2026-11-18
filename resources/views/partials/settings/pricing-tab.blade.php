@@ -443,6 +443,24 @@
         color: #8a5a07;
     }
 
+    /* Unpriced-stock banner: icon, message, and a real button to the list (a text link read as plain text). */
+    .pricing-settings .pricing-unpriced-alert { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; border-color: #f59e0b; }
+    .pricing-settings .pricing-unpriced-icon { flex: none; color: #d97706; }
+    .pricing-settings .pricing-unpriced-copy { flex: 1 1 auto; min-width: 0; }
+    .pricing-settings .pricing-unpriced-action {
+        flex: none; display: inline-flex; align-items: center; gap: 6px;
+        min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
+        background: #d97706; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap;
+        transition: background 0.15s;
+    }
+    .pricing-settings .pricing-unpriced-action:hover { background: #b45309; color: #fff; }
+    .pricing-settings .pricing-unpriced-action:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+    @media (max-width: 640px) {
+        .pricing-settings .pricing-unpriced-alert { flex-wrap: wrap; align-items: flex-start; }
+        .pricing-settings .pricing-unpriced-copy { flex-basis: calc(100% - 34px); }
+        .pricing-settings .pricing-unpriced-action { width: 100%; justify-content: center; min-height: 44px; }
+    }
+
     .pricing-settings .pricing-alert.pricing-alert-success {
         border-color: rgba(34, 197, 94, 0.24);
         background: #f0fdf4;
@@ -734,6 +752,27 @@
     };
 @endphp
 
+{{-- Items the rate cannot price, said at the top: they used to show only in the review list near the bottom. --}}
+@php
+    $unpricedCount = ($pricingData['legacy_items'] ?? collect())->where('status', 'in_stock')->count();
+@endphp
+@if($unpricedCount > 0)
+    <div class="pricing-alert pricing-alert-warning pricing-unpriced-alert" role="alert">
+        <x-icon name="triangle-alert" size="20" class="pricing-unpriced-icon" />
+        <div class="pricing-unpriced-copy">
+            <strong>{{ trans_choice(':count item in stock has no price from today\'s rate.|:count items in stock have no price from today\'s rate.', $unpricedCount, ['count' => $unpricedCount]) }}</strong>
+            {{ trans_choice('It shows as "No price" at the counter and cannot be billed until fixed.|They show as "No price" at the counter and cannot be billed until fixed.', $unpricedCount) }}
+        </div>
+        {{-- A button, not href="#…": this tab lives in the settings-content Turbo frame, which turned the
+             fragment link into a frame reload that never scrolled. --}}
+        <button type="button" class="pricing-unpriced-action"
+                onclick="document.getElementById('unpriced-items')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+            {{ trans_choice('Review item|Review :count items', $unpricedCount, ['count' => $unpricedCount]) }}
+            <x-icon name="arrow-down" size="16" />
+        </button>
+    </div>
+@endif
+
 <div class="section-label">{{ __('Business Day') }}</div>
 <div class="pricing-status-card">
     <div class="pricing-overview-grid">
@@ -759,7 +798,7 @@
     <div class="pricing-desktop-card">
         <div class="section-divider"></div>
         <div class="section-label">{{ __('Today\'s Base Rates') }}</div>
-        <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="pricing-panel pricing-panel-stack pricing-rates-panel">
+        <form id="settings-pricing-form" method="POST" data-turbo-frame="_top" action="{{ route('settings.pricing.save-rates') }}" class="pricing-panel pricing-panel-stack pricing-rates-panel">
             @csrf
             <input type="hidden" name="context" value="settings">
 
@@ -805,18 +844,13 @@
                     </div>
                 </div>
             </div>
-            @can('pricing.update')
-            <div class="form-footer">
-                <button type="submit" class="btn-primary">{{ __('Save Today\'s Rates') }}</button>
-            </div>
-            @endcan
         </form>
     </div>
 
     <div class="pricing-desktop-card">
         <div class="section-divider"></div>
         <div id="purity-profiles" class="section-label" style="scroll-margin-top:80px">{{ __('Purity Profiles') }}</div>
-        <form method="POST" action="{{ route('settings.pricing.profiles.store') }}" class="pricing-panel pricing-panel-stack">
+        <form method="POST" data-turbo-frame="_top" action="{{ route('settings.pricing.profiles.store') }}" class="pricing-panel pricing-panel-stack">
             @csrf
             <div class="pricing-grid pricing-grid-4">
                 <div class="pricing-field">
@@ -863,7 +897,7 @@
             <div class="pricing-panel">
                 <div class="pricing-profile-stack">
                     @foreach($profiles as $profile)
-                        <form method="POST" action="{{ route('settings.pricing.profiles.update', $profile) }}" class="pricing-profile-edit-card">
+                        <form method="POST" data-turbo-frame="_top" action="{{ route('settings.pricing.profiles.update', $profile) }}" class="pricing-profile-edit-card">
                             @csrf
                             @method('PATCH')
                             <input type="hidden" name="metal_type" value="{{ $profile->metal_type }}">
@@ -906,12 +940,12 @@
 <div class="section-divider"></div>
 <div class="section-label">{{ __('Today\'s Resolved Rates') }}</div>
 @if($todayRate)
-                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Metal') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Purity') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Rate / Gram') }}</th>
@@ -921,12 +955,12 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($pricingData['resolved_rates'] as $row)
-                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                         @php
                             $profile = $row['profile'];
                             $currentRate = $row['current_rate'];
                         @endphp
                         <tr>
+                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ ucfirst($profile->metal_type) }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ $profile->label }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">
@@ -942,7 +976,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                <form method="POST" action="{{ route('settings.pricing.overrides.store', $profile) }}" class="pricing-action-form pricing-action-form-end pricing-resolved-rate-form">
+                                <form method="POST" data-turbo-frame="_top" action="{{ route('settings.pricing.overrides.store', $profile) }}" class="pricing-action-form pricing-action-form-end pricing-resolved-rate-form">
                                     @csrf
                                     <input
                                         type="number"
@@ -972,36 +1006,36 @@
 @endif
 
 <div class="section-divider"></div>
-<div class="section-label">{{ __('Legacy Item Review') }}</div>
+<div id="unpriced-items" class="section-label" style="scroll-margin-top:80px">{{ __('Items needing a price') }}</div>
 @if(($pricingData['legacy_items'] ?? collect())->isEmpty())
     <div class="pricing-alert pricing-alert-success">
-        {{ __('No legacy items need pricing review right now.') }}
+        {{ __('Every item has a price from today\'s rate.') }}
     </div>
 @else
-                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Barcode') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Design') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Category') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Purity') }}</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Assign Metal') }}</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Resolve') }}</th>
-                            <td class="jf-table-index">{{ $loop->iteration }}</td>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Why it has no price') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($pricingData['legacy_items'] as $legacyItem)
                         <tr>
+                            <td class="jf-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $legacyItem->barcode }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $legacyItem->design ?: '—' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $legacyItem->category ?: '—' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $legacyItem->purity_label ?? '—' }}</td>
                             <td class="px-4 py-3">
-                                <form method="POST" action="{{ route('settings.pricing.legacy.resolve', $legacyItem) }}" class="pricing-action-form">
+                                <form method="POST" data-turbo-frame="_top" action="{{ route('settings.pricing.legacy.resolve', $legacyItem) }}" class="pricing-action-form">
                                     @csrf
                                     @method('PATCH')
                                     <select name="metal_type" class="field-input max-w-[180px]" required @cannot('pricing.update') disabled @endcannot>
@@ -1014,7 +1048,11 @@
                                 </form>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-gray-500">
-                                {{ $legacyItem->pricing_review_notes ?: __('Needs owner review') }}
+                                @if(! $legacyItem->metal_type)
+                                    {{ __('No metal type. Pick Gold or Silver and save.') }}
+                                @else
+                                    {{ \Illuminate\Support\Str::after($legacyItem->pricing_review_notes ?: __('Needs owner review'), 'Auto-reprice failed: ') }}
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -1083,12 +1121,12 @@
             <p class="text-xs text-gray-500">
                 {{ __('One day per page — use the arrows below to see other days.') }}
             </p>
-                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
         </div>
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full jf-table">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <a href="{{ $historySortUrl('business_date') }}" class="inline-flex items-center gap-1 hover:text-gray-700">
                                 <span>{{ __('Business Date') }}</span>
@@ -1133,12 +1171,12 @@
                             $rawPurity = is_numeric($historyRow->purity_value ?? null)
                                 ? (float) $historyRow->purity_value
                                 : (float) ($historyRow->purity ?? 0);
-                            <td class="jf-table-index">{{ ($historyRows->firstItem() ?? 1) + $loop->index }}</td>
                             $purityText = rtrim(rtrim(number_format($rawPurity, 3, '.', ''), '0'), '.');
                             $fallbackPurityLabel = $historyRow->metal_type === 'gold' ? $purityText . 'K' : $purityText;
                             $purityLabel = $historyRow->profile_label ?: $fallbackPurityLabel;
                         @endphp
                         <tr>
+                            <td class="jf-table-index">{{ ($historyRows->firstItem() ?? 1) + $loop->index }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ $historyRow->business_date }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ ucfirst($historyRow->metal_type) }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ $purityLabel }}</td>
@@ -1165,4 +1203,9 @@
         {{ __('No pricing history records matched your filters yet.') }}
     </div>
 @endif
+@can('pricing.update')
+<div class="form-footer settings-page-footer">
+    <button type="submit" class="btn-primary" form="settings-pricing-form">{{ __('Save Today\'s Rates') }}</button>
+</div>
+@endcan
 </div>

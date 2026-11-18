@@ -621,7 +621,7 @@ class ShopPricingService
                 foreach ($items as $item) {
                     try {
                         if (! $item->metal_type) {
-                            throw new LogicException('Item has no metal type assigned. Go to Settings → Pricing → Legacy Items to fix it.');
+                            throw new LogicException('Item has no metal type assigned. Go to Settings → Pricing → Items needing a price to fix it.');
                         }
 
                         $payload = $this->computeRetailerCostPayload($shop, [

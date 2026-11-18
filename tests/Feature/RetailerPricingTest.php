@@ -55,6 +55,25 @@ class RetailerPricingTest extends TestCase
         $this->assertSame(85.1, round((float) $silver925->rate_per_gram, 4));
     }
 
+    public function test_saving_rates_warns_about_stock_the_rate_cannot_price(): void
+    {
+        // An in-stock item with no metal type cannot be repriced. Saving rates used to report plain success and
+        // leave the item at ₹0; the owner now hears it in the save message and at the top of the Pricing tab.
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->createItem($shop->id, null, ['barcode' => 'NO-METAL-1', 'metal_type' => null, 'selling_price' => 0]);
+
+        $this->actingAs($user)->post(route('settings.pricing.save-rates'), [
+            'gold_24k_rate_per_gram' => 7200,
+            'silver_999_rate_per_kg' => 92000,
+        ])->assertSessionHas('warning', fn ($m) => str_contains($m, "1 item in stock can't be priced yet"))
+          ->assertSessionMissing('success');
+
+        $this->actingAs($user)->get(route('settings.edit', ['tab' => 'pricing']))
+            ->assertOk()
+            ->assertSee('1 item in stock has no price from today', false)
+            ->assertSee('No metal type. Pick Gold or Silver and save.');
+    }
+
     public function test_web_retailer_item_store_computes_cost_price_from_daily_rates(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
