@@ -596,7 +596,8 @@ function setMobileDrawerState(key = 'tenant', isOpen = false) {
             : (key === 'admin' ? 'Open admin navigation' : 'Open navigation'));
     });
 
-    if (window.innerWidth <= 1023) {
+    // The tenant sidebar is a slide-in panel up to 1280px (app.css); the admin one up to 1023px.
+    if (window.innerWidth <= 1280) {
         const hasOpenDrawer = Array.from(document.querySelectorAll('[data-mobile-drawer]'))
             .some(element => element.classList.contains('mobile-open'));
         document.body.classList.toggle('drawer-open', hasOpenDrawer);
@@ -1414,7 +1415,8 @@ document.addEventListener('click', (event) => {
     const link = event.target.closest('.sidebar .nav-link[href]');
     if (!link) return;
     persistSidebarScroll();
-    if (window.innerWidth <= 768) closeMobileMenu();
+    // a slide-in panel up to 1280px (app.css): a picked page closes it
+    if (window.innerWidth <= 1280) closeMobileMenu();
 });
 
 document.addEventListener('click', (event) => {

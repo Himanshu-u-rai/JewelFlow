@@ -3246,6 +3246,46 @@ body.drawer-open {
     }
 }
 
+/* Tablets and small laptops (owner, 2026-11-15): the sidebar is a slide-in panel opened from the header's menu
+   button, as on phones. Always open it took 220-260px of a 768-1280px screen and squeezed pages like the POS
+   checkout into a column too narrow for them. Wider screens keep it open. */
+@media (max-width: 1280px) {
+    .content-header-nav,
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        z-index: 999;
+        transform: translateX(calc(-100% - 18px));
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 16px 0 34px rgba(15, 23, 42, 0.18);
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-close-btn {
+        display: inline-flex;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* the menu button matches the tablet header's 40px buttons (phones: 44px, the header size standard) */
+    body.app-shell .content-header .mobile-menu-btn {
+        width: 40px;
+        height: 40px;
+    }
+}
+
 @media (max-width: 768px) {
     body.app-shell {
         min-height: 100vh;
@@ -31496,6 +31536,11 @@ a.notice-bell-item:focus-visible {
     .inventory-items-header .page-actions { display: grid; grid-template-columns: minmax(0, 1fr) 200px; width: 100%; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 14px; }
     .inventory-items-header .items-header-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; min-width: 0; max-width: 100%; }
     .inventory-items-header :is(.inventory-items-create-btn, #pricing-alert-bell) { flex: none; }
+}
+/* The sidebar is a slide-out panel up to 1280px, so the desktop Stock header needs its menu button there too. */
+@media (min-width: 1024px) and (max-width: 1280px) {
+    .inventory-items-header { grid-template-columns: 40px 160px minmax(0, 1fr) 40px; }
+    .inventory-items-header > .content-header-nav { display: flex; }
 }
 @media (max-width: 1023px) {
     .content-header.inventory-items-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
