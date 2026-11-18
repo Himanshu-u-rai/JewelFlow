@@ -1,5 +1,6 @@
 <x-app-layout>
-    <x-page-header class="emi-create-header">
+    {{-- Phones: no description under the title, and no info button for it (owner, 2026-11-15) --}}
+    <x-page-header class="emi-create-header" data-mobile-subtitle="hide">
         <div>
             <h1 class="page-title">Create EMI Plan</h1>
             <p class="text-sm text-gray-500 mt-1">Convert an unpaid or partially-paid invoice into installments</p>

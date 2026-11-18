@@ -26,7 +26,12 @@
         {{ $slot }}
     @else
         <div class="min-w-0">
-            <h1 class="page-title">{{ $title }}</h1>
+            {{-- titleSwitch: a section switch that stands in for the title on phones (section-switch.js). --}}
+            @isset($titleSwitch)
+                <h1 class="page-title"><span class="page-title-text">{{ $title }}</span>{{ $titleSwitch }}</h1>
+            @else
+                <h1 class="page-title">{{ $title }}</h1>
+            @endisset
             @if($subtitle)
                 <p class="page-subtitle">{{ $subtitle }}</p>
             @endif

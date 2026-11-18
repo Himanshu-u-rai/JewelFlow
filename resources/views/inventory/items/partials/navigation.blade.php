@@ -8,7 +8,7 @@
          x-data
          x-init="$nextTick(() => { if (window.matchMedia('(max-width: 768px)').matches) { const current = $el.querySelector('[aria-current=page]'); if (current) $el.scrollLeft += current.getBoundingClientRect().left - $el.getBoundingClientRect().left - 4; } })"
      @endif>
-    <div class="ui-toggle-strip items-view-toggle">
+    <div @if($placement === 'header') id="stock-sections" data-section-list @endif class="ui-toggle-strip items-view-toggle">
         <div class="items-primary-views">
             @foreach(['items' => ['Stock Items', 'package', 'inventory.items.index'], 'aging' => ['Stock Aging', 'clock', 'inventory.stock-aging'], 'sellers' => ['Sell Trend', 'trending-up', 'inventory.sell-trend']] as $key => [$label, $icon, $route])
                 @continue(!$isRetailer && $key !== 'items')
@@ -24,7 +24,7 @@
                    class="items-page-link {{ $active === $key ? 'is-active' : '' }}">
                     <x-icon :name="$icon" size="14" />{{ $label }}
                     @if($key === 'reorder' && $reorderAlertCount > 0)
-                        <span class="items-page-link-count">{{ $reorderAlertCount }}</span>
+                        <span class="items-page-link-count" data-section-ignore>{{ $reorderAlertCount }}</span>
                     @endif
                 </a>
             @endforeach

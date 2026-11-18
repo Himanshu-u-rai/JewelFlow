@@ -26,7 +26,10 @@ class StockWorkspaceUiTest extends TestCase
         TenantContext::runFor($shop->id, fn () => ReorderRule::create(['category' => 'Synthetic shortage', 'min_stock_threshold' => 2]));
         $this->withoutVite();
         $xp = $this->xpath($this->actingAs($owner)->get(route($route))->assertOk()->getContent());
-        $this->assertSame(['categories' => 'Categories', 'tags' => 'Tag Printing', 'reorder' => 'Reorder Alerts'][$section], trim($xp->evaluate('string(//*[contains(@class,"inventory-items-header")]//h1)')));
+        // The title, and the phone section switch inside the heading that stands in for it, name the same section.
+        $title = ['categories' => 'Categories', 'tags' => 'Tag Printing', 'reorder' => 'Reorder Alerts'][$section];
+        $this->assertSame($title, trim($xp->evaluate('string(//*[contains(@class,"inventory-items-header")]//h1/*[contains(@class,"page-title-text")])')));
+        $this->assertSame($title, trim($xp->evaluate('string(//*[contains(@class,"inventory-items-header")]//h1/button[@data-section-switch]/*[@data-section-label])')));
         foreach (['header', 'body'] as $placement) {
             $nav = $xp->query('//nav[contains(@class,"items-'.$placement.'-nav")]')->item(0);
             $this->assertNotNull($nav);
@@ -82,7 +85,8 @@ class StockWorkspaceUiTest extends TestCase
             $xp = $this->xpath($this->actingAs($owner)->get($url)->assertOk()->getContent());
             $header = $xp->query('//*[contains(@class,"inventory-items-header")]')->item(0);
             $this->assertNotNull($header);
-            $this->assertSame($title, trim($xp->evaluate('string(.//h1)', $header)));
+            $this->assertSame($title, trim($xp->evaluate('string(.//h1/*[contains(@class,"page-title-text")])', $header)));
+            $this->assertSame($title, trim($xp->evaluate('string(.//h1/button[@data-section-switch]/*[@data-section-label])', $header)));
             $this->assertSame('', $xp->evaluate('string(.//h1/@x-text)', $header));
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/nav[contains(@class,"items-header-nav")]', $header)->length);
             $this->assertSame(1, $xp->query('.//*[contains(@class,"page-actions")]/div[@class="stock-header-actions"]', $header)->length);

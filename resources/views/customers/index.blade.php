@@ -10,12 +10,24 @@
     <div class="customers-workspace" x-data="{ view: '{{ $viewDefault }}' }">
     <x-page-header
         class="customers-page-header customers-directory-header"
+        {{-- Phones: no description under the title, and no info button for it (owner, 2026-11-15) --}}
+        data-mobile-subtitle="hide"
         title="Customers"
         :subtitle="'Manage customer profiles' . ($isRetailer ? '' : ' and balances')"
     >
+        @if($isRetailer)
+        {{-- Phones: the open view is the title; a tap lists the views (the buttons below; section-switch.js). --}}
+        <x-slot:titleSwitch>
+            <button type="button" class="jf-section-switch" data-section-switch
+                    aria-haspopup="true" aria-expanded="false" aria-controls="customer-views">
+                <span data-section-label>Customers</span>
+                <x-icon name="chevron-down" size="18" />
+            </button>
+        </x-slot:titleSwitch>
+        @endif
         <x-slot:actions>
             @if($isRetailer)
-            <nav aria-label="Customer views" class="ui-toggle-strip customers-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+            <nav id="customer-views" data-section-list aria-label="Customer views" class="ui-toggle-strip customers-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
                 <button type="button" @click="view = 'customers'" aria-pressed="{{ $viewDefault === 'customers' ? 'true' : 'false' }}" :aria-pressed="view === 'customers'" :class="view === 'customers' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="customers-view-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition">
                     <x-icon name="users" size="14" />
                     Customer Directory

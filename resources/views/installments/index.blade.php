@@ -15,8 +15,10 @@
 @endphp
 
 <x-app-layout>
+    {{-- Phones: no description under the title, and no info button for it (owner, 2026-11-15) --}}
     <x-page-header
         class="customers-page-header installments-index-header"
+        data-mobile-subtitle="hide"
         title="EMI / Installments"
         subtitle="Track installment plans and EMI payments"
     >

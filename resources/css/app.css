@@ -19129,30 +19129,8 @@ input::-webkit-calendar-picker-indicator {
         overflow-x: hidden !important;
     }
 
-    .content-inner.settings-shell .settings-nav {
-        position: sticky !important;
-        top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
-        z-index: 24 !important;
-        align-self: start !important;
-        width: 100% !important;
-        margin-bottom: 16px !important;
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
-    }
-
-    .content-inner.settings-shell .settings-nav::-webkit-scrollbar {
-        display: none;
-    }
-
-    .content-inner.settings-shell .settings-nav .nav-item {
-        flex: 0 0 auto !important;
-    }
+    /* The section links are a dropdown under the header title on phones now (Section switch, end of
+       this file); the sticky sideways strip they were here is gone. */
 
     .content-inner.settings-shell .form-row,
     .content-inner.settings-shell .form-row.cols-2,
@@ -32288,5 +32266,172 @@ body.app-shell .content-header:not(.dh-page-header) {
 @media (max-width: 400px) {
     body.app-shell .content-header.jf-header-compact > .content-header-nav + * {
         min-width: min(100%, 7.5rem);
+    }
+}
+
+/* ── Section switch (section-switch.js; owner, 2026-11-15) ──────────────────────────────────────────────────
+   On phones a page whose sections were a sideways tab strip under the header shows the open section as its title
+   with a down arrow; a tap opens that page's own section links or view buttons as a list under the header. It
+   reads as the title, not as a button: no border, no fill, the title's own type. Settings switches at 900px (its
+   layout goes to one column there); Customers and the Stock pages at 768px (on tablets their tabs fit beside the
+   title). Desktop keeps the plain title and the sidebar or tabs. */
+.jf-section-switch {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    margin: 0;
+    padding: 2px 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* the title's type: a phone rule gives every button in the page 13px and outranks the plain class */
+.page-title > .jf-section-switch {
+    font: inherit;
+    letter-spacing: inherit;
+}
+
+.jf-section-switch > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jf-section-switch > svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--jf-text-muted);
+    transition: transform 150ms ease;
+}
+
+.jf-section-switch[aria-expanded="true"] > svg {
+    transform: rotate(180deg);
+}
+
+.jf-section-switch:focus-visible {
+    outline: 2px solid var(--jf-gold-deep);
+    outline-offset: 2px;
+}
+
+/* The list once opened: one look on every page, floating under the header. Important, because each page styled
+   its strip its own way (a sideways row, a two-by-two grid, sticky, dark or teal tabs). */
+body.app-shell [data-section-list].is-open {
+    position: fixed !important;
+    top: var(--section-list-top, 72px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    z-index: 60 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 2px !important;
+    width: auto !important;
+    max-width: 420px !important;
+    height: auto !important;
+    max-height: min(70dvh, 560px) !important;
+    margin: 0 auto !important;
+    padding: 6px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    background: var(--jf-surface) !important;
+    border: 1px solid var(--jf-border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.35) !important;
+    animation: jf-page-about-in 140ms ease-out;
+}
+
+/* A phone header is static, and its blur makes it a layer of its own, so a list opened inside it painted under the
+   page's own layered parts (a customer's avatar showed through, 2026-11-15). While its list is open the header
+   comes first. */
+body.app-shell .content-header:has([data-section-list].is-open) {
+    position: relative !important;
+    z-index: 70 !important;
+}
+
+/* Stock's two link groups list as one */
+body.app-shell [data-section-list].is-open > div {
+    display: contents !important;
+}
+
+body.app-shell [data-section-list].is-open :is(a, button) {
+    display: flex !important;
+    flex: none !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--jf-text) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+}
+
+body.app-shell [data-section-list].is-open :is(a, button):hover {
+    background: var(--jf-surface-soft) !important;
+}
+
+body.app-shell [data-section-list].is-open :is([aria-current="page"], [aria-pressed="true"], .active, .is-active) {
+    background: var(--jf-surface-accent) !important;
+    color: var(--jf-gold-deep) !important;
+}
+
+@media (max-width: 900px) {
+    .settings-page-header .settings-title-text {
+        display: none;
+    }
+
+    .settings-page-header .jf-section-switch {
+        display: inline-flex;
+    }
+
+    body.app-shell .settings-shell .settings-nav[data-section-list]:not(.is-open) {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .customers-directory-header .page-title-text,
+    .inventory-items-header .page-title-text {
+        display: none;
+    }
+
+    .customers-directory-header .jf-section-switch,
+    .inventory-items-header .jf-section-switch {
+        display: inline-flex;
+    }
+
+    body.app-shell .customers-directory-header [data-section-list]:not(.is-open),
+    body.app-shell .inventory-items-header [data-section-list]:not(.is-open) {
+        display: none !important;
+    }
+
+    /* Stock: the nav that held the strip no longer takes a header row of its own */
+    body.app-shell .inventory-items-header .items-header-nav {
+        display: contents !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.app-shell [data-section-list].is-open {
+        animation: none;
     }
 }

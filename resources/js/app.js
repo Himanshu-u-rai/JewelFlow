@@ -11,6 +11,7 @@ import { initializeRowActionLabels } from './table-row-actions';
 import { initializeListWorkspaces } from './list-workspace';
 import { initializeRepairIntakes } from './repair-intake';
 import { initMobileHeaderActionFabs, cleanupMobileHeaderActionFabs } from './mobile-header-actions';
+import { initializeSectionSwitch } from './section-switch';
 import { initializeReportScreens } from './report-screen';
 import { initializeReportExports } from './report-export';
 import { createReorderEditor } from './reorder-editor';
@@ -26,6 +27,7 @@ initializeChallanShare();
 initializeRowActionLabels();
 initializeListWorkspaces();
 initializeRepairIntakes();
+initializeSectionSwitch();
 initializeReportScreens();
 initializeReportExports();
 
