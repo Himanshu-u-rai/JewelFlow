@@ -1,123 +1,41 @@
 <x-app-layout>
-    <x-page-header class="customers-page-header">
-        <div>
-            <h1 class="page-title">Customer Occasions</h1>
-            <p class="page-subtitle">Birthdays and anniversaries due soon</p>
-        </div>
-        <div class="page-actions">
-            <a href="{{ route('customers.index', ['view' => 'occasions']) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                Open in Customers
-            </a>
-        </div>
+    <x-page-header class="individual-report-header" title="Customer Occasions" subtitle="Upcoming birthdays and anniversaries">
+        <x-slot:actions><a href="{{ route('report.hub') }}" class="btn btn-secondary btn-sm" aria-label="All reports"><x-icon name="arrow-left" size="16" /><span class="report-action-label">Reports</span></a></x-slot:actions>
     </x-page-header>
-
-    <div class="content-inner customers-index-page" data-list-workspace>
-        @php
-            $occasionRows = collect($upcoming ?? []);
-            $thisWeek = $occasionRows->where('days_until', '<=', 7)->count();
-            $customerCount = $occasionRows->pluck('customer_id')->unique()->count();
-        @endphp
-
-        <div class="ui-stats-grid ui-stats-grid-3 customers-kpi-grid mb-6">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="calendar" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Upcoming</p>
-                        <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($occasionRows->count()) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-xl p-2.5">
-                        <x-icon name="clock" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Next 7 Days</p>
-                        <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($thisWeek) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm customers-kpi-card">
-                <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 text-slate-700 rounded-xl p-2.5">
-                        <x-icon name="users" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Customers</p>
-                        <p class="text-2xl font-semibold text-slate-900 tabular-nums">{{ number_format($customerCount) }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6 ui-filter-enhanced-wrap">
-            <form method="GET" action="{{ route('report.occasions') }}" class="ui-filter-bar" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="ui-filter-field">
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Reminder window</label>
-                    <select name="days" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
-                        @foreach([7, 15, 30, 60, 90] as $days)
-                            <option value="{{ $days }}" {{ (int) $daysAhead === $days ? 'selected' : '' }}>Next {{ $days }} days</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="ui-filter-actions">
-                    <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Apply</button>
-                </div>
-            </form>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden customers-table-card customers-table-card--occasions" data-list-frame>
-            <div class="customers-table-card-header p-5 border-b border-slate-200">
-                <h2 class="text-lg font-semibold text-slate-900">Occasion Register</h2>
-                <p class="text-sm text-slate-500 mt-1">Customers with dates due in the next {{ (int) $daysAhead }} days</p>
-            </div>
-            <div class="overflow-x-auto ui-table-shell customers-table-shell" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
-                <table class="w-full customers-data-table customers-data-table--occasions jf-table">
-                    <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Occasion</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Due In</th>
-                            <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-slate-100">
+    @php($occasionRows = collect($upcoming ?? []))
+    <div class="content-inner individual-report">
+        <section class="ir-surface">
+            <header class="ir-heading"><div><h2>Occasion register</h2><p>{{ $occasionRows->count() }} occasions in the next {{ (int) $daysAhead }} days</p></div>
+                <x-responsive-filter-panel id="occasion-report-filters" label="Occasion report filters" :desktop-popup="true">
+                    <form method="GET" action="{{ route('report.occasions') }}" class="ir-filters"
+                          data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
+                          x-data="{ dirty: false, hasFilters: @js(request()->has('days')) }" @input="dirty = true" @change="dirty = true">
+                        <div class="ir-field"><label for="occasion-window">Reminder window</label><select id="occasion-window" name="days" class="ir-control">
+                            @foreach(collect([7, 15, 30, 60, 90, (int) $daysAhead])->unique()->sort() as $days)<option value="{{ $days }}" @selected((int) $daysAhead === $days)>Next {{ $days }} days</option>@endforeach
+                        </select></div>
+                        <div class="ir-filter-actions"><button type="submit" class="btn btn-primary btn-sm" x-show="dirty || !hasFilters">Apply</button><a href="{{ route('report.occasions') }}" class="btn btn-primary btn-sm" x-show="!dirty && hasFilters" x-cloak>Clear</a></div>
+                    </form>
+                </x-responsive-filter-panel>
+            </header>
+            <div class="ir-scroll jf-scrollbar" data-list-scroll tabindex="0" role="region" aria-label="Occasion records">
+                <table class="jf-table ir-table ir-table--cards" role="table" aria-label="Customer occasions">
+                    <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" class="ir-index" aria-label="Row number">#</th><th scope="col" role="columnheader">Customer</th><th scope="col" role="columnheader">Occasion</th><th scope="col" role="columnheader">Date</th><th scope="col" role="columnheader">Due in</th><th scope="col" role="columnheader">Action</th></tr></thead>
+                    <tbody role="rowgroup">
                         @forelse($occasionRows as $occasion)
-                            <tr class="hover:bg-slate-50/70 transition-colors">
-                                <td class="jf-table-index">{{ $loop->iteration }}</td>
-                                <td class="px-6 py-4">
-                                    <div class="text-sm font-semibold text-slate-900">{{ $occasion['customer_name'] }}</div>
-                                    <div class="text-xs text-slate-500">{{ $occasion['mobile'] ?: 'No mobile' }}</div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">{{ $occasion['type'] }}</span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-700">{{ \Carbon\Carbon::parse($occasion['date'])->format('d M Y') }}</td>
-                                <td class="px-6 py-4 text-right text-sm font-semibold text-slate-900 tabular-nums">
-                                    {{ (int) $occasion['days_until'] === 0 ? 'Today' : ((int) $occasion['days_until'] . ' days') }}
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('customers.show', $occasion['customer_id']) }}" class="jf-row-action jf-row-action--view" data-tip="View Profile"><x-icon name="eye" size="16" /><span class="jf-sr-only">View Profile</span></a>
-                                </td>
+                            <tr role="row">
+                                <td role="cell" class="ir-index" data-label="#">{{ $loop->iteration }}</td>
+                                <td role="cell" data-label="Customer">{{ $occasion['customer_name'] }}<span class="block ir-muted">{{ $occasion['mobile'] ?: 'No mobile' }}</span></td>
+                                <td role="cell" data-label="Occasion">{{ $occasion['type'] }}</td>
+                                <td role="cell" data-label="Date">{{ Carbon\Carbon::parse($occasion['date'])->format('d M Y') }}</td>
+                                <td role="cell" data-label="Due in">{{ (int) $occasion['days_until'] === 0 ? 'Today' : (int) $occasion['days_until'].' days' }}</td>
+                                <td role="cell" data-label="Action">@can('customers.view')<a href="{{ route('customers.show', $occasion['customer_id']) }}" class="jf-row-action jf-row-action--view" data-tip="View profile" aria-label="View {{ $occasion['customer_name'] }}"><x-icon name="eye" size="16" /></a>@else — @endcan</td>
                             </tr>
                         @empty
-                            <tr>
-                                <td colspan="6" class="jf-table-empty">
-                                    <p class="text-lg font-semibold mb-1 text-slate-700">No occasions in this window</p>
-                                    <p class="text-sm">Increase the reminder window or add occasion dates on customer profiles.</p>
-                                </td>
-                            </tr>
+                            <tr role="row"><td role="cell" colspan="6" class="jf-table-empty">No occasions in this window. Increase the reminder window or add occasion dates to customer profiles.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-            @include('customers._occasion-cards', ['occasions' => $occasionRows])
-        </div>
+        </section>
     </div>
 </x-app-layout>

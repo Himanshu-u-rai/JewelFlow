@@ -42,7 +42,14 @@ class CustomerRowNumbersUiTest extends TestCase
         $html = $this->get('/customers?view=occasions')->assertOk()->getContent();
         $this->assertNumbers($html, 'customers-data-table--occasions', range(1, 16));
         $this->assertMobileNumbers($html, 'customers-mobile-cards--occasions', range(1, 16));
-        $this->assertNumbers($this->get('/report/occasions')->assertOk()->getContent(), 'customers-data-table--occasions', range(1, 16));
+        // The report page uses the individual-report table (ir-table, ir-index cells) since the reports redesign.
+        $report = $this->xpath($this->get('/report/occasions')->assertOk()->getContent());
+        $this->assertSame('Row number', $report->evaluate('string(//table[contains(@class,"ir-table")]/thead/tr/th[1]/@aria-label)'));
+        $numbers = [];
+        foreach ($report->query('//table[contains(@class,"ir-table")]/tbody/tr/td[contains(@class,"ir-index")]') as $cell) {
+            $numbers[] = (int) trim($cell->textContent);
+        }
+        $this->assertSame(range(1, 16), $numbers);
     }
 
     public function test_both_emi_registers_number_rendered_rows_without_using_plan_ids(): void

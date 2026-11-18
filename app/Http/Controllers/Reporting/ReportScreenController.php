@@ -114,6 +114,18 @@ class ReportScreenController extends Controller
 
         $dataset = $this->registry->datasetService($report)->build($reportRequest, $meta);
 
+        $isAsOf = collect($definition->filters)->contains(fn ($f) => $f->key === \App\Services\Reporting\Definition\FilterKey::AsOf);
+        $periodPreset = $request->filled('date') || ($request->filled('month') && $request->filled('year'))
+            ? 'custom' : (string) $request->input('date_preset', $isAsOf ? 'today' : 'this_month');
+        // Carry the resolved scope, including legacy bookmarks/as-of defaults, to exports.
+        $exportQuery = array_merge($request->except(['date', 'month', 'year', 'page']), [
+            'date_preset' => $periodPreset,
+            'date_from' => $period->from->toDateString(),
+            'date_to' => $period->to->toDateString(),
+            'profile' => $profile->value,
+        ]);
+        if (! $includeSensitive) unset($exportQuery['include_sensitive']);
+
         return view('reporting.reports.generic-screen', [
             'definition' => $definition,
             'view' => $this->screen->present($dataset, $reportRequest),
@@ -121,6 +133,9 @@ class ReportScreenController extends Controller
             'profile' => $profile,
             'isRigid' => $isRigid,
             'canExportSensitive' => $canSensitive,
+            'period' => $period,
+            'periodPreset' => $periodPreset,
+            'exportQuery' => $exportQuery,
             'filterControls' => $this->filterControlResolver->forReport($definition, (int) $user->shop_id, $request),
         ]);
     }
@@ -132,13 +147,15 @@ class ReportScreenController extends Controller
     private function resolvePeriod(Request $request, $definition): \App\Services\Reporting\Filters\ResolvedPeriod
     {
         // Legacy single-date bookmark (?date=YYYY-MM-DD) — e.g. Daily Closing / Cash.
-        if ($request->filled('date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->input('date'))) {
+        if ($request->filled('date')) {
+            $request->validate(['date' => ['date_format:Y-m-d']]);
             $day = CarbonImmutable::parse($request->input('date'));
 
             return $this->filters->resolve(DatePreset::Custom, $day, $day);
         }
 
-        if ($request->filled('month') && $request->filled('year')) {
+        if ($request->filled('month') || $request->filled('year')) {
+            $request->validate(['month' => ['required', 'integer', 'between:1,12'], 'year' => ['required', 'integer', 'between:1900,2200']]);
             $from = CarbonImmutable::create((int) $request->input('year'), (int) $request->input('month'), 1)->startOfDay();
 
             return $this->filters->resolve(DatePreset::Custom, $from, $from->endOfMonth());
@@ -156,12 +173,18 @@ class ReportScreenController extends Controller
             return $this->filters->resolve(DatePreset::Today);
         }
 
+        $request->validate([
+            'date_preset' => ['nullable', Rule::in(array_column(DatePreset::cases(), 'value'))],
+            'date_from' => ['exclude_unless:date_preset,custom', 'required', 'date_format:Y-m-d'],
+            'date_to' => ['exclude_unless:date_preset,custom', 'required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'fy_name' => ['nullable', 'string', 'max:16', 'regex:/^\d{4}\s*[-\/]\s*\d{2,4}$/', 'required_if:date_preset,named_fy'],
+        ]);
         $preset = DatePreset::tryFrom((string) $request->input('date_preset')) ?? DatePreset::ThisMonth;
 
         return $this->filters->resolve(
             $preset,
-            $request->filled('date_from') ? CarbonImmutable::parse($request->date('date_from')) : null,
-            $request->filled('date_to') ? CarbonImmutable::parse($request->date('date_to')) : null,
+            $preset === DatePreset::Custom ? CarbonImmutable::parse($request->date('date_from')) : null,
+            $preset === DatePreset::Custom ? CarbonImmutable::parse($request->date('date_to')) : null,
             $request->input('fy_name'),
         );
     }

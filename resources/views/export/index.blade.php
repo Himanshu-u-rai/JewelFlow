@@ -2,7 +2,7 @@
     <x-page-header
         class="export-page-header"
         title="Data Exports"
-        subtitle="Download your shop data as Excel, PDF or CSV — pick filters and columns on the next screen."
+        subtitle="Download your shop data as Excel, PDF or CSV — choose filters and columns in export setup."
     />
 
     <div class="content-inner xp-page">
@@ -74,7 +74,7 @@
             <h3 class="xp-group-title">{{ $groupTitle }}</h3>
             <div class="xp-grid {{ count($cards) === 1 ? 'xp-grid--single' : '' }}">
                 @foreach($cards as [$key, $title, $desc])
-                    <a href="{{ $panel($key) }}" class="xp-card" data-turbo-frame="_top">
+                    <a href="{{ $panel($key) }}" class="xp-card" data-turbo-frame="_top" aria-haspopup="dialog" aria-controls="report-export-dialog" data-turbo-prefetch="false">
                         <div class="xp-card-top">
                             <h4 class="xp-card-title">{{ $title }}</h4>
                             <span class="xp-card-arrow">
@@ -90,7 +90,7 @@
 
         <div class="xp-note">
             <x-icon name="info" size="16" />
-            <p>Every export contains only your shop's data. On the next screen you choose the format (Excel, PDF or CSV), the date range, and which columns to include. Personal contact details stay hidden unless you have permission to include them.</p>
+            <p>Every export contains only your shop's data. In export setup you choose the format (Excel, PDF or CSV), the date range, and which columns to include. Personal contact details stay hidden unless you have permission to include them.</p>
         </div>
     </div>
 

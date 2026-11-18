@@ -8,6 +8,8 @@
 @import "./reorder-editor.css";
 @import "./vault-workspace.css";
 @import "./vault-ledger-lot.css";
+@import "./individual-reports.css";
+@import "./report-export.css";
 @import "./record-details.css";
 @import "./karigars-directory.css";
 @import "./vendors-directory.css";

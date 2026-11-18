@@ -29,6 +29,7 @@ class RetailerDashboardController extends Controller
      */
     public function sellers(Request $request)
     {
+        $request->validate(['period' => ['nullable', \Illuminate\Validation\Rule::in(['7', '30', '90', '365'])]]);
         $period = $request->input('period', '30');
 
         $best = $this->reportService->bestSellers(10, $period);
@@ -42,6 +43,7 @@ class RetailerDashboardController extends Controller
      */
     public function occasions(Request $request)
     {
+        $request->validate(['days' => ['nullable', 'integer', 'between:1,366']]);
         $shopId = auth()->user()->shop_id;
         $daysAhead = (int) $request->input('days', 30);
 

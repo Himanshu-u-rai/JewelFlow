@@ -13,6 +13,12 @@ class RepairReportController extends Controller
     {
         $shopId = (int) auth()->user()->shop_id;
 
+        $request->validate([
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+            'status' => ['nullable', \Illuminate\Validation\Rule::in(['received', 'in_repair', 'ready', 'delivered'])],
+        ]);
+
         // Validate date inputs.
         $fromDate = $request->filled('from_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->from_date)
             ? $request->from_date : null;

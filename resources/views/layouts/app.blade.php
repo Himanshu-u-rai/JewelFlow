@@ -203,7 +203,7 @@
             $strandedCloseDay = ! $canOpenReportsHub && $navCan('reports.daily_closing');
             $strandedHistorical = $hasRetailer && ! $canOpenInvoices && $navCan('historical.view');
             $strandedInstallments = $hasRetailer && $navCan('installments.view') && ! $navCan('customers.view');
-            $strandedExport = ! $canOpenSettings && $navCan('reports.export');
+            $strandedExport = ! $canOpenReportsHub && $navCan('reports.export');
             $strandedImport = ($hasRetailer || $hasManufacturer) && ! $canOpenSettings && $navCan('imports.manage');
         @endphp
 
@@ -514,14 +514,14 @@
                          its own entry, for whoever may open it. --}}
                     @if($hasRetailer || $hasManufacturer)
                     @php
-                        $reportsHubActive = request()->routeIs('report.*', 'reporting.*')
+                        $reportsHubActive = request()->routeIs('report.*', 'reporting.*', 'export.*')
                             && ! ($strandedCloseDay && request()->routeIs('report.closing'));
                     @endphp
                     @if($canOpenReportsHub || $canOpenCashBook || $strandedCloseDay)
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
                         @if($canOpenReportsHub)
-                        <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting">
+                        <a href="{{ route('report.hub') }}" class="nav-link {{ $reportsHubActive ? 'active' : '' }}" data-nav-match="/report,/reporting,/export">
                             <span class="nav-icon"><x-icon name="layout-grid" size="16" /></span>
                             {{ __('All Reports') }}
                         </a>
@@ -546,7 +546,7 @@
                          with its own x-dhiran-layout nav. It is intentionally NOT shown
                          in the ERP sidebar. --}}
 
-                    {{-- ─── ACCOUNT ─── Download Reports and Import Data live in Settings now. --}}
+                    {{-- Fallbacks when a permitted export/import has no accessible hub. --}}
                     @if($strandedExport || $strandedImport)
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Account') }}</div>
@@ -574,7 +574,7 @@
                         {{ __('Profile') }}
                     </a>
                     @endcan
-                    <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link {{ request()->routeIs('settings.*') || ($canOpenSettings && request()->routeIs('export.*', 'imports.*')) ? 'is-active' : '' }}" @if($canOpenSettings) data-nav-match="/export,/imports" @endif>
+                    <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link {{ request()->routeIs('settings.*') || ($canOpenSettings && request()->routeIs('imports.*')) ? 'is-active' : '' }}" @if($canOpenSettings) data-nav-match="/imports" @endif>
                         <span class="nav-icon"><x-icon name="settings" size="16" /></span>
                         {{ __('Settings') }}
                         <span class="sidebar-footer-role">{{ $authUser?->role?->display_name ?? __('Guest') }}</span>

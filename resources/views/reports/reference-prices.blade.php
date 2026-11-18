@@ -1,60 +1,27 @@
 <x-app-layout>
-    <x-page-header>
-        <h1 class="page-title">Reference Prices</h1>
-        <div class="page-actions">
-            <span class="header-badge">Memo · Class B only</span>
-        </div>
+    <x-page-header class="individual-report-header" title="Reference Prices" subtitle="Operator-noted prices — memo only">
+        <x-slot:actions><a href="{{ route('report.hub') }}" class="btn btn-secondary btn-sm" aria-label="All reports"><x-icon name="arrow-left" size="16" /><span class="report-action-label">Reports</span></a></x-slot:actions>
     </x-page-header>
-
-    <div class="content-inner space-y-6">
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
-            These are <strong>operator notes</strong> for platinum and copper —
-            "what we are asking per gram this week." They are <strong>not</strong>
-            daily rates and never feed pricing, vault, GST, or reconciliation.
-            Gold and silver use the Daily Rates screen and are not shown here.
-        </div>
-
-        @foreach($tier2 as $metal)
+    <div class="content-inner individual-report">
+        <section class="ir-surface"><p class="ir-note">These are operator notes for platinum and copper, not daily rates. They never feed pricing, vault balances, GST or reconciliation. Gold and silver use Daily Rates.</p></section>
+        @forelse($tier2 as $metal)
             @php
-                $rows = $timelines[$metal] ?? collect();
+                $records = $timelines[$metal] ?? collect();
+                $rows = $records->map(fn ($r) => [
+                    'date' => ['display' => optional($r->noted_at)->format('d M Y, h:i A') ?? '—', 'raw' => $r->noted_at?->getTimestamp()],
+                    'price' => ['display' => '₹'.number_format((float) $r->reference_price, 2), 'raw' => $r->reference_price],
+                    'operator' => $r->notedBy->name ?? '—', 'note' => $r->note ?? '—']);
             @endphp
-            <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <header class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                    <h2 class="text-sm font-semibold text-slate-900 capitalize">{{ $metal }} — reference price history</h2>
-                    @if($rows->isNotEmpty())
-                        <span class="text-xs text-slate-500">{{ $rows->count() }} note(s) — newest first</span>
-                    @endif
-                </header>
-
-                @if($rows->isEmpty())
-                    <div class="px-5 py-8 text-center text-slate-500 text-sm">
-                        {{ __('No reference noted for :metal yet.', ['metal' => $metal]) }}
-                    </div>
+            <section class="ir-surface">
+                <header class="ir-heading"><div><h2>{{ ucfirst($metal) }} reference history</h2><p>{{ $records->count() }} notes · latest 50 · newest first</p></div></header>
+                @if($records->isEmpty())
+                    <p class="ir-empty">{{ __('No reference noted for :metal yet.', ['metal' => $metal]) }}</p>
                 @else
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm jf-table">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th class="px-5 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">When noted</th>
-                                    <th class="px-5 py-2 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Reference price (₹ / g)</th>
-                                    <th class="px-5 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Noted by</th>
-                                    <th class="px-5 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Note</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                @foreach($rows as $row)
-                                    <tr>
-                                        <td class="px-5 py-2 text-slate-700 whitespace-nowrap">{{ optional($row->noted_at)->format('d M Y, h:i A') }}</td>
-                                        <td class="px-5 py-2 text-right font-mono text-slate-900">₹{{ number_format((float) $row->reference_price, 2) }}</td>
-                                        <td class="px-5 py-2 text-slate-700">{{ $row->notedBy->name ?? '—' }}</td>
-                                        <td class="px-5 py-2 text-slate-600">{{ $row->note ?? '—' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <x-report-records :title="ucfirst($metal).' reference history'" :columns="['date' => 'When noted', 'price' => 'Reference price (₹/g)', 'operator' => 'Noted by', 'note' => 'Note']" :rows="$rows" :numeric="['price']" />
                 @endif
             </section>
-        @endforeach
+        @empty
+            <section class="ir-surface"><p class="ir-empty">No reference-price materials available.</p></section>
+        @endforelse
     </div>
 </x-app-layout>

@@ -827,7 +827,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
     // Phase 1 pilot — Sales / Invoice Register screen.
-    Route::get('/report/sales-register', [\App\Http\Controllers\Reporting\SalesRegisterController::class, 'index'])
+    Route::get('/report/sales-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'sales-register')
         ->middleware(['can:reports.view', 'can:reports.money'])->name('report.sales-register');
     // Generic spine report screen (any registered report; rigidity enforced in the controller).
     Route::get('/reporting/{report}/screen', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])

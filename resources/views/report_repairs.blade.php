@@ -1,126 +1,57 @@
 <x-app-layout>
-    <x-page-header class="repairs-report-header">
-        <div>
-            <h1 class="page-title">Repairs Report</h1>
-            <p class="text-sm text-gray-500 mt-1">All repair jobs with status and collected cash</p>
-        </div>
-        <div class="page-actions">
-            <span class="header-badge repairs-report-count">{{ $repairs->total() }} Repairs</span>
-        </div>
+    <x-page-header class="individual-report-header" title="Repairs Report" subtitle="Repair status and final charges for delivered jobs">
+        <x-slot:actions><a href="{{ route('report.hub') }}" class="btn btn-secondary btn-sm" aria-label="All reports"><x-icon name="arrow-left" size="16" /><span class="report-action-label">Reports</span></a></x-slot:actions>
     </x-page-header>
-
-    <div class="content-inner repairs-report-page">
-        {{-- Filters --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 repairs-report-filters ui-filter-enhanced-wrap">
-            <form method="GET" action="{{ route('report.repairs') }}" class="repairs-report-filters-form" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="repairs-filter-field">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">From Date</label>
-                    <input type="date" name="from_date" value="{{ $fromDate }}"
-                           class="repairs-filter-control">
-                </div>
-                <div class="repairs-filter-field">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">To Date</label>
-                    <input type="date" name="to_date" value="{{ $toDate }}"
-                           class="repairs-filter-control">
-                </div>
-                <div class="repairs-filter-field">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                    <select name="status" class="repairs-filter-control">
-                        <option value="">All Statuses</option>
-                        @foreach(['received' => 'Received', 'in_repair' => 'In Repair', 'ready' => 'Ready', 'delivered' => 'Delivered'] as $val => $label)
-                            <option value="{{ $val }}" @selected($status === $val)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="repairs-filter-actions">
-                    @if($fromDate || $toDate || $status)
-                        <a href="{{ route('report.repairs') }}" class="btn btn-secondary btn-sm repairs-filter-clear">Clear</a>
-                    @else
-                        <button type="submit" class="btn btn-primary btn-sm repairs-filter-apply">Filter</button>
-                    @endif
-                </div>
-            </form>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden repairs-report-table-card">
-            <div class="p-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Repairs Summary</h2>
-                <p class="text-sm text-gray-500 mt-1">Pending jobs may show zero cash.</p>
-            </div>
-
-            <div class="overflow-x-auto repairs-report-table-shell">
-                <table class="w-full repairs-report-table jf-table">
-                    <thead class="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (₹)</th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+    <div class="content-inner individual-report">
+        <section class="ir-surface">
+            <header class="ir-heading">
+                <div><h2>Repair register</h2><p>Filtered by date received{{ $status ? ' · '.Str::headline($status) : '' }}</p></div>
+                <x-responsive-filter-panel id="repair-report-filters" label="Repair report filters" :desktop-popup="true">
+                    <form method="GET" action="{{ route('report.repairs') }}" class="ir-filters"
+                          data-enhance-selects="true" data-enhance-selects-variant="standard" data-enhance-selects-placement="viewport"
+                          x-data="{ dirty: false, hasFilters: @js((bool) ($fromDate || $toDate || $status)) }" @input="dirty = true" @change="dirty = true">
+                        <div class="ir-field"><label for="repair-report-from">From date</label><input id="repair-report-from" type="date" name="from_date" value="{{ $fromDate }}" class="ir-control" aria-label="From date" data-date-editable></div>
+                        <div class="ir-field"><label for="repair-report-to">To date</label><input id="repair-report-to" type="date" name="to_date" value="{{ $toDate }}" class="ir-control" aria-label="To date" data-date-editable></div>
+                        <div class="ir-field"><label for="repair-report-status">Status</label><select id="repair-report-status" name="status" class="ir-control">
+                            <option value="">All statuses</option>
+                            @foreach(['received' => 'Received', 'in_repair' => 'In repair', 'ready' => 'Ready', 'delivered' => 'Delivered'] as $value => $label)
+                                <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select></div>
+                        <div class="ir-filter-actions"><button type="submit" class="btn btn-primary btn-sm" x-show="dirty || !hasFilters">Apply</button><a href="{{ route('report.repairs') }}" class="btn btn-primary btn-sm" x-show="!dirty && hasFilters" x-cloak>Clear</a></div>
+                    </form>
+                </x-responsive-filter-panel>
+            </header>
+            <dl class="ir-metrics"><div><dt>Matching repairs</dt><dd>{{ number_format($repairs->total()) }}</dd></div><div><dt>Delivered charges</dt><dd>₹{{ number_format((float) $totals->total_cash, 2) }}</dd></div></dl>
+            <p class="ir-note">Final charges for delivered repairs, not payments collected. Pending jobs show a dash. Totals cover all matching repairs, not just this page.</p>
+            <div class="ir-scroll jf-scrollbar" data-list-scroll tabindex="0" role="region" aria-label="Repair report records">
+                <table class="jf-table ir-table ir-table--cards" role="table" aria-label="Repair report">
+                    <thead role="rowgroup"><tr role="row">
+                        <th scope="col" role="columnheader" class="ir-index" aria-label="Row number">#</th>
+                        <th scope="col" role="columnheader">Received</th><th scope="col" role="columnheader">Customer</th><th scope="col" role="columnheader">Item</th><th scope="col" role="columnheader">Status</th><th scope="col" role="columnheader" class="jf-num">Delivered charges</th><th scope="col" role="columnheader">Invoice</th>
+                    </tr></thead>
+                    <tbody role="rowgroup">
                         @forelse($repairs as $r)
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ $r->created_at->format('d M Y') }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    {{ trim(($r->customer->first_name ?? '') . ' ' . ($r->customer->last_name ?? '')) ?: ($r->customer->name ?? 'N/A') }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ $r->item_description }}</td>
-                                <td class="px-4 py-3 text-sm">
-                                    @php
-                                        $badgeClass = match($r->status) {
-                                            'delivered' => 'badge-success',
-                                            default     => 'badge-secondary',
-                                        };
-                                    @endphp
-                                    <span class="badge {{ $badgeClass }}">{{ ucfirst(str_replace('_', ' ', $r->status)) }}</span>
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                    @if($r->status === 'delivered')
-                                        {{ number_format((float) ($r->final_cost ?? 0), 2) }}
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-sm text-center">
+                            <tr role="row">
+                                <td role="cell" class="ir-index" data-label="#">{{ ($repairs->firstItem() ?? 1) + $loop->index }}</td>
+                                <td role="cell" data-label="Received">{{ $r->created_at->format('d M Y') }}</td>
+                                <td role="cell" data-label="Customer">{{ trim(($r->customer->first_name ?? '').' '.($r->customer->last_name ?? '')) ?: ($r->customer->name ?? 'N/A') }}</td>
+                                <td role="cell" data-label="Item">{{ $r->item_description }}</td>
+                                <td role="cell" data-label="Status">{{ Str::headline($r->status) }}</td>
+                                <td role="cell" data-label="Delivered charges" class="jf-num">{{ $r->status === 'delivered' ? '₹'.number_format((float) ($r->final_cost ?? 0), 2) : '—' }}</td>
+                                <td role="cell" data-label="Invoice">
                                     @if($r->invoice_id)
-                                        <a href="{{ route('invoices.show', $r->invoice_id) }}" class="btn btn-primary btn-xs">
-                                            <x-icon name="eye" size="12" class="mr-1" />View
-                                        </a>
-                                    @else
-                                        <span class="text-gray-400">-</span>
-                                    @endif
+                                        @can('sales.view')<a href="{{ route('invoices.show', $r->invoice_id) }}" class="jf-row-action jf-row-action--view" data-tip="View invoice" aria-label="View repair invoice"><x-icon name="eye" size="16" /></a>@else Invoice recorded @endcan
+                                    @else — @endif
                                 </td>
                             </tr>
                         @empty
-                            <tr>
-                                <td colspan="6" class="jf-table-empty">
-                                    No repair records found.
-                                </td>
-                            </tr>
+                            <tr role="row"><td role="cell" colspan="7" class="jf-table-empty">No repair records found.</td></tr>
                         @endforelse
                     </tbody>
-                    @if($repairs->isNotEmpty())
-                        <tfoot class="bg-gray-50 border-t-2 border-gray-300">
-                            <tr>
-                                <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-700">
-                                    Totals ({{ $repairs->total() }} {{ Str::plural('repair', $repairs->total()) }})
-                                </td>
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $totals->total_cash, 2) }}</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    @endif
                 </table>
             </div>
-
-            @if($repairs->hasPages())
-                <div class="px-4 py-3 border-t border-gray-200">
-                    {{ $repairs->links() }}
-                </div>
-            @endif
-        </div>
+            @if($repairs->hasPages())<footer class="ir-pagination">{{ $repairs->links() }}</footer>@endif
+        </section>
     </div>
 </x-app-layout>

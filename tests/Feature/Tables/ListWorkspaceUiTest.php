@@ -71,7 +71,8 @@ class ListWorkspaceUiTest extends TestCase
             'products' => ['manufacturer', '/products'],
             'job orders' => ['retailer', '/job-orders'],
             'karigar invoices' => ['retailer', '/karigar-invoices'],
-            'occasion register' => ['retailer', '/report/occasions'],
+            // /report/occasions moved to the individual-report layout (one table that becomes cards on phones);
+            // tests/Feature/Reporting/IndividualReportUiTest covers it there.
             'borrowers' => ['dhiran', '/dhiran/borrowers'],
             'loans' => ['dhiran', '/dhiran/loans'],
             'active loan report' => ['dhiran', '/dhiran/reports/active'],
@@ -186,7 +187,17 @@ class ListWorkspaceUiTest extends TestCase
             'anniversary_date' => now()->addDays(2)->subYears(10)->toDateString(),
         ]);
         $this->withoutVite();
-        foreach (['/customers?view=occasions&occasion_days=7', '/report/occasions?days=7'] as $url) {
+        // The report page uses the individual-report table that itself becomes cards on phones (ir-table--cards).
+        $report = new \DOMXPath(tap(new \DOMDocument(), function ($dom) use ($owner) {
+            $previous = libxml_use_internal_errors(true);
+            $dom->loadHTML('<?xml encoding="utf-8"?>'.$this->actingAs($owner)->get('/report/occasions?days=7')->assertOk()->getContent());
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }));
+        $this->assertSame(2, $report->query('//table[contains(@class,"ir-table--cards")]/tbody/tr')->length, '/report/occasions must keep its records on phones.');
+        $this->assertSame(2, $report->query('//table[contains(@class,"ir-table--cards")]//a[@href="'.route('customers.show', $customer).'"]')->length);
+
+        foreach (['/customers?view=occasions&occasion_days=7'] as $url) {
             $html = $this->actingAs($owner)->get($url)->assertOk()->getContent();
             $dom = new \DOMDocument();
             $previous = libxml_use_internal_errors(true);

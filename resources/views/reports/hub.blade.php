@@ -1,5 +1,11 @@
 <x-app-layout>
-    <x-page-header class="reports-hub-header" title="Reports" subtitle="Tax, receivables, reconciliation, and operational reports — all in one place" />
+    <x-page-header class="reports-hub-header" title="Reports" subtitle="Tax, receivables, reconciliation, and operational reports — all in one place">
+        <x-slot:actions>
+            @can('reports.export')
+                <a href="{{ route('export.index') }}" class="btn btn-primary btn-sm reports-export-link" aria-label="Data Exports"><x-icon name="download" size="16" /><span class="reports-export-label">Data Exports</span></a>
+            @endcan
+        </x-slot:actions>
+    </x-page-header>
 
     @php
         // [title, description, route-name, edition] — edition: null (any) | 'retailer' | 'manufacturer'
@@ -34,7 +40,7 @@
                 ['Metal Loss / Shrinkage', 'Gold that went out for making vs what came back — wastage and unaccounted grams', 'report.shrinkage', null],
                 ['Purchase Efficiency', 'Rate paid on stock purchases vs your market rate', 'report.purchase-efficiency', null],
                 ['Operator Performance', 'Sales, discounts and returns by who handled them', 'report.operator-performance', null],
-                ['Sellers', 'Sales count and value by seller or staff member', 'report.sellers', 'retailer'],
+                ['Category Sales', 'Sold item lines and revenue by category and sub-category', 'report.sellers', 'retailer'],
                 ['Occasions', 'Upcoming customer birthdays and anniversaries to follow up', 'report.occasions', 'retailer'],
                 ['Suspicious Activity', 'Compliance alerts to review — split bills, missing PAN, threshold breaches', 'report.suspicious-activity', null],
                 ['Profit & Loss', 'Gross margin over the period', 'report.pnl', null],
@@ -355,6 +361,10 @@
             .reports-hub-header .page-subtitle {
                 display: none;
             }
+
+            .reports-hub-header .page-actions { width: auto; flex: 0 0 auto; }
+            .reports-hub-header .reports-export-link { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
+            .reports-hub-header .reports-export-label { display: none; }
 
             .rh-page {
                 padding-top: 12px;

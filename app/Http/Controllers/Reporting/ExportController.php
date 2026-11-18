@@ -76,7 +76,9 @@ class ExportController extends Controller
             $applied = $savedPresets->firstWhere('id', (int) request('preset'));
         }
 
-        return new Response(View::make('reporting.export-panel', [
+        $embedded = request()->header('Turbo-Frame') === 'report-export-frame';
+        return new Response(View::make($embedded ? 'reporting.export-frame' : 'reporting.export-panel', [
+            'screenRoute' => route('reporting.report.screen', ['report' => $report] + request()->except(['format', 'preset'])),
             'definition' => $definition,
             'presets' => DatePreset::cases(),
             'canExportSensitive' => $canExportSensitive,
@@ -202,7 +204,7 @@ class ExportController extends Controller
     {
         $values = ['period' => ['from' => $period->from, 'to' => $period->to]];
 
-        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'karigar', 'lot', 'movement_type', 'days_overdue', 'age_band', 'reference', 'sales_source'] as $key) {
+        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source', 'karigar', 'lot', 'movement_type', 'days_overdue', 'age_band', 'reference', 'sales_source'] as $key) {
             if ($request->filled($key)) {
                 $values[$key] = $request->input($key);
             }
@@ -222,6 +224,7 @@ class ExportController extends Controller
             'movement_type' => 'Movement type', 'days_overdue' => 'Days overdue', 'age_band' => 'Age band',
             'reference' => 'Reference', 'sales_source' => 'Sales source',
         ];
+        if ($definition->key === 'cash-flow') $labels += ['cash_type' => 'Cash direction', 'cash_source' => 'Cash source'];
         foreach ($labels as $key => $label) {
             $applied[$label] = $request->filled($key) ? (string) $request->input($key) : 'All';
         }
