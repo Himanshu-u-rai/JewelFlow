@@ -2,7 +2,381 @@
 
 For Codex, taking over the "JewelFlows UI work" chat. Local only: nothing here has been deployed or tested on staging, and nothing touches production, the mobile app, APK/AAB, OTA, OTP or SMTP. Public repo: no credentials in this file.
 
-## Latest checkpoint — Retail Catalog workspace, 2026-11-11
+## Settings theme refinement — 2026-11-12
+
+### Profile compact layout and non-shifting validation follow-up
+
+Profile now follows Preferences' two-column section layout: profile information
+and mobile number on the left, password and account actions on the right.
+Columns collapse when available space is narrow; name/email share a row where
+space permits and password fields respond to their own form width. Original
+independent forms, methods, fields, verification and account actions remain.
+Each Save footer is outside the fields' maximum-width wrapper, aligned to its
+section's bottom-right; phone Save actions span the section.
+
+Settings validation errors, including named password error bags, now supply a
+hidden, temporary toast source inside the Turbo frame instead of a page-pushing
+banner. Inline field errors remain. The existing toast floats below the header
+without reserving body space. Turbo render and frame visits show each source
+once; rejected submissions retain the unsaved guard's original baseline.
+
+Latest verification: 30 isolated Settings/Profile/Turbo/Return Policy tests,
+363 assertions; 20 focused Settings lifecycle/unsaved frontend tests, all passed.
+Earlier full frontend run: 353 passed, 22 skipped; safe asset build passed.
+The earlier single-column preview confirmed inline validation and unchanged
+content top position using an intentionally rejected uppercase email; no live
+profile values were saved. After the owner signed in, live checks confirmed two
+columns at 1920px and 1280px, single-column phone layout at 390px/320px, no
+horizontal page overflow, and Save footers aligned to section right edges.
+An intentionally rejected uppercase email displayed the live toast and inline
+error while the mobile layout stayed at top 124px before/after, with no reserved
+toast space. Keep editing retained that rejected input; Discard restored the
+saved empty email and original name. Account deactivation confirmation was
+opened and cancelled only; no password/mobile/account mutation was submitted.
+The review tab was returned to a clean Profile page with normal viewport.
+
+Claude's 18 committed Dhiran changes through `9e9e73b9` were reviewed before
+resuming. They are already in this same worktree; shared live-search/Turbo
+integration remains intact. No Dhiran source, financial logic or preview data
+was changed for this follow-up. POS and Admin also remain out of scope.
+
+### Unsaved Settings guard
+
+User approved Keep editing / Discard & leave; no automatic saving. A dedicated
+`settings-unsaved.js` tracks successful controls of editable POST forms using
+in-memory FormData baselines. Reverting values clears dirtiness; CSRF/method
+fields, empty file placeholders, GET filters and action-only forms are ignored.
+Settings links, programmatic Turbo visits and GET submissions are protected;
+independent POSTs warn if another form has edits. Own-form saves retain native
+validation and existing submission routes. Failed Turbo validation bodies retain
+the attempted form's original baseline, including distinct anonymous forms at
+the same endpoint. Nothing is put in local/session storage or sent automatically.
+
+Translated native dialog sits outside the replaced frame, with native focus
+containment, safe default focus, Escape/backdrop cancellation, themed surfaces
+and 44px actions. Browser refresh/close uses beforeunload (browser wording and
+mobile support vary). Turbo 8 indexed restoration visits are rewound before the
+prompt and resumed only after acceptance. Dirty pages being discarded/submitted
+are exempted from Turbo cache so discarded field values do not return via Back.
+The guard mounts once and only reads forms inside the Settings shell.
+
+Verification: 12 guard tests added with red/green evidence; full frontend suite
+350 passed / 22 pre-existing skips; isolated Settings UI/Turbo/preferences/return
+policy PHP suite 31 passed / 352 assertions. Safe asset build and diff checks
+passed. In-app preview desktop/320px: Keep editing and Escape retain edits,
+reverting is clean, Discard changes tabs and permits Product preferences native
+navigation; reloaded Website tagline remained its saved empty value. Clean
+Settings tab clicks did not warn; one dialog instance remained across visits.
+Refresh/close and indexed history restoration are event-boundary tested only;
+native popup appearance, real Back/Forward traversal and physical phones were
+not verified. No live settings saves, payment actions or data changes. POS,
+Admin and Dhiran remain out of scope. Existing user tabs may need one refresh
+to load the new compiled guard; do not overwrite a user's live edits to do it.
+
+### Return Policy, bottom Save actions and Turbo/Alpine follow-up
+
+Return Policy now has a full-width refund group with deductions and settlement
+groups side by side on desktop, stacked on narrow panels. Numeric controls stay
+compact and adjacent labels align. All existing names, values, limits and routes
+are retained. Main saves for Shop, Invoice, Preferences, Return Policy, GST,
+Materials, Website and Pricing are native buttons associated with their original
+forms, at the content end (panel bottom on short desktop tabs). Independent
+payment-method, GST-rate, purity-price, CMS-page and per-role forms remain local;
+the page Save does not submit them or change their permissions.
+
+Settings frame navigation now promotes its URL through Turbo, keeping refresh
+and the active section aligned. A compiled Settings lifecycle module binds new
+Shop logo controls on each frame load without duplicate bindings/picker opens;
+Alpine remains initialized once through its existing observer. Website scripts
+are repeat-safe; Audit delegates handlers once and scopes them to its own panel.
+Pricing and payment-method POST forms explicitly redirect at the top level.
+Snapshot cleanup excludes Settings Alpine roots/x-show nodes: promoted frame
+navigation keeps those roots live, so blanket hiding left Add labels and other
+unchanged controls invisible. Other pages retain their existing cleanup.
+
+Verified locally: all 17 owner tabs via actual sidebar/Turbo clicks with matching
+URL, active item, no missing frame; all 17 at 320px with no document overflow or
+unowned fields (Pricing wide tables intentionally scroll inside their wrappers).
+Payment Add/Edit/Cancel worked, including Add after a revisit; Website Add Page
+disclosure worked after revisit; Audit details/technical disclosure/Escape worked
+after repeat visits. Return Policy desktop and 320px screenshots reviewed with
+Save at content end. No live saves, pricing writes, file uploads, payment actions,
+staff changes or device revocations performed. No physical-device or deployment
+verification. POS/Admin/Dhiran UI untouched.
+
+Regression: 146 isolated PHP Settings/Staff/commerce tests, 676 assertions,
+no failures (one existing PHPUnit metadata deprecation); frontend suite passed
+with 22 existing skips, including five Settings lifecycle regressions. Assets
+built using `npm run build -- --emptyOutDir false` to keep the preview manifest
+available throughout the build. Tests use disposable port 5432; preview remains
+on its durable private database at port 55432.
+
+### Remaining tabs and revised Preferences
+
+Finished General's compact account facts/session area; GST's main group and
+properly wrapping per-metal update/delete/add forms (without changing values or
+posting routes); Staff's responsive records/summary/actions; Business Editions'
+cards/actions; Devices' empty/populated cards, including untruncated long names.
+Audit remains its existing activity feed, with themed controls and scrolling.
+All17 tabs at320px retained navigation, all named fields inside forms, no document
+overflow and no clipped visible controls (Pricing tables intentionally scroll).
+Desktop General/GST/Staff/Business Editions/Audit/Devices and phone GST/Staff
+were visually reviewed. Populated GST overrides/device signout forms covered by
+new isolated GET tests; no live overrides or device sessions created/revoked.
+
+Owner then rejected Preferences' nine full-width sections as poorly structured.
+Replaced them with five task-based groups: Shop controls, Display & inventory,
+Loyalty Points, Billing limits & rounding, and full-width Compliance. Two desktop
+columns, container-based stacking when the actual content area is narrow, small
+numeric fields and left-label/right-switch rows. Reused every original field's
+markup, values, limits, hidden fallbacks and owner-only gates. The Settings sidebar
+and the one PATCH save form remain. Desktop checked324px sibling columns/full
+666px compliance;320px stacked layout and save area reviewed without submission.
+
+Final144 regression tests/605 assertions passed; one existing PHPUnit doc-comment
+metadata deprecation in OwnerOnlySubscriptionCommerceTest remains (not a failure).
+Build/whitespace checks passed. No saved settings, pricing, access, staff, service
+or payment state changed. Physical devices and live mutations not exercised.
+
+Follow-up: owner correctly noted that the first pass was mostly shared paint
+and Pricing. Added tab-specific treatment: named grouped sections in Shop,
+Invoice and Return Policy; Profile sections/primary actions; compact inline
+Payments summaries with flat method rows; compact Plan/Billing KPIs; neutral
+Roles group headers; Materials headers/actions, Website spacing, orange Audit
+actions and readable filter labels. No save endpoint/field/permission changed.
+Removed Payments' decorative POS eyebrow, not any POS functionality. Focus
+halos remain suppressed locally; controls keep plain themed focus indicators.
+
+Owner then requested equal side-by-side role columns. Owner's locked banner
+stays full-width; editable Manager/staff-role cards each take half the desktop
+row, groups stack vertically, names sit left and switches right. Existing role
+display names remain data-driven (the current demo names the staff role Cashier).
+Mobile stacks the role columns and keeps 44px permission-label hit areas.
+
+95 regression tests/446 assertions passed, including DOM checks for all three
+grouped save forms' original fields/actions/methods. Build/diff checks passed.
+Live desktop reviewed Preferences, Payments, Plan/Billing, Invoice and Roles;
+confirmed equal325px role columns at1280px and right-edge switch alignment.
+All17 tabs at320px retained navigation, no document overflow, and all named
+controls inside forms.390px role stacking checked. No live saves/toggles/payments
+performed; physical devices remain untested.
+
+Scoped `settings-workspace.css` matches the neutral/orange Retail theme: subtle
+surface shadows, rounded corners, consistent section headings and controls,
+compact Pricing overview and striped, contained Pricing tables. Desktop keeps
+the existing independently scrolling Settings sidebar and content; mobile keeps
+the same section links as a touch-sized horizontal strip. Added its accessible
+navigation label. Corrected the existing toggle paint selector to apply orange
+only when checked; unchecked settings retain their grey off state.
+
+No controller, service, form action, validation, permission or saved setting was
+changed. No live pricing/settings saves, purchases or subscription actions were
+performed. POS, Admin and Dhiran remain untouched. Existing Data Exports move and
+all earlier uncommitted work preserved. Built with `--emptyOutDir false` so the
+running preview's old assets/manifest stayed available during compilation.
+
+94 Settings/pricing/payment/tax/material/permission regression tests passed
+(408 assertions), including GET coverage for all 17 owner tabs and unchanged
+shop attributes. Build and whitespace checks passed. Signed-in browser reviewed
+desktop Pricing/Shop Info and mobile Pricing/Payments/Devices at320/390px;
+all17 sections loaded at320px with navigation/content retained and no document
+overflow. Wide Pricing tables have their own horizontal scroll regions. Turbo
+tab switching checked without submitting changes. Physical devices and live
+save/payment flows intentionally not exercised. Preview8001 remained listening.
+
+## Latest checkpoint — Edit Scheme / Karigar Profile / Purchase Details, 2026-11-12
+
+### Navigation follow-up — Data Exports, 2026-11-12
+
+Moved `/export` from Settings' data links to the All Reports header, gated by
+the existing reports.export permission. Imports stay in Settings. `/export`
+now highlights All Reports rather than Settings, including Turbo navigation.
+The sidebar export fallback now depends on lack of reports.view, not lack of
+settings.view, preserving access for export-only roles. No route permissions,
+export logic, Admin/Dhiran or POS content changed. Mobile uses a44px named
+download icon beside the bell; desktop keeps the Data Exports label.
+
+Navigation/hub/export regression suite23 tests/835 assertions passed; frontend
+333 passed/22 existing skips. Diff check and layout scan clean. Live signed-in
+IAB checked header link opens `/export`, Reports active/Settings inactive,
+Settings has no export link but retains Imports, and320px header button fits
+without horizontal overflow. Viewport reset. No downloads or records created.
+Logs: `/tmp/jf-export-nav-{php,frontend}.log`. Physical devices not tested.
+
+Owner requested a quick theme pass on these three existing screens. Scoped
+`record-details.css` now supplies the matching neutral surfaces, corner treatment,
+spacing, compact balance pills and responsive layout. No controllers, services,
+calculations, posting endpoints or live records were changed for this follow-up.
+POS, Admin, Dhiran and prior report/Vault work remain untouched.
+
+Edit Scheme puts Start/End Date inside Scheme Basics, retains every PUT field,
+old value/error, type/eligibility conditional and toggle. Terms has proper inner
+padding; date inputs use the existing editable themed picker. Removed a nested
+main landmark. Breakpoints prevent the type selector being squeezed by dates.
+Karigar Profile keeps exact balance/held-metal values and invoice/job links;
+history tables gain row numbers, scoped scroll regions and labelled mobile cards.
+Header Edit/Issue links follow their existing route permissions. Purchase Details
+retains supplier/attachment protection, totals, desktop/phone line values and
+draft/confirmed/stocked confirmation/stock/reversal/delete contracts. Header
+buttons match the theme. Corrected a legacy overflow utility inheriting a zero
+radius onto its table card, with a narrowly scoped specificity fix.
+
+Regression suite44 tests/490 assertions passed, including the new three-screen
+GET/non-mutation/field/status checks plus neighboring create/register/editor,
+purchase reversal and held-metal tests. Frontend333 passed/22 existing skips;
+build, static layout scan and diff whitespace checks passed. Logs:
+`/tmp/jf-detail-screens-{regressions,frontend,build}.log`.
+One initial access-test failure was a transient missing Vite manifest while
+building; serial rerun passed. Do not build while PHP tests render error pages.
+
+Signed-in desktop screenshots reviewed all three. Purchase390px reviewed before
+the final corner/compact-grid CSS fix. Final full mobile recheck was interrupted:
+preview server stopped, then Browser Use rejected the next action by URL policy.
+No browser workaround attempted. Viewport reset; Scheme/Profile tabs handed off.
+Physical devices and remaining320/390px checks are pending. Preview restarted in
+PTY session98073 on8001; preserved private PG55432 remains running. No live form
+submissions, purchase confirmations/reversals or ledger writes were performed.
+
+### Retry verification completed, 2026-11-12
+
+Owner requested retry. Existing preview8001/private PG55432 were running and a
+fresh IAB tab loaded successfully. Checked all three pages at390px and320px in
+the same tab (viewport override affects the active tab, not every open tab).
+No horizontal page overflow found. Scheme type/offer disclosure worked, restored
+original gold-savings selection without saving;320px themed calendar fit x9–311
+and both footer actions fit. Karigar populated job/invoice tables rendered as
+labelled cards within bounds, with balances and header actions visible. Purchase
+mobile line card stayed within bounds, total remained ₹49,955.00, and the final
+table-card radius was16px.320px header actions wrapped without clipping. No UI
+changes needed during retry; no financial forms submitted. Viewport reset.
+Physical-device gestures remain untested; these were Chromium emulation checks.
+
+## Previous checkpoint — Individual Retail reports, 2026-11-12 (broader browser verification pending)
+
+### Follow-up — shared export popup, 2026-11-12
+
+Owner's screenshot was `/reports/scheme-liability/export`, not the existing
+report-scope filter dialog. All same-origin registered `/reports/{key}/export`
+links in the tenant app now open the shared setup over the current page. This
+also covers Data Exports cards without duplicating forms. Desktop uses a native
+centred dialog; mobile a bottom sheet with the same thin orange scrollbar and
+reduced-motion-aware entrance. Close/Cancel/Escape return focus to the opener.
+Modified clicks/new tabs and direct URLs retain the standalone fallback.
+
+Extracted ONE existing form into `reporting/partials/export-form.blade.php` and
+its former inline CSS into `report-export.css`. A Turbo frame GET returns that
+form only, never the app shell. Period/profile/format/filter controls, gated
+sensitive choices, saved presets and ready-download notices remain available.
+Custom dates and Named FY fields appear only for their matching selection.
+`report-export.js` opens the frame and handles its POST response: server-produced
+file bytes/filename download unchanged;422 errors retain inputs in the popup;
+queued/preset redirects return their server-rendered feedback to the frame.
+No dataset, calculation, queue/audit, export permission or financial posting
+logic changed. Stale navigation responses do not modify another page's popup.
+
+The owner signed into the preview. Live Chromium/IAB checked desktop opening
+without a URL change, preserved November dates, native themed calendar inside
+the dialog, Custom/FY disclosure, a deliberately invalid FY submission staying
+in-place, and close/focus restoration.390px and320px sheets had no horizontal
+overflow;390px screenshot checked calendar and scroll. Viewport reset to default.
+No valid live exports, presets or financial records were created. Automated
+checks cover actual export bytes,422/session feedback, frame-only responses,
+standalone fallback and saved-preset scope. Full Reporting272 tests/2080 assertions
+passed before the extra preset test; frontend333 passed/22 existing skips; build
+passed. Latest targeted suite9 tests/726 assertions passed:
+`/tmp/jf-export-popup-targeted-final.log`.
+Other logs: `/tmp/jf-export-popup-{full-php,frontend-final,build-final}.log`.
+Static layout scan and diff whitespace check passed. Physical-device gestures
+and live download/queue delivery were not exercised. POS/Admin/Dhiran untouched.
+
+The broader report visual checklist below is still not a claim of checking every
+report at every width; the signed-in checks above specifically cover this popup.
+
+Owner approved individual reports, then specifically requested missing row
+numbers and misaligned Total rows. All active Retail hub report views now use
+the shared neutral/orange surfaces, compact summaries and filter popup/mobile
+bottom sheet. Registered reports retain canonical dataset services, columns,
+formatted values and totals, with one section/table render rather than four
+duplicated generic variants. Specialist Stock Aging, Category Sales, Occasions,
+Reference Prices and Repairs use the same furniture. Sales Register keeps its
+URL and existing gates, now rendered through the common controller.
+
+Screen tables have a separate # column; totals retain an exact cell for every
+canonical column, numeric alignment and the same horizontal/edge padding as
+body cells. Sorting reindexes display rows without recalculating recorded
+balances. Repairs retains continuous page numbering. Export/PDF data schemas
+were not given an extra index column. Existing business values are not edited.
+
+Custom/FY scope fields now work; invalid/missing custom periods return422 rather
+than500. Screen-to-export links preserve resolved dates/profile/sensitive choice;
+Cash direction/source filters now reach exports too. Category Sales previously
+included drafts and missed older drafts finalized inside the period: the source
+now uses the existing canonical finalized-sale/accounting-date scope, with a
+versioned cache key. This source correction also feeds inventory Sell Trend;
+no inventory UI or live financial records were changed. Repairs' final-cost
+summary is labelled Delivered charges, not cash collected. Category counts are
+explicitly sold item lines in the shown categories, not whole-shop quantity.
+
+Regression checks cover every registered Retail-compatible definition's rows,
+column/footer order and totals; period errors, screen/export parity, finalized
+sales, populated specialists and pagination. Frontend checks cover stable sorting,
+Turbo mount safety, numbering and footer styling. Final verification logs use
+`/tmp/jf-reports-complete-{php,frontend,build}.log`: combined PHP290 tests/2478
+assertions passed; frontend330 passed/22 existing skips; build passed; static
+layout scan returned no findings; diff whitespace clean. No live exports or
+finance/stock/repair writes. POS,
+Admin and Dhiran untouched; prior Vault changes remain intact and separate.
+
+In-app browser tabs still show login; Chrome is not connected. Owner must sign
+in before final desktop/intermediate/mobile visual and interaction checks.
+Do not mark those checks complete or claim every report works perfectly.
+Preview8001 and the preserved durable private PG55432 are running. No backup
+import, seed or migration was performed on preview. Existing non-date export
+preset UI round-trip limitations were not expanded into this task.
+
+## Previous checkpoint — Vault ledger / Add Bullion, 2026-11-12 (browser verification pending)
+
+Owner selected `/vault/ledger` and `/vault/lots/create`. Changes are in this
+worktree, not deployed. Removed their legacy inline styles; compiled styles in
+`vault-ledger-lot.css` match the established neutral/orange Retail theme. Ledger
+has one responsive record table, filters in its header, one Apply/Clear action,
+shared mobile bottom sheet/calendar, sticky headings, contained workspace scroll
+and pagination outside the scroller. All existing movement values, filters and
+50-row pagination remain unchanged; no controller/service changes.
+
+Add Bullion has compact field groups, a right-side desktop calculation summary,
+normal mobile page flow and native POST/CSRF/validation. Old input is retained;
+field errors are visible. Fixed dynamic purity dropdown showing Custom while the
+posted/previewed purity remained 22: sync after Alpine renders its options. Gold
+karat/silver fineness formulas and server-authoritative money/metal posting stay
+unchanged. Clearing weight is safe in the summary. Vendor create link is gated
+by its existing manage permission. POS, Admin and Dhiran untouched.
+
+Before session restart, live browser checked 1440px Add Bullion default purity,
+gold 10g/22K = 9.167g, silver 10g/999 = 9.990g, custom 958 = 9.580g, and opening
+source hides supplier. No live entries were posted. Remaining: final compact
+desktop screenshot, mobile/320px layout, ledger filter/calendar/Apply/Clear and
+bottom-sheet interactions. Do not claim those checks are done.
+
+After the restart, localhost8001/private PG55432 were both offline. The old
+handoff's `/tmp/claude-1000/mobile-demo-pg` no longer existed, but further inspection
+found the existing durable cluster at
+`/home/himanshu/Desktop/jewelflow-worktrees/demo-pg` (PG16, last log Nov11).
+Owner approved restoring the Nov2 backup; instead preserved that archive and
+restarted the existing durable cluster on loopback55432 without importing,
+seeding, migrating, deleting or overwriting anything. Restarted PHP8001 from this
+worktree, session87830. Read-only counts:14items,3repairs,3metal movements. This
+does not prove all entries from the former temporary cluster survived. Do NOT
+redirect preview to disposable testing5432. The in-app browser now needs owner
+sign-in; asked them to log in so remaining responsive checks can continue.
+UI source changes remain saved. Frontend suite: 326 passed,22 existing skips;
+targeted Vault PHP suite31 tests/135 assertions passed again after restart. Build,
+layout detector and diff whitespace checks passed. Fresh log paths:
+`/tmp/jf-vault-{php,frontend,build}.log`. Browser review evidence directory reserved
+but no final captures saved yet:
+`/home/himanshu/jf-table-evidence/vault-ledger-lot-20261111.8xLLNo/`.
+
+## Previous checkpoint — Retail Catalog workspace, 2026-11-11
 
 Latest owner correction: exact wide toolbar order is Search → Customer number →
 Message style → Category → Sub Category → Apply/Clear, not sharing controls after
