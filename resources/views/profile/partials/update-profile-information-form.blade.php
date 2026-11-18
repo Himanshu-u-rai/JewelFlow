@@ -1,4 +1,4 @@
-<section>
+<section class="settings-profile-card profile-details-section">
     <header>
         <h2 class="text-lg font-medium text-gray-900">
             {{ __('Profile Information') }}
@@ -13,10 +13,11 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6" data-turbo-frame="_top">
+    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6 settings-profile-form profile-details-form" data-turbo-frame="_top">
         @csrf
         @method('patch')
 
+        <div class="profile-fields-row space-y-6">
         <div>
             <x-input-label for="name" :value="__('Name')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
@@ -47,8 +48,9 @@
                 </div>
             @endif
         </div>
+        </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 profile-form-actions">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
             @if (session('status') === 'profile-updated')

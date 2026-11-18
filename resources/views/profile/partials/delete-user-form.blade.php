@@ -1,4 +1,4 @@
-<section class="space-y-6">
+<section class="space-y-6 settings-profile-card profile-deactivation-section">
     <header>
         <h2 class="text-lg font-medium text-gray-900">
             {{ __('Deactivate Account') }}

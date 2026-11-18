@@ -437,7 +437,6 @@
 
 <div class="pm-page-head">
     <div>
-        <p class="pm-eyebrow">POS configuration</p>
         <h2 class="pm-page-title">Payment Methods</h2>
         <p class="pm-page-subtitle">Manage UPI, bank, and wallet accounts used while collecting POS and invoice payments. Active methods appear as selectable account options.</p>
     </div>
@@ -491,7 +490,7 @@
                         @can('settings.edit')
                         <div class="pm-method-actions">
                             {{-- Toggle switch --}}
-                            <form method="POST" action="{{ route('settings.payment-methods.toggle', $method) }}" style="margin:0;">
+                            <form method="POST" data-turbo-frame="_top" action="{{ route('settings.payment-methods.toggle', $method) }}" style="margin:0;">
                                 @csrf @method('PATCH')
                                 <button type="submit" class="pm-toggle {{ $method->is_active ? 'pm-toggle-on' : '' }}" title="{{ $method->is_active ? 'Disable' : 'Enable' }}">
                                     <span class="pm-toggle-thumb"></span>
@@ -502,7 +501,7 @@
                                 <x-icon name="square-pen" size="14" stroke="#475569" />
                             </button>
                             {{-- Delete --}}
-                            <form method="POST" action="{{ route('settings.payment-methods.destroy', $method) }}" style="margin:0;"
+                            <form method="POST" data-turbo-frame="_top" action="{{ route('settings.payment-methods.destroy', $method) }}" style="margin:0;"
                                   onsubmit="return confirm({{ \Illuminate\Support\Js::from('Delete ' . $method->name . '?') }})">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="pm-btn-icon pm-btn-icon-danger" title="Delete">
@@ -516,7 +515,7 @@
                     {{-- Inline edit form --}}
                     @can('settings.edit')
                     <div x-show="editOpen" x-cloak class="pm-edit-form">
-                        <form method="POST" action="{{ route('settings.payment-methods.update', $method) }}">
+                        <form method="POST" data-turbo-frame="_top" action="{{ route('settings.payment-methods.update', $method) }}">
                             @csrf @method('PUT')
                             <input type="hidden" name="type" value="{{ $method->type }}">
                             <div class="pm-form-grid">
@@ -582,7 +581,7 @@
             @can('settings.edit')
             <div x-show="showAdd" x-cloak class="pm-form">
                 <p class="pm-form-title">Add New {{ $typeLabels[$type] }}</p>
-                <form method="POST" action="{{ route('settings.payment-methods.store') }}">
+                <form method="POST" data-turbo-frame="_top" action="{{ route('settings.payment-methods.store') }}">
                     @csrf
                     <input type="hidden" name="type" value="{{ $type }}">
                     <div class="pm-form-grid">

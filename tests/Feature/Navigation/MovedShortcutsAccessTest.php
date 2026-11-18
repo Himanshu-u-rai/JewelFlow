@@ -14,13 +14,13 @@ use Tests\TestCase;
  * the page it belongs to: reports on the reports hub, Historical Sales in the
  * Invoices header, Installments on Customers, Categories, Tag
  * Printing and Reorder Alerts on the Stock page, Vendors and the Product
- * Catalog on the Masters hub, Download Reports and Import Data on Settings.
+ * Catalog on the Masters hub, Data Exports in the Reports header and Import Data on Settings.
  *
  * Two rules keep a move from costing anyone a page they may open.
  *
  * 1. A new home can have a permission of its own that is not the page's: the
  *    hub wants reports.view while Close Day wants reports.daily_closing,
- *    Settings wants settings.view while Download Reports wants reports.export,
+ *    Reports wants reports.view while Data Exports wants reports.export,
  *    Invoices wants sales.view while Historical Sales wants historical.view.
  *    A role holding only the second of a pair keeps its sidebar shortcut, and
  *    nobody who can reach the new home sees a duplicate shortcut.
@@ -47,7 +47,7 @@ class MovedShortcutsAccessTest extends TestCase
         'report.closing' => ['reports.daily_closing', 'reports.view'],
         'historical.index' => ['historical.view', 'sales.view'],
         'installments.index' => ['installments.view', 'customers.view'],
-        'export.index' => ['reports.export', 'settings.view'],
+        'export.index' => ['reports.export', 'reports.view'],
         'imports.index' => ['imports.manage', 'settings.view'],
     ];
 
@@ -225,20 +225,30 @@ class MovedShortcutsAccessTest extends TestCase
     {
         [$user] = $this->createRetailerTenant();
 
-        // Settings: a manager reads settings without editing them, and holds both data permissions.
-        // The two links sit above the section list, not inside it.
+        // Settings keeps imports as a header action (owner, 2026-11-15: the floating button on phones and tablets);
+        // exports have moved to Reports.
         $dataLinks = function (array $extra) use ($user) {
             $page = $this->pageAs($user, ['settings.view', ...$extra], route('settings.edit', ['tab' => 'general']));
             $this->assertStringNotContainsString($this->href('export.index'), $this->between($page, '<nav class="settings-nav"', '</nav>'));
             $this->assertStringNotContainsString($this->href('imports.index'), $this->between($page, '<nav class="settings-nav"', '</nav>'));
 
-            return $this->between($page, 'class="settings-layout', '<nav class="settings-nav"');
+            return $this->pageHeader($page);
         };
-        $this->assertStringContainsString($this->href('export.index'), $dataLinks(['reports.export']));
+        $this->assertStringNotContainsString($this->href('export.index'), $dataLinks(['reports.export']));
         $this->assertStringContainsString($this->href('imports.index'), $dataLinks(['imports.manage']));
         $bare = $dataLinks([]);
         $this->assertStringNotContainsString($this->href('export.index'), $bare);
         $this->assertStringNotContainsString($this->href('imports.index'), $bare);
+
+        // Export belongs in Reports' header, never Settings, with its own gate.
+        $hub = $this->pageAs($user, ['reports.view', 'reports.export'], route('report.hub'));
+        $this->assertStringContainsString($this->href('export.index'), $this->pageHeader($hub));
+        $this->assertStringNotContainsString($this->href('export.index'), $this->sidebarNav($hub));
+        $this->assertStringNotContainsString($this->href('export.index'),
+            $this->pageHeader($this->pageAs($user, ['reports.view'], route('report.hub'))));
+        $export = $this->pageAs($user, ['reports.view', 'reports.export', 'settings.view'], route('export.index'));
+        $this->assertStringContainsString('active', $this->link($this->sidebarNav($export), 'report.hub'));
+        $this->assertStringContainsString('/export', $this->link($this->sidebarNav($export), 'report.hub'));
 
         // Customers: the sidebar gave up Installments because this tab is here.
         $this->assertStringContainsString('EMI / Installments',

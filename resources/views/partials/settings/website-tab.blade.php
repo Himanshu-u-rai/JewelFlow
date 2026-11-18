@@ -186,7 +186,7 @@
         ->pluck('category');
 @endphp
 
-<form method="POST" action="{{ route('settings.update.catalog-website') }}" enctype="multipart/form-data" data-turbo-frame="_top">
+<form id="settings-website-form" method="POST" action="{{ route('settings.update.catalog-website') }}" enctype="multipart/form-data" data-turbo-frame="_top">
     @csrf
     @method('PATCH')
 
@@ -380,12 +380,6 @@
         </div>
     @endif
 
-    {{-- ─── Save ─── --}}
-    @can('settings.edit')
-    <div class="form-footer" style="margin-top:20px;">
-        <button type="submit" class="btn-primary">{{ __('Save Website Settings') }}</button>
-    </div>
-    @endcan
 </form>
 
 {{-- ─── CMS Pages ─── --}}
@@ -495,8 +489,15 @@
     @endcan
 </div>
 
+@can('settings.edit')
+<div class="form-footer settings-page-footer">
+    <button type="submit" class="btn-primary" form="settings-website-form">{{ __('Save Website Settings') }}</button>
+</div>
+@endcan
+
 <script>
-    function toggleEditPage(id) {
+(() => {
+    window.toggleEditPage = function (id) {
         const el = document.getElementById('edit-page-' + id);
         if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
@@ -509,7 +510,7 @@
     }
 
     // Hero banner: show the controls for the chosen style, highlight the option.
-    function cwSyncHeroStyle(style) {
+    window.cwSyncHeroStyle = function (style) {
         const imgBlock = document.getElementById('cwHeroImageBlock');
         const colBlock = document.getElementById('cwHeroColorBlock');
         if (imgBlock) imgBlock.style.display = style === 'image' ? 'block' : 'none';
@@ -526,4 +527,5 @@
     if (cwHeroPicker && cwHeroText) {
         cwHeroPicker.addEventListener('input', () => { cwHeroText.value = cwHeroPicker.value; });
     }
+})();
 </script>

@@ -14,7 +14,8 @@
         grid-template-columns: 240px 1fr;
         gap: 18px;
         align-items: stretch;
-        height: calc(100vh - 156px);
+        /* 156px of chrome + 36px for the thin brand footer below (10px gap + 26px line). */
+        height: calc(100vh - 192px);
         background: transparent;
         border: none;
         padding: 0;
@@ -98,115 +99,6 @@
         justify-content: center;
         color: #64748b;
         flex-shrink: 0;
-    }
-
-    /* Download Reports / Import Data: the first thing in the Settings navigation.
-       Desktop: a small card above the section list, in the same column. The list
-       keeps the rest of the column's height and still scrolls on its own. */
-    .settings-data-links {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 10px;
-        background: #ffffff;
-        border: 1px solid var(--settings-border, #e2e8f0);
-        border-radius: 14px;
-    }
-
-    .settings-data-links .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #475569;
-        text-decoration: none;
-        border-radius: 12px;
-        transition: all 0.15s;
-    }
-
-    .settings-data-links .nav-item:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-    }
-
-    .settings-data-links .nav-item:focus-visible {
-        outline: 2px solid var(--settings-gold, #b45309);
-        outline-offset: 2px;
-    }
-
-    .settings-data-links .nav-icon {
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
-        background: #f1f5f9;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #64748b;
-        flex-shrink: 0;
-    }
-
-    @media (min-width: 901px) {
-        .settings-layout--with-data {
-            grid-template-rows: auto minmax(0, 1fr);
-        }
-
-        .settings-layout--with-data > .settings-data-links {
-            grid-column: 1;
-            grid-row: 1;
-        }
-
-        .settings-layout--with-data > .settings-nav {
-            grid-column: 1;
-            grid-row: 2;
-        }
-
-        .settings-layout--with-data > #settings-content {
-            grid-column: 2;
-            grid-row: 1 / span 2;
-        }
-    }
-
-    /* One column: a row of its own above the sticky tab strip, the links side by side. */
-    @media (max-width: 900px) {
-        .settings-data-links {
-            flex-direction: row;
-            gap: 6px;
-            padding: 7px;
-            border-radius: 12px;
-        }
-
-        .settings-data-links .nav-item {
-            flex: 1 1 0;
-            min-width: 0;
-            min-height: 38px;
-            justify-content: center;
-            gap: 8px;
-            padding: 8px 10px;
-            line-height: 1.2;
-            text-align: center;
-        }
-
-        .settings-data-links .nav-icon {
-            width: 22px;
-            height: 22px;
-        }
-    }
-
-    /* Narrow phones: two labels share ~300px, so the icon chips give way and
-       each label stays on one line. */
-    @media (max-width: 400px) {
-        .settings-data-links .nav-icon {
-            display: none;
-        }
-
-        .settings-data-links .nav-item {
-            padding: 8px 6px;
-            font-size: 12.5px;
-            white-space: nowrap;
-        }
     }
 
     /* Content — owns its scrollbar inside the locked column. */
@@ -1474,7 +1366,7 @@
         transform: none !important;
     }
 
-    .settings-shell :is(.settings-toggle-input-lg, .settings-toggle-input-md, .pm-toggle.pm-toggle-on) {
+    .settings-shell :is(.settings-toggle-input-lg:checked, .settings-toggle-input-md:checked, .pm-toggle.pm-toggle-on) {
         background: var(--settings-gold) !important;
     }
 
@@ -2220,57 +2112,43 @@
     }
 </style>
 
+@php
+    // Imports stay in Settings, as a header action (owner, 2026-11-15): a header button on desktop, an entry in the
+    // floating button on phones and tablets. Data Exports opens from the Reports header.
+    $canImportData = ($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage');
+    $canProductPreferences = auth()->user()?->isShopOwner();
+@endphp
 <x-page-header class="settings-page-header">
     <div>
-        <h1 class="page-title">{{ __('Settings') }}</h1>
+        <h1 class="page-title">
+            <span class="settings-title-text">{{ __('Settings') }}</span>
+            {{-- Phones and narrow tablets: the open section is the title, and a tap lists every section (the
+                 section links below, shown as a dropdown; section-switch.js). --}}
+            <button type="button" class="jf-section-switch" data-section-switch
+                    aria-haspopup="true" aria-expanded="false" aria-controls="settings-sections">
+                <span data-section-label>{{ __('Settings') }}</span>
+                <x-icon name="chevron-down" size="18" />
+            </button>
+        </h1>
     </div>
-    @if(auth()->user()?->isShopOwner())
+    @if($canImportData || $canProductPreferences)
         <div class="page-actions">
+            @if($canImportData)
+            <a href="{{ route('imports.index') }}" class="btn btn-secondary">
+                <x-icon name="upload" size="16" /> {{ __('Import Data') }}
+            </a>
+            @endif
+            @if($canProductPreferences)
             <a href="{{ route('product-preferences.index') }}" class="btn btn-secondary" data-turbo="false">Product preferences</a>
+            @endif
         </div>
     @endif
 </x-page-header>
 
 <div class="content-inner settings-shell">
-@if($errors->any())
-        <div class="alert alert-error">
-            <strong>{{ __('Please fix the following before saving:') }}</strong>
-            <ul class="alert-error-list">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    @php
-        // Download Reports and Import Data left the main sidebar for this page. Each is
-        // shown by its own permission (reports.export / imports.manage), not a Settings one.
-        $canDownloadReports = auth()->user()->can('reports.export');
-        $canImportData = ($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage');
-        $hasDataLinks = $canDownloadReports || $canImportData;
-    @endphp
-    <div class="settings-layout{{ $hasDataLinks ? ' settings-layout--with-data' : '' }}">
-        @if($hasDataLinks)
-        {{-- First thing in the Settings navigation, one click from opening the page: above the
-             section list on a desktop, a row of its own above the tab strip on a phone (inside
-             that sideways strip the links would scroll out of sight). They are pages of their
-             own, so they are plain links, not tabs of the settings frame. --}}
-        <nav class="settings-data-links" aria-label="{{ __('Download and import data') }}">
-            @if($canDownloadReports)
-            <a href="{{ route('export.index') }}" class="nav-item">
-                <span class="nav-icon"><x-icon name="download" size="16" /></span> {{ __('Download Reports') }}
-            </a>
-            @endif
-            @if($canImportData)
-            <a href="{{ route('imports.index') }}" class="nav-item">
-                <span class="nav-icon"><x-icon name="upload" size="16" /></span> {{ __('Import Data') }}
-            </a>
-            @endif
-        </nav>
-        @endif
+    <div class="settings-layout">
         <!-- Sidebar Navigation -->
-        <nav class="settings-nav">
+        <nav class="settings-nav" id="settings-sections" data-section-list aria-label="{{ __('Settings sections') }}">
             {{-- General — account info, available to any authenticated user --}}
             <a href="{{ route('settings.edit', ['tab' => 'general']) }}" class="nav-item {{ $activeTab === 'general' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><x-icon name="settings" size="16" /></span> {{ __('General') }}
@@ -2361,8 +2239,15 @@
         </nav>
 
         <!-- Content Area -->
-        <turbo-frame id="settings-content">
-        <div class="settings-content {{ $activeTab === 'pricing' ? 'settings-content-pricing' : '' }}">
+        <turbo-frame id="settings-content" data-turbo-action="advance">
+        <div class="settings-content {{ $activeTab === 'pricing' ? 'settings-content-pricing' : '' }}" data-settings-tab="{{ $activeTab }}">
+            @php
+                $settingsValidationErrors = collect($errors->getBags())->flatMap(fn ($bag) => $bag->all())->unique()->values()->all();
+            @endphp
+            @if(count($settingsValidationErrors))
+                <div hidden data-settings-validation data-turbo-temporary
+                     data-message="{{ __('Changes were not saved.')."\n".implode("\n", $settingsValidationErrors) }}"></div>
+            @endif
             @php
                 // Used to hide Save buttons + show a "View only" banner on tabs
                 // the user can read but not write (Shop Info / Invoice / Preferences).
@@ -2382,39 +2267,28 @@
                     <p class="settings-desc">{{ __('Account, session, and basic app actions') }}</p>
                 </div>
 
-                <div class="section-label">{{ __('Account') }}</div>
-                <div class="bg-gray-50 border border-gray-200 p-4 text-sm">
-                    <div class="flex flex-col gap-2">
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-gray-600">{{ __('Logged in as') }}</span>
-                            <span class="font-semibold text-gray-900">{{ \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) }}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-gray-600">{{ __('Role') }}</span>
-                            <span class="font-semibold text-gray-900">{{ auth()->user()->role?->display_name ?? __('Guest') }}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-gray-600">{{ __('Shop') }}</span>
-                            <span class="font-semibold text-gray-900">{{ auth()->user()->shop?->name ?? '—' }}</span>
-                        </div>
-                    </div>
-                </div>
+                <section class="settings-form-section" aria-label="{{ __('Account') }}">
+                    <h3 class="section-label">{{ __('Account') }}</h3>
+                    <dl class="settings-account-facts">
+                        <div><dt>{{ __('Logged in as') }}</dt><dd>{{ \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) }}</dd></div>
+                        <div><dt>{{ __('Role') }}</dt><dd>{{ auth()->user()->role?->display_name ?? __('Guest') }}</dd></div>
+                        <div><dt>{{ __('Shop') }}</dt><dd>{{ auth()->user()->shop?->name ?? '—' }}</dd></div>
+                    </dl>
+                </section>
 
-                <div class="section-divider"></div>
-                <div class="section-label">{{ __('Session') }}</div>
-
-                <div class="bg-red-50 border border-red-200 p-4 text-sm">
-                    <div class="flex flex-col gap-3">
+                <section class="settings-form-section" aria-label="{{ __('Session') }}">
+                    <h3 class="section-label">{{ __('Session') }}</h3>
+                    <div class="settings-session-row">
                         <div>
-                            <p class="font-semibold text-red-900">{{ __('Logout') }}</p>
-                            <p class="text-red-700 text-xs mt-1">{{ __('You will be signed out of JewelFlows on this device.') }}</p>
+                            <p class="font-semibold text-sm">{{ __('Logout') }}</p>
+                            <p class="settings-desc">{{ __('You will be signed out of JewelFlows on this device.') }}</p>
                         </div>
                         <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top">
                             @csrf
                             <button type="submit" class="btn btn-danger"><x-icon name="log-out" size="14" class="mr-1" />{{ __('Logout') }}</button>
                         </form>
                     </div>
-                </div>
+                </section>
             @endif
 
             @can('owner-or-manager')
@@ -2425,11 +2299,11 @@
                     <p class="settings-desc">{{ __('Your name, email, and password') }}</p>
                 </div>
 
+                <div class="settings-profile-grid">
+                <div class="settings-profile-column">
                 @include('profile.partials.update-profile-information-form')
 
-                <div class="section-divider"></div>
-
-                <section>
+                <section class="settings-profile-card settings-profile-mobile">
                     <header>
                         <h2 class="text-lg font-medium text-gray-900">{{ __('Mobile Number') }}</h2>
                         <p class="mt-1 text-sm text-gray-600">{{ __('Your registered mobile number used to log in.') }}</p>
@@ -2439,12 +2313,13 @@
                         <a href="{{ route('profile.mobile.change') }}" data-turbo-frame="_top" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">{{ __('Change') }}</a>
                     </div>
                 </section>
+                </div>
 
-                <div class="section-divider"></div>
+                <div class="settings-profile-column">
                 @include('profile.partials.update-password-form')
-
-                <div class="section-divider"></div>
                 @include('profile.partials.delete-user-form')
+                </div>
+                </div>
             @endif
             @endcan
 
@@ -2454,10 +2329,11 @@
                     <p class="settings-desc">{{ __('Business identity and tax configuration') }}</p>
                 </div>
                 
-                <form method="POST" action="{{ route('settings.update.shop') }}" enctype="multipart/form-data" data-turbo-frame="_top">
+                <form id="settings-shop-form" method="POST" action="{{ route('settings.update.shop') }}" enctype="multipart/form-data" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
                     
+                    <section class="settings-form-section" aria-label="{{ __('Business Details') }}">
                     <div class="section-label">{{ __('Business Details') }}</div>
                     <div class="form-row">
                         <div class="field span-2">
@@ -2547,6 +2423,8 @@
                         </div>
                     </div>
                     
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Shop Address') }}">
                     <div class="section-label">{{ __('Shop Address') }}</div>
                     <div class="form-row">
                         <div class="field span-3">
@@ -2636,6 +2514,8 @@
                     @endif
 
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Owner Details') }}">
                     <div class="section-label">{{ __('Owner Details') }}</div>
                     <p class="settings-section-subtitle">{{ __("The shop's registered owner. This is a business detail and may appear on documents — it is separate from your login name in the Profile tab.") }}</p>
 
@@ -2657,13 +2537,14 @@
                             <input type="email" name="owner_email" value="{{ old('owner_email', $shop->owner_email) }}" class="field-input" placeholder="{{ __('Optional') }}">
                         </div>
                     </div>
+                    </section>
                     
-                    @if($canEditSettings)
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
-                    </div>
-                    @endif
                 </form>
+                @if($canEditSettings)
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-shop-form">{{ __('Save Changes') }}</button>
+                </div>
+                @endif
             @endif
 
             @if($activeTab === 'gst')
@@ -2672,9 +2553,10 @@
                     <p class="settings-desc">{{ __('Your GSTIN, default GST rate, per-metal rates, HSN codes and tax type — all in one place.') }}</p>
                 </div>
 
-                <form method="POST" action="{{ route('settings.update.gst') }}" data-turbo-frame="_top">
+                <form id="settings-gst-form" method="POST" action="{{ route('settings.update.gst') }}" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
+                    <section class="settings-form-section" aria-label="{{ __('GST & Tax') }}">
                     <div class="form-row">
                         <div class="field">
                             <label class="field-label">{{ __('GST Number (GSTIN)') }}</label>
@@ -2720,7 +2602,7 @@
                     </div>
                     @endif
 
-                    <div class="form-row">
+                    <div class="settings-tax-type">
                         <label class="field-label" style="display:flex; gap:10px; align-items:center;">
                             <input type="hidden" name="igst_mode" value="0">
                             <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}
@@ -2728,12 +2610,8 @@
                             {{ __('Interstate (IGST) — show one IGST line instead of CGST + SGST on the invoice') }}
                         </label>
                     </div>
+                    </section>
 
-                    @if($canEditSettings)
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save GST Settings') }}</button>
-                    </div>
-                    @endif
                 </form>
 
                 <div class="section-divider"></div>
@@ -2745,15 +2623,15 @@
                 </div>
 
                 @forelse($gstCategories as $cat)
-                    <div class="form-row" style="align-items:flex-end; gap:8px;">
-                        <form method="POST" action="{{ route('settings.gst-categories.update', $cat) }}" data-turbo-frame="_top" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; flex:1;">
+                    <div class="settings-gst-rate-row">
+                        <form method="POST" action="{{ route('settings.gst-categories.update', $cat) }}" data-turbo-frame="_top" class="settings-gst-rate-form">
                             @csrf
                             @method('PATCH')
-                            <div class="field" style="min-width:140px;">
+                            <div class="field settings-gst-label">
                                 <label class="field-label">{{ __('Label') }}</label>
                                 <input type="text" name="name" value="{{ $cat->name }}" class="field-input" maxlength="80" required>
                             </div>
-                            <div class="field" style="min-width:120px;">
+                            <div class="field settings-gst-metal">
                                 <label class="field-label">{{ __('Metal') }}</label>
                                 <select name="metal_type" class="field-input">
                                     <option value="">{{ __('All / Default') }}</option>
@@ -2762,22 +2640,22 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="field" style="min-width:90px;">
+                            <div class="field settings-gst-percent">
                                 <label class="field-label">{{ __('GST %') }}</label>
                                 <input type="number" name="rate_pct" value="{{ rtrim(rtrim((string) $cat->rate_pct, '0'), '.') }}" class="field-input" step="0.01" min="0" max="99.99" required>
                             </div>
-                            <label class="field-label" style="display:flex; gap:4px; align-items:center; white-space:nowrap; margin-bottom:8px;">
+                            <label class="field-label settings-gst-default">
                                 <input type="checkbox" name="is_default" value="1" @checked($cat->is_default)> {{ __('Default') }}
                             </label>
                             @if($canEditSettings)
-                                <button type="submit" class="btn btn-primary btn-sm">{{ __('Save') }}</button>
+                                <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
                             @endif
                         </form>
                         @if($canEditSettings)
                             <form method="POST" action="{{ route('settings.gst-categories.destroy', $cat) }}" data-turbo-frame="_top" onsubmit="return confirm('{{ __('Delete this GST rate?') }}')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm">{{ __('Delete') }}</button>
+                                <button type="submit" class="btn btn-danger">{{ __('Delete') }}</button>
                             </form>
                         @endif
                     </div>
@@ -2787,14 +2665,15 @@
 
                 @if($canEditSettings)
                     <div class="section-divider"></div>
-                    <form method="POST" action="{{ route('settings.gst-categories.store') }}" data-turbo-frame="_top">
+                    <form method="POST" action="{{ route('settings.gst-categories.store') }}" data-turbo-frame="_top" class="settings-form-section">
                         @csrf
-                        <div class="form-row" style="align-items:flex-end; gap:8px;">
-                            <div class="field" style="min-width:140px;">
+                        <h3 class="section-label">{{ __('Add GST Rate') }}</h3>
+                        <div class="settings-gst-rate-form">
+                            <div class="field settings-gst-label">
                                 <label class="field-label">{{ __('Label') }}</label>
                                 <input type="text" name="name" class="field-input" maxlength="80" placeholder="{{ __('e.g. Gold GST') }}" required>
                             </div>
-                            <div class="field" style="min-width:120px;">
+                            <div class="field settings-gst-metal">
                                 <label class="field-label">{{ __('Metal') }}</label>
                                 <select name="metal_type" class="field-input">
                                     <option value="">{{ __('All / Default') }}</option>
@@ -2803,13 +2682,18 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="field" style="min-width:90px;">
+                            <div class="field settings-gst-percent">
                                 <label class="field-label">{{ __('GST %') }}</label>
                                 <input type="number" name="rate_pct" class="field-input" step="0.01" min="0" max="99.99" placeholder="3.00" required>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-sm">{{ __('Add GST Rate') }}</button>
+                            <button type="submit" class="btn btn-primary">{{ __('Add GST Rate') }}</button>
                         </div>
                     </form>
+                @endif
+                @if($canEditSettings)
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-gst-form">{{ __('Save GST Settings') }}</button>
+                </div>
                 @endif
             @endif
 
@@ -2819,7 +2703,7 @@
                     <p class="settings-desc">{{ __('Customize invoice appearance and payment details') }}</p>
                 </div>
                 
-                <form method="POST" action="{{ route('settings.update.billing') }}" enctype="multipart/form-data" data-turbo-frame="_top">
+                <form id="settings-billing-form" method="POST" action="{{ route('settings.update.billing') }}" enctype="multipart/form-data" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
 
@@ -2827,10 +2711,29 @@
                         <div class="field">
                             <label class="field-label">{{ __('Invoice Prefix') }}</label>
                             <input type="text" name="invoice_prefix" value="{{ old('invoice_prefix', $billing->invoice_prefix) }}" class="field-input" maxlength="20" required>
+                            <span class="field-hint">{{ __('Write {FY} to show the financial year, e.g. INV/{FY}/') }}</span>
+                            @error('invoice_prefix')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Starting Number') }}</label>
                             <input type="number" name="invoice_start_number" value="{{ old('invoice_start_number', $billing->invoice_start_number) }}" class="field-input" min="1" required>
+                            @php
+                                // Read-only: shows the next number without consuming it (peek_invoice_identity).
+                                $nextInvoice = $billing->shop_id ? \Illuminate\Support\Facades\DB::selectOne(
+                                    'SELECT invoice_number FROM peek_invoice_identity(?, ?)',
+                                    [$billing->shop_id, \App\Support\FinancialYear::current()->label()]
+                                )?->invoice_number : null;
+                            @endphp
+                            @if($nextInvoice)
+                                <span class="field-hint">{{ __('Next invoice number') }}: <strong>{{ $nextInvoice }}</strong></span>
+                            @endif
+                            @error('invoice_start_number')<span class="field-error">{{ $message }}</span>@enderror
+                            @error('confirm_number_gap')
+                                <label class="field-hint" style="display:flex; gap:8px; align-items:flex-start; color:#92400e; margin-top:6px;">
+                                    <input type="checkbox" name="confirm_number_gap" value="1" style="margin-top:3px;">
+                                    <span>{{ $message }}</span>
+                                </label>
+                            @enderror
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('UPI ID') }}</label>
@@ -2839,6 +2742,7 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    <section class="settings-form-section" aria-label="{{ __('Bank Details') }}">
                     <div class="section-label">{{ __('Bank Details') }}</div>
                     <p class="settings-desc settings-desc-gap">{{ __('These details appear on invoices under Payment Details.') }}</p>
 
@@ -2889,6 +2793,8 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Digital Signature') }}">
                     <div class="section-label">{{ __('Digital Signature') }}</div>
 
                     <div class="form-row cols-2">
@@ -2938,6 +2844,8 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('BIS Hallmark Logo') }}">
                     <div class="section-label">{{ __('BIS Hallmark Logo') }}</div>
 
                     <div class="form-row">
@@ -2962,6 +2870,8 @@
 
                     {{-- ── Branding ──────────────────────────────────────────────────── --}}
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Invoice Appearance') }}">
                     <div class="section-label">{{ __('Invoice Appearance') }}</div>
 
                     <div class="form-row">
@@ -3013,6 +2923,8 @@
 
                     {{-- ── Invoice Number ───────────────────────────────────────────── --}}
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Invoice Number Format') }}">
                     <div class="section-label">{{ __('Invoice Number Format') }}</div>
 
                     <div class="form-row">
@@ -3021,8 +2933,9 @@
                             <input type="text" name="invoice_suffix"
                                    value="{{ old('invoice_suffix', $billing->invoice_suffix) }}"
                                    class="field-input" maxlength="20"
-                                   placeholder="e.g. /2025-26">
-                            <span class="field-hint">Appended after the number, e.g. INV-0001001/2025-26</span>
+                                   placeholder="e.g. /{FY}">
+                            <span class="field-hint">{{ __('Added after the number, e.g. /{FY} gives INV-1001/:fy', ['fy' => \App\Support\FinancialYear::current()->short()]) }}</span>
+                            @error('invoice_suffix')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Invoice Copy Label') }}</label>
@@ -3041,22 +2954,39 @@
                         </div>
                     </div>
 
+                    @php
+                        // Continuous or yearly invoice series (InvoiceSeriesPlan); a year's series is fixed once it has a bill.
+                        $fyNow = \App\Support\FinancialYear::current();
+                        $seriesFrom = $billing->invoice_series_yearly_from;
+                        $seriesUntil = $billing->invoice_series_yearly_until;
+                        $seriesRunning = $seriesFrom && $seriesFrom <= $fyNow->label() && (! $seriesUntil || $fyNow->label() < $seriesUntil);
+                        $seriesPlanned = $seriesFrom && $seriesFrom > $fyNow->label();
+                        $seriesChoice = old('invoice_numbering', ($seriesRunning && ! $seriesUntil) || $seriesPlanned ? 'yearly' : 'continuous');
+                        $aprilOf = fn (string $fy) => '1 April ' . substr($fy, 0, 4);
+                    @endphp
                     <div class="form-row">
                         <div class="field">
-                            <label class="field-label">{{ __('Auto-reset on New Financial Year') }}</label>
-                            <label class="settings-toggle-label">
-                                <input type="hidden" name="year_reset" value="0">
-                                <input type="checkbox" name="year_reset" value="1"
-                                    {{ old('year_reset', $billing->year_reset) ? 'checked' : '' }}
-                                    class="settings-toggle-input-lg">
-                                <span class="settings-toggle-text">Reset invoice counter every April 1st</span>
-                            </label>
-                            <span class="field-hint">Counter resets to the Starting Number at the beginning of each fiscal year.</span>
+                            <label class="field-label" for="invoice-numbering">{{ __('Invoice numbering') }}</label>
+                            <select id="invoice-numbering" name="invoice_numbering" class="field-input">
+                                <option value="continuous" @selected($seriesChoice === 'continuous')>{{ __('One continuous series') }}</option>
+                                <option value="yearly" @selected($seriesChoice === 'yearly')>{{ __('Restart every financial year (1 April)') }}</option>
+                            </select>
+                            <span class="field-hint">
+                                {{ __('A yearly series needs {FY} in the prefix or suffix, for example INV/{FY}/ gives INV/:fy/1001.', ['fy' => $fyNow->short()]) }}
+                                {{ __('A change made after this year\'s first bill starts on 1 April.') }}
+                            </span>
+                            @if($seriesPlanned)
+                                <span class="field-hint"><strong>{{ __('Numbers restart every year from :date.', ['date' => $aprilOf($seriesFrom)]) }}</strong></span>
+                            @elseif($seriesRunning && $seriesUntil)
+                                <span class="field-hint"><strong>{{ __('One continuous series again from :date.', ['date' => $aprilOf($seriesUntil)]) }}</strong></span>
+                            @endif
                         </div>
                     </div>
 
                     {{-- ── Column Visibility ────────────────────────────────────────── --}}
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Invoice Column Visibility') }}">
                     <div class="section-label">{{ __('Invoice Column Visibility') }}</div>
 
                     @php
@@ -3095,6 +3025,8 @@
 
                     {{-- ── Signature & Footer ───────────────────────────────────────── --}}
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section" aria-label="{{ __('Signature & Footer') }}">
                     <div class="section-label">{{ __('Signature & Footer') }}</div>
 
                     <div class="form-row">
@@ -3107,12 +3039,8 @@
                             <span class="field-hint">Adds a second signature block on the left. Leave blank to show only one.</span>
                         </div>
                     </div>
+                    </section>
 
-                    @if($canEditSettings)
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
-                    </div>
-                    @endif
                 </form>
                 <script>
                 function previewSig(input) {
@@ -3124,6 +3052,12 @@
                     }
                 }
                 </script>
+                @include('partials.settings.books-lock')
+                @if($canEditSettings)
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-billing-form">{{ __('Save Changes') }}</button>
+                </div>
+                @endif
             @endif
 
             @if($activeTab === 'payment-methods')
@@ -3135,24 +3069,16 @@
                     <h2 class="settings-title">{{ __('Preferences') }}</h2>
                     <p class="settings-desc">{{ __('Display and formatting options') }}</p>
                 </div>
-                
-                <form method="POST" action="{{ route('settings.update.preferences') }}" data-turbo-frame="_top">
+
+                <form id="settings-preferences-form" method="POST" action="{{ route('settings.update.preferences') }}" data-turbo-frame="_top" class="settings-preferences-form">
                     @csrf
                     @method('PATCH')
-                    
-                    <div class="form-row cols-4">
-                        <div class="field">
-                            <label class="field-label">{{ __('Low Stock Alert') }}</label>
-                            <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $preferences->low_stock_threshold) }}" class="field-input" min="0" required>
-                        </div>
-                    </div>
-
-                    @if(auth()->user()->isOwner())
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Quick Bill') }}</div>
+                    <div class="settings-preferences-grid">
+                    <section class="settings-form-section preferences-section preferences-section-controls" aria-label="{{ __('Shop controls') }}">
+                        <h3 class="section-label">{{ __('Shop controls') }}</h3>
+                        @if(auth()->user()->isOwner())
                     <div class="form-row">
                         <div class="field">
-                            <label class="field-label">{{ __('Quick Bill') }}</label>
                             <label class="settings-toggle-label">
                                 <input type="hidden" name="quick_bill_enabled" value="0">
                                 <input type="checkbox" name="quick_bill_enabled" value="1"
@@ -3163,9 +3089,6 @@
                             <span class="field-hint">{{ __('Turning this off hides Quick Bill and blocks access, but does not delete past Quick Bill records.') }}</span>
                         </div>
                     </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Shop Access') }}</div>
                     <div class="form-row">
                         <div class="field">
                             <label class="field-label">
@@ -3182,14 +3105,49 @@
                             <span class="field-hint">{{ __('Closing the shop blocks manager/staff/cashier from web, mobile, POS, and operational actions. Owner access remains available. No data is deleted.') }}</span>
                         </div>
                     </div>
-                    @endif
-
-                    <div class="settings-section-top">
-                        <h3 class="settings-section-title">{{ __('Loyalty Points') }}</h3>
-                        <p class="settings-section-subtitle">{{ __('Configure how customers earn and lose points') }}</p>
+                        @endif
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('Auto Logout (minutes)') }}</label>
+                            <input type="number" name="auto_logout_minutes" value="{{ old('auto_logout_minutes', $preferences->auto_logout_minutes ?? 0) }}" class="field-input preferences-number-short" min="0" max="480">
+                            <span class="field-hint">{{ __('Idle minutes before auto logout. 0 = disabled.') }}</span>
+                        </div>
                     </div>
-
-                    <div class="form-row cols-3">
+                    </section>
+                    <section class="settings-form-section preferences-section" aria-label="{{ __('Display & inventory') }}">
+                        <h3 class="section-label">{{ __('Display & inventory') }}</h3>
+                    <div class="form-row cols-4">
+                        <div class="field">
+                            <label class="field-label">{{ __('Low Stock Alert') }}</label>
+                            <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $preferences->low_stock_threshold) }}" class="field-input preferences-number-short" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('Stock Price Display') }}</label>
+                            <select name="stock_value_display" class="field-input">
+                                <option value="total"    {{ ($preferences->stock_value_display ?? 'total') === 'total'    ? 'selected' : '' }}>{{ __('Full Price (₹ total value per item)') }}</option>
+                                <option value="per_gram" {{ ($preferences->stock_value_display ?? 'total') === 'per_gram' ? 'selected' : '' }}>{{ __('Per Gram Rate (₹/g)') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('Controls how item prices appear in the inventory list.') }}</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('App Language') }}</label>
+                            @php $currentLang = old('language', $preferences->language ?? config('app.locale', 'en')); @endphp
+                            <select name="language" class="field-input">
+                                @foreach(config('app.supported_locales', ['en' => 'English']) as $code => $label)
+                                    <option value="{{ $code }}" {{ $currentLang === $code ? 'selected' : '' }}>{{ __($label) }}</option>
+                                @endforeach
+                            </select>
+                            <span class="field-hint">{{ __('Language for the app interface. Hindi coverage is still being expanded — some screens may stay in English for now.') }}</span>
+                        </div>
+                    </div>
+                    </section>
+                    <section class="settings-form-section preferences-section" aria-label="{{ __('Loyalty Points') }}">
+                        <h3 class="section-label">{{ __('Loyalty Points') }}</h3>
+                    <div class="form-row cols-3 preferences-fields">
                         <div class="field">
                             <label class="field-label">{{ __('Points per ₹100 spent') }}</label>
                             <input type="number" name="loyalty_points_per_hundred" value="{{ old('loyalty_points_per_hundred', $preferences->loyalty_points_per_hundred ?? 1) }}" class="field-input" min="0" max="100" required>
@@ -3209,48 +3167,10 @@
                             </select>
                         </div>
                     </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Inventory Display') }}</div>
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('Stock Price Display') }}</label>
-                            <select name="stock_value_display" class="field-input">
-                                <option value="total"    {{ ($preferences->stock_value_display ?? 'total') === 'total'    ? 'selected' : '' }}>{{ __('Full Price (₹ total value per item)') }}</option>
-                                <option value="per_gram" {{ ($preferences->stock_value_display ?? 'total') === 'per_gram' ? 'selected' : '' }}>{{ __('Per Gram Rate (₹/g)') }}</option>
-                            </select>
-                            <span class="field-hint">{{ __('Controls how item prices appear in the inventory list.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Language') }}</div>
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('App Language') }}</label>
-                            @php $currentLang = old('language', $preferences->language ?? config('app.locale', 'en')); @endphp
-                            <select name="language" class="field-input">
-                                @foreach(config('app.supported_locales', ['en' => 'English']) as $code => $label)
-                                    <option value="{{ $code }}" {{ $currentLang === $code ? 'selected' : '' }}>{{ __($label) }}</option>
-                                @endforeach
-                            </select>
-                            <span class="field-hint">{{ __('Language for the app interface. Hindi coverage is still being expanded — some screens may stay in English for now.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Security & Operations') }}</div>
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('Auto Logout (minutes)') }}</label>
-                            <input type="number" name="auto_logout_minutes" value="{{ old('auto_logout_minutes', $preferences->auto_logout_minutes ?? 0) }}" class="field-input" min="0" max="480">
-                            <span class="field-hint">{{ __('Idle minutes before auto logout. 0 = disabled.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Invoice Rounding') }}</div>
-                    <div class="form-row cols-3">
+                    </section>
+                    <section class="settings-form-section preferences-section" aria-label="{{ __('Billing limits & rounding') }}">
+                        <h3 class="section-label">{{ __('Billing limits & rounding') }}</h3>
+                    <div class="form-row cols-3 preferences-fields">
                         <div class="field">
                             <label class="field-label">{{ __('Rounding Method') }}</label>
                             <select name="rounding_method" class="field-input">
@@ -3279,9 +3199,9 @@
                             <span class="field-hint">{{ __('Cap on the manual discount a cashier can apply. Leave empty for no cap. Example: enter 10 to limit cashiers to 10% off any sale.') }}</span>
                         </div>
                     </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Compliance (KYC / Rule 114B)') }}</div>
+                    </section>
+                    <section class="settings-form-section preferences-section preferences-section-wide" aria-label="{{ __('Compliance (KYC / Rule 114B)') }}">
+                        <h3 class="section-label">{{ __('Compliance (KYC / Rule 114B)') }}</h3>
                     <div class="form-row cols-2">
                         <div class="field">
                             <label class="field-label">{{ __('Enable Compliance Checks') }}</label>
@@ -3322,13 +3242,14 @@
                             </select>
                         </div>
                     </div>
-
-                    @if($canEditSettings)
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
+                    </section>
                     </div>
-                    @endif
                 </form>
+                @if($canEditSettings)
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-preferences-form">{{ __('Save Changes') }}</button>
+                </div>
+                @endif
             @endif
 
             @if($activeTab === 'return-policy')
@@ -3344,10 +3265,11 @@
                 </div>
                 @endunless
 
-                <form method="POST" action="{{ route('settings.update.return-policy') }}" data-turbo-frame="_top">
+                <form id="settings-return-policy-form" method="POST" action="{{ route('settings.update.return-policy') }}" data-turbo-frame="_top" class="settings-return-policy-form">
                     @csrf
                     @method('PATCH')
 
+                    <section class="settings-form-section return-policy-refunds" aria-label="{{ __('What is refunded') }}">
                     <div class="section-label">{{ __('What is refunded') }}</div>
                     <div class="form-row cols-4">
                         <div class="field">
@@ -3392,6 +3314,8 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section return-policy-deductions" aria-label="{{ __('Deductions') }}">
                     <div class="section-label">{{ __('Deductions') }}</div>
                     <div class="form-row cols-4">
                         <div class="field">
@@ -3407,6 +3331,8 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    </section>
+                    <section class="settings-form-section return-policy-windows" aria-label="{{ __('Windows & settlement') }}">
                     <div class="section-label">{{ __('Windows & settlement') }}</div>
                     <div class="form-row cols-4">
                         <div class="field">
@@ -3436,12 +3362,13 @@
                         </div>
                     </div>
 
-                    @if($canEditSettings)
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save Return Policy') }}</button>
-                    </div>
-                    @endif
+                    </section>
                 </form>
+                @if($canEditSettings)
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-return-policy-form">{{ __('Save Return Policy') }}</button>
+                </div>
+                @endif
             @endif
 
             @if($activeTab === 'pricing' && $shop->isRetailer())
@@ -3460,7 +3387,7 @@
                     <p class="settings-desc">{{ __('Choose which metals your shop sells. Gold and silver are always on.') }}</p>
                 </div>
 
-                <form method="POST" action="{{ route('settings.update.materials') }}" data-turbo-frame="_top" class="space-y-6 max-w-2xl">
+                <form id="settings-materials-form" method="POST" action="{{ route('settings.update.materials') }}" data-turbo-frame="_top" class="space-y-6 max-w-2xl">
                     @csrf
                     @method('PATCH')
 
@@ -3511,13 +3438,6 @@
                         <p class="text-xs text-slate-500 mt-1">{{ __('Stones are added as a rupee amount on each item. Nothing to set up here.') }}</p>
                     </section>
 
-                    @can('settings.edit')
-                        <div>
-                            <button type="submit" class="inline-flex items-center rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition">
-                                {{ __('Save materials') }}
-                            </button>
-                        </div>
-                    @endcan
                 </form>
 
                 {{-- Class-B reference prices: an optional memo per enabled Tier-2 metal.
@@ -3594,6 +3514,11 @@
                         @endforeach
                     </div>
                 @endif
+                @can('settings.edit')
+                <div class="form-footer settings-page-footer">
+                    <button type="submit" class="btn-primary" form="settings-materials-form">{{ __('Save materials') }}</button>
+                </div>
+                @endcan
             @endif
 
             @if($activeTab === 'roles')
@@ -3661,7 +3586,7 @@
                 @endphp
 
                 {{-- Limit bar --}}
-                <div class="mb-4 flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg text-sm">
+                <div class="settings-staff-summary mb-4 flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg text-sm">
                     <span class="text-gray-600 font-medium whitespace-nowrap">{{ __('Staff accounts:') }}</span>
                     @if($staffLimit === -1)
                         <span class="text-gray-700">{{ $staffCount }} {{ __('used') }} &nbsp;<span class="text-green-600 font-semibold">· {{ __('Unlimited') }}</span></span>
@@ -3688,12 +3613,12 @@
                 </div>
 
                 {{-- Staff cards --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="settings-record-grid grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse($staff as $member)
-                        <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold">
+                        <div class="settings-record-card bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="settings-record-heading flex items-start justify-between">
+                                <div class="settings-record-person flex items-center gap-3">
+                                    <div class="settings-record-avatar h-10 w-10 rounded-full flex items-center justify-center font-bold">
                                         {{ strtoupper(substr($member->name ?? $member->mobile_number, 0, 1)) }}
                                     </div>
                                     <div>
@@ -3714,7 +3639,7 @@
                                     {{ $member->role?->display_name ?? 'Staff' }}
                                 </span>
                             </div>
-                            <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                            <div class="settings-record-footer mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
                                 @if(($member->employment_status ?? 'active') === 'terminated')
                                     <span class="text-xs text-rose-500">{{ __('Removed') }} {{ optional($member->terminated_at)->format('d M Y') }}</span>
                                 @else
@@ -3768,7 +3693,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="col-span-2 text-center py-10 text-gray-400">
+                        <div class="settings-empty-state col-span-full text-center py-10 text-gray-400">
                             <p class="mb-3">{{ __('No staff members yet') }}</p>
                             @if(!$atLimit)
                                 <a href="{{ route('staff.create') }}" class="btn btn-primary btn-sm" data-turbo-frame="_top">+ {{ __('Add Staff') }}</a>
@@ -4210,6 +4135,9 @@
                 </div>
 
                 <script>
+                (() => {
+                    if (window.__settingsAuditWired) return;
+                    window.__settingsAuditWired = true;
                     // Decode the base64-wrapped UTF-8 detail bundle safely.
                     function auditDecode(b64) {
                         try {
@@ -4227,6 +4155,7 @@
                     }
 
                     document.addEventListener('click', function(e){
+                        if (!document.querySelector('.settings-shell #jsonModal')) return;
                         const trigger = e.target.closest('.view-detail');
                         if (trigger) {
                             const bundle = auditDecode(trigger.getAttribute('data-detail')) || {};
@@ -4301,6 +4230,7 @@
                             }
                         }
                     });
+                })();
                 </script>
             @endif
 
@@ -4370,7 +4300,7 @@
                     {{-- Active services --}}
                     <section>
                         <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('What you have now') }}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="settings-record-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @foreach($active as $ed)
                                 @if($ed === 'dhiran') @continue @endif
                                 @php
@@ -4380,7 +4310,7 @@
                                     ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
                                     $assignment = $assignments[$ed] ?? null;
                                 @endphp
-                                <div class="rounded-xl border border-slate-200 bg-white">
+                                <div class="settings-record-card rounded-xl border border-slate-200 bg-white">
                                     <div class="px-5 py-4">
                                         <div class="flex items-start justify-between gap-3">
                                             <div>
@@ -4439,7 +4369,7 @@
                         @php $purchaseOptions = $servicesData['purchase'] ?? []; @endphp
                         <section>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Add a new service') }}</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="settings-record-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 @foreach($available as $ed)
                                     @php
                                         $meta = [
@@ -4605,21 +4535,21 @@
                     {{-- Pending removal requests --}}
                     @if($pendingRemove->isNotEmpty())
                         <section>
-                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Waiting to be turned off') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
                                 <table class="w-full text-sm jf-table">
                                     <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
                                         <tr>
+                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Service') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Asked on') }}</th>
                                             <th class="px-5 py-2.5 text-right"></th>
-                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
                                         @foreach($pendingRemove as $req)
                                             <tr>
+                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                                 <td class="px-5 py-3 font-medium text-slate-800">{{ ucfirst($req->edition) }}</td>
                                                 <td class="px-5 py-3 text-slate-600">{{ $req->created_at->format('d M Y, H:i') }}</td>
                                                 <td class="px-5 py-3 text-right">
@@ -4641,22 +4571,22 @@
                     {{-- Recent activity --}}
                     @if($history->isNotEmpty())
                         <section>
-                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Recent activity') }}</h3>
                             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
                                 <table class="w-full text-sm jf-table">
                                     <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
                                         <tr>
+                                            <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('What happened') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Result') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('On') }}</th>
                                             <th class="px-5 py-2.5 text-left font-semibold">{{ __('Notes') }}</th>
-                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
                                         @foreach($history as $req)
                                             <tr>
+                                                <td class="jf-table-index">{{ $loop->iteration }}</td>
                                                 <td class="px-5 py-3 text-slate-800">{{ ucfirst($req->action) }} {{ ucfirst($req->edition) }}</td>
                                                 <td class="px-5 py-3">
                                                     @php
@@ -4703,7 +4633,7 @@
                 @if($needsPlan)
                     {{-- No subscription on record — point the owner at the plan picker.
                          We can't redirect mid-tab-render, so we render a calm panel. --}}
-                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
+                    <div class="settings-empty-state rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
                         <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                             <x-icon name="receipt" size="22" stroke-width="1.75" />
                         </div>
@@ -4947,12 +4877,12 @@
                                     </div>
                                 </div>
 
-                                                    <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                 <div class="sub-billing-card">
                                     <div class="sub-billing-table-wrap">
                                         <table class="sub-billing-table jf-table">
                                             <thead>
                                                 <tr>
+                                                    <th scope="col" class="jf-table-index" aria-label="Row number">#</th>
                                                     <th class="text-left">Invoice #</th>
                                                     <th class="text-left">Plan</th>
                                                     <th class="text-left">Cycle</th>
@@ -4961,12 +4891,12 @@
                                                     <th class="text-left">Date</th>
                                                     <th class="text-left">Status</th>
                                                     <th class="text-right"></th>
-                                                        <td class="jf-table-index" data-label="#">{{ ($invoices->firstItem() ?? 1) + $loop->index }}</td>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @forelse($invoices as $inv)
                                                     <tr>
+                                                        <td class="jf-table-index" data-label="#">{{ ($invoices->firstItem() ?? 1) + $loop->index }}</td>
                                                         <td class="sub-billing-num" data-label="Invoice #">{{ $inv->invoice_number }}</td>
                                                         <td data-label="Plan">{{ $inv->plan?->name ?? '—' }}</td>
                                                         <td class="sub-billing-capitalize" data-label="Cycle">{{ $inv->billing_cycle }}</td>
@@ -5027,7 +4957,7 @@
                         <p class="mt-1 text-sm text-slate-500">{{ __('A phone shows up here when your staff sign in on the mobile app.') }}</p>
                     </div>
                 @else
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+                    <div class="settings-record-grid grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
                         @foreach($deviceSessions as $session)
                             @php
                                 $person     = $session->user;
@@ -5035,14 +4965,14 @@
                                 $deviceName = $session->device_name ?: __('Unknown device');
                                 $platform   = $session->platform ? ucfirst($session->platform) : null;
                             @endphp
-                            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="settings-record-card bg-white rounded-xl border border-gray-200 p-4">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex items-start gap-3 min-w-0">
-                                        <div class="h-10 w-10 flex-shrink-0 rounded-full bg-teal-100 flex items-center justify-center text-teal-700">
+                                        <div class="settings-record-avatar h-10 w-10 flex-shrink-0 rounded-full flex items-center justify-center">
                                             <x-icon name="smartphone" size="18" />
                                         </div>
                                         <div class="min-w-0">
-                                            <p class="font-semibold text-gray-900 text-sm truncate">{{ $deviceName }}</p>
+                                            <p class="settings-record-name font-semibold text-gray-900 text-sm">{{ $deviceName }}</p>
                                             <p class="text-xs text-gray-500">
                                                 @if($platform){{ $platform }}@endif
                                                 @if($platform && $session->app_version) · @endif
@@ -5055,7 +4985,7 @@
                                 <div class="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs">
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-gray-500">{{ __('Signed in by') }}</span>
-                                        <span class="font-medium text-gray-800 truncate">{{ $personName }}</span>
+                                        <span class="settings-record-name font-medium text-gray-800">{{ $personName }}</span>
                                     </div>
                                     @if($person?->name && $person?->mobile_number)
                                         <div class="flex items-center justify-between gap-3">
@@ -5101,245 +5031,20 @@
         </div>
         </turbo-frame>
     </div>
+    {{-- Thin brand footer (owner, 2026-11-16). Outside the frame: it stays put while tabs swap. --}}
+    <footer class="settings-site-footer">
+        <span>© {{ now()->year }} JewelFlows</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ __('By Factual Technologies') }}</span>
+        <nav class="settings-site-footer-links" aria-label="{{ __('Policies') }}">
+            @foreach(\App\Support\LegalInfo::pages() as $legalRoute => $legalLabel)
+                <a href="{{ route($legalRoute) }}" target="_blank" rel="noopener" data-turbo="false">{{ __($legalLabel) }}</a>
+            @endforeach
+        </nav>
+    </footer>
+    @include('partials.settings.unsaved-dialog')
 </div>
 @push('scripts')
-<script>
-(() => {
-    const syncActiveSettingsNav = () => {
-        const active = document.querySelector('.settings-nav .nav-item.active');
-        if (!active || !window.matchMedia('(max-width: 900px)').matches) {
-            return;
-        }
-
-        active.scrollIntoView({ block: 'nearest', inline: 'center' });
-    };
-
-    const bindSettingsNav = () => {
-        document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(link => {
-            if (link.dataset.settingsNavBound === '1') {
-                return;
-            }
-
-            link.dataset.settingsNavBound = '1';
-            link.addEventListener('click', () => {
-                document.querySelectorAll('.settings-nav .nav-item').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
-                requestAnimationFrame(syncActiveSettingsNav);
-            });
-        });
-    };
-
-    bindSettingsNav();
-    syncActiveSettingsNav();
-
-    document.addEventListener('turbo:load', () => {
-        bindSettingsNav();
-        syncActiveSettingsNav();
-    });
-
-    document.addEventListener('turbo:frame-load', event => {
-        if (event.target?.id === 'settings-content') {
-            requestAnimationFrame(syncActiveSettingsNav);
-        }
-    });
-})();
-</script>
-<script>
-(() => {
-    const dropzone = document.getElementById('shop-logo-dropzone');
-    const browseBtn = document.getElementById('shop-logo-browse');
-    const input = document.getElementById('shop-logo-input');
-    const preview = document.getElementById('shop-logo-preview');
-    const placeholder = document.getElementById('shop-logo-placeholder');
-    const stateText = document.getElementById('shop-logo-state-text');
-    const fileName = document.getElementById('shop-logo-file-name');
-    const removeInput = document.getElementById('shop-logo-remove');
-    const deleteBtn = document.getElementById('shop-logo-delete-btn');
-    const deleteLabel = document.getElementById('shop-logo-delete-label');
-    const deleteNote = document.getElementById('shop-logo-delete-note');
-    const maxFileBytes = 2 * 1024 * 1024;
-
-    if (!dropzone || !browseBtn || !input || !preview || !placeholder || !stateText || !fileName) {
-        return;
-    }
-
-    const initialPreviewSrc = (preview.getAttribute('src') || '').trim();
-    const initialFileName = (fileName.textContent || '').trim();
-    const initialDeletePending = removeInput ? removeInput.value === '1' : false;
-
-    const showPlaceholder = (status = 'Not uploaded') => {
-        preview.style.display = 'none';
-        placeholder.style.display = 'flex';
-        stateText.textContent = status;
-    };
-
-    const showPreview = (src, status = 'Ready to upload') => {
-        preview.src = src;
-        preview.style.display = 'block';
-        placeholder.style.display = 'none';
-        stateText.textContent = status;
-    };
-
-    const setDeleteIntent = (enabled) => {
-        if (!removeInput) {
-            return;
-        }
-
-        removeInput.value = enabled ? '1' : '0';
-
-        if (deleteBtn) {
-            deleteBtn.classList.toggle('is-pending', enabled);
-            deleteBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-        }
-
-        if (deleteLabel) {
-            deleteLabel.textContent = enabled ? 'Undo' : 'Delete';
-        }
-
-        if (deleteNote) {
-            deleteNote.style.display = enabled ? 'block' : 'none';
-        }
-    };
-
-    const openPicker = () => {
-        input.click();
-    };
-
-    const applyFile = (file) => {
-        if (!file) {
-            return;
-        }
-
-        if (!String(file.type || '').startsWith('image/')) {
-            input.value = '';
-            fileName.textContent = '';
-            showPlaceholder('Invalid format');
-            return;
-        }
-
-        if (file.size > maxFileBytes) {
-            input.value = '';
-            fileName.textContent = '';
-            showPlaceholder('File too large (max 2 MB)');
-            return;
-        }
-
-        fileName.textContent = file.name;
-        setDeleteIntent(false);
-
-        const reader = new FileReader();
-        reader.onload = (e) => showPreview(e.target?.result || '');
-        reader.readAsDataURL(file);
-    };
-
-    const syncInputWithFile = (file) => {
-        try {
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-        } catch (_) {
-            // If assignment is blocked, preview still updates but upload falls back to manual pick.
-        }
-    };
-
-    dropzone.addEventListener('click', (event) => {
-        if (event.target.closest('[data-skip-dropzone-click="true"]') || event.target.closest('.logo-remove')) {
-            return;
-        }
-        openPicker();
-    });
-
-    browseBtn.addEventListener('click', (event) => {
-        event.preventDefault();
-        openPicker();
-    });
-
-    dropzone.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openPicker();
-        }
-    });
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            dropzone.classList.add('is-dragover');
-        });
-    });
-
-    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            dropzone.classList.remove('is-dragover');
-        });
-    });
-
-    dropzone.addEventListener('drop', (event) => {
-        const file = event.dataTransfer?.files?.[0];
-        if (!file) {
-            return;
-        }
-
-        syncInputWithFile(file);
-        applyFile(file);
-    });
-
-    input.addEventListener('change', (event) => {
-        const file = event.target.files && event.target.files[0];
-        if (!file) {
-            fileName.textContent = '';
-            if (removeInput && removeInput.value === '1') {
-                showPlaceholder('Will be deleted after save');
-                return;
-            }
-            if (initialPreviewSrc) {
-                showPreview(initialPreviewSrc, 'Uploaded');
-                fileName.textContent = initialFileName;
-            } else {
-                showPlaceholder();
-            }
-            return;
-        }
-
-        applyFile(file);
-    });
-
-    if (deleteBtn && removeInput) {
-        deleteBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-
-            const willDelete = removeInput.value !== '1';
-            setDeleteIntent(willDelete);
-
-            if (willDelete) {
-                input.value = '';
-                fileName.textContent = '';
-                showPlaceholder('Will be deleted after save');
-                return;
-            }
-
-            if (input.files && input.files[0]) {
-                applyFile(input.files[0]);
-                return;
-            }
-
-            if (initialPreviewSrc) {
-                showPreview(initialPreviewSrc, 'Uploaded');
-                fileName.textContent = initialFileName;
-            } else {
-                showPlaceholder();
-            }
-        });
-    }
-
-    if (initialDeletePending) {
-        showPlaceholder('Will be deleted after save');
-    }
-})();
-</script>
 
 {{-- Self-serve "Buy & activate now" checkout. Mirrors subscription/payment.blade.php:
      fetch the initiate endpoint → open Razorpay → on success fill that card's

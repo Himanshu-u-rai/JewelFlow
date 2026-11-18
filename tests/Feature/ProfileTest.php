@@ -76,6 +76,17 @@ class ProfileTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_uppercase_email_validation_does_not_change_profile_values(): void
+    {
+        $user = $this->createUserWithShop();
+        $before = $user->fresh()->only(['name', 'email', 'email_verified_at']);
+        $this->actingAs($user)->from('/settings?tab=profile')->patch('/profile', [
+            'name' => $user->name,
+            'email' => 'LAYOUTCHECK@example.invalid',
+        ])->assertRedirect('/settings?tab=profile')->assertSessionHasErrors('email');
+        $this->assertSame($before, $user->fresh()->only(['name', 'email', 'email_verified_at']));
+    }
+
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = $this->createUserWithShop();

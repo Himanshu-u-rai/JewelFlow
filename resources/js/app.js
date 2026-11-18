@@ -14,6 +14,8 @@ import { initMobileHeaderActionFabs, cleanupMobileHeaderActionFabs } from './mob
 import { initializeSectionSwitch } from './section-switch';
 import { initializeReportScreens } from './report-screen';
 import { initializeReportExports } from './report-export';
+import { initializeSettingsWorkspace, placeSettingsToast } from './settings-workspace';
+import { initializeSettingsUnsavedChanges } from './settings-unsaved';
 import { createReorderEditor } from './reorder-editor';
 import { createKarigarEditor, createKarigarFieldHelp } from './karigar-editor';
 import { createIndianAddress } from './indian-address';
@@ -30,6 +32,8 @@ initializeRepairIntakes();
 initializeSectionSwitch();
 initializeReportScreens();
 initializeReportExports();
+initializeSettingsWorkspace();
+initializeSettingsUnsavedChanges();
 
 let toastTimer = null;
 let toastDuration = 4000;
@@ -86,6 +90,7 @@ function clearToastTop(toast, top) {
 // its corner and none of this applies. False when there is no place for it at the moment.
 function placeToast(toast) {
     const root = document.documentElement;
+    if (placeSettingsToast(document, toast)) return true;
     if (!toastPhone.matches) {
         root.style.removeProperty('--toast-space');
         return true;
@@ -1516,11 +1521,13 @@ document.addEventListener('turbo:before-cache', () => {
     // has hidden elements. Without this, when the snapshot is shown
     // on back-navigation, Alpine-managed elements (modals, dropdowns)
     // briefly appear before Alpine re-initializes and hides them.
-    document.querySelectorAll('[x-data]').forEach(el => {
+    // Promoted Settings frame visits snapshot the document while its Alpine
+    // roots stay live. Hiding them here leaves their unchanged x-show state hidden.
+    document.querySelectorAll('[x-data]:not(.settings-shell [x-data])').forEach(el => {
         el.setAttribute('x-cloak', '');
     });
 
-    document.querySelectorAll('[x-show]').forEach(el => {
+    document.querySelectorAll('[x-show]:not(.settings-shell [x-show])').forEach(el => {
         el.style.display = 'none';
     });
 });
