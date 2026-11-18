@@ -397,6 +397,9 @@
             margin-top: 22px;
             letter-spacing: 0.2px;
         }
+        .auth-footer-links { margin-top: 6px; }
+        .auth-footer-links a { color: #8b94a6; text-decoration: none; display: inline-block; padding: 4px 2px; }
+        .auth-footer-links a:hover { color: #475569; text-decoration: underline; }
 
         /* ─── Reduced motion ─────────────────────────── */
         @media (prefers-reduced-motion: reduce) {
@@ -562,6 +565,12 @@
 
             <div class="auth-footer">
                 © {{ date('Y') }} {{ $brandName }} · Secure · Professional
+                <div class="auth-footer-links">
+                    <a href="{{ route('legal.terms') }}">Terms</a> ·
+                    <a href="{{ route('legal.privacy') }}">Privacy</a> ·
+                    <a href="{{ route('legal.refund') }}">Refunds</a> ·
+                    <a href="{{ route('legal.contact') }}">Contact</a>
+                </div>
             </div>
         </div>
     </div>

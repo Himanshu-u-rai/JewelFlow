@@ -2683,8 +2683,8 @@ body.app-shell {
     font-size: 11px;
     color: rgba(255,255,255,0.42);
     margin-top: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.9px;
+    /* Normal case, as written: "By Factual Technologies" (owner, 2026-11-16). */
+    letter-spacing: 0.2px;
 }
 
 .sidebar-close-btn,

@@ -75,6 +75,15 @@ Route::get('/', function () {
     return view('landing');
 })->name('home');
 
+// Public policy pages (owner, 2026-11-16): open to everyone, signed in or not. Razorpay's website review and
+// India's IT Rules / DPDP Act expect them. Business details come from config/legal.php.
+Route::view('/about', 'legal.about')->name('legal.about');
+Route::view('/contact', 'legal.contact')->name('legal.contact');
+Route::view('/terms', 'legal.terms')->name('legal.terms');
+Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
+Route::view('/refund-policy', 'legal.refund')->name('legal.refund');
+Route::view('/delivery-policy', 'legal.delivery')->name('legal.delivery');
+
 Route::get('/translations/{locale}.json', [TranslationController::class, 'show'])
     ->where('locale', '[a-zA-Z_\\-]+')
     ->name('translations.show');

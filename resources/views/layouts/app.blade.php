@@ -175,7 +175,7 @@
             $hasDhiran = (bool) $authShop?->hasDhiran();
             $homeRoute = 'dashboard';
             $brandName = 'JewelFlows';
-            $brandSubtitle = __('Enterprise System');
+            $brandSubtitle = __('By Factual Technologies');
             $settingsRoute = 'settings.edit';
 
             // Pages that left this sidebar for the page they belong to: reports

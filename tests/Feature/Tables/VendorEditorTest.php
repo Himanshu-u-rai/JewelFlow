@@ -19,7 +19,7 @@ class VendorEditorTest extends TestCase
         $this->withoutVite();
         foreach ([route('vendors.create'), route('vendors.edit', $vendor)] as $url) {
             $response = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get($url, ['Turbo-Frame' => 'vendor-editor-frame']))->assertOk();
-            $response->assertDontSee('<html', false)->assertDontSee('Enterprise System');
+            $response->assertDontSee('<html', false)->assertDontSee('By Factual Technologies');
             $xp = $this->xpath($response->getContent());
             $this->assertSame(1, $xp->query('//turbo-frame[@id="vendor-editor-frame"]//form[@data-turbo-frame="_top"]')->length);
             $this->assertSame(1, $xp->query('//input[@name="_token"]')->length);
