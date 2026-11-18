@@ -1,0 +1,331 @@
+5c69a7b7 2026-11-01 fix(ui): finish table consistency and accessible repair intake
+cbf984bc 2026-11-01 docs(ui): record table verification and repair form review
+5a12c201 2026-11-01 fix(repairs): align intake fields and contain photo previews
+22337fce 2026-11-01 fix(repairs): polish record progress and accessible actions
+821f9513 2026-11-01 docs(ui): record repair detail verification and review handoff
+43188c17 2026-11-01 fix(masters): align hub navigation with the shared UI
+148ce450 2026-11-01 docs(ui): record Masters hub visual verification
+14106255 2026-11-01 refactor(masters): replace cards with grouped navigation rows
+9aa6dc84 2026-11-01 fix(masters): distinguish section headings from link labels
+76a33122 2026-11-01 docs(ui): record Masters list and heading hierarchy checks
+07b42d0a 2026-11-01 fix(tables): retain list controls while records scroll
+8202a7ad 2026-11-01 docs(ui): record list workspace coverage and limits
+5a816997 2026-11-01 fix(customers): complete occasion workspace and mobile records
+85233dbc 2026-11-01 docs(ui): record customer tab and occasion checks
+ebc8731d 2026-11-01 fix(customers): add consistent row numbering to customer tables
+ec176852 2026-11-01 fix(customers): place view switches in the page header
+11487080 2026-11-01 fix(customers): prevent mobile header controls from overlapping
+63e70ea3 2026-11-01 fix(customers): compact directory summary and filters
+dd3906bd 2026-11-01 fix(customers): simplify status to the native dropdown
+54af151e 2026-11-01 fix(customers): reuse the compact EMI status dropdown
+d148caf5 2026-11-02 Hide Customer Status dropdown scrollbar without disabling scroll
+c14634c5 2026-11-02 Match customer loyalty installment and occasion register controls
+7c99efbd 2026-11-02 Move historical sales to invoice header and returns to Sales sidebar
+31e5426f 2026-11-02 Unify invoice register header controls and mobile filter sheet
+f2daada9 2026-11-02 Polish customer mobile filters and header actions
+345b683f 2026-11-02 Align mobile customer totals and filter control
+a01d8ad0 2026-11-02 Remove issued and redeemed totals from loyalty header
+5cfaa054 2026-11-02 Remove overdue and outstanding totals from installment header
+790e042d 2026-11-02 Simplify customer occasions header
+9b596504 2026-11-02 Open Quick Bills entry from sidebar with register header shortcut
+54609780 2026-11-02 Compact Quick Bill entry with type-sized responsive fields
+f24f197c 2026-11-02 Move Quick Bill notes to a dialog and clarify select controls
+825b4c10 2026-11-02 Halve desktop Quick Bill description field width
+d839f98a 2026-11-02 Group Quick Bill weights beside the item description
+56c8bba4 2026-11-02 Place compact Metal and Purity controls beside Quick Bill weights
+d2ed235c 2026-11-02 Move HSN pieces and rate into the compact Quick Bill entry row
+e15a6d21 2026-11-02 Reduce Quick Bill rate field width by one third
+3e34c370 2026-11-02 Set Quick Bill rate field to 110 pixels on desktop
+35c34201 2026-11-02 Set desktop Quick Bill rate width to 130 pixels
+9f95f479 2026-11-02 Halve desktop Quick Bill stone and net weight fields
+e278e630 2026-11-02 Compact and align Quick Bill quantity stone and wastage fields
+52ef4e61 2026-11-02 Fit Quick Bill weight and wastage labels on one line
+626e5f1a 2026-11-02 Widen Quick Bill quantity field for readable four-digit values
+803947bf 2026-11-02 Expose compact Quick Bill extra charges beside making
+8886384d 2026-11-02 Use accessible Quick Bill item icons and compact customer fields
+0f291fcd 2026-11-02 Fit Quick Bill customer address into the desktop details row
+b25b1480 2026-11-02 Structure Quick Bill item figures and totals into clear summary strips
+38bf35b4 2026-11-02 Keep return refund breakdown and adjustments visible
+b48ecf13 2026-11-02 Compact return refund options into a responsive row
+d7dc4465 2026-11-02 Align compact refund inputs beside the resizable override reason
+eb468375 2026-11-02 Align Schemes register with the compact Customers workspace
+d427dc5a 2026-11-02 Compact scheme creation and reuse the shared scheme styling
+ea14eb67 2026-11-02 Unify list workspace sizing and remove invoice action-column shadow
+f38536a4 2026-11-02 Bring stock purchases into the compact shared register layout
+cb9d6d1d 2026-11-02 Align purchase date filters with the register toolbar controls
+09407ee5 2026-11-02 Add guarded draft confirmation action to purchase register
+f3631aa7 2026-11-02 Compact purchase entry layout and align shared form styling
+54e49e7b 2026-11-02 Automatically save new purchase suppliers to Vendors
+ce1f3ab4 2026-11-03 Move stock filters into compact register header
+d61b2ce4 2026-11-03 Align stock filters beside register heading on wide screens
+e368c782 2026-11-03 Place stock navigation in desktop page header
+e6dabdbe 2026-11-03 Fix stock category menu layering and remove subtitle
+071dcb30 2026-11-03 Refine stock aging and sell trend analytics
+ec209d87 2026-11-03 Rebuild inventory analytics as unified workspaces
+7c0653f7 2026-11-03 Use ranked revenue bars and prevent disclosure stretching
+b17c9e29 2026-11-03 Add accessible detail bubbles to Sell Trend bars
+7c8f29bf 2026-11-03 Unify stock tools under shared workspace navigation
+39806bf8 2026-11-03 Stabilize stock header navigation and section titles
+ad767569 2026-11-03 Split stock analytics into dedicated workspace pages
+0c3cb2e3 2026-11-03 Align stock tool pages with the shared register theme
+6f80a373 2026-11-03 Prioritize stock shortages in the reorder workspace
+616c729a 2026-11-03 Compact tag print controls and give code options room
+15067640 2026-11-03 Fix tag search icon spacing and align compact filters
+2c80cf38 2026-11-03 Unify neutral workspace card colours and soft shadows
+94017ff6 2026-11-03 Keep reorder alert rules permanently visible
+ffd25892 2026-11-03 Match register and card edge layers to parent corners
+fc808622 2026-11-03 Compact stock purity filter and narrow the search field
+20da0b81 2026-11-03 Switch stock filter action between Apply and Clear
+6dc4b655 2026-11-03 Compact stock status into a segmented pill toggle
+52229885 2026-11-03 Soften stock status toggle selection with neutral tokens
+e5f818c0 2026-11-04 Preserve stock toggle capsule radius against legacy styles
+5a88a1ad 2026-11-04 Switch stock status from the entire pill control
+90422979 2026-11-04 Move compact stock metrics into the register header
+efe75907 2026-11-04 Keep stock filters and metrics in one desktop strip
+5fd254f1 2026-11-04 Separate stock header filters from summary totals
+7612e67f 2026-11-04 Move stock register controls into a native filter popup
+a722164e 2026-11-04 Group stock search and filters beside compact header metrics
+d560422b 2026-11-04 Keep stock holdings beside compact summary counts
+5fd2503e 2026-11-04 Remove metal holdings from the retail stock header
+be79ddf9 2026-11-04 Refine stock workspace mobile layouts and bottom-sheet filters
+2854853c 2026-11-04 Compact mobile stock headers into one shared navigation strip
+76011474 2026-11-04 Open reorder rule creation and editing in an on-page dialog
+8370af53 2026-11-04 Compact mobile tag filters and printer settings
+74fc0a66 2026-11-04 Restore horizontal desktop tag printing controls
+6596a84c 2026-11-04 Compact Vault workspace and scale purity balance lists
+1214b08e 2026-11-04 Align Vault current position into a compact strip
+d341b92d 2026-11-04 Style Vault summary as content-sized metric tiles
+523774ee 2026-11-04 Constrain Vault mobile workspace to its available width
+db6b031a 2026-11-05 Match Stock counts to Vault metric tile styling
+73786e2a 2026-11-05 Refine Karigars directory with compact metrics and responsive filters
+e7e2bc25 2026-11-05 Keep Karigar filter actions in one aligned slot
+b7caa848 2026-11-05 Open Karigar directory create and edit forms in a dialog
+b794783d 2026-11-05 Prevent full-page prefetch from breaking Karigar popup forms
+c015f7a8 2026-11-05 Compact Karigar billing default inputs into a wrapping row
+437b1489 2026-11-05 Collapse Karigar help behind info controls and share scrollbar styling
+c81177bc 2026-11-05 Show Karigar field explanations as floating popover bubbles
+e0796a6e 2026-11-05 Remove redundant Karigar form headings
+6e2ec6c3 2026-11-05 Reuse searchable State and safe PIN assistance in Karigar forms
+3b7c31bb 2026-11-05 Compact State suggestions and distinguish retryable PIN lookup failures
+176bc4ea 2026-11-05 Keep Karigar opening balance date editable inside its dialog
+62b9f996 2026-11-05 Keep themed date calendars usable within modal forms
+92480214 2026-11-05 Move Opening Balance explanation into its info bubble
+65068228 2026-11-05 Align Job Orders register with compact shared list styling
+3202b86e 2026-11-05 Open Job Orders desktop filters in a scoped popup
+c64be5f6 2026-11-05 Keep mobile View icons visible outside table palettes
+c3204e25 2026-11-05 Center the Karigars mobile header title with its actions
+710ba428 2026-11-05 Refine Issue Bullion form with responsive sticky Challan Summary
+0b348b2f 2026-11-05 Compact the Karigar schedule fields into a responsive row
+136033a5 2026-11-05 Let Karigar fill the remaining schedule row width
+3f89dfa7 2026-11-05 Keep the wastage label on one desktop line
+79be7104 2026-11-06 Stop stale Reorder and Karigar dialogs throwing after a page re-render
+88d52ee4 2026-11-06 Refuse a second reorder rule for the same stock group
+c5689d46 2026-11-06 Show confirmation messages without JavaScript escape backslashes
+32ea82be 2026-11-06 Show why Issue Bullion was refused and keep what was entered
+5633f7fe 2026-11-06 Stop offering Reverse on a Karigar payment that is already reversed
+12bfab40 2026-11-06 Keep a typed purchase rate when the purity or metal changes
+e33d499e 2026-11-06 Refuse to delete a category that stock items still use
+df922456 2026-11-06 Tell the user to clear filters when they hide every invoice
+b8ce94e1 2026-11-06 Count customer occasions in calendar days and keep today's
+febbd64a 2026-11-07 Stop admin Users search querying dropped name columns
+489441c8 2026-11-07 Show the read-only refusal on every screen, not only some
+9556e5db 2026-11-07 Make the admin term preview use the server's inclusive term rule
+38c8d51c 2026-11-07 Toast the first validation error on admin screens
+a3786fb1 2026-11-07 Keep the admin term To box in step with the value it submits
+81a3a123 2026-11-07 Ignore unreadable dates on the purchase and platform invoice registers
+cd6759a0 2026-11-07 Stop the Dhiran signup loop when no Dhiran plan is active
+b0218db8 2026-11-07 Show real Dhiran outstanding totals and LTV instead of zero
+b3f32863 2026-11-07 Centre the Dhiran loan dialogs again
+ae229534 2026-11-07 Show Dhiran payment dates and methods in the loan history
+9e205646 2026-11-07 Show source and method in the Dhiran cash book
+c10ea879 2026-11-07 Record the payment method chosen in the Dhiran loan dialogs
+125aab58 2026-11-07 Run the Dhiran repay check inside the shop's tenant context
+876b9975 2026-11-07 Offer Bank Transfer with the value the Dhiran controller accepts
+807cbeb3 2026-11-07 Make Dhiran Release Item work and show refused Dhiran forms
+406d2db6 2026-11-07 Require an item's full share of principal to release it from a Dhiran loan
+63fc7317 2026-11-07 Keep cashiers out of settings; let managers buy plans and editions
+da29f566 2026-11-07 Show links only when their page would let the user in
+864855f3 2026-11-07 Keep the plan status page out of cashiers' command palette
+0394f641 2026-11-07 Give schemes, EMI, quick bills, loyalty, categories and the audit log their own permissions
+4317af99 2026-11-07 Close two RBAC holes found by attack testing: search side door, staff self-promotion
+ee183012 2026-11-07 Let updated app builds load repair photos with their sign-in instead of a shareable link
+6c59302b 2026-11-07 Accept only this shop's gold lot on return re-dispose, like the recovery step
+0b4ba392 2026-11-07 Hide shop money from staff: new "See Shop Money" switch for money reports and totals
+05711680 2026-11-07 Record gold taken in as gold, so Vault Balances has no "Unknown" metal
+b5f76b35 2026-11-07 Close side doors around the money and categories switches found by re-testing
+380ea96c 2026-11-08 Refuse to create a metal lot without its metal
+5e24722b 2026-11-08 Mark a lot's metal from its purity when it is left open
+d530d153 2026-11-08 Dhiran: list every customer, with or without a loan, and let staff add one
+e37ca80a 2026-11-08 Dhiran: call the customer page a customer page
+f05638ce 2026-11-08 Dhiran: releasing items one by one must clear the whole loan
+5d6c5ebe 2026-11-08 Dhiran QA: fix dashboard, New Loan, settings, renewal and document bugs
+86b87683 2026-11-08 Dhiran QA: pre-close amount, forfeiture notice, report dates, labels
+ff96d00a 2026-11-08 Dhiran: keep the page header on top of success and error messages
+4da6f925 2026-11-08 Dhiran: one amber scrollbar for the page, sidebar, tables and boxes
+947ce80c 2026-11-08 Dhiran: scroll only the area under the header, like the ERP shell
+04a96f77 2026-11-08 Dhiran: navy + gold scheme from one token file; fix contrast, icons and phone issues
+eb75a8bd 2026-11-08 Dhiran: one content width and one card look, from tokens
+282ac028 2026-11-08 Dhiran tables: short lists end at their last row, clear header band, round clipped corners
+b74ddd6f 2026-11-08 Dhiran lists: drop the reserved scrollbar strip right of the table header
+80f95ccd 2026-11-08 Dhiran: centre every dialog, links hover by colour instead of underline
+77c9eb6b 2026-11-08 Dhiran evidence: every uploaded file as a titled thumbnail that opens large
+26b9fc11 2026-11-08 Dhiran evidence gallery: say what each file belongs to, load small thumbnails
+40b572a4 2026-11-08 Dhiran phones: tables stack into one card per row instead of a sideways swipe
+eef1b836 2026-11-08 Dhiran customer profile: upload the customer's own documents
+f29164ce 2026-11-08 Dhiran New Loan: show how much the items allow, warn before saving
+6e9f7e00 2026-11-08 Dhiran: map the last 25 retail colour classes onto Dhiran tokens
+1feb4fbe 2026-11-08 Dhiran reports: page links everywhere, totals over every row, real cash book balances
+ac75529c 2026-11-08 Dhiran: modern filters on Loans and every report
+50e1ccfe 2026-11-11 Refine Retail Job Order details and receipt entry safely
+2ec96b3d 2026-11-11 Refine Retail Karigar invoice register and entry form
+1592dfc8 2026-11-11 Clarify Cash Book activity, balances and transaction entries
+a58f7f02 2026-11-11 Open Cash Book entry in a compact on-page dialog
+3b39832b 2026-11-11 Align Reports hub with the compact Retail directory style
+19df25c4 2026-11-11 Collapse repair intake while browsing the responsive register
+13c1a041 2026-11-11 Smooth repair intake motion without shifting the page
+45cc0195 2026-11-11 Keep repair register height stable through intake scrolling
+42f904f1 2026-11-11 Animate repair intake body without moving its heading
+ecb52e94 2026-11-11 Anchor fitting repair intake before scroll collapse
+20993277 2026-11-11 Show fifteen repairs per scrollable web page
+16ab15da 2026-11-11 Unify Retail orange scrollbars and keep sidebar slim
+2ba648d2 2026-11-11 Use thin orange scrollbars throughout Retail
+1de1e261 2026-11-11 Keep Repairs main scroll track stable during intake reveal
+b2505200 2026-11-11 Dhiran tables: a footer that always shows row count, rows per page and pages
+ea368d68 2026-11-11 Dhiran tables: number every row, continuing across pages
+598474c0 2026-11-11 Dhiran: CSV export of the full records behind Loans, Customers and every report
+61514ee2 2026-11-11 Dhiran customer profile: loan status chips, every payment with filters
+ea30d5f2 2026-11-11 Dhiran customer profile: section filters use the standard Filters panel
+db9fdb28 2026-11-11 Dhiran phones: every table stacks as field-left, value-right cards
+5c458447 2026-11-11 Dhiran tables: one value per column, customer Mobile column, wider pages
+b48cd2db 2026-11-11 Dhiran Settings: cards two to a row, fields two to a row, compact inputs
+359532a1 2026-11-11 Dhiran dashboard: the figures a lender runs the day on, each linking to its list
+44a9f26e 2026-11-11 Dhiran dashboard: small, simple figures instead of big cards and panels
+4ef34c8e 2026-11-11 Dhiran dashboard: small plain icons beside each figure's label
+af0fa2fb 2026-11-11 RBAC: new permissions always reach every owner role; routes may only require existing permissions
+3443918f 2026-11-11 Align Vendors directory with compact Retail workspace
+3621a512 2026-11-11 Open vendor forms in stable responsive popup and group Karigars in Masters
+f2a7279e 2026-11-11 Refine Retail Catalog workspace and responsive sharing controls
+4194b34d 2026-11-11 Compact Catalog controls into one responsive toolbar
+9160df8b 2026-11-11 Add plain-language custom Catalog messages with visible product link preview
+c65ea5d2 2026-11-11 Place Catalog customer and message controls after query filters
+46d68b8c 2026-11-11 Place Catalog sharing controls immediately beside Search
+3f5d5c25 2026-11-12 Dhiran: fix six root causes in interest, audit, forfeiture, reminders and dates
+8d173a13 2026-11-12 Dhiran: money forms take effect once; real PAN only; card everywhere
+86a46c6f 2026-11-12 Dhiran: decide every loan action on the loan as it is under the lock
+fa6c3b5e 2026-11-12 Dhiran: a renewed loan owes nothing and is counted once
+18ec1c1b 2026-11-12 Dhiran: a loan awaiting evidence can be cancelled, its money reversed
+8ed38a17 2026-11-12 Dhiran: forfeiture stages decided in one place
+60e378c0 2026-11-12 Dhiran: guard that items and their loan never disagree
+ac9ab248 2026-11-12 Dhiran: show every loan and item status through one component
+0866a680 2026-11-12 Dhiran: New Loan borrower choice and Add Borrower dialog as explicit state
+8107b606 2026-11-12 Dhiran: one owner for "can this loan do that", one wording for "no"
+0df345bc 2026-11-12 Dhiran: remove the reminder job that sent nothing
+071b56cf 2026-11-12 Dhiran: a lapsed plan stops new business, never collections; interest follows the loan
+7a4342e6 2026-11-12 Dhiran: bring running paper loans in as they stand today (brought forward)
+6abf726b 2026-11-12 Dhiran: no old-loan entry on New Loan; never say JewelFlows on Dhiran
+a7a3f129 2026-11-12 Dhiran: maintenance page says Dhiran on the Dhiran host
+ee1537f5 2026-11-12 Dhiran: Old Loans module to bring in a shop's running paper loans
+a836078a 2026-11-12 Dhiran: Old Loans spreadsheet upload with template, preview and row errors
+9e9e73b9 2026-11-12 Dhiran: search as you type without reloading the page or losing the cursor
+ca911eca 2026-11-13 Invoice Details: amounts in the summary tiles never break across lines (F01)
+2f76cfb0 2026-11-13 Categories: add and rename popups are real modal dialogs (F03)
+609ef87a 2026-11-13 Financial forms: every money and weight field has a name screen readers can use (F02)
+d6768310 2026-11-13 Change Login Mobile: the page says what the server will allow (F04)
+20b2c5c9 2026-11-13 Messages float without moving the page, and each shows once (F05, F06)
+07f38b32 2026-11-13 Plain browser pop-ups replaced by the app's own confirm dialog and messages (F07)
+e7f19dd8 2026-11-13 Store Credit adjust: compact form, one Cancel, standard primary (F11)
+ccd171d7 2026-11-13 Scheme Enrollment: compact facts, non-stretching columns, numbered history (F08)
+b6e60f65 2026-11-13 Bullion Lot Details: compact neutral facts, numbered movements, clear correction card (F09)
+1f86eead 2026-11-13 Add/Edit Staff: compact two-column groups, role cards, standard primary (F10)
+2eafb15c 2026-11-13 Vendor editor: PIN, city and state through the shared address component (F15)
+34ada188 2026-11-13 Historical entry and Bulk Imports: room for line entry, themed search, numbered history (F12)
+e980f401 2026-11-13 Exchanges register: same header, search, filters and table as the other registers (F13)
+8639e030 2026-11-13 Row numbers on the remaining record tables (F14)
+2e237058 2026-11-13 Error and recovery pages share one small surface with the right actions (F16)
+2afb929a 2026-11-13 Fix what the full suite caught: Dhiran CSV writer, unsaved-loan totals, report fallbacks, stale tests
+7d7b7037 2026-11-13 Toast test follows the owner's choice: on phones the toast floats, the page never moves
+41126945 2026-11-13 Vendor editor test: city and state come from the shared address component (F15)
+a0666ea0 2026-11-13 Ask before signing out of Dhiran
+67efd936 2026-11-13 Repairs: bill a delivery once, and keep a billed repair final (audit H1)
+edfb1965 2026-11-13 POS: a sale can only bill the quote that priced its own cart (audit H4)
+7b0842f5 2026-11-13 EMI: a plan completes only when its money is paid (audit H2)
+fd4da88f 2026-11-13 Schemes: the bonus is earned only by paying every instalment (audit H3)
+fc1895d8 2026-11-13 Job orders own the piece they take to the karigar (audit M1)
+5a6cd9b3 2026-11-13 Returns: approve and reject decide under the return's lock (audit M2)
+785d0bcf 2026-11-13 Subscription gate reads a lapsed subscription as the access middleware does (audit M3)
+4e27d7e7 2026-11-13 Customer searches keep only the latest answer (audit M4)
+b1948fca 2026-11-13 POS scan spinner stays on while any lookup runs (audit M5, corrected)
+51550e39 2026-11-13 Item quick-add dialogs: one shared script, a saving state, and choices that never disagree (audit M6)
+488a4b60 2026-11-13 POS pages come back usable from the back/forward cache, and a lost session is named (audit L1, L2)
+bf2bc017 2026-11-13 The confirm dialog is modal for real (audit L3)
+8665001c 2026-11-13 EMI retry test follows the money rule: one payment moves the balance once (audit H2)
+7ccbee81 2026-11-13 Repairs delivery guard checks existing rows before installing (CONSTITUTION §4 Rule 2)
+e1e1ddc2 2026-11-13 EMI: find and reopen plans the old rule closed while money was owed (audit H2 data repair)
+a7ea9716 2026-11-13 Onboarding: opening balances are posted once, and a posted batch is final (audit N14)
+d734d188 2026-11-13 Karigar invoices: payments decided under the invoice lock, advances applied by compensating entries (audit N15)
+f99cb301 2026-11-13 Karigar payments: bookkeeping in system-only columns, not in the typed reference (security review of d734d188)
+f6b3c9af 2026-11-13 POS: a sale bills only a quote priced on the inputs it states (audit N16, retail)
+a0be7f82 2026-11-13 Karigar payment entry types: the migration stops on unmarked advance rows (security review of f99cb301)
+bc3ac217 2026-11-13 Quick bills: edit/issue decides on the locked bill, so a void is final (audit N2)
+e3c2bd74 2026-11-13 POS scanner: one poll at a time, owned by its page; badge from server truth (audit N1, N5)
+63892429 2026-11-13 Phone scans are recorded under the session's lock (audit N7, N13)
+72444613 2026-11-13 Give each POS scanner poll loop an epoch and keep the QR spinner across sessions
+a35d48a8 2026-11-13 Report and audit a filtered repeat scan from the app as filtered
+6b7f3f20 2026-11-13 Let the server alone end a phone scanner session, and load its scanner library from this site (audit N19)
+2294df9a 2026-11-13 Move a bulk import's status only from the state it was checked in (audit N3)
+1bcd8d2d 2026-11-13 Decide an edition request once, keep one pending per ask, and fix granting Dhiran (audit N4)
+804f3fe9 2026-11-13 Hold the mobile-change guess cap under parallel submits, and let a right code finish (audit N18)
+59215794 2026-11-13 Never leave a bulk import stuck: claim it only inside the run's transaction (audit N6)
+ada5128c 2026-11-14 Show users only import errors written for them, and never record a failure over a cancel
+f4985ba4 2026-11-14 Never strand a Historical batch in "publishing": claim inside the publish transaction (audit N6)
+96c6be05 2026-11-14 End a queued report export the queue gave up on as failed (audit N20)
+c0e5b529 2026-11-14 Report background work left waiting in shop:detect-stuck, and record this round's query reviews
+1814687b 2026-11-14 Lock a Historical batch before rolling it back, so a publish in flight wins cleanly (audit N21)
+c244a3da 2026-11-14 Hold the platform admin's email/mobile code guess cap under parallel submits
+04c014e7 2026-11-14 Show a failed pricing-alert load as an error with a retry, and load once (audit N9)
+f62df318 2026-11-14 Drive the subscription payment button from one flow state, and explain an expired session (audit N10)
+54473ef6 2026-11-14 Re-enable only the photo buttons the save or remove disabled (audit N11)
+7480974c 2026-11-14 Make one selection mint one catalog collection, from either button (audit N12)
+b5a81831 2026-11-14 Claim an upload intent with one conditional update, so one photo is attached once (audit N8)
+1fd821bf 2026-11-14 Never reactivate a shop that has a GDPR deletion pending (audit N22)
+e3451d4a 2026-11-14 Refuse a user save that sets is_active against employment_status, and say so in the database (audit N23)
+8b6cc7a4 2026-11-14 Leave no files from a failed upload store, and prune only rows still as selected
+df8cf2c4 2026-11-14 Record tenant query reviews for the agent-fixed audit items (N8, N20, N22)
+1e0f3319 2026-11-14 Offboard the attachment remover with both status columns, as the staff flow does
+ff0bf9cc 2026-11-14 Keep Pay locked while Razorpay is open after a failed payment, and drop the page's listeners on leaving
+5c13aebb 2026-11-14 Correct AdminUserStatusToggleTest's notes on UserObserver
+7ca425b0 2026-11-14 Attach a photo sent through the upload flow to a new retail item from the app
+e637df9d 2026-11-14 Keep a shop with a pending GDPR deletion closed on every path, down to the database (audit N22 follow-up)
+38f94951 2026-11-14 Record tenant query reviews for 57 previously unread queries
+d6dae10b 2026-11-14 Bind a cash row's payment-method lookup to the row's own shop
+a4b3f371 2026-11-14 Record the review of the shop-bound payment-method lookup
+0900d044 2026-11-14 One bell for every notice: price reviews and ready downloads join the header bell
+12fca4f6 2026-11-15 Give the app's Shop notices what the web bell has: price reviews and ready downloads
+2a81ca73 2026-11-15 Keep six figures on the Dhiran dashboard instead of twelve
+d09bee55 2026-11-15 Size the dashboard's metal prices and KPI tiles to the room they have
+70f5d037 2026-11-15 Stop the phone header's menu button overlapping the page title
+4f7a2886 2026-11-15 Keep the vault and billing history inside a phone screen
+8ab17c34 2026-11-15 Fit karigar invoice and payment method cards to their width
+03e4c723 2026-11-15 Let phone headers wrap and fix five fixed-width layouts
+89379018 2026-11-15 Hide the vault phone header with overflow: clip, not hidden
+4fa87955 2026-11-15 Stack the loyalty adjust form by its panel's width
+ee888727 2026-11-15 One-row phone headers and one header size standard
+297ba044 2026-11-15 Put page descriptions behind an info button on phones
+37474422 2026-11-15 Tablet headers, a floating page description, and no header decoration
+edf1c168 2026-11-15 Drop the static "CSV Templates Ready" badge from Bulk Imports
+ebcb67ce 2026-11-15 Remove header badges that say nothing; move the ones that matter
+801448c8 2026-11-15 Remove the three unrouted report pages
+68c57013 2026-11-18 Remove dead pages: unrouted controllers, views and Breeze components
+ebf169a7 2026-11-18 Record details theme: Edit Scheme, Karigar Profile, Purchase Details
+ddb9fd15 2026-11-18 Vault ledger and Add Bullion layout
+944ff45a 2026-11-18 Individual report screens, shared export popup, Data Exports in the Reports header
+b01dd695 2026-11-18 Count platform-admin code guesses under a cache lock
+ea863f78 2026-11-18 Make the sidebar a slide-in panel up to 1280px
+72d71f5a 2026-11-18 Phone section switch: the open section is the title, a tap lists the others
+690b2feb 2026-11-18 POS checkout on desktop: 19 layout and flow fixes
+77dea72b 2026-11-18 Keep the returns queue value and product-preferences notice off the card edges
+75b93aea 2026-11-18 "By Factual Technologies" under the brand, and public policy pages
+e2fe1de0 2026-11-18 Say when saving rates leaves stock unpriced
+389cf4c8 2026-11-18 Financial years: numbering, period lock, stock history, year-end snapshots and year reports
+96c68089 2026-11-18 Settings: workspace theme, unsaved-changes guard, header imports, books lock and footer
+c5c46e45 2026-11-18 Codex's 2026-11-12 checkpoint notes and remaining-UI audit
