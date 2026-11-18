@@ -18,6 +18,7 @@
             .product-preferences .pp-consent { display:flex; align-items:flex-start; gap:10px; font-weight:400; line-height:1.5; min-height:44px; }
             .product-preferences input[type=checkbox] { flex:0 0 20px; width:20px; height:20px; margin-top:3px; }
             .product-preferences .pp-notice { padding:14px; background:#eef8f3; border-left:4px solid #39795d; overflow-wrap:anywhere; }
+            .product-preferences section > .pp-notice { margin:14px 0; }
             .product-preferences .pp-errors { background:#fff0ed; border-color:#b94329; }
             .product-preferences code { display:block; padding:12px; font-size:16px; background:#f1f5f3; overflow-wrap:anywhere; user-select:all; }
             .product-preferences :is(a,button,input):focus-visible { outline:3px solid #b77900; outline-offset:3px; }

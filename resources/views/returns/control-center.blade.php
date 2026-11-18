@@ -197,6 +197,12 @@
             line-height: 1.2;
         }
 
+        /* The queue card has no padding of its own: keep the value box on the copy's 14px inset. */
+        .returns-control-page .rc-queue-value {
+            margin: 0 14px 12px;
+            max-width: calc(100% - 28px);
+        }
+
         .returns-control-page .rc-queue-copy {
             margin: 0;
             padding: 0 14px 12px;
@@ -464,6 +470,11 @@
             .returns-control-page .rc-queue-copy {
                 padding: 0 12px 10px;
                 font-size: 12px;
+            }
+
+            .returns-control-page .rc-queue-value {
+                margin: 0 12px 10px;
+                max-width: calc(100% - 24px);
             }
 
             .returns-control-page .rc-table-card table,
@@ -932,12 +943,12 @@
                     @if(auth()->user()->cannot('reports.money'))
                         {{-- shop-wide value needs See Shop Money --}}
                     @elseif($goldRatePerGram > 0)
-                        <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+                        <div class="rc-queue-value inline-flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
                             Estimated recoverable value: ₹{{ number_format($goldPendingValue, 0) }}
                             <span class="text-xs font-normal text-amber-700">(based on today's rate ₹{{ number_format($goldRatePerGram, 0) }}/g)</span>
                         </div>
                     @else
-                        <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+                        <div class="rc-queue-value inline-flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
                             Set today's gold rate to see estimated value.
                         </div>
                     @endif
