@@ -468,14 +468,70 @@ class SettingsController extends Controller
     /**
      * Update invoice/billing settings.
      */
+    /**
+     * Starting-number rules (owner, 2026-11-16). Before this year's series has a bill the number is free. After it:
+     * owner only, forward only, and a jump must be confirmed because it leaves numbers unused (GSTR-1 table 13
+     * shows the range). Returns what to audit, or null when nothing changes for the running series.
+     *
+     * @return array{from: string, to: string, gap: string}|null
+     */
+    private function guardStartNumberChange($shop, $billing, int $newStart, bool $confirmed): ?array
+    {
+        if ($newStart === (int) $billing->invoice_start_number) {
+            return null;
+        }
+        $fy = \App\Support\FinancialYear::current()->label();
+        $peek = DB::selectOne('SELECT sequence_value, invoice_number, series FROM peek_invoice_identity(?, ?)', [$shop->id, $fy]);
+        $started = Invoice::where('shop_id', $shop->id)
+            ->where('invoice_series', $peek->series)
+            ->when($peek->series === 'yearly', fn ($q) => $q->where('fiscal_year', $fy))
+            ->exists();
+        if (! $started) {
+            return null;
+        }
+
+        if (! Auth::user()->isShopOwner()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['invoice_start_number' => \App\Support\NotAvailable::MESSAGE]);
+        }
+        $next = (int) $peek->sequence_value;
+        if ($newStart < $next) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'invoice_start_number' => __('Bills have already reached :last. The starting number can only move forward.', [
+                    'last' => DB::selectOne('SELECT render_invoice_number(?, ?, ?) AS n', [$shop->id, $fy, $next - 1])->n,
+                ]),
+            ]);
+        }
+        if ($newStart === $next) {
+            return null;
+        }
+
+        $render = fn (int $seq) => DB::selectOne('SELECT render_invoice_number(?, ?, ?) AS n', [$shop->id, $fy, $seq])->n;
+        $gap = $render($next) . ' to ' . $render($newStart - 1);
+        if (! $confirmed) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'confirm_number_gap' => __('This leaves :gap unused. Tick the box to confirm.', ['gap' => $gap]),
+            ]);
+        }
+
+        return ['from' => $render($next), 'to' => $render($newStart), 'gap' => $gap];
+    }
+
     public function updateBilling(Request $request)
     {
         $shop = Auth::user()->shop;
 
+        // Braces are only for the {FY} token ("INV/{FY}/" → "INV/26-27/1001").
+        $fyTokenOnly = function ($attribute, $value, $fail) {
+            if (is_string($value) && preg_match('/[{}]/', str_replace('{FY}', '', $value))) {
+                $fail(__('Only {FY} may be written in braces.'));
+            }
+        };
+
         $validated = $request->validate([
             // Existing
-            'invoice_prefix'        => 'required|string|max:20',
+            'invoice_prefix'        => ['required', 'string', 'max:20', $fyTokenOnly],
             'invoice_start_number'  => 'required|integer|min:1',
+            'invoice_numbering'     => 'nullable|in:continuous,yearly',
             'terms_and_conditions'  => [
                 'nullable', 'string', 'max:600',
                 function ($attribute, $value, $fail) {
@@ -505,8 +561,7 @@ class SettingsController extends Controller
             'invoice_copy_label'     => 'nullable|string|max:20',
             'copy_count'             => 'nullable|integer|in:1,2',
             // Invoice number
-            'invoice_suffix'         => 'nullable|string|max:20',
-            'year_reset'             => 'nullable|boolean',
+            'invoice_suffix'         => ['nullable', 'string', 'max:20', $fyTokenOnly],
             // Column visibility
             'show_huid'              => 'nullable|boolean',
             'show_stone_columns'     => 'nullable|boolean',
@@ -555,7 +610,18 @@ class SettingsController extends Controller
         // Boolean toggles (hidden-input pattern: unchecked = "0" sent by hidden input)
         $validated['show_digital_signature'] = $request->boolean('show_digital_signature');
         $validated['show_bis_logo']          = $request->boolean('show_bis_logo');
-        $validated['year_reset']             = $request->boolean('year_reset');
+
+        // Continuous or yearly invoice series (see InvoiceSeriesPlan); refuses a yearly series without {FY}.
+        $series = \App\Services\InvoiceSeriesPlan::apply(
+            (int) $shop->id,
+            $billing->invoice_series_yearly_from,
+            $billing->invoice_series_yearly_until,
+            $validated['invoice_numbering'] ?? null,
+            ($validated['invoice_prefix'] ?? '') . ($validated['invoice_suffix'] ?? ''),
+        );
+        unset($validated['invoice_numbering']);
+        $validated['invoice_series_yearly_from'] = $series['from'];
+        $validated['invoice_series_yearly_until'] = $series['until'];
         $validated['show_huid']              = $request->boolean('show_huid');
         $validated['show_stone_columns']     = $request->boolean('show_stone_columns');
         $validated['show_purity']            = $request->boolean('show_purity');
@@ -586,18 +652,43 @@ class SettingsController extends Controller
             $validated['bank_ifsc'] = strtoupper($validated['bank_ifsc']);
         }
 
+        $startChange = $this->guardStartNumberChange($shop, $billing, (int) $validated['invoice_start_number'], $request->boolean('confirm_number_gap'));
+
         $billing->fill($validated);
         $billing->save();
 
+        if ($startChange !== null) {
+            $log = new \App\Models\AuditLog();
+            $log->shop_id = (int) $shop->id;
+            $log->fill([
+                'user_id' => (int) Auth::id(),
+                'action' => 'invoice.start_number_changed',
+                'model_type' => 'shop_billing_settings',
+                'model_id' => (int) $billing->id,
+                'description' => "Next invoice moved from {$startChange['from']} to {$startChange['to']}; numbers {$startChange['gap']} left unused.",
+                'before' => ['next_invoice_number' => $startChange['from']],
+                'after' => ['next_invoice_number' => $startChange['to']],
+                'data' => ['unused' => $startChange['gap']],
+            ]);
+            $log->save();
+        }
+
         // Keep invoice counter aligned with settings.
         // It can only move forward (never backward) to avoid duplicate sequences.
+        // The counter this year's bills use: 'invoice' (continuous) or 'invoice:<fy>' (yearly series).
         DB::transaction(function () use ($shop, $billing): void {
-            $maxIssuedSequence = (int) Invoice::where('shop_id', $shop->id)->max('invoice_sequence');
+            $fy = \App\Support\FinancialYear::current()->label();
+            $yearly = DB::selectOne('SELECT invoice_series_for(?, ?) AS s', [$shop->id, $fy])->s === 'yearly';
+            $counterKey = $yearly ? BusinessIdentifierService::KEY_INVOICE . ':' . $fy : BusinessIdentifierService::KEY_INVOICE;
+            $maxIssuedSequence = (int) Invoice::where('shop_id', $shop->id)
+                ->where('invoice_series', $yearly ? 'yearly' : 'continuous')
+                ->when($yearly, fn ($q) => $q->where('fiscal_year', $fy))
+                ->max('invoice_sequence');
             $settingsBase = max(0, (int) $billing->invoice_start_number - 1);
 
             $counter = ShopCounter::query()
                 ->where('shop_id', $shop->id)
-                ->where('counter_key', BusinessIdentifierService::KEY_INVOICE)
+                ->where('counter_key', $counterKey)
                 ->lockForUpdate()
                 ->first();
 
@@ -612,7 +703,7 @@ class SettingsController extends Controller
             } else {
                 ShopCounter::query()->create([
                     'shop_id' => $shop->id,
-                    'counter_key' => BusinessIdentifierService::KEY_INVOICE,
+                    'counter_key' => $counterKey,
                     'current_value' => $nextSafeBase,
                 ]);
             }

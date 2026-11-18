@@ -45,6 +45,9 @@ class JsonCastArchitectureTest extends TestCase
     private const MODEL_LESS_JSON_TABLES = [
         // Written by raw SQL from the audit-log archiver; read-only thereafter.
         'platform_audit_logs_archive',
+        // Year-end snapshots (2026_11_16_500000): append-only, written and read by FiscalYearSnapshotService via
+        // the query builder; `totals` is decoded there. No model on purpose (nothing may update a snapshot).
+        'fiscal_year_snapshots',
     ];
 
     protected function setUp(): void

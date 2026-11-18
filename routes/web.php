@@ -233,6 +233,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
         ->middleware('realm:erp')
         ->name('dashboard');
+    Route::post('/dashboard/lock-reminder/dismiss', [\App\Http\Controllers\DashboardController::class, 'dismissLockReminder'])
+        ->middleware('realm:erp')
+        ->name('dashboard.lock-reminder.dismiss');
 
     // The header bell, read again in place (on opening, after a download, on a slow timer). Each row inside is
     // gated by its own permission in ShopNoticeService; "Clear" touches only this user's download messages.
@@ -562,6 +565,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Staff: view + show only. Create/edit/delete = owner + manager.
     Route::get('/inventory/items', [ItemController::class, 'index'])->middleware('can:inventory.view')->name('inventory.items.index');
     Route::get('/inventory/stock-aging', [\App\Http\Controllers\InventoryAnalyticsController::class, 'aging'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.stock-aging');
+    // Cost is confidential: inventory.edit AND reports.money (owner and managers by default).
+    Route::get('/inventory/missing-costs', [\App\Http\Controllers\MissingAcquisitionCostController::class, 'index'])->middleware(['can:inventory.edit', 'can:reports.money'])->name('inventory.missing-costs');
+    Route::post('/inventory/missing-costs', [\App\Http\Controllers\MissingAcquisitionCostController::class, 'store'])->middleware(['can:inventory.edit', 'can:reports.money'])->name('inventory.missing-costs.store');
     Route::get('/inventory/sell-trend', [\App\Http\Controllers\InventoryAnalyticsController::class, 'sellers'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.sell-trend');
     Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.items.pricing-alerts');
     Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('can:inventory.create')->name('inventory.items.create');
@@ -770,12 +776,20 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Profit & Loss — served by the reporting spine (Phase 4). Same URL/name/permission;
     // honours the legacy ?date=YYYY-MM-DD single-day bookmark, else the current month.
     Route::get('/report/pnl', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'pnl')->middleware(['can:reports.view', 'can:reports.money'])->name('report.pnl');
+    // Financial-year stock reports: closing stock + trading account show cost, so they need the money switch;
+    // the weight register is quantities only (reports.view).
+    Route::get('/report/closing-stock', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'closing-stock')->middleware(['can:reports.view', 'can:reports.money'])->name('report.closing-stock');
+    Route::get('/report/stock-register-weight', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'stock-register-weight')->middleware('can:reports.view')->name('report.stock-register-weight');
+    Route::get('/report/trading-account', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'trading-account')->middleware(['can:reports.view', 'can:reports.money'])->name('report.trading-account');
     Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gst');
     // CA / compliance tax pack (Phase 2 M1) — all read-only, reports.view gated.
     Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr1')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gstr1');
     // report.gstr1.csv retired (Phase 3 Cleanup #1) — use the spine export (POST /reports/gstr1/export).
     Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr3b')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gstr3b');
     Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cn-register')->middleware(['can:reports.view', 'can:reports.money'])->name('report.cn-register');
+    // Financial-year GST pack: GSTR-1 table 13 and the HSN summary (FY presets in the period filter).
+    Route::get('/report/gst-documents-issued', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst-documents-issued')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gst-documents-issued');
+    Route::get('/report/gst-hsn-annual', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst-hsn-annual')->middleware(['can:reports.view', 'can:reports.money'])->name('report.gst-hsn-annual');
     // report.cn-register.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // CA Ledger & Reconciliation pack (Phase 2 M2) — read-only, reports.view gated.
     // Payment Reconciliation — served by the reporting spine (Phase 3). Same URL/name/permission.
@@ -901,6 +915,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // controls who has which permissions. Permission-gating this would let a
     // Manager with settings.edit reshape the entire permission matrix.
     Route::patch('/settings/roles/{role}', [SettingsController::class, 'updateRolePermissions'])->middleware('role:owner')->name('settings.update.role');
+    // Lock / unlock the books (period lock, Constitution Art. VII.9) — owner only, always an explicit action.
+    Route::post('/settings/books/lock', [\App\Http\Controllers\BooksLockController::class, 'lock'])->middleware('role:owner')->name('settings.books.lock');
+    Route::post('/settings/books/unlock', [\App\Http\Controllers\BooksLockController::class, 'unlock'])->middleware('role:owner')->name('settings.books.unlock');
+    // Year-end snapshot: read-only page + explicit "take a closing snapshot" (owner only).
+    Route::get('/books/year-end/{fy?}', [\App\Http\Controllers\BooksYearEndController::class, 'show'])->middleware('role:owner')->name('books.year-end');
+    Route::post('/books/year-end/{fy}/snapshot', [\App\Http\Controllers\BooksYearEndController::class, 'take'])->middleware('role:owner')->name('books.year-end.take');
     Route::patch('/settings/pricing/timezone', [PricingSettingsController::class, 'updateTimezone'])->middleware('can:pricing.update')->name('settings.pricing.update-timezone');
     Route::post('/settings/pricing/daily-rates', [PricingSettingsController::class, 'saveTodayRates'])->middleware('can:pricing.update')->name('settings.pricing.save-rates');
     Route::post('/settings/pricing/purity-profiles', [PricingSettingsController::class, 'storeProfile'])->middleware('can:pricing.update')->name('settings.pricing.profiles.store');

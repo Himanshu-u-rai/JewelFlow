@@ -115,6 +115,7 @@
                                 <span class="job-label">Issue Date *</span>
                                 <input type="date" name="issue_date" required value="{{ old('issue_date', now()->toDateString()) }}" class="job-control">
                             </label>
+                            @include('partials.backdate-reason', ['selector' => '[name="issue_date"]'])
 
                             <label class="job-schedule-date">
                                 <span class="job-label">Expected Return Date</span>

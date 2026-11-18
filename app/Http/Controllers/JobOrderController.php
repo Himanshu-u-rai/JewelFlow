@@ -166,6 +166,9 @@ class JobOrderController extends Controller
 
         $validated = $request->validate($rules);
 
+        // Period lock: field error on the issue date (JobOrderService::issue enforces it too).
+        \App\Services\InvoiceAccountingService::assertDateOpenForField((int) $shopId, $validated['issue_date'], 'issue_date');
+
         // Karigar tenancy + active state are enforced by activeExistsRule above
         // (friendly field error) and by lockActiveOrFail inside issue() (race-safe).
 
@@ -270,6 +273,9 @@ class JobOrderController extends Controller
             'items.*.net_weight' => 'required|numeric|min:0.0001',
             'items.*.purity' => 'required|numeric|min:1|max:1000',
         ]);
+
+        // Period lock: field error on the receipt date (JobOrderService::receive enforces it too).
+        \App\Services\InvoiceAccountingService::assertDateOpenForField((int) $jobOrder->shop_id, $validated['receipt_date'], 'receipt_date');
 
         try {
             $receipt = $this->service->receive($jobOrder, $validated, (int) auth()->id());

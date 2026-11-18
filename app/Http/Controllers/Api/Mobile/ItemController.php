@@ -617,6 +617,11 @@ class ItemController extends Controller
                 'cost_price' => $isRetailer
                     ? $pricingPayload['cost_price']
                     : $validated['cost_price'],
+                // Same rule as the web form: cost at registration, set once, never repriced.
+                'acquisition_cost' => $isRetailer
+                    ? $pricingPayload['cost_price']
+                    : $validated['cost_price'],
+                'acquisition_cost_source' => ($isRetailer ? ($pricingPayload['cost_price'] ?? null) : ($validated['cost_price'] ?? null)) === null ? 'unknown' : 'entered',
                 'selling_price' => $isRetailer
                     ? $pricingPayload['selling_price']
                     : $validated['selling_price'],

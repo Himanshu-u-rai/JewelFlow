@@ -61,6 +61,20 @@ class MetalRate extends Model
             ->first();
     }
 
+    /** The rate in force at the end of a business date: that day's, else the last day before it with one. */
+    public static function latestResolvedOnOrBefore(int $shopId, string $businessDate, string $metalType, float $purityValue): ?self
+    {
+        return static::query()
+            ->where('shop_id', $shopId)
+            ->where('business_date', '<=', $businessDate)
+            ->where('metal_type', $metalType)
+            ->where('purity_value', (float) number_format($purityValue, 3, '.', ''))
+            ->orderByDesc('business_date')
+            ->orderByDesc('fetched_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     public static function latestResolvedForDay(
         int $shopId,
         string $businessDate,

@@ -10,6 +10,14 @@ use LogicException;
 
 class StockPurchaseService
 {
+    /** Period lock: confirming, stocking or reversing a purchase posts or unposts it on its document date. */
+    private function assertPurchasePeriodOpen(StockPurchase $purchase): void
+    {
+        if ($purchase->purchase_date) {
+            InvoiceAccountingService::assertShopLockForDate((int) $purchase->shop_id, $purchase->purchase_date->toDateString());
+        }
+    }
+
     public function confirmPurchase(StockPurchase $purchase, int $userId): void
     {
         if (! $purchase->isDraft()) {
@@ -19,6 +27,8 @@ class StockPurchaseService
         if ($purchase->lines()->count() === 0) {
             throw new LogicException('Purchase must have at least one line item to confirm.');
         }
+
+        $this->assertPurchasePeriodOpen($purchase);
 
         DB::transaction(function () use ($purchase, $userId): void {
             // Re-fetch with row lock so concurrent requests don't both confirm.
@@ -66,6 +76,8 @@ class StockPurchaseService
             throw new LogicException('Only confirmed purchases can be added to inventory.');
         }
 
+        $this->assertPurchasePeriodOpen($purchase);
+
         $itemsCreated = 0;
 
         DB::transaction(function () use ($purchase, $userId, &$itemsCreated): void {
@@ -112,6 +124,9 @@ class StockPurchaseService
                     'rhodium_charges'         => $line->rhodium_charges,
                     'other_charges'           => $line->other_charges,
                     'cost_price'              => round((float) $line->net_metal_weight * (float) $line->purchase_rate_per_gram, 2),
+                    // Set once at intake; daily repricing rewrites cost_price but never this (DB-guarded).
+                    'acquisition_cost'        => round((float) $line->net_metal_weight * (float) $line->purchase_rate_per_gram, 2),
+                    'acquisition_cost_source' => 'purchase',
                     'selling_price'           => null,
                     'source'                  => 'purchased',
                     'status'                  => 'in_stock',
@@ -175,6 +190,8 @@ class StockPurchaseService
         if ($purchase->isDraft()) {
             throw new LogicException('Draft purchases are not confirmed yet — edit or delete it instead.');
         }
+
+        $this->assertPurchasePeriodOpen($purchase);
 
         DB::transaction(function () use ($purchase, $userId): void {
             $purchase = StockPurchase::where('id', $purchase->id)->lockForUpdate()->firstOrFail();

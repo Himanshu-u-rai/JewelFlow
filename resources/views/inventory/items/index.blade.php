@@ -215,6 +215,17 @@
         <div data-list-panel class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">
         <x-app-alerts class="mb-6" />
 
+        {{-- Owners/managers only (cost is confidential): pieces with no purchase cost cannot be valued at year-end. --}}
+        @can('inventory.edit') @can('reports.money')
+            @php $missingCostCount = \App\Services\AcquisitionCostService::missingCount(); @endphp
+            @if($missingCostCount > 0)
+                <div role="note" style="margin-bottom:16px; padding:12px 14px; border:1px solid #fcd34d; background:#fffbeb; border-radius:10px; font-size:14px;">
+                    {{ trans_choice(':count piece has no purchase cost, so year-end stock leaves it out.|:count pieces have no purchase cost, so year-end stock leaves them out.', $missingCostCount, ['count' => $missingCostCount]) }}
+                    <a href="{{ route('inventory.missing-costs') }}" style="font-weight:600; text-decoration:underline; margin-left:6px;">{{ __('Enter the costs') }}</a>
+                </div>
+            @endif
+        @endcan @endcan
+
         @php
             $inventoryFiltersActive = request()->filled('category')
                 || request()->filled('sub_category')

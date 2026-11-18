@@ -15,6 +15,8 @@
                 ['GSTR-3B Support', 'Output tax, inter/intra-state split, net liability', 'report.gstr3b', null],
                 ['Credit / Debit Note Register', 'All credit notes for the period with original-invoice reference', 'report.cn-register', null],
                 ['GST Summary', 'GST collected vs reversed, net of credit notes', 'report.gst', null],
+                ['Documents Issued (GSTR-1 Table 13)', 'Invoice and credit note numbers issued, cancelled and net — by series, for a month or financial year', 'report.gst-documents-issued', null],
+                ['HSN Summary', 'Quantity, taxable value and tax by HSN code, net of credit notes — for a month or financial year', 'report.gst-hsn-annual', null],
             ],
             'Receivables & Liability' => [
                 ['Customer Dues', 'Outstanding on finalized invoices, aged 0–30 / 31–60 / 61–90 / 90+', 'report.dues-aging', null],
@@ -29,6 +31,9 @@
                 ['Payment Reconciliation', 'Invoice totals vs collected payments; flags mismatches', 'report.payment-reconciliation', null],
                 ['Day Book', 'Chronological journal of invoices, credit notes, cash — for the CA', 'report.day-book', null],
                 ['Inventory Valuation', 'On-hand stock value at cost and at tag price', 'report.inventory-valuation', null],
+                ['Closing Stock (Financial Year)', 'Every piece held on 31 March, valued at the lower of cost and closing rate', 'report.closing-stock', null],
+                ['Stock Register by Weight', 'Opening, received, sold, melted and closing grams per metal and purity — Form 3CD clause 35', 'report.stock-register-weight', null],
+                ['Trading Account with Stock', 'Opening stock + purchases - closing stock = cost of goods sold, and gross profit for the year', 'report.trading-account', null],
                 ['Cash Flow', 'Cash in vs out over the period', 'report.cash', null],
                 ['Daily Closing', 'End-of-day close figures', 'report.closing', null],
                 ['Historical Sales Register', 'Search pre-JewelFlow sales evidence imported from your old records', 'report.historical-register', null],

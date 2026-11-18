@@ -250,9 +250,27 @@ class InvoiceAccountingService
 
         SubscriptionGateService::assertShopWritable((int) $invoice->shop_id);
         self::assertFinancialLock($invoice);
+        // Reversing a bill is a credit to the customer: GST's 30 November deadline applies (s.34(2)).
+        \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
 
-        return DB::transaction(function () use ($invoice, $reason) {
+        // Back-dating speed bump: reversing an invoice of a finished financial year rewrites a closed year.
+        $backdatedYear = null;
+        $actor = auth()->user();
+        if ($invoice->fiscal_year && $actor instanceof \App\Models\User) {
+            $year = \App\Support\FinancialYear::fromLabel((string) $invoice->fiscal_year);
+            if ($year->isBefore(\App\Support\FinancialYear::current())) {
+                if (! self::userMayBackdate($actor)) {
+                    throw new LogicException(\App\Support\NotAvailable::MESSAGE);
+                }
+                $backdatedYear = $year->label();
+            }
+        }
+
+        return DB::transaction(function () use ($invoice, $reason, $backdatedYear, $actor) {
             $before = $invoice->toArray();
+            if ($backdatedYear !== null) {
+                self::auditBackdate((int) $invoice->shop_id, $actor, 'invoice', (int) $invoice->id, $invoice->created_at->toDateString(), $backdatedYear, $reason, null);
+            }
 
             $reversal = Invoice::issue([
                 'shop_id' => $invoice->shop_id,
@@ -262,7 +280,19 @@ class InvoiceAccountingService
                 'gst' => -1 * (float) $invoice->gst,
                 'gst_rate' => $invoice->gst_rate,
                 'wastage_charge' => -1 * (float) $invoice->wastage_charge,
+                // The mirror image of every component, or the invoice guard (total = subtotal + gst + wastage −
+                // discount + round_off) refuses the reversal of a discounted / rounded bill, and revenue
+                // (subtotal − discount) would not net to zero.
+                'discount' => -1 * (float) $invoice->discount,
+                'round_off' => -1 * (float) $invoice->round_off,
                 'total' => -1 * (float) $invoice->total,
+                // The same tax identity as the bill it takes back, so GSTR-1 / 3B reduce the right buyer and the
+                // right tax head (IGST stays IGST) instead of showing an anonymous CGST+SGST line.
+                'buyer_gstin' => $invoice->buyer_gstin,
+                'place_of_supply_state_code' => $invoice->place_of_supply_state_code,
+                'cgst_amount' => $invoice->cgst_amount === null ? null : -1 * (float) $invoice->cgst_amount,
+                'sgst_amount' => $invoice->sgst_amount === null ? null : -1 * (float) $invoice->sgst_amount,
+                'igst_amount' => $invoice->igst_amount === null ? null : -1 * (float) $invoice->igst_amount,
                 'status' => Invoice::STATUS_FINALIZED,
                 'finalized_at' => now(),
                 'finalized_by' => auth()->id(),
@@ -406,6 +436,107 @@ class InvoiceAccountingService
         if ($invoice->created_at->toDateString() <= $lockDate) {
             throw new LogicException("Invoice is before lock date {$lockDate} and cannot be reversed.");
         }
+    }
+
+    /**
+     * Web-form twin of assertShopLockForDate(): a user-entered document date inside the locked period becomes a
+     * validation error on that field (a redirect with the message, a 422 for JSON) instead of a 500. A blank date
+     * is left to the form's own validation rules.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public static function assertDateOpenForField(int $shopId, ?string $date, string $field): void
+    {
+        if ($date === null || trim($date) === '') {
+            return;
+        }
+
+        try {
+            self::assertShopLockForDate($shopId, \Illuminate\Support\Carbon::parse($date)->toDateString());
+        } catch (LogicException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages([$field => $e->getMessage()]);
+        }
+    }
+
+    public const AUDIT_BACKDATED = 'books.backdated';
+    public const BACKDATE_PERMISSION = 'books.backdate';
+    public const BACKDATE_MIN_REASON = 10;
+
+    /** Owner, or a role holding books.backdate, may post into a finished financial year. */
+    public static function userMayBackdate(?\App\Models\User $user): bool
+    {
+        return $user !== null && ($user->isShopOwner() || $user->hasPermission(self::BACKDATE_PERMISSION));
+    }
+
+    /**
+     * Back-dating speed bump (call AFTER the lock check; the lock always wins). A user-chosen date in a FINISHED
+     * financial year, while the books are open for it, needs the owner or books.backdate, a written reason
+     * (request field backdate_reason, 10+ characters) and leaves an append-only 'books.backdated' audit row.
+     * A refusal is a field error (web redirect, 422 for JSON); the date field for "not allowed", backdate_reason
+     * for a missing reason. No signed-in user (console/system work) is not a user-chosen date: skipped.
+     *
+     * With a $modelId the audit row is written at once. For a record that does not exist yet ($modelId null) nothing
+     * is written; the pending audit context is returned and the caller hands it to recordBackdate() once it has the
+     * new id (audit_logs.model_id is NOT NULL). Returns null when nothing is pending.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public static function assertBackdateAllowed(int $shopId, ?string $date, string $field, string $modelType, ?int $modelId = null, ?string $reason = null): ?array
+    {
+        if ($date === null || trim($date) === '') {
+            return null;
+        }
+        $date = \Illuminate\Support\Carbon::parse($date)->toDateString();
+        $year = \App\Support\FinancialYear::forDate($date);
+        if (! $year->isBefore(\App\Support\FinancialYear::current())) {
+            return null;
+        }
+        $user = auth()->user();
+        if (! $user instanceof \App\Models\User) {
+            return null;
+        }
+
+        $fail = fn (string $key, string $message) => throw \Illuminate\Validation\ValidationException::withMessages([$key => $message]);
+        if (! self::userMayBackdate($user)) {
+            $fail($field, \App\Support\NotAvailable::MESSAGE); // never explain to non-owners why (owner's rule 2026-10-30)
+        }
+        $reason = $reason ?? request()->input('backdate_reason');
+        $reason = is_string($reason) ? trim($reason) : '';
+        if (mb_strlen($reason) < self::BACKDATE_MIN_REASON) {
+            $fail('backdate_reason', "This date is in financial year {$year->label()}, which has ended. Give a reason (at least " . self::BACKDATE_MIN_REASON . ' characters).');
+        }
+
+        $context = ['shop_id' => $shopId, 'user' => $user, 'model_type' => $modelType, 'date' => $date, 'year' => $year->label(), 'reason' => $reason, 'field' => $field];
+        if ($modelId === null) {
+            return $context;
+        }
+        self::recordBackdate($context, $modelId);
+
+        return null;
+    }
+
+    /** Writes the audit row for a back-dated record created after assertBackdateAllowed() returned a pending context. */
+    public static function recordBackdate(?array $pending, int $modelId): void
+    {
+        if ($pending !== null) {
+            self::auditBackdate($pending['shop_id'], $pending['user'], $pending['model_type'], $modelId, $pending['date'], $pending['year'], $pending['reason'], $pending['field']);
+        }
+    }
+
+    private static function auditBackdate(int $shopId, \App\Models\User $user, string $modelType, ?int $modelId, string $date, string $yearLabel, string $reason, ?string $field): void
+    {
+        $log = new \App\Models\AuditLog();
+        $log->shop_id = $shopId; // not mass-assignable; never depends on ambient tenant context
+        $log->fill([
+            'user_id' => (int) $user->id,
+            'action' => self::AUDIT_BACKDATED,
+            'model_type' => $modelType,
+            'model_id' => $modelId,
+            'description' => "Entry dated {$date} in finished financial year {$yearLabel}.",
+            // document_date / fiscal_year are read by FiscalYearSnapshotService::changesSince; date / financial_year kept for readers of the first version.
+            'data' => ['reason' => $reason, 'document_date' => $date, 'fiscal_year' => $yearLabel, 'date' => $date, 'financial_year' => $yearLabel, 'field' => $field],
+        ]);
+        $log->save();
     }
 
     public static function assertShopLockForDate(int $shopId, string $date): void

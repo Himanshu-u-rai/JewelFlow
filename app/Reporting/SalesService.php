@@ -22,9 +22,13 @@ class SalesService
 {
     public function paymentReconciliation(int $shopId, ReportPeriod $period): PaymentReconData
     {
+        // Every bill ISSUED in the period, each against what was collected on it. A bill cancelled afterwards is
+        // still shown (it was issued and paid in this period); its reversal bill is not a bill that anyone pays —
+        // the refund is a cash-out entry, not an invoice payment — so it is left out instead of reading as "unpaid".
         $invoices = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
+            ->whereNull('invoices.reversal_of_invoice_id')
             ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 'invoices.id',

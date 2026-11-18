@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ShopCounter;
+use App\Support\FinancialYear;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -89,88 +90,28 @@ class BusinessIdentifierService
     /**
      * @return array{sequence:int, number:string}
      */
-    public static function nextInvoiceIdentifier(int $shopId): array
+    /**
+     * The next invoice identity in the shop's series for a financial year (default: the current one). The database
+     * function next_invoice_identity is the single implementation (continuous vs yearly series, {FY} token,
+     * starting number); the invoice trigger uses the same function. The old April reset is gone: it reused last
+     * year's numbers and every sale on 1 April failed.
+     *
+     * @return array{sequence:int, number:string, series:string, fiscal_year:string}
+     */
+    public static function nextInvoiceIdentifier(int $shopId, ?FinancialYear $year = null): array
     {
-        self::maybeResetForFiscalYear($shopId);
-
-        $sequence = self::nextCounter($shopId, self::KEY_INVOICE);
-        $prefix   = self::invoicePrefixForShop($shopId);
-        $suffix   = self::invoiceSuffixForShop($shopId);
+        if ($shopId <= 0) {
+            throw new LogicException('Valid shop_id is required to generate business identifiers.');
+        }
+        $fy = ($year ?? FinancialYear::current())->label();
+        $row = DB::selectOne('SELECT sequence_value, invoice_number, series FROM next_invoice_identity(?, ?)', [$shopId, $fy]);
 
         return [
-            'sequence' => $sequence,
-            'number'   => $prefix . $sequence . $suffix,
+            'sequence'    => (int) $row->sequence_value,
+            'number'      => (string) $row->invoice_number,
+            'series'      => (string) $row->series,
+            'fiscal_year' => $fy,
         ];
-    }
-
-    private static function invoicePrefixForShop(int $shopId): string
-    {
-        $prefix = DB::table('shop_billing_settings')
-            ->where('shop_id', $shopId)
-            ->value('invoice_prefix');
-
-        $prefix = trim((string) ($prefix ?? 'INV-'));
-        if ($prefix === '') {
-            $prefix = 'INV-';
-        }
-
-        $normalized = preg_replace('/[^A-Za-z0-9\\-\\/]/', '', $prefix) ?? 'INV-';
-        if ($normalized === '') {
-            $normalized = 'INV-';
-        }
-
-        return $normalized;
-    }
-
-    private static function invoiceSuffixForShop(int $shopId): string
-    {
-        $suffix = DB::table('shop_billing_settings')
-            ->where('shop_id', $shopId)
-            ->value('invoice_suffix');
-
-        $suffix = trim((string) ($suffix ?? ''));
-        if ($suffix === '') {
-            return '';
-        }
-
-        // Allow alphanumeric, hyphens, slashes, dots
-        return preg_replace('/[^A-Za-z0-9\\-\\/\\.]/', '', $suffix) ?? '';
-    }
-
-    /**
-     * If year_reset is enabled and the fiscal year has changed, reset the invoice counter.
-     * India fiscal year: April 1 – March 31.
-     */
-    private static function maybeResetForFiscalYear(int $shopId): void
-    {
-        $settings = DB::table('shop_billing_settings')
-            ->where('shop_id', $shopId)
-            ->first(['year_reset', 'current_fiscal_year', 'invoice_start_number']);
-
-        if (!$settings || !$settings->year_reset) {
-            return;
-        }
-
-        $now  = now();
-        $year = $now->month >= 4 ? $now->year : $now->year - 1;
-        $currentFY = $year . '-' . substr((string) ($year + 1), 2, 2); // e.g. "2025-26"
-
-        if ($settings->current_fiscal_year === $currentFY) {
-            return;
-        }
-
-        DB::transaction(function () use ($shopId, $currentFY, $settings): void {
-            $startNumber = max(1, (int) ($settings->invoice_start_number ?? 1001));
-
-            ShopCounter::query()
-                ->where('shop_id', $shopId)
-                ->where('counter_key', self::KEY_INVOICE)
-                ->update(['current_value' => $startNumber - 1]);
-
-            DB::table('shop_billing_settings')
-                ->where('shop_id', $shopId)
-                ->update(['current_fiscal_year' => $currentFY]);
-        });
     }
 
     public static function formatImportReference(int $sequence): string

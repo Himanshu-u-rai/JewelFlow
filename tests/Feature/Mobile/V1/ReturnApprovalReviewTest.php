@@ -181,4 +181,26 @@ class ReturnApprovalReviewTest extends TestCase
 
         $this->assertEqualsWithDelta(8000, (float) TenantContext::runFor($shop->id, fn () => CreditNote::where('shop_id', $shop->id)->sole()->total), 0.01);
     }
+
+    public function test_the_app_is_told_in_words_when_the_gst_credit_note_deadline_has_passed(): void
+    {
+        [$owner, $shop, $id, $line] = $this->pendingReturn();
+
+        // The bill is of FY 2026-27: its credit-note deadline is 30 November 2027. Approve a day late.
+        $this->travelTo(\Carbon\CarbonImmutable::parse('2027-12-01 10:00', 'Asia/Kolkata'));
+        Sanctum::actingAs($owner->fresh());
+
+        $approve = $this->act('approve', $id)->assertStatus(422);
+        $this->assertSame('approval_failed', $approve->json('errors.0.code'));
+        $this->assertStringContainsString('financial year 2026-27', $approve->json('errors.0.message'));
+        $this->assertStringContainsString('30 November 2027', $approve->json('errors.0.message'));
+        $this->assertSame(0, CreditNote::withoutGlobalScopes()->where('shop_id', $shop->id)->count());
+
+        // A new return on the same bill is refused up front with the same words.
+        $store = $this->withHeaders(['X-Idempotency-Key' => 'ret-late-' . uniqid()])->postJson('/api/mobile/v1/returns', [
+            'invoice_id' => $line->invoice_id, 'reason' => 'Late return', 'refund_settlement' => 'cash',
+            'lines' => [['invoice_item_id' => $line->id, 'condition' => 'good_condition']],
+        ])->assertStatus(422);
+        $this->assertStringContainsString('old-gold purchase', $store->json('errors.0.message'));
+    }
 }

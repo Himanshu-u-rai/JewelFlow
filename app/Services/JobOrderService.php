@@ -129,7 +129,15 @@ class JobOrderService
      */
     public function issue(array $data, int $shopId, int $userId): JobOrder
     {
-        return DB::transaction(function () use ($data, $shopId, $userId) {
+        // Period lock: the issue date (also the date of any advance paid with it) must be in an open period.
+        InvoiceAccountingService::assertShopLockForDate(
+            $shopId,
+            \Illuminate\Support\Carbon::parse($data['issue_date'] ?? now()->toDateString())->toDateString()
+        );
+        // Back-dating speed bump (shared by the web and mobile-v1 paths): a finished-year date needs a reason + permission.
+        $pendingBackdate = InvoiceAccountingService::assertBackdateAllowed($shopId, $data['issue_date'] ?? null, 'issue_date', 'job_order', null, $data['backdate_reason'] ?? null);
+
+        return DB::transaction(function () use ($data, $shopId, $userId, $pendingBackdate) {
             $purity    = (float) ($data['purity'] ?? 0);
             $metalType = $data['metal_type'] ?? 'gold';
             $karigarId = (int) $data['karigar_id'];
@@ -188,6 +196,7 @@ class JobOrderService
                 'notes'                       => $data['notes'] ?? null,
                 'created_by_user_id'          => $userId,
             ]);
+            InvoiceAccountingService::recordBackdate($pendingBackdate, (int) $jobOrder->id);
 
             foreach ($prepared as $p) {
                 $this->commitSourceLeg($p, $jobOrder, $shopId, $userId);
@@ -659,6 +668,13 @@ class JobOrderService
      */
     public function receive(JobOrder $jobOrder, array $receiptData, int $userId): JobOrderReceipt
     {
+        // Period lock: the receipt date must be in an open period.
+        InvoiceAccountingService::assertShopLockForDate(
+            (int) $jobOrder->shop_id,
+            \Illuminate\Support\Carbon::parse($receiptData['receipt_date'] ?? now()->toDateString())->toDateString()
+        );
+        InvoiceAccountingService::assertBackdateAllowed((int) $jobOrder->shop_id, $receiptData['receipt_date'] ?? null, 'receipt_date', 'job_order', (int) $jobOrder->id, $receiptData['backdate_reason'] ?? null);
+
         // FIX #8: lock the row inside the transaction to prevent TOCTOU race
         return DB::transaction(function () use ($jobOrder, $receiptData, $userId) {
             // Re-fetch with a row lock so concurrent requests can't both pass the status check

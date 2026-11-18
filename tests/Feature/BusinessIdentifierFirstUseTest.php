@@ -31,8 +31,11 @@ class BusinessIdentifierFirstUseTest extends TestCase
         DB::table('shop_billing_settings')->where('shop_id', $shop->id)
             ->update(['invoice_prefix' => 'GJ/', 'invoice_start_number' => 5001, 'invoice_suffix' => '/26']);
 
-        $this->assertSame(['sequence' => 5001, 'number' => 'GJ/5001/26'], BusinessIdentifierService::nextInvoiceIdentifier($shop->id));
-        $this->assertSame(['sequence' => 5002, 'number' => 'GJ/5002/26'], BusinessIdentifierService::nextInvoiceIdentifier($shop->id));
+        // The identity also names its series and financial year (2026-11-16 financial-year numbering).
+        $first = BusinessIdentifierService::nextInvoiceIdentifier($shop->id);
+        $second = BusinessIdentifierService::nextInvoiceIdentifier($shop->id);
+        $this->assertSame(['sequence' => 5001, 'number' => 'GJ/5001/26', 'series' => 'continuous'], array_intersect_key($first, array_flip(['sequence', 'number', 'series'])));
+        $this->assertSame(['sequence' => 5002, 'number' => 'GJ/5002/26'], array_intersect_key($second, array_flip(['sequence', 'number'])));
     }
 
     public function test_every_other_counter_starts_at_one_and_each_shop_counts_for_itself(): void

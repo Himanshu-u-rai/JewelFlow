@@ -27,10 +27,10 @@ class LedgerService
         [$start, $end] = $period->bounds();
         $events = collect();
 
-        // Sales (finalized invoices, by accounting date).
+        // Sales (bills issued in the period, by accounting date; a reversal bill is a negative entry of its own).
         $sales = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 DB::raw('COALESCE(invoices.finalized_at, invoices.created_at) as occurred_at'),

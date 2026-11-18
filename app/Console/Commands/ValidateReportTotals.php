@@ -93,7 +93,7 @@ class ValidateReportTotals extends Command
         // GST-1 — service total matches a direct sum over the same canonical scope.
         $directGst = (float) Invoice::withoutTenant()
             ->where('shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period) // sales figures count bills ISSUED in the period (see HasSalesScopes)
             ->sum('gst');
 
         $failures += $this->assert(
@@ -106,7 +106,7 @@ class ValidateReportTotals extends Command
         // GST-2 — split integrity on finalized invoices (only rows that carry a split).
         $invoiceSplitDrift = Invoice::withoutTenant()
             ->where('shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->whereNotNull('cgst_amount')
             ->whereRaw('ABS(COALESCE(cgst_amount,0) + COALESCE(sgst_amount,0) + COALESCE(igst_amount,0) - gst) > ?', [self::TOLERANCE])
             ->count();
@@ -198,12 +198,19 @@ class ValidateReportTotals extends Command
         $summary = $gst->summary($shopId, $period);
         $recon = $sales->paymentReconciliation($shopId, $period);
 
-        // PAY-5 — same set of finalized invoices as the GST report.
+        // Reversal bills (negative, no payments of their own) are in the GST report but not in the reconciliation.
+        $reversals = Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($period)
+            ->whereNotNull('reversal_of_invoice_id')
+            ->selectRaw('COALESCE(SUM(total), 0) AS total, COUNT(*) AS cnt')->first();
+        $gstBillsTotal = round($summary->totalSales - (float) $reversals->total, 2);
+        $gstBillsCount = $summary->invoiceCount - (int) $reversals->cnt;
+
+        // PAY-5 — same set of issued invoices as the GST report (less the reversal bills).
         $failures += $this->assert(
             $shopId,
             'PAY-5 payment-recon invoice total == GST total sales',
-            abs($recon->invoiceTotal - $summary->totalSales) <= self::TOLERANCE,
-            'recon=' . $recon->invoiceTotal . ' gst=' . $summary->totalSales
+            abs($recon->invoiceTotal - $gstBillsTotal) <= self::TOLERANCE,
+            'recon=' . $recon->invoiceTotal . ' gst(excl. reversal bills)=' . $gstBillsTotal
         );
 
         // PAY-6 — collected equals the sum of the mode breakdown.
@@ -219,8 +226,8 @@ class ValidateReportTotals extends Command
         $failures += $this->assert(
             $shopId,
             'PAY-7 payment-recon count == GST invoice count',
-            $recon->invoiceCount === $summary->invoiceCount,
-            'recon=' . $recon->invoiceCount . ' gst=' . $summary->invoiceCount
+            $recon->invoiceCount === $gstBillsCount,
+            'recon=' . $recon->invoiceCount . ' gst(excl. reversal bills)=' . $gstBillsCount
         );
 
         return $failures;
@@ -238,7 +245,7 @@ class ValidateReportTotals extends Command
 
         // PAY-1 — Σ invoice totals == raw salesIn Σ(invoices.total).
         $rawInvoiceTotal = round((float) Invoice::withoutTenant()
-            ->where('shop_id', $shopId)->salesIn($period)->sum('total'), 2);
+            ->where('shop_id', $shopId)->issuedSalesIn($period)->whereNull('reversal_of_invoice_id')->sum('total'), 2);
         $failures += $this->assert(
             $shopId,
             'PAY-1 Σ invoice totals == source invoices aggregate (raw salesIn)',
@@ -247,7 +254,7 @@ class ValidateReportTotals extends Command
         );
 
         // PAY-2 — Σ collected == raw Σ(invoice_payments.amount) over the same invoices.
-        $ids = Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($period)->pluck('id')->all();
+        $ids = Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($period)->whereNull('reversal_of_invoice_id')->pluck('id')->all();
         $rawCollected = empty($ids) ? 0.0 : round((float) DB::table('invoice_payments')
             ->where('shop_id', $shopId)->whereIn('invoice_id', $ids)->sum('amount'), 2);
         $failures += $this->assert(
@@ -613,7 +620,7 @@ class ValidateReportTotals extends Command
         [, $dayEnd] = $day->bounds();
 
         // CLOSE-1 — daily sales == Sales Register / GST scope (raw salesIn Σ total).
-        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('total'), 2);
+        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($day)->sum('total'), 2);
         $failures += $this->assert(
             $shopId,
             'CLOSE-1 closing sales == Sales Register total (raw salesIn)',
@@ -622,7 +629,7 @@ class ValidateReportTotals extends Command
         );
 
         // CLOSE-2 — GST totals == GST Report scope (raw salesIn Σ gst).
-        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('gst'), 2);
+        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($day)->sum('gst'), 2);
         $failures += $this->assert(
             $shopId,
             'CLOSE-2 closing GST == GST Report total (raw salesIn)',
@@ -668,7 +675,7 @@ class ValidateReportTotals extends Command
         $s = $gst->summary($shopId, $day);
 
         // DAILY-1 — daily sales == Sales Register total for the day (raw salesIn Σ total).
-        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('total'), 2);
+        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($day)->sum('total'), 2);
         $failures += $this->assert(
             $shopId,
             'DAILY-1 daily sales == Sales Register total (raw salesIn)',
@@ -677,7 +684,7 @@ class ValidateReportTotals extends Command
         );
 
         // DAILY-2 — daily invoice count == finalized invoice count for the day (raw salesIn).
-        $rawCount = (int) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->count();
+        $rawCount = (int) Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($day)->count();
         $failures += $this->assert(
             $shopId,
             'DAILY-2 daily bills == finalized invoice count (raw salesIn)',
@@ -686,7 +693,7 @@ class ValidateReportTotals extends Command
         );
 
         // DAILY-3 — daily GST == GST Report total for the day (raw salesIn Σ gst).
-        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('gst'), 2);
+        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($day)->sum('gst'), 2);
         $failures += $this->assert(
             $shopId,
             'DAILY-3 daily GST == GST Report total (raw salesIn)',
@@ -719,7 +726,7 @@ class ValidateReportTotals extends Command
         [$start, $end] = $period->bounds();
 
         // PNL-1 — revenue == Sales Register scope (Σ salesIn subtotal) − discount − returns.
-        $inv = Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($period)
+        $inv = Invoice::withoutTenant()->where('shop_id', $shopId)->issuedSalesIn($period)
             ->selectRaw('COALESCE(SUM(subtotal),0) AS gross, COALESCE(SUM(discount),0) AS disc')->first();
         $rawReturns = (float) CreditNote::withoutTenant()->where('shop_id', $shopId)
             ->whereBetween('issued_at', [$start, $end])->sum('subtotal');
@@ -731,14 +738,23 @@ class ValidateReportTotals extends Command
             "service={$p->revenue} raw={$rawRevenue}"
         );
 
-        // PNL-2 — COGS == Σ items.cost_price of sold lines (finalized, in period).
-        $rawCogs = round((float) DB::table('invoice_items')
+        // PNL-2 — COGS == Σ items.cost_price of lines of bills issued in the period, less those of bills
+        // cancelled (reversed / fully returned) in the period.
+        $costOf = fn () => DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
-            ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', Invoice::STATUS_FINALIZED)
-            ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
-            ->sum(DB::raw('COALESCE(items.cost_price, 0)')), 2);
+            ->where('invoices.shop_id', $shopId);
+        $rawCogs = round(
+            (float) $costOf()
+                ->whereRaw(Invoice::issuedSaleSql('invoices'))
+                ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
+                ->sum(DB::raw('COALESCE(items.cost_price, 0)'))
+            - (float) $costOf()
+                ->where('invoices.status', Invoice::STATUS_CANCELLED)
+                ->whereBetween('invoices.cancelled_at', [$start, $end])
+                ->sum(DB::raw('COALESCE(items.cost_price, 0)')),
+            2
+        );
         $failures += $this->assert(
             $shopId,
             'PNL-2 COGS == sold items.cost_price (raw)',
@@ -760,7 +776,7 @@ class ValidateReportTotals extends Command
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', Invoice::STATUS_FINALIZED)
+            ->whereRaw(Invoice::issuedSaleSql('invoices'))
             ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
             ->whereNull('items.cost_price')
             ->count();

@@ -60,17 +60,25 @@ class InvoiceController extends Controller
         $invoices = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
 
         // Stats — single aggregate query using PostgreSQL FILTER syntax.
-        // Monetary totals (today/month) only count finalized invoices.
+        // Monetary totals (today/month) count the bills ISSUED (finalized, or cancelled after issue — a reversal bill
+        // is negative and lands on the day it was made) less the credit notes issued in that day / month.
         $today = today()->toDateString();
+        $issued = Invoice::issuedSaleSql('invoices');
         $stats = Invoice::where('shop_id', $shopId)
             ->selectRaw(
                 "COUNT(*) as total_count,
                  COUNT(*) FILTER (WHERE DATE(created_at) = ?) as today_count,
-                 COALESCE(SUM(total) FILTER (WHERE DATE(created_at) = ? AND status = ?), 0) as today_total,
-                 COALESCE(SUM(total) FILTER (WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE) AND status = ?), 0) as month_total",
-                [$today, $today, Invoice::STATUS_FINALIZED, Invoice::STATUS_FINALIZED]
+                 COALESCE(SUM(total) FILTER (WHERE DATE(created_at) = ? AND {$issued}), 0) as today_total,
+                 COALESCE(SUM(total) FILTER (WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE) AND {$issued}), 0) as month_total",
+                [$today, $today]
             )
             ->first();
+        $returned = \Illuminate\Support\Facades\DB::table('credit_notes')->where('shop_id', $shopId)
+            ->selectRaw("COALESCE(SUM(total) FILTER (WHERE DATE(issued_at) = ?), 0) as today_total,
+                         COALESCE(SUM(total) FILTER (WHERE DATE_TRUNC('month', issued_at) = DATE_TRUNC('month', CURRENT_DATE)), 0) as month_total", [$today])
+            ->first();
+        $stats->today_total = round((float) $stats->today_total - (float) $returned->today_total, 2);
+        $stats->month_total = round((float) $stats->month_total - (float) $returned->month_total, 2);
 
         return view('invoices.index', compact('invoices', 'stats'));
     }

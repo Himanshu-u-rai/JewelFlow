@@ -80,6 +80,7 @@
                         <span class="ki-label">Invoice Date *</span>
                         <input type="date" name="karigar_invoice_date" required value="{{ ($invoice->karigar_invoice_date ?? now())->toDateString() }}" class="ki-control">
                     </label>
+                    @include('partials.backdate-reason', ['selector' => '[name="karigar_invoice_date"]'])
                     <label class="ki-field-state">
                         <span class="ki-label">State Code</span>
                         <input type="text" name="state_code" maxlength="5" value="{{ $invoice->state_code ?? '24' }}" class="ki-control">

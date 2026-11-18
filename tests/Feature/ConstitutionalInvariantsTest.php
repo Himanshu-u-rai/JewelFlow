@@ -100,6 +100,15 @@ class ConstitutionalInvariantsTest extends TestCase
             'platform_audit_logs_append_only_trigger',
             'store_credit_append_only_guard_trigger',
             'invoices_numbering_guard_trigger',
+            // #30–#34 (2026_11_16_300000): frozen acquisition cost + the append-only item movement ledger.
+            'items_acquisition_cost_guard_trigger',
+            'items_intake_movement_trigger',
+            'items_status_movement_trigger',
+            'items_delete_movement_trigger',
+            'item_movements_append_only_trigger',
+            // #35–#36 (2026_11_16_500000): append-only year-end snapshots.
+            'fiscal_year_snapshots_append_only_trigger',
+            'fiscal_year_snapshot_items_append_only_trigger',
         ];
 
         $rows = DB::select(

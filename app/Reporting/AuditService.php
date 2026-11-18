@@ -22,7 +22,7 @@ class AuditService
         // Sales side — finalized invoices in the accounting period, by operator.
         $sales = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->groupBy('invoices.user_id')
             ->selectRaw('invoices.user_id as uid, COUNT(*) as cnt, COALESCE(SUM(total), 0) as sales, COALESCE(SUM(discount), 0) as disc')
             ->get()

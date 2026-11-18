@@ -977,7 +977,9 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         $this->actingAs($owner)
             ->patch(route('settings.update.billing'), [
                 'invoice_prefix'         => 'INV',
-                'invoice_start_number'   => 1,
+                // Unchanged, as the real form sends it: after billing a starting-number change has its own
+                // rules (forward only, confirmed — InvoiceStartNumberTest). This test is about the signature.
+                'invoice_start_number'   => (int) \Illuminate\Support\Facades\DB::table('shop_billing_settings')->where('shop_id', $shop->id)->value('invoice_start_number'),
                 'show_digital_signature' => '1',
                 'digital_signature'      => \Illuminate\Http\UploadedFile::fake()
                     ->createWithContent('sig-b.png', $this->pngBytes("\x0B")),

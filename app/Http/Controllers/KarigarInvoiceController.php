@@ -119,6 +119,10 @@ class KarigarInvoiceController extends Controller
         $karigar = Karigar::query()->where('id', $validated['karigar_id'])->first();
         abort_unless($karigar && $karigar->shop_id === auth()->user()->shop_id, 422);
 
+        // Period lock: field error on the date (the service enforces it too).
+        \App\Services\InvoiceAccountingService::assertDateOpenForField((int) auth()->user()->shop_id, $validated['karigar_invoice_date'], 'karigar_invoice_date');
+        $pendingBackdate = \App\Services\InvoiceAccountingService::assertBackdateAllowed((int) auth()->user()->shop_id, $validated['karigar_invoice_date'], 'karigar_invoice_date', 'karigar_invoice');
+
         $invoice = $this->service->create(
             $validated,
             $validated['lines'],
@@ -126,6 +130,7 @@ class KarigarInvoiceController extends Controller
             auth()->user()->shop_id,
             (int) auth()->id()
         );
+        \App\Services\InvoiceAccountingService::recordBackdate($pendingBackdate, (int) $invoice->id);
 
         $message = "Karigar invoice #{$invoice->karigar_invoice_number} saved.";
         if (! empty($invoice->discrepancy_flags)) {
@@ -205,6 +210,18 @@ class KarigarInvoiceController extends Controller
             'lines.*.note' => 'nullable|string|max:255',
         ]);
 
+        // Period lock: the date it moves to and the date it already carries must both be open.
+        $shopId = (int) auth()->user()->shop_id;
+        \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $validated['karigar_invoice_date'], 'karigar_invoice_date');
+        \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $karigarInvoice->karigar_invoice_date?->toDateString(), 'karigar_invoice_date');
+        // Back-dating speed bump: the date it moves to, and (if different) the one it already carries.
+        $newDate = \Illuminate\Support\Carbon::parse($validated['karigar_invoice_date'])->toDateString();
+        $oldDate = $karigarInvoice->karigar_invoice_date?->toDateString();
+        \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $newDate, 'karigar_invoice_date', 'karigar_invoice', (int) $karigarInvoice->id);
+        if ($oldDate !== $newDate) {
+            \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $oldDate, 'karigar_invoice_date', 'karigar_invoice', (int) $karigarInvoice->id);
+        }
+
         try {
             $this->service->update($karigarInvoice, $validated, $validated['lines'], $request->file('invoice_file'));
         } catch (\LogicException $e) {
@@ -254,6 +271,12 @@ class KarigarInvoiceController extends Controller
             'payments.*.reference'          => ['nullable', 'string', 'max:255', 'not_regex:/^\s*(ADVANCE-USED|FROM-ADVANCE|ADVANCE-RESTORED|REVERSAL)\s*:/i'],
             'payments.*.paid_on'            => 'required|date',
         ]);
+
+        // Period lock: no split may be dated inside a locked period.
+        foreach ($validated['payments'] as $i => $split) {
+            \App\Services\InvoiceAccountingService::assertDateOpenForField((int) auth()->user()->shop_id, $split['paid_on'], "payments.{$i}.paid_on");
+            \App\Services\InvoiceAccountingService::assertBackdateAllowed((int) auth()->user()->shop_id, $split['paid_on'], "payments.{$i}.paid_on", 'karigar_invoice', (int) $karigarInvoice->id);
+        }
 
         // All splits together or none, never more than is due (audit N15).
         try {

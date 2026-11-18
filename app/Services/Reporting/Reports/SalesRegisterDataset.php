@@ -128,9 +128,13 @@ class SalesRegisterDataset extends ReportDatasetService
     private function query(ReportRequest $request)
     {
         $period = $this->period($request);
-        $status = (string) ($request->filter('status') ?: Invoice::STATUS_FINALIZED);
+        $status = (string) $request->filter('status');
 
-        $q = Invoice::query()->accountingBetween($period)->where('status', $status);
+        // No status chosen = every bill ISSUED in the period (finalized, plus bills cancelled after they were issued —
+        // those stay in their own period; the reversal bill is a negative row of its own), so the total reconciles
+        // to the GST report. A chosen status shows exactly that status.
+        $q = Invoice::query()->accountingBetween($period);
+        $status === '' ? $q->issuedSale() : $q->where('status', $status);
 
         if ($operator = $request->filter('operator')) {
             $q->where('user_id', $operator);

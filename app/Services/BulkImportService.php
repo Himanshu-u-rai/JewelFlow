@@ -737,6 +737,8 @@ class BulkImportService
             'making_charges' => $makingCharge,
             'stone_charges' => $stoneCharge,
             'cost_price' => $pricingPayload['cost_price'],
+            'acquisition_cost' => $pricingPayload['cost_price'],
+            'acquisition_cost_source' => 'import',
             // Use the CSV-provided selling price if given; otherwise fall back to
             // the rate-derived retail price (same as the Add Item form). Previously
             // a blank selling_price was stored as null/₹0, so auto-priced imports

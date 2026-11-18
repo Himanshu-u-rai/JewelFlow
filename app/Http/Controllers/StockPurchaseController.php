@@ -107,7 +107,11 @@ class StockPurchaseController extends Controller
 
         $validated = $this->validatePurchaseRequest($request, $shopId);
 
-        $purchase = DB::transaction(function () use ($validated, $shopId, $request) {
+        // Period lock: the purchase date the user typed must be in an open period.
+        \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $validated['purchase_date'], 'purchase_date');
+        $pendingBackdate = \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $validated['purchase_date'], 'purchase_date', 'stock_purchase');
+
+        $purchase = DB::transaction(function () use ($validated, $shopId, $request, $pendingBackdate) {
             $identifier = BusinessIdentifierService::nextPurchaseIdentifier($shopId);
 
             // Create a new vendor from supplier details if requested
@@ -162,6 +166,7 @@ class StockPurchaseController extends Controller
 
             $this->syncLines($purchase, $validated['lines'] ?? []);
             $this->recalculateTotals($purchase);
+            \App\Services\InvoiceAccountingService::recordBackdate($pendingBackdate, (int) $purchase->id);
 
             return $purchase;
         });
@@ -337,6 +342,17 @@ class StockPurchaseController extends Controller
 
         $shopId    = auth()->user()->shop_id;
         $validated = $this->validatePurchaseRequest($request, $shopId, $purchase);
+
+        // Period lock: both the date it is moving to and the date it already carries must be open.
+        \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $validated['purchase_date'], 'purchase_date');
+        \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $purchase->purchase_date?->toDateString(), 'purchase_date');
+        // Back-dating speed bump: the date it moves to, and (if different) the one it already carries.
+        $newDate = \Illuminate\Support\Carbon::parse($validated['purchase_date'])->toDateString();
+        $oldDate = $purchase->purchase_date?->toDateString();
+        \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $newDate, 'purchase_date', 'stock_purchase', (int) $purchase->id);
+        if ($oldDate !== $newDate) {
+            \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $oldDate, 'purchase_date', 'stock_purchase', (int) $purchase->id);
+        }
 
         DB::transaction(function () use ($purchase, $validated, $request): void {
             if ($request->boolean('save_as_vendor') && ! empty($validated['supplier_name'])) {

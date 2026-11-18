@@ -92,6 +92,12 @@ class ReportingServiceProvider extends ServiceProvider
         if (! $registry->has(Gstr3bDataset::KEY)) {
             $registry->register(Gstr3bDataset::KEY, Gstr3bDataset::class);
         }
+        // Financial-year GST pack: GSTR-1 table 13 (documents issued) + HSN summary for a year or month.
+        foreach ([\App\Services\Reporting\Reports\DocumentsIssuedDataset::class, \App\Services\Reporting\Reports\HsnAnnualDataset::class] as $gstYearDataset) {
+            if (! $registry->has($gstYearDataset::KEY)) {
+                $registry->register($gstYearDataset::KEY, $gstYearDataset);
+            }
+        }
         if (! $registry->has(CreditNoteRegisterDataset::KEY)) {
             $registry->register(CreditNoteRegisterDataset::KEY, CreditNoteRegisterDataset::class);
         }
@@ -137,6 +143,17 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 4 — Owner: Profit & Loss (revenue − COGS = gross margin).
         if (! $registry->has(ProfitLossDataset::KEY)) {
             $registry->register(ProfitLossDataset::KEY, ProfitLossDataset::class);
+        }
+
+        // Financial-year stock pack: closing stock, stock register by weight (Form 3CD clause 35), trading account.
+        foreach ([
+            \App\Services\Reporting\Reports\ClosingStockDataset::class,
+            \App\Services\Reporting\Reports\StockRegisterWeightDataset::class,
+            \App\Services\Reporting\Reports\TradingAccountDataset::class,
+        ] as $stockYearDataset) {
+            if (! $registry->has($stockYearDataset::KEY)) {
+                $registry->register($stockYearDataset::KEY, $stockYearDataset);
+            }
         }
 
         // Phase 4 — Owner: Gold Balances (vault fine-weight holdings by metal/purity).

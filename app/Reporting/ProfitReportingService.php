@@ -37,7 +37,7 @@ class ProfitReportingService
         // Invoice-level revenue components (finalized sales in period).
         $inv = Invoice::withoutTenant()
             ->where('shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->selectRaw('
                 COALESCE(SUM(subtotal), 0)  as gross_taxable,
                 COALESCE(SUM(discount), 0)  as discount,
@@ -63,7 +63,7 @@ class ProfitReportingService
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', Invoice::STATUS_FINALIZED)
+            ->whereRaw(Invoice::issuedSaleSql('invoices'))
             ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
             ->selectRaw('
                 COALESCE(SUM(items.cost_price), 0)             as cogs,
@@ -74,7 +74,19 @@ class ProfitReportingService
             ')
             ->first();
 
-        $cogs            = round((float) ($lines->cogs ?? 0), 2);
+        // Goods that came back because the WHOLE bill was cancelled (reversal) or fully returned in this period:
+        // their cost leaves COGS in the period of the cancellation, as their revenue does. (A piece-wise partial
+        // return is still not added back — the conservative direction, see the class note.)
+        $cancelledCogs = round((float) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
+            ->where('invoices.shop_id', $shopId)
+            ->where('invoices.status', Invoice::STATUS_CANCELLED)
+            ->whereNotNull('invoices.cancelled_at')
+            ->whereBetween('invoices.cancelled_at', [$start, $end])
+            ->sum(DB::raw('COALESCE(items.cost_price, 0)')), 2);
+
+        $cogs            = round((float) ($lines->cogs ?? 0) - $cancelledCogs, 2);
         $making          = round((float) ($lines->making ?? 0), 2);
         $stones          = round((float) ($lines->stones ?? 0), 2);
         $soldLineCount   = (int) ($lines->line_count ?? 0);

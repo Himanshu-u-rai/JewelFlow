@@ -179,6 +179,7 @@
                             <div class="purchase-field purchase-field--date">
                                 <label class="purchase-field-label" for="purchase-purchase-date">Purchase Date <span class="text-red-500">*</span></label>
                                 <input id="purchase-purchase-date" type="date" name="purchase_date" @change="scheduleSave()" value="{{ old('purchase_date', $isEdit ? $purchase->purchase_date->format('Y-m-d') : date('Y-m-d')) }}" class="purchase-input">
+                                @include('partials.backdate-reason', ['selector' => '[name="purchase_date"]'])
                             </div>
 
                             <div class="purchase-field purchase-field--date">

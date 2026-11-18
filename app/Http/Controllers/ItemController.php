@@ -353,6 +353,9 @@ class ItemController extends Controller
                     'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
                     'other_charges' => $validated['other_charges'] ?? 0,
                     'cost_price' => $pricing['cost_price'],
+                    // Cost at the moment of registration; daily repricing rewrites cost_price, never this.
+                    'acquisition_cost' => $pricing['cost_price'],
+                    'acquisition_cost_source' => 'entered',
                     'selling_price' => $pricing['selling_price'],
                     'vendor_id' => $validated['vendor_id'] ?? null,
                     'karigar_id' => $validated['karigar_id'] ?? null,

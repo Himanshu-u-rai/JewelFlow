@@ -30,10 +30,11 @@ class GstReportingService
     {
         [$start, $end] = $period->bounds();
 
-        // ---- Output tax: finalized sales, grouped by GST rate ----
+        // ---- Output tax: bills ISSUED in the period (a bill cancelled later still belongs to its own period;
+        // the cancellation is a negative reversal bill / a credit note in ITS period), grouped by GST rate ----
         $breakdown = Invoice::withoutTenant()
             ->where('shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->select(
                 'gst_rate',
                 DB::raw('SUM(subtotal) as taxable'),

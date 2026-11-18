@@ -49,6 +49,13 @@ class ReturnsController extends Controller
         }
         $this->authorize('update', $invoice);
 
+        // GST credit-note deadline: say so before the form is filled in, not after.
+        try {
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
+        } catch (\LogicException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('warning', $e->getMessage());
+        }
+
         $preferences = auth()->user()->shop?->preferences;
         if ($preferences && !$preferences->hasConfiguredReturnPolicy()) {
             return redirect()->route('settings.edit', ['tab' => 'return-policy'])
@@ -105,6 +112,13 @@ class ReturnsController extends Controller
             abort(404);
         }
         $this->authorize('update', $invoice);
+
+        // GST credit-note deadline: say so before the form is filled in, not after.
+        try {
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
+        } catch (\LogicException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('warning', $e->getMessage());
+        }
 
         $preferences = auth()->user()->shop?->preferences;
         if ($preferences && !$preferences->hasConfiguredReturnPolicy()) {

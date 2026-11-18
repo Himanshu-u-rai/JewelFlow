@@ -38,7 +38,7 @@ class TaxService
         // B2B — invoices carrying a buyer GSTIN.
         $b2b = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->whereNotNull('invoices.buyer_gstin')
             ->whereRaw("TRIM(invoices.buyer_gstin) <> ''")
             ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
@@ -62,7 +62,7 @@ class TaxService
         // B2CS — everything else, aggregated rate × place-of-supply.
         $b2cs = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
-            ->salesIn($period)
+            ->issuedSalesIn($period)
             ->where(function ($q) {
                 $q->whereNull('invoices.buyer_gstin')->orWhereRaw("TRIM(invoices.buyer_gstin) = ''");
             })
@@ -80,22 +80,18 @@ class TaxService
             ->orderBy('invoices.gst_rate')
             ->get();
 
-        // HSN summary — line-level taxable + GST grouped by HSN.
-        [$start, $end] = $period->bounds();
-        $hsn = DB::table('invoice_items')
-            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', Invoice::STATUS_FINALIZED)
-            ->whereRaw("COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?", [$start, $end])
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(invoice_items.hsn_code), ''), '—') as hsn_code"),
-                DB::raw('SUM(invoice_items.line_total) as taxable'),
-                DB::raw('SUM(COALESCE(invoice_items.gst_amount, 0)) as gst'),
-                DB::raw('COUNT(*) as lines')
-            )
-            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(invoice_items.hsn_code), ''), '—')"))
-            ->orderByDesc('taxable')
-            ->get();
+        // HSN summary — one implementation (HsnSummaryService): lines of bills issued in the period, less the lines
+        // of bills reversed and of credit notes issued in the period (owner, 2026-11-16: net, so the twelve monthly
+        // summaries add up to the year's). Credit notes are still also listed in their own table.
+        $hsn = collect(app(HsnSummaryService::class)->summaryWithLines($shopId, $period))
+            ->map(fn (array $r) => (object) [
+                'hsn_code' => $r['hsn_code'],
+                'taxable' => $r['taxable'],
+                'gst' => round($r['igst'] + $r['cgst'] + $r['sgst'], 2),
+                'lines' => $r['lines'],
+            ])
+            ->sortByDesc('taxable')
+            ->values();
 
         return new GstR1Data(
             b2b: $b2b,

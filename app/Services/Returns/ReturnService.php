@@ -96,6 +96,7 @@ class ReturnService
 
         SubscriptionGateService::assertShopWritable((int) $invoice->shop_id);
         InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, now()->toDateString());
+        \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
 
         // Service-level settlement mode enforcement — the controller also checks
         // this, but the service is the authoritative gate.
@@ -338,6 +339,7 @@ class ReturnService
 
         SubscriptionGateService::assertShopWritable((int) $invoice->shop_id);
         InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, now()->toDateString());
+        \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
 
         return DB::transaction(function () use ($invoice, $reason, $userId, $skipPolicy, $refundSettlement) {
             // 1. Header in draft → we'll flip to settled at the end.
@@ -488,6 +490,7 @@ class ReturnService
         }
         SubscriptionGateService::assertShopWritable((int) $invoice->shop_id);
         InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, now()->toDateString());
+        \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
 
         return DB::transaction(function () use ($invoice, $selections, $reason, $userId, $refundSettlement, $lineOverrides) {
             // Audit M2: one request per item at a time. The invoice row lock serialises two requests for its items.
@@ -737,6 +740,8 @@ class ReturnService
         return DB::transaction(function () use ($returnOrder, $approverId, $approverLineOverrides) {
             $locked     = $this->lockPendingApproval((int) $returnOrder->id, 'approved');
             $invoice    = Invoice::findOrFail($locked->invoice_id);
+            // The credit note is issued now, so the deadline is judged now, not when the request was made.
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
             $data       = $locked->pending_data ?? [];
             $selections = $data['selections'] ?? [];
             $reason     = $data['reason'] ?? $locked->reason ?? '';
@@ -805,6 +810,8 @@ class ReturnService
      */
     private function issueCreditNoteFromInvoiceHeader(ReturnOrder $returnOrder, Invoice $invoice, int $userId)
     {
+        \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year); // backstop
+
         $identity = \App\Services\BusinessIdentifierService::nextCreditNoteIdentifier((int) $invoice->shop_id);
 
         $cn = new \App\Models\CreditNote();

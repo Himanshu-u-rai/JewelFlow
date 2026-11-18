@@ -27,6 +27,40 @@ trait HasSalesScopes
     }
 
     /**
+     * Every bill that was ever ISSUED as a sale: finalized, plus bills cancelled after they were issued (a
+     * reversal or a full return sets cancelled_at). A discarded DRAFT is also 'cancelled' but never has
+     * cancelled_at, so it never counts.
+     *
+     * Use this for SALES FIGURES (revenue, GST, registers): a bill is a sale in the period it was issued, and
+     * its later cancellation / return is a separate negative entry in its own period (a reversal bill that is
+     * already negative, or a credit note). Do NOT use it for what is still owed — a cancelled bill owes
+     * nothing, so receivables keep using finalizedSale().
+     */
+    public function scopeIssuedSale(Builder $query): Builder
+    {
+        $status = $query->qualifyColumn('status');
+        $cancelledAt = $query->qualifyColumn('cancelled_at');
+
+        return $query->where(function (Builder $q) use ($status, $cancelledAt) {
+            $q->where($status, self::STATUS_FINALIZED)
+                ->orWhere(fn (Builder $c) => $c->where($status, self::STATUS_CANCELLED)->whereNotNull($cancelledAt));
+        });
+    }
+
+    /** The same "issued bill" rule as raw SQL, for query-builder joins that cannot use the scope. */
+    public static function issuedSaleSql(string $table = 'invoices'): string
+    {
+        return "({$table}.status = '" . self::STATUS_FINALIZED . "' OR ({$table}.status = '" . self::STATUS_CANCELLED
+            . "' AND {$table}.cancelled_at IS NOT NULL))";
+    }
+
+    /** Issued bills dated (accounting date) inside the period. */
+    public function scopeIssuedSalesIn(Builder $query, ReportPeriod $period): Builder
+    {
+        return $query->issuedSale()->accountingBetween($period);
+    }
+
+    /**
      * Filter by accounting date (finalized_at, falling back to created_at for
      * legacy rows that predate finalized_at). NEVER raw created_at alone.
      */

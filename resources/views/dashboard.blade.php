@@ -3903,6 +3903,20 @@
             </div>
         @endif
 
+        {{-- Owner-only lock reminder (DashboardController / LockReminderService). Only links to the lock screen. --}}
+        @if (! empty($lockReminder))
+            <div data-lock-reminder="{{ $lockReminder['kind'] }}" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
+                <div style="font-weight:700;color:#92400e;">{{ $lockReminder['title'] }}</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <a href="{{ route('settings.edit', ['tab' => 'billing']) }}#lock-books" data-turbo-frame="_top" style="padding:8px 16px;background:#b45309;color:#fff;border-radius:8px;text-decoration:none;white-space:nowrap;">Review and lock</a>
+                    <form method="POST" action="{{ route('dashboard.lock-reminder.dismiss') }}" data-turbo-frame="_top" style="margin:0;">
+                        @csrf
+                        <button type="submit" style="padding:8px 14px;background:transparent;color:#92400e;border:1px solid #fcd34d;border-radius:8px;cursor:pointer;">Not now</button>
+                    </form>
+                </div>
+            </div>
+        @endif
+
         @if($showDhiranPromo)
             <x-cross-promo-card
                 key="dhiran"

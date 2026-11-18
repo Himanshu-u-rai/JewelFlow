@@ -236,6 +236,7 @@
         <label class="kf-field">
             <span class="kf-label">Opening Balance Date</span>
             <input type="date" data-date-editable name="opening_balance_at" value="{{ old('opening_balance_at', $k?->opening_balance_at?->toDateString()) }}" class="kf-input">
+            @include('partials.backdate-reason', ['selector' => '[name="opening_balance_at"]'])
         </label>
     </div>
 

@@ -80,10 +80,12 @@ class KarigarController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateKarigar($request);
+        $pendingBackdate = $this->assertOpeningBalanceOutsideLock($validated, null);
 
         $karigar = Karigar::create(array_merge($validated, [
             'shop_id' => auth()->user()->shop_id,
         ]));
+        \App\Services\InvoiceAccountingService::recordBackdate($pendingBackdate, (int) $karigar->id);
 
         return redirect()->route('karigars.index')
             ->with('success', "Karigar \"{$karigar->name}\" added.");
@@ -123,6 +125,7 @@ class KarigarController extends Controller
         $this->authorizeShop($karigar);
 
         $validated = $this->validateKarigar($request, $karigar);
+        $this->assertOpeningBalanceOutsideLock($validated, $karigar);
 
         $karigar->update($validated);
 
@@ -224,6 +227,52 @@ class KarigarController extends Controller
 
             throw $exception;
         }
+    }
+
+    /**
+     * Period lock: an opening balance is a money entry dated by the user. Posting or changing one (its amount or
+     * its date) on or before the lock date is refused; a save that leaves the balance and its date as they are
+     * (a rename, a new phone number) is not a financial write.
+     */
+    private function assertOpeningBalanceOutsideLock(array $validated, ?Karigar $karigar): ?array
+    {
+        $newAmount = round((float) ($validated['opening_balance'] ?? 0), 2);
+        $newDate = $validated['opening_balance_at'] ?? null;
+        $oldAmount = $karigar ? round((float) $karigar->opening_balance, 2) : 0.0;
+        $oldDate = $karigar?->opening_balance_at?->toDateString();
+
+        $changed = $newAmount !== $oldAmount
+            || ($newDate !== null && \Illuminate\Support\Carbon::parse($newDate)->toDateString() !== $oldDate);
+        if (! $changed) {
+            return null;
+        }
+
+        $shopId = (int) auth()->user()->shop_id;
+        $pending = null;
+        try {
+            if ($newAmount != 0.0) {
+                \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $newDate, 'opening_balance_at');
+            }
+            if ($oldAmount != 0.0) {
+                \App\Services\InvoiceAccountingService::assertDateOpenForField($shopId, $oldDate, 'opening_balance_at');
+            }
+            // Back-dating speed bump: posting or changing money in a finished financial year needs a reason.
+            if ($newAmount != 0.0) {
+                $pending = \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $newDate, 'opening_balance_at', 'karigar', $karigar?->id);
+            }
+            if ($oldAmount != 0.0 && $oldDate !== ($newDate ? \Illuminate\Support\Carbon::parse($newDate)->toDateString() : null)) {
+                \App\Services\InvoiceAccountingService::assertBackdateAllowed($shopId, $oldDate, 'opening_balance_at', 'karigar', $karigar?->id);
+            }
+        } catch (ValidationException $exception) {
+            // Same landing as validateKarigar(): back to the open editor when it was submitted from one.
+            if (request()->boolean('_karigar_editor')) {
+                $exception->redirectTo(route('karigars.index', ['editor' => $karigar?->id ?? 'create']));
+            }
+
+            throw $exception;
+        }
+
+        return $pending;
     }
 
     private function authorizeShop(Karigar $karigar): void

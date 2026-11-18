@@ -36,10 +36,23 @@ class DashboardController extends Controller
             $hasSales = Invoice::where('status', Invoice::STATUS_FINALIZED)->exists();
             $data['showOnboardingPrompt'] = ! $hasBatch && ! $startedClean && ! $hasSales;
         }
+        // Owner-only nudge to lock the books (links to the lock screen; never locks anything itself).
+        $data['lockReminder'] = auth()->user()->isShopOwner()
+            ? \App\Services\LockReminderService::forShop((int) $shopId)
+            : null;
         $data['topCustomers'] = $data['topCustomers'] ?? collect();
         $data['monthlyRevenueTrend'] = $data['monthlyRevenueTrend'] ?? collect();
         $data['reorderAlertCount'] = (int) ($data['reorderAlertCount'] ?? 0);
 
         return view('dashboard', $data);
+    }
+
+    /** "Not now" on the lock reminder: hidden for the rest of this month, per shop. Owner only. */
+    public function dismissLockReminder()
+    {
+        abort_unless(auth()->user()->isShopOwner(), 403, \App\Support\NotAvailable::MESSAGE);
+        \App\Services\LockReminderService::dismiss((int) auth()->user()->shop_id);
+
+        return redirect()->route('dashboard');
     }
 }

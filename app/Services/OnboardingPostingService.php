@@ -307,6 +307,9 @@ class OnboardingPostingService
             'making_charges'          => round((float) ($p['making_charges'] ?? 0), 2),
             'stone_charges'           => round((float) ($p['stone_charges'] ?? 0), 2),
             'cost_price'              => round((float) ($p['cost_price'] ?? 0), 2),
+            // Owner-entered opening cost; absent/zero stays NULL (never invented).
+            'acquisition_cost'        => ((float) ($p['cost_price'] ?? 0)) > 0 ? round((float) $p['cost_price'], 2) : null,
+            'acquisition_cost_source' => ((float) ($p['cost_price'] ?? 0)) > 0 ? 'opening' : 'unknown',
             'selling_price'           => round((float) ($p['selling_price'] ?? 0), 2) ?: null,
             'huid'                    => $p['huid'] ?? null,
             'hallmark_date'           => $p['hallmark_date'] ?? null,

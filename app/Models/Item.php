@@ -10,6 +10,12 @@ class Item extends Model
 {
     use BelongsToShop;
 
+    /**
+     * How acquisition_cost was learned. Set once at intake and immutable (DB trigger items_acquisition_cost_guard_trigger).
+     * cost_price is the CURRENT replacement cost and is repriced daily; acquisition_cost is what the piece really cost.
+     */
+    public const ACQUISITION_SOURCES = ['purchase', 'entered', 'opening', 'import', 'unknown'];
+
     protected static function booted(): void
     {
         static::creating(function (Item $item) {
@@ -42,6 +48,8 @@ class Item extends Model
         'rhodium_charges',
         'other_charges',
         'cost_price',
+        'acquisition_cost',
+        'acquisition_cost_source',
         'overhead_cost',
         'selling_price',
         'source',
@@ -70,6 +78,7 @@ class Item extends Model
         'rhodium_charges' => 'decimal:2',
         'other_charges' => 'decimal:2',
         'cost_price' => 'decimal:2',
+        'acquisition_cost' => 'decimal:2',
         'overhead_cost' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'hallmark_date' => 'date',

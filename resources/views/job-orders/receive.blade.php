@@ -24,6 +24,7 @@
                 <div>
                     <label class="job-record-label" for="job-receipt-date">Receipt Date *</label>
                     <input id="job-receipt-date" type="date" name="receipt_date" required value="{{ now()->toDateString() }}" class="job-record-control">
+                    @include('partials.backdate-reason', ['selector' => '[name="receipt_date"]'])
                 </div>
                 <div>
                     <label class="job-record-label" for="job-receipt-notes">Notes</label>

@@ -38,8 +38,9 @@ class ShopBillingSettings extends Model
         'copy_count',
         // Invoice number
         'invoice_suffix',
-        'year_reset',
-        'current_fiscal_year',
+        // Yearly series: from / until a financial year ('2026-27'); see next_invoice_identity().
+        'invoice_series_yearly_from',
+        'invoice_series_yearly_until',
         // Column visibility
         'show_huid',
         'show_stone_columns',
@@ -66,7 +67,6 @@ class ShopBillingSettings extends Model
         'copy_count'              => 'integer',
         'show_digital_signature'  => 'boolean',
         'show_bis_logo'           => 'boolean',
-        'year_reset'              => 'boolean',
         'show_huid'               => 'boolean',
         'show_stone_columns'      => 'boolean',
         'show_purity'             => 'boolean',

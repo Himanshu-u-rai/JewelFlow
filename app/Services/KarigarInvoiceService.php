@@ -16,8 +16,18 @@ class KarigarInvoiceService
     public const WEIGHT_TOLERANCE = 0.05;
     public const AMOUNT_TOLERANCE = 0.05;
 
+    private function assertInvoicePeriodOpen(KarigarInvoice $invoice): void
+    {
+        if ($invoice->karigar_invoice_date) {
+            InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, $invoice->karigar_invoice_date->toDateString());
+        }
+    }
+
     public function create(array $data, array $lines, ?UploadedFile $invoiceFile, int $shopId, int $userId): KarigarInvoice
     {
+        // Period lock: the document date the user entered must be in an open period.
+        InvoiceAccountingService::assertShopLockForDate($shopId, \Illuminate\Support\Carbon::parse($data['karigar_invoice_date'])->toDateString());
+
         return DB::transaction(function () use ($data, $lines, $invoiceFile, $shopId, $userId) {
             $invoice = KarigarInvoice::create([
                 'shop_id' => $shopId,
@@ -76,6 +86,11 @@ class KarigarInvoiceService
         return DB::transaction(function () use ($invoice, $data, $lines, $invoiceFile) {
             // Decided on the locked invoice and its payments, not on the status the page loaded (audit N15).
             $invoice = $this->lockInvoice($invoice);
+            // Period lock: neither the date it carries now nor the date it moves to may be in a locked period.
+            $this->assertInvoicePeriodOpen($invoice);
+            if (isset($data['karigar_invoice_date'])) {
+                InvoiceAccountingService::assertShopLockForDate((int) $invoice->shop_id, \Illuminate\Support\Carbon::parse($data['karigar_invoice_date'])->toDateString());
+            }
             if ($invoice->payments()->exists()) {
                 throw new LogicException('Cannot edit an invoice that has recorded payments.');
             }
@@ -135,6 +150,13 @@ class KarigarInvoiceService
     {
         return DB::transaction(function () use ($invoice, $splits, $userId) {
             $locked = $this->lockInvoice($invoice);
+
+            // Period lock: a payment is dated by the user, and must not land in a locked period.
+            foreach ($splits as $data) {
+                if (! empty($data['paid_on'])) {
+                    InvoiceAccountingService::assertShopLockForDate((int) $locked->shop_id, \Illuminate\Support\Carbon::parse($data['paid_on'])->toDateString());
+                }
+            }
 
             $total = 0.0;
             foreach ($splits as $data) {
@@ -290,6 +312,7 @@ class KarigarInvoiceService
     {
         DB::transaction(function () use ($invoice) {
             $locked = $this->lockInvoice($invoice);
+            $this->assertInvoicePeriodOpen($locked);
             if ($locked->payments()->exists()) {
                 throw new LogicException('Cannot delete an invoice with recorded payments.');
             }

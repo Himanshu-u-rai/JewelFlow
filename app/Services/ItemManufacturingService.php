@@ -99,6 +99,8 @@ class ItemManufacturingService
                 'making_charges' => $makingCharges,
                 'stone_charges' => $stoneCharges,
                 'cost_price' => $totalCost,
+                'acquisition_cost' => $totalCost,
+                'acquisition_cost_source' => 'entered',
                 'status' => 'in_stock',
             ]);
 

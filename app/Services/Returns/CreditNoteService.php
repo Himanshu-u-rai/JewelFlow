@@ -49,6 +49,8 @@ class CreditNoteService
             // Load invoice before CGST derivation — required for ratio computation
             // and total/overflow checks below.
             $invoice  = $returnOrder->invoice;
+            // GST s.34(2) deadline — the backstop for every path (returns, approvals, exchanges).
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
 
             // Snapshot place of supply and buyer GSTIN from the original invoice.
             // CN inherits these from the invoice it reverses — they don't change.

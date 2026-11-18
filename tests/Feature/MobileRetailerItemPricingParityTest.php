@@ -280,4 +280,45 @@ class MobileRetailerItemPricingParityTest extends TestCase
             'barcode' => 'RTL-MOB-VK-CONFLICT-001',
         ]);
     }
+
+    public function test_mobile_item_store_records_acquisition_cost_once_and_editing_never_changes_it(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/mobile/items', [
+            'barcode' => 'RTL-MOB-ACQ-001', 'design' => 'Ring', 'category' => 'Gold Jewellery',
+            'metal_type' => 'gold', 'gross_weight' => 10, 'stone_weight' => 1, 'purity' => 22,
+            'making_charges' => 500, 'cost_price' => 1, 'selling_price' => 1,
+        ])->assertCreated();
+
+        $item = Item::withoutTenant()->where('shop_id', $shop->id)->where('barcode', 'RTL-MOB-ACQ-001')->firstOrFail();
+        $this->assertSame(59400.0, round((float) $item->acquisition_cost, 2));
+        $this->assertSame('entered', $item->acquisition_cost_source);
+    }
+
+    public function test_mobile_item_edit_never_changes_the_acquisition_cost(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        Sanctum::actingAs($user);
+        \App\Support\TenantContext::set((int) $shop->id); // route-model binding in console needs it, as in the sibling tests
+        $item = $this->createItem($shop->id, null, [
+            'barcode' => 'RTL-MOB-ACQ-002', 'category' => 'Gold Jewellery', 'metal_type' => 'gold', 'purity' => 22,
+            'gross_weight' => 10, 'stone_weight' => 1, 'net_metal_weight' => 9, 'making_charges' => 100,
+            'cost_price' => 59400, 'selling_price' => 59610, 'status' => 'in_stock',
+            'acquisition_cost' => 59400, 'acquisition_cost_source' => 'entered',
+        ]);
+
+        // The app's edit screen sends cost_price and making charges again: that may reprice the piece, never its acquisition cost.
+        $this->putJson("/api/mobile/items/{$item->id}", [
+            'barcode' => 'RTL-MOB-ACQ-002', 'category' => 'Gold Jewellery', 'gross_weight' => 10,
+            'stone_weight' => 1, 'purity' => 22, 'making_charges' => 700, 'cost_price' => 123456,
+        ])->assertOk();
+
+        $item->refresh();
+        $this->assertSame(59400.0, round((float) $item->acquisition_cost, 2));
+        $this->assertSame('entered', $item->acquisition_cost_source);
+    }
 }

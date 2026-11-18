@@ -166,3 +166,6 @@ Schedule::command('reporting:sweep-expired-exports')->daily()->withoutOverlappin
 Schedule::command('platform:check-shop-health')->dailyAt('06:00')->withoutOverlapping();
 Schedule::command('mobile:prune-idempotency-keys')->daily();
 Schedule::command('mobile:prune-uploads')->daily();
+// Year-end snapshot of the previous financial year (retail shops). Only acts while a shop has none, so the daily run
+// is safe and heals a missed 1 April. Never sets the books lock.
+Schedule::command('books:snapshot-year-end')->dailyAt('00:15')->timezone('Asia/Kolkata')->withoutOverlapping(60);

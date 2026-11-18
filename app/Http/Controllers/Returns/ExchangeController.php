@@ -97,6 +97,13 @@ class ExchangeController extends Controller
         }
         $this->authorize('update', $invoice);
 
+        // GST credit-note deadline (an exchange issues a credit note too): say so up front.
+        try {
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
+        } catch (\LogicException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('warning', $e->getMessage());
+        }
+
         $preferences = auth()->user()->shop?->preferences;
         if ($preferences && !$preferences->hasConfiguredReturnPolicy()) {
             return redirect()->route('settings.edit', ['tab' => 'return-policy'])
@@ -139,6 +146,13 @@ class ExchangeController extends Controller
             abort(404);
         }
         $this->authorize('update', $invoice);
+
+        // GST credit-note deadline (an exchange issues a credit note too): say so up front.
+        try {
+            \App\Support\CreditNoteDeadline::assertOpen($invoice->fiscal_year);
+        } catch (\LogicException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('warning', $e->getMessage());
+        }
 
         $preferences = auth()->user()->shop?->preferences;
         if ($preferences && !$preferences->hasConfiguredReturnPolicy()) {

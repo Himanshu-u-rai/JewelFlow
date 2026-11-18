@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Item;
 use App\Models\InvoiceItem;
+use App\Models\Invoice;
+use App\Reporting\ReportPeriod;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -99,13 +101,15 @@ class RetailerReportService
     {
         $shopId = auth()->user()->shop_id;
 
-        return Cache::remember("shop:{$shopId}:best_sellers:{$period}:{$limit}", 600, function () use ($shopId, $limit, $period) {
+        return Cache::remember("shop:{$shopId}:best_sellers:finalized-v2:{$period}:{$limit}", 600, function () use ($shopId, $limit, $period) {
         $since = now()->subDays((int) $period);
+        $sales = Invoice::query()->where('shop_id', $shopId)
+            ->salesIn(ReportPeriod::range($since->toDateString(), now()->toDateString()))->select('invoices.id');
 
         $byCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.created_at', '>=', $since)
+            ->whereIn('invoices.id', $sales)
             ->select('items.category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))
             ->groupBy('items.category')
             ->orderByDesc('sold_count')
@@ -116,7 +120,7 @@ class RetailerReportService
         $bySubCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.created_at', '>=', $since)
+            ->whereIn('invoices.id', $sales)
             ->select('items.category', 'items.sub_category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))
             ->groupBy('items.category', 'items.sub_category')
             ->orderByDesc('sold_count')
@@ -139,13 +143,15 @@ class RetailerReportService
     {
         $shopId = auth()->user()->shop_id;
 
-        return Cache::remember("shop:{$shopId}:worst_sellers:{$period}:{$limit}", 600, function () use ($shopId, $limit, $period) {
+        return Cache::remember("shop:{$shopId}:worst_sellers:finalized-v2:{$period}:{$limit}", 600, function () use ($shopId, $limit, $period) {
         $since = now()->subDays((int) $period);
+        $sales = Invoice::query()->where('shop_id', $shopId)
+            ->salesIn(ReportPeriod::range($since->toDateString(), now()->toDateString()))->select('invoices.id');
 
         $byCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.created_at', '>=', $since)
+            ->whereIn('invoices.id', $sales)
             ->select('items.category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))
             ->groupBy('items.category')
             ->orderBy('sold_count')

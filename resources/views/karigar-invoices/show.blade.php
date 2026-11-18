@@ -1079,6 +1079,7 @@
                                     </div>
                                 </template>
                             </div>
+                            @include('partials.backdate-reason', ['selector' => '[name$="[paid_on]"]'])
 
                             <div class="ki-show-payment-actions">
                                 <button type="submit" class="btn btn-success btn-sm">Record Payment</button>

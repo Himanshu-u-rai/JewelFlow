@@ -101,7 +101,7 @@ The following DB triggers are constitutionally protected. They must exist by exa
 | 3 | `store_credit_non_negative_guard_trigger` | `store_credit_movements` | Balance guard | Prevents store credit balance going negative |
 | 4 | `invoices_accounting_guard_trigger` | `invoices` | Accounting guard | Blocks updates to finalized invoice totals |
 | 5 | `credit_notes_numbering_event_trigger` | `credit_notes` | Numbering event | Emits CN number sequence event |
-| 6 | `invoices_numbering_event_trigger` | `invoices` | Numbering event | Emits invoice number sequence event |
+| 6 | `invoices_numbering_event_trigger` | `invoices` | Numbering event | Emits invoice number sequence event, keyed (shop, fiscal_year, sequence). A draft renumbered into a later financial year marks its old number `voided` (2026_11_16_100000, owner sign-off 2026-11-16) |
 | 7 | `audit_logs_append_only_trigger` | `audit_logs` | Append-only | Blocks UPDATE/DELETE on audit log rows |
 | 8 | `invoice_payments_append_only_trigger` | `invoice_payments` | Append-only | Blocks UPDATE/DELETE on payment rows |
 | 9 | `loyalty_transactions_append_only_trigger` | `loyalty_transactions` | Append-only | Blocks UPDATE/DELETE on loyalty rows |
@@ -124,7 +124,14 @@ The following DB triggers are constitutionally protected. They must exist by exa
 | 26 | `metal_rates_no_delete` | `metal_rates` | Append-only | **Pre-existing.** Blocks DELETE on `metal_rates`. Paired with #25. Together they enforce append-only on the metal rate snapshot ledger. |
 | 27 | `platform_audit_logs_append_only_trigger` | `platform_audit_logs` | Append-only | **Pre-existing.** Platform-level audit immutability (analogous to #7 for tenant audit logs). |
 | 28 | `store_credit_append_only_guard_trigger` | `store_credit_movements` | Append-only | **Pre-existing.** Append-only on store-credit movements. Pairs with #3 (which protects the running balance). |
-| 29 | `invoices_numbering_guard_trigger` | `invoices` | Sequence guard | **Pre-existing.** Enforces invoice number monotonicity / sequence integrity. Pairs with #6 (numbering event emission). |
+| 29 | `invoices_numbering_guard_trigger` | `invoices` | Sequence guard | **Pre-existing.** Assigns the number via `next_invoice_identity(shop, fiscal_year)` (continuous or yearly series, `{FY}` token), sets `fiscal_year` from the document's own date (IST), moves a draft billed in a later year into that year, and keeps `invoice_number`, `fiscal_year` and `invoice_series` immutable after finalization. Uniqueness is (shop, fiscal_year, sequence). Pairs with #6. Amended 2026_11_16_100000 (owner sign-off 2026-11-16). |
+| 30 | `items_acquisition_cost_guard_trigger` | `items` | Immutable-once-set | **Financial-year stock** (2026_11_16_300000). A non-null `items.acquisition_cost` (and its `acquisition_cost_source`) can never change; NULL may be set once, with a real source. `cost_price` (current replacement cost, repriced daily) is unaffected. |
+| 31 | `items_intake_movement_trigger` | `items` | Ledger writer | **Financial-year stock.** AFTER INSERT: writes the `intake` row in `item_movements` for every item-creation path, including raw SQL. |
+| 32 | `items_status_movement_trigger` | `items` | Ledger writer | **Financial-year stock.** AFTER UPDATE OF status: writes a typed movement (sold, returned_to_stock, melted, transferred, reversed, returned, status_change) for every status change, including raw SQL. |
+| 33 | `items_delete_movement_trigger` | `items` | Ledger writer | **Financial-year stock.** AFTER DELETE: writes a `deleted` movement so a removed item leaves stock on the right date. |
+| 34 | `item_movements_append_only_trigger` | `item_movements` | Append-only | **Financial-year stock.** Blocks UPDATE/DELETE via `prevent_ledger_mutation()`. `App\Services\StockAsAt` rebuilds stock on any past date from this table. |
+| 35 | `fiscal_year_snapshots_append_only_trigger` | `fiscal_year_snapshots` | Append-only | **Year-end snapshot** (2026_11_16_500000). A snapshot of a closed financial year is evidence: blocks UPDATE/DELETE via `prevent_ledger_mutation()`. A new count is a new `version`, never an edit. Taking one never sets the books lock (Art. VII item 9). |
+| 36 | `fiscal_year_snapshot_items_append_only_trigger` | `fiscal_year_snapshot_items` | Append-only | **Year-end snapshot.** The per-item rows (cost, closing rate, lower-of-cost-or-market valuation) of a snapshot; UPDATE/DELETE blocked via `prevent_ledger_mutation()`. |
 
 ### Operational triggers (not constitutionally critical — documented for completeness)
 
@@ -356,6 +363,7 @@ The following columns are nullable because they were added after the table had e
 | `gstin` | `customers` | Added post-launch; GSTIN not collected historically |
 | `customer_type` | `customers` | Added post-launch |
 | `snapshot_place_of_supply_state_code` | `invoice_compliance_snapshots` | Added post-launch |
+| `acquisition_cost` | `items` | Added 2026-11-16. Backfilled only from stock purchase lines (net weight x purchase rate); every other existing item stays NULL with `acquisition_cost_source = 'unknown'`. Never copy `cost_price` into it: that is today's replacement cost, not what the piece cost |
 
 **Forbidden actions on these columns:**
 - Do NOT run `UPDATE invoices SET place_of_supply_state_code = 'XX' WHERE place_of_supply_state_code IS NULL`

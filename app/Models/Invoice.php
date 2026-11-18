@@ -8,6 +8,7 @@ use App\Services\AccountingAuditService;
 use App\Services\BusinessIdentifierService;
 use LogicException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
@@ -140,15 +141,21 @@ class Invoice extends Model
 
     public static function issue(array $attributes): self
     {
-        if (!empty($attributes['shop_id']) && (empty($attributes['invoice_sequence']) || empty($attributes['invoice_number']))) {
-            $identity = BusinessIdentifierService::nextInvoiceIdentifier((int) $attributes['shop_id']);
-            $attributes['invoice_sequence'] = $attributes['invoice_sequence'] ?? $identity['sequence'];
-            $attributes['invoice_number'] = $attributes['invoice_number'] ?? $identity['number'];
+        // The number, its financial year and series come from the database trigger (invoices_numbering_guard →
+        // next_invoice_identity): one implementation, judged on the document's own date.
+        if (empty($attributes['invoice_sequence']) || empty($attributes['invoice_number'])) {
+            unset($attributes['invoice_sequence'], $attributes['invoice_number']);
         }
+        unset($attributes['fiscal_year'], $attributes['invoice_series']);
 
         $invoice = new self();
         $invoice->forceFill($attributes);
         $invoice->save();
+
+        // Callers read the number straight away (receipts, messages, links): load what the trigger assigned.
+        $assigned = DB::table('invoices')->where('id', $invoice->id)
+            ->first(['invoice_number', 'invoice_sequence', 'fiscal_year', 'invoice_series']);
+        $invoice->forceFill((array) $assigned)->syncOriginal();
 
         return $invoice;
     }
@@ -163,6 +170,9 @@ class Invoice extends Model
         return (float) self::where('shop_id', $shopId)
             ->where('customer_id', $customerId)
             ->where('status', self::STATUS_FINALIZED)
+            // A reversal bill takes a cancelled bill back; the cancelled original is already left out above, so
+            // counting the (negative) reversal as well would take the same bill off twice.
+            ->whereNull('reversal_of_invoice_id')
             ->sum('total');
     }
 }
