@@ -8,7 +8,7 @@
 
 <x-app-layout>
     <x-page-header
-        class="customers-page-header schemes-page-header schemes-form-header"
+        class="customers-page-header schemes-page-header schemes-form-header record-detail-header"
         title="Edit Scheme"
         :subtitle="$scheme->name"
     >
@@ -22,11 +22,11 @@
     </x-page-header>
 
     <div
-        class="content-inner schemes-form-page"
+        class="content-inner schemes-form-page schemes-edit-page"
         x-data="{ type: @js(old('type', $scheme->type)), appliesTo: @js(old('applies_to', $scheme->applies_to ?? 'all_items')) }"
     >
         @if($errors->any())
-            <div class="schemes-form-errors">
+            <div class="schemes-form-errors" role="alert" tabindex="-1">
                 <strong>Please review the highlighted fields.</strong>
                 <ul>
                     @foreach($errors->all() as $error)
@@ -41,16 +41,16 @@
             @method('PUT')
 
             <div class="schemes-form-layout">
-                <main class="schemes-form-main">
-                    <section class="schemes-card schemes-form-card">
+                <div class="schemes-form-main">
+                    <section id="scheme-basics" aria-labelledby="scheme-basics-title" class="schemes-card schemes-form-card">
                         <div class="schemes-card-head">
                             <div>
-                                <h2>Scheme Basics</h2>
+                                <h2 id="scheme-basics-title">Scheme Basics</h2>
                                 <p>Update the customer-facing name, type, and description.</p>
                             </div>
                         </div>
 
-                        <div class="schemes-form-grid schemes-form-grid--two">
+                        <div class="schemes-form-grid schemes-edit-basics">
                             <div class="schemes-field">
                                 <label for="name">Scheme Name <span>*</span></label>
                                 <input type="text" name="name" id="name" value="{{ old('name', $scheme->name) }}" required class="schemes-input @error('name') is-error @enderror">
@@ -67,33 +67,22 @@
                                 @error('type')<p class="schemes-field-error">{{ $message }}</p>@enderror
                             </div>
 
-                            <div class="schemes-field schemes-field--full">
-                                <label for="description">Description</label>
-                                <textarea name="description" id="description" rows="3" class="schemes-textarea @error('description') is-error @enderror">{{ old('description', $scheme->description) }}</textarea>
-                                @error('description')<p class="schemes-field-error">{{ $message }}</p>@enderror
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="schemes-card schemes-form-card">
-                        <div class="schemes-card-head">
-                            <div>
-                                <h2>Schedule</h2>
-                                <p>Control when the scheme is available.</p>
-                            </div>
-                        </div>
-
-                        <div class="schemes-form-grid schemes-form-grid--two">
                             <div class="schemes-field">
                                 <label for="start_date">Start Date <span>*</span></label>
-                                <input type="date" name="start_date" id="start_date" value="{{ old('start_date', $scheme->start_date?->format('Y-m-d')) }}" required class="schemes-input @error('start_date') is-error @enderror">
+                                <input type="date" name="start_date" id="start_date" value="{{ old('start_date', $scheme->start_date?->format('Y-m-d')) }}" required data-date-editable class="schemes-input @error('start_date') is-error @enderror">
                                 @error('start_date')<p class="schemes-field-error">{{ $message }}</p>@enderror
                             </div>
 
                             <div class="schemes-field">
                                 <label for="end_date">End Date</label>
-                                <input type="date" name="end_date" id="end_date" value="{{ old('end_date', $scheme->end_date?->format('Y-m-d')) }}" class="schemes-input @error('end_date') is-error @enderror">
+                                <input type="date" name="end_date" id="end_date" value="{{ old('end_date', $scheme->end_date?->format('Y-m-d')) }}" data-date-editable class="schemes-input @error('end_date') is-error @enderror">
                                 @error('end_date')<p class="schemes-field-error">{{ $message }}</p>@enderror
+                            </div>
+
+                            <div class="schemes-field schemes-field--full">
+                                <label for="description">Description</label>
+                                <textarea name="description" id="description" rows="3" class="schemes-textarea @error('description') is-error @enderror">{{ old('description', $scheme->description) }}</textarea>
+                                @error('description')<p class="schemes-field-error">{{ $message }}</p>@enderror
                             </div>
                         </div>
                     </section>
@@ -207,7 +196,7 @@
                             </label>
                         </div>
                     </section>
-                </main>
+                </div>
 
                 <aside class="schemes-form-side">
                     <section class="schemes-card schemes-form-card">
@@ -249,7 +238,7 @@
 
                         <div class="schemes-field">
                             <label for="terms">Terms & Conditions</label>
-                            <textarea name="terms" id="terms" rows="7" class="schemes-textarea @error('terms') is-error @enderror">{{ old('terms', $scheme->terms) }}</textarea>
+                            <textarea name="terms" id="terms" rows="4" class="schemes-textarea @error('terms') is-error @enderror">{{ old('terms', $scheme->terms) }}</textarea>
                             @error('terms')<p class="schemes-field-error">{{ $message }}</p>@enderror
                         </div>
                     </section>

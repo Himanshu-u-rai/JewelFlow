@@ -1,0 +1,94 @@
+/* Existing record/form values and action contracts are unchanged. */
+.content-inner.record-detail-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; width: 100%; min-width: 0; max-width: none; color: var(--jf-text); }
+body.app-shell .record-detail-page :is(.rd-surface, .purchase-show-card),
+body.app-shell .schemes-edit-page .schemes-card { min-width: 0; border: 1px solid #dbe4ef; border-radius: 16px; background: var(--jf-surface); box-shadow: 0 12px 22px -22px rgba(15, 23, 42, .68); }
+.record-detail-page :is(.rd-title, .purchase-show-title) { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--jf-text); }
+.record-detail-page :is(.rd-profile, .rd-outstanding, .rd-holdings) { padding: 18px; }
+.rd-profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 16px; align-items: start; }
+.rd-profile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; margin: 16px 0 0; }
+.record-detail-page :is(dd, p, h4, a, .rd-profile-grid > div) { min-width: 0; overflow-wrap: anywhere; }
+.rd-profile-grid dt { color: var(--jf-text-muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.rd-profile-grid dd { margin-top: 4px; font-size: 14px; line-height: 1.5; }
+.rd-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.rd-metrics > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; max-width: 100%; padding: 6px 10px; border: 1px solid var(--jf-border); border-radius: 8px; background: var(--jf-surface-soft); }
+.rd-metrics dt { font-size: 12px; color: var(--jf-text-muted); }
+.rd-metrics dd { margin: 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rd-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 18px; border-bottom: 1px solid var(--jf-border); border-radius: 16px 16px 0 0; }
+.rd-heading h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.rd-heading > span { color: var(--jf-text-muted); font-size: 12px; }
+.rd-heading a { display: inline-flex; min-height: 44px; align-items: center; color: #92400e; font-size: 13px; }
+.rd-holdings > .rd-heading { padding: 0 0 14px; margin-bottom: 14px; }
+.rd-holding-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rd-holding-grid > div { min-width: 0; padding: 12px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface-soft); }
+.rd-holding-grid .uppercase { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--jf-text-muted); }
+.rd-holding-grid .text-2xl { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.record-detail-page .rd-scroll { min-width: 0; overflow: auto; overscroll-behavior: contain; border-radius: 0 0 16px 16px; }
+.record-detail-page .rd-table { min-width: 620px; }
+.record-detail-page .jf-table th { color: var(--jf-text-muted); letter-spacing: 0; }
+.record-detail-page .jf-table th[scope="col"] { position: sticky; top: 0; z-index: 1; }
+.rd-records { overflow: hidden; }
+.rd-purchase-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); align-items: start; gap: 20px; }
+.rd-purchase-side { display: grid; min-width: 0; gap: 16px; }
+.purchase-show-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 18px; }
+.purchase-show-subtitle { margin: 4px 0 0; color: var(--jf-text-muted); font-size: 13px; line-height: 1.5; }
+.purchase-show-label { margin-bottom: 4px; color: var(--jf-text-muted); font-size: 12px; font-weight: 400; }
+.purchase-total-row { gap: 12px; padding: 12px; border: 1px solid var(--jf-border); border-radius: 10px; background: var(--jf-surface-soft); color: var(--jf-text); font-variant-numeric: tabular-nums; }
+.purchase-show-card dl > .flex { gap: 12px; flex-wrap: wrap; }
+.purchase-show-card dl > .flex dd { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+.purchase-line-table { min-width: 1120px; }
+.purchase-line-mobile-card { padding: 12px; border: 1px solid var(--jf-border); border-radius: 12px; background: var(--jf-surface); }
+.purchase-line-mobile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.purchase-line-mobile-card .shrink-0 { flex-shrink: 1; }
+.purchase-show-shell a { text-underline-offset: 3px; }
+.record-detail-header .page-actions { flex-wrap: wrap; gap: 8px; }
+.record-detail-header .btn { min-height: 44px; }
+.record-detail-header .rd-danger-action { color: #be123c; border-color: #fecdd3; background: #fff1f2; }
+.record-detail-page :is(a, button):focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
+.schemes-edit-page .schemes-card-head { padding: 14px 16px; }
+.schemes-edit-page .schemes-card-head h2 { font-size: 16px; }
+.schemes-edit-page .schemes-form-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+.schemes-edit-page .schemes-form-grid { padding: 16px; gap: 14px; }
+.schemes-edit-page .schemes-edit-basics { grid-template-columns: minmax(180px, 1.5fr) minmax(220px, 1.2fr) repeat(2, minmax(140px, .8fr)); }
+.schemes-edit-page .schemes-form-side .schemes-form-card > .schemes-field { padding: 16px; }
+.schemes-edit-page .schemes-form-main > section > .schemes-form-grid--two { max-width: 540px; }
+.schemes-edit-page .schemes-form-grid--three { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.schemes-edit-page :is(.schemes-input, .schemes-select, .schemes-textarea) { min-height: 44px; }
+.schemes-edit-page .schemes-field label { font-size: 13px; }
+.schemes-edit-page textarea { resize: vertical; }
+.schemes-edit-page .schemes-form-actions { margin-top: 16px; }
+@media (max-width: 1490px) {
+    .schemes-edit-page .schemes-edit-basics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rd-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+    .rd-profile-layout, .rd-purchase-layout, .schemes-edit-page .schemes-form-layout { grid-template-columns: minmax(0, 1fr); }
+    .rd-outstanding { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; }
+    .rd-outstanding .rd-metrics { margin: 0; }
+}
+@media (max-width: 768px) {
+    .content-inner.record-detail-page { gap: 14px; }
+    .record-detail-page :is(.rd-profile, .rd-outstanding, .rd-holdings) { padding: 14px; }
+    .rd-profile-grid { gap: 14px; }
+    .rd-holding-grid { grid-template-columns: minmax(0, 1fr); }
+    .rd-holding-grid > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
+    .rd-holding-grid > div > :is(.mt-2, p) { flex-basis: 100%; }
+    .rd-heading { padding: 12px 14px; }
+    .karigar-show-page .rd-table { min-width: 0; }
+    .karigar-show-page .rd-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .karigar-show-page .rd-table tbody { display: grid; gap: 10px; padding: 12px; }
+    .karigar-show-page .rd-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; border: 1px solid var(--jf-border); border-radius: 12px; background: var(--jf-surface); }
+    .karigar-show-page .rd-table tbody td { display: block; min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; }
+    .karigar-show-page .rd-table tbody td::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--jf-text-muted); font-size: 11px; }
+    .karigar-show-page .rd-table tbody .jf-table-index { grid-column: 1 / -1; width: auto; text-align: left; }
+    .purchase-show-shell .purchase-show-card { padding: 14px; }
+    .purchase-show-shell .purchase-show-card > dl.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .purchase-show-shell .purchase-show-card:has(> .rd-scroll) { padding: 0; }
+    .purchase-show-shell .purchase-show-header { margin-bottom: 14px; }
+    .purchase-show-shell .purchase-show-card:has(> .rd-scroll) > .purchase-show-header { padding: 14px; margin-bottom: 0; }
+    .record-detail-header .page-actions { width: 100%; }
+    .record-detail-header .btn { min-height: 44px; font-size: 13px; }
+    .schemes-edit-page .schemes-edit-basics, .schemes-edit-page .schemes-form-grid--two { grid-template-columns: minmax(0, 1fr); }
+    .schemes-edit-page :is(.schemes-input, .schemes-select, .schemes-textarea) { font-size: 16px; }
+    .schemes-edit-page .schemes-form-actions { flex-wrap: wrap; }
+    .schemes-edit-page .schemes-form-actions > * { flex: 1; min-height: 44px; }
+}

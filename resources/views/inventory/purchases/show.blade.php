@@ -1,116 +1,18 @@
 <x-app-layout>
-    <style>
-        .purchase-show-shell {
-            max-width: 1500px;
-        }
-
-        .purchase-show-card {
-            border: 1px solid #e2e8f0;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-            border-radius: 18px;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
-        }
-
-        .purchase-show-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-
-        .purchase-show-title {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 700;
-            color: #0f172a;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
-        .purchase-show-subtitle {
-            margin-top: 2px;
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .purchase-show-label {
-            margin-bottom: 4px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #64748b;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
-        .purchase-total-row {
-            border-radius: 14px;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            padding: 12px;
-        }
-
-        .purchase-line-table {
-            min-width: 1120px;
-        }
-
-        .purchase-line-mobile-card {
-            border: 1px solid #dbe3ee;
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 14px;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
-        }
-
-        .purchase-line-mobile-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        @media (max-width: 640px) {
-            .purchase-show-shell {
-                padding-inline: 10px;
-            }
-
-            .purchase-show-card {
-                border-radius: 14px;
-                padding: 14px !important;
-            }
-
-            .purchase-show-header {
-                flex-direction: column;
-                gap: 10px;
-                margin-bottom: 14px;
-            }
-
-            .purchase-line-mobile-card {
-                border-radius: 14px;
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .purchase-line-mobile-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-
-    <x-page-header :title="$purchase->purchase_number" subtitle="Stock Purchase">
+    <x-page-header class="record-detail-header purchase-detail-header" :title="$purchase->purchase_number" subtitle="Stock Purchase">
         <x-slot:actions>
-            <a href="{{ route('inventory.purchases.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                ← All Purchases
+            <a href="{{ route('inventory.purchases.index') }}" class="btn btn-secondary btn-sm">
+                <x-icon name="arrow-left" size="16" /> All Purchases
             </a>
             @can('inventory.edit')
             @if($purchase->isDraft())
-                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100">
+                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="btn btn-secondary btn-sm">
                     Edit
                 </a>
                 <form method="POST" action="{{ route('inventory.purchases.confirm', $purchase) }}" class="inline" onsubmit="return confirm('Confirm this purchase? This will lock the invoice details.')">
                     @csrf @method('PATCH')
                     <button type="submit"
-                            class="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+                            class="btn btn-primary btn-sm">
                         <x-icon name="check" class="w-4 h-4" />
                         Confirm Purchase
                     </button>
@@ -119,7 +21,7 @@
                 <form method="POST" action="{{ route('inventory.purchases.stock', $purchase) }}" class="inline" onsubmit="return confirm('Add items from this purchase to shop inventory? This cannot be undone.')">
                     @csrf @method('PATCH')
                     <button type="submit"
-                            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
+                            class="btn btn-primary btn-sm">
                         <x-icon name="package" class="w-4 h-4" />
                         Add to Shop Inventory
                     </button>
@@ -129,7 +31,7 @@
                 <form method="POST" action="{{ route('inventory.purchases.reverse', $purchase) }}" class="inline" onsubmit="return confirm('Reverse this purchase back to a draft? Any items it added to stock will be removed (only if still in stock).')">
                     @csrf @method('PATCH')
                     <button type="submit"
-                            class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100">
+                            class="btn btn-secondary btn-sm rd-danger-action">
                         <x-icon name="undo-2" class="w-4 h-4" />
                         Reverse to Draft
                     </button>
@@ -139,9 +41,9 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner purchase-show-shell space-y-5 xl:space-y-6">
+    <div class="content-inner purchase-show-shell record-detail-page">
 
-        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 xl:gap-6">
+        <div class="rd-purchase-layout">
 
             {{-- ── Header Card ─────────────────────────────────────────── --}}
             <div class="purchase-show-card p-5">
@@ -229,7 +131,7 @@
             </div>
 
             {{-- ── Right Sidebar: Totals + Invoice Image ─────────────── --}}
-            <div class="space-y-4">
+            <div class="rd-purchase-side">
 
                 {{-- Totals Card --}}
                 <div class="purchase-show-card p-5">
@@ -325,21 +227,21 @@
                     <p class="purchase-show-subtitle">Weights, metal rate, charges, and resulting inventory status.</p>
                 </div>
             </div>
-            <div class="hidden md:block overflow-x-auto">
+            <div class="hidden md:block rd-scroll jf-scrollbar" data-detail-scroll tabindex="0" role="region" aria-label="Purchase line items">
                 <table class="purchase-line-table w-full text-sm jf-table">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">#</th>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Type</th>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Design / Cat.</th>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Metal / Purity</th>
-                            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Gross Wt</th>
-                            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Net Wt</th>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Hallmark ID (HUID)</th>
-                            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Rate/g</th>
-                            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Making</th>
-                            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Line Total</th>
-                            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Item</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">#</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Type</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Design / Cat.</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Metal / Purity</th>
+                            <th scope="col" class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Gross Wt</th>
+                            <th scope="col" class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Net Wt</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Hallmark ID (HUID)</th>
+                            <th scope="col" class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Rate/g</th>
+                            <th scope="col" class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Making</th>
+                            <th scope="col" class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Line Total</th>
+                            <th scope="col" class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Item</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -419,7 +321,7 @@
                         <div class="mb-3 flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="text-xs font-bold text-slate-500">Item {{ $idx + 1 }}</p>
-                                <h4 class="mt-1 truncate text-sm font-semibold text-slate-900">{{ $line->design ?: 'No design' }}</h4>
+                                <h4 class="mt-1 text-sm font-semibold text-slate-900">{{ $line->design ?: 'No design' }}</h4>
                                 @if($line->category)
                                     <p class="mt-0.5 text-xs text-slate-500">{{ $line->category }}{{ $line->sub_category ? ' / ' . $line->sub_category : '' }}</p>
                                 @endif
