@@ -1387,6 +1387,38 @@
         0%,100% { box-shadow: 0 0 0 0 rgba(252,163,17,0.4); }
         50%      { box-shadow: 0 0 0 6px rgba(252,163,17,0); }
     }
+
+    /* ─── Messages (all sizes) ──────────────────────────────────────── */
+    .pos-no-price { color: #b45309 !important; font-size: 13px !important; font-weight: 600; }
+    .pos-checkout-hint { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); text-align: center; }
+    .pos-checkout-hint[hidden] { display: none; }
+    .btn-add-cust { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .cart-item-remove { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; }
+
+    /* ─── Desktop POS (owner, 2026-11-15) ───────────────────────────── */
+    @media (min-width: 1025px) {
+        /* Compact cards: a square placeholder made each card ~350px tall, so a laptop showed 3 of 11 items.
+           No photo → a short tinted band with the category; a photo keeps a 4:3 frame. */
+        .pos-product-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .pos-product-card { padding: 12px; gap: 6px; }
+        .pos-product-img-placeholder { aspect-ratio: auto; height: 56px; border-radius: 10px; }
+        .pos-product-img { aspect-ratio: 4 / 3; border-radius: 10px; }
+        .pos-product-img-placeholder-chip { font-size: 12px; padding: 4px 10px; }
+        .pos-product-add { width: 36px; height: 36px; }
+
+        /* One control height (44px fields, 40px buttons) and one style for the top bar's links. */
+        .pos-search { height: 44px; padding-block: 0; }
+        .pos-filter-trigger { min-height: 44px; }
+        .cust-search { height: 44px; padding-block: 0; font-size: 14px; }
+        .btn-add-cust { min-height: 40px; font-size: 13px; }
+        .btn-checkout { min-height: 48px; padding-block: 0; }
+        .pos-topbar-links a,
+        .btn-scan-mobile { font-size: 13px; font-weight: 600; }
+        .cart-item-meta,
+        .pos-filter-label,
+        .pos-filter-count-label,
+        .pos-section-title { font-size: 12px; }
+    }
 </style>
 
     <div class="pos-page" id="posApp">
@@ -1401,12 +1433,12 @@
                     <x-icon name="x" size="22" stroke-width="2.2" />
                 </span>
             </button>
-            <div class="pos-topbar-title"><span>Point Of Sale</span></div>
+            <div class="pos-topbar-title"><span>Point of Sale</span></div>
             <div class="pos-topbar-search">
                 <span class="pos-topbar-search-icon">
                     <x-icon name="search" size="16" />
                 </span>
-                <input type="text" id="posSearchMobile" class="pos-topbar-search-input" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('mobile')" autocomplete="off">
+                <input type="text" id="posSearchMobile" class="pos-topbar-search-input" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('mobile')" onkeydown="addFromSearch(event, 'mobile')" autocomplete="off">
             </div>
         </div>
         <div class="pos-topbar-links">
@@ -1469,7 +1501,7 @@
                 <span class="pos-search-icon">
                     <x-icon name="search" size="18" />
                 </span>
-                <input type="text" id="posSearchDesktop" class="pos-search" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('desktop')" autocomplete="off" autofocus>
+                <input type="text" id="posSearchDesktop" class="pos-search" placeholder="Search by name, barcode, or category…" oninput="syncPosSearch('desktop')" onkeydown="addFromSearch(event, 'desktop')" autocomplete="off" autofocus>
             </div>
 
             <!-- Category + SubCategory filters -->
@@ -1539,7 +1571,7 @@
                                 <input type="text" id="custSearch" class="cust-search" placeholder="Search customer…" oninput="onCustSearch()" onfocus="onCustSearch()">
                                 <div class="cust-dropdown" id="custDropdown"></div>
                             </div>
-                            <button class="btn-add-cust" onclick="showModal()">+ Add New Customer</button>
+                            <button type="button" class="btn-add-cust" onclick="showModal()"><x-icon name="user-plus" size="15" /> Add New Customer</button>
                         </div>
                         <div class="cust-mobile-actions">
                             <button type="button" class="btn-cust-search-mobile" onclick="showCustSearchModal()" title="Search Customer" aria-label="Search Customer">
@@ -1600,10 +1632,11 @@
                     <span class="checkout-row-label">Estimated Total</span>
                     <span class="checkout-row-val" id="checkoutTotal">₹0</span>
                 </div>
-                <button class="btn-checkout" id="btnCheckout" disabled onclick="goCheckout()">
+                <button class="btn-checkout" id="btnCheckout" disabled onclick="goCheckout()" aria-describedby="checkoutHint">
                     <x-icon name="chevron-right" size="16" />
                     Proceed to Checkout
                 </button>
+                <p class="pos-checkout-hint" id="checkoutHint" aria-live="polite">Add an item and select a customer to continue.</p>
             </div>
         </div>
     </div>
@@ -1794,14 +1827,28 @@
         return cleaned.slice(0, 13) + '…';
     }
 
-    function renderProducts() {
-        const search = getPosSearchValue();
-        const grid = document.getElementById('productGrid');
-        const empty = document.getElementById('noProducts');
-        const countEl = document.getElementById('posFilterCount');
-        const countNumberEl = document.getElementById('posFilterCountNumber');
-        const clearBtn = document.getElementById('posFilterClear');
+    // "13.000000" → "13 g", "12.3450" → "12.345 g"; '' for none.
+    function fmtWeight(raw) {
+        const n = Number(raw);
+        return n > 0 ? n.toLocaleString('en-IN', { maximumFractionDigits: 3 }) + ' g' : '';
+    }
 
+    // "22.00" → "22K", "18.50" → "18.5K"; '' for none.
+    function fmtPurity(raw) {
+        const n = Number(raw);
+        return n > 0 ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + 'K' : '';
+    }
+
+    // A ₹0 selling price is a missing price, not a free item: say so instead of showing "₹0".
+    function priceHtml(price, cls) {
+        return Number(price) > 0
+            ? '<span class="' + cls + '">₹' + Number(price).toLocaleString('en-IN') + '</span>'
+            : '<span class="' + cls + ' pos-no-price" title="This item has no selling price yet">No price</span>';
+    }
+
+    // What the grid shows: the search text plus the category filters. Also what Enter in the search adds from.
+    function matchingItems() {
+        const search = getPosSearchValue();
         let filtered = allItems;
 
         if (search) {
@@ -1818,6 +1865,46 @@
         if (activeSubCategory) {
             filtered = filtered.filter(i => i.subCategory === activeSubCategory);
         }
+        return filtered;
+    }
+
+    // Enter in the search adds the item: an exact barcode (what a counter scanner types before its Enter),
+    // or the only item left on screen. Anything else just stays filtered.
+    function addFromSearch(event, source) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const input = event.target;
+        const query = input.value.trim();
+        if (!query) return;
+
+        const code = query.replace(/\s+/g, '').toLowerCase();
+        const matches = matchingItems();
+        const item = allItems.find(i => String(i.barcode || '').replace(/\s+/g, '').toLowerCase() === code)
+            || (matches.length === 1 ? matches[0] : null);
+
+        if (!item) {
+            if (matches.length === 0 && window.showToast) window.showToast('No item matches “' + query + '”.', 'error');
+            return;
+        }
+
+        const name = item.design || item.category || item.barcode;
+        if (cartIds.includes(item.id)) {
+            if (window.showToast) window.showToast(name + ' is already in the cart.', 'warning');
+        } else {
+            addToCart(item.id);
+            if (window.showToast) window.showToast(name + ' added.', 'success');
+        }
+        input.value = '';
+        syncPosSearch(source);
+    }
+
+    function renderProducts() {
+        const grid = document.getElementById('productGrid');
+        const empty = document.getElementById('noProducts');
+        const countEl = document.getElementById('posFilterCount');
+        const countNumberEl = document.getElementById('posFilterCountNumber');
+        const clearBtn = document.getElementById('posFilterClear');
+        const filtered = matchingItems();
 
         grid.innerHTML = '';
         if (countEl) {
@@ -1852,19 +1939,19 @@
                 ? '<span class="pos-product-check" title="Remove from cart">' + @json(\App\View\Icons::svg('check', [], 16)) + '</span>'
                 : '<button class="pos-product-add" title="Add to cart" aria-label="Add to cart">' + @json(\App\View\Icons::svg('plus', ['class' => 'pos-product-add-icon'])) + '</button>';
 
-            const price = item.sellingPrice;
             const meta = [];
             if (item.barcode) meta.push(escHtml(item.barcode));
-            if (item.purity && item.purity !== '0.00') meta.push(escHtml(item.purity) + 'K');
-            if (item.grossWeight && item.grossWeight !== '0.000000') meta.push(escHtml(item.grossWeight) + 'g');
-            if (item.category) meta.push(escHtml(item.category));
+            if (fmtPurity(item.purity)) meta.push(fmtPurity(item.purity));
+            if (fmtWeight(item.grossWeight)) meta.push(fmtWeight(item.grossWeight));
+            // The placeholder already names the category; only a photo hides it.
+            if (item.category && item.image) meta.push(escHtml(item.category));
 
             card.innerHTML =
                 imgHtml +
                 '<div class="pos-product-name">' + escHtml(item.design || item.category || 'Item') + '</div>' +
                 '<div class="pos-product-meta">' + meta.join(' &middot; ') + '</div>' +
                 '<div class="pos-product-bottom">' +
-                    '<span class="pos-product-price">₹' + price.toLocaleString('en-IN') + '</span>' +
+                    priceHtml(item.sellingPrice, 'pos-product-price') +
                     actionBtn +
                 '</div>';
 
@@ -2075,11 +2162,13 @@
                 div.innerHTML =
                     imgHtml +
                     '<div class="cart-item-info">' +
-                        '<div class="cart-item-name">' + (item.design || item.category || 'Item') + '</div>' +
-                        '<div class="cart-item-meta">' + item.barcode + (item.purity && item.purity !== '0.00' ? ' · ' + item.purity + 'K' : '') + '</div>' +
+                        '<div class="cart-item-name">' + cartItemLabel + '</div>' +
+                        '<div class="cart-item-meta">' + [escHtml(item.barcode || ''), fmtPurity(item.purity), fmtWeight(item.grossWeight)].filter(Boolean).join(' · ') + '</div>' +
                     '</div>' +
-                    '<span class="cart-item-price">₹' + item.sellingPrice.toLocaleString('en-IN') + '</span>' +
-                    '<button class="cart-item-remove" onclick="removeFromCart(' + item.id + ')" title="Remove">&times;</button>';
+                    priceHtml(item.sellingPrice, 'cart-item-price') +
+                    '<button type="button" class="cart-item-remove" onclick="removeFromCart(' + item.id + ')" title="Remove" aria-label="Remove ' + cartItemLabel + '">' +
+                        @json(\App\View\Icons::svg('trash-2', [], 16)) +
+                    '</button>';
                 container.appendChild(div);
             });
         }
@@ -2214,6 +2303,15 @@
             const button = document.getElementById(id);
             if (button) button.disabled = disabled;
         });
+        // Say what is missing, instead of a grey button with no reason.
+        const hint = document.getElementById('checkoutHint');
+        if (hint) {
+            hint.textContent = cartIds.length === 0 && !selectedCust ? 'Add an item and select a customer to continue.'
+                : cartIds.length === 0 ? 'Add an item to continue.'
+                : !selectedCust ? 'Select a customer to continue.'
+                : '';
+            hint.hidden = hint.textContent === '';
+        }
     }
 
     let checkoutInProgress = false;
@@ -2343,6 +2441,7 @@
     /* ═══ EXPOSE ═══ */
     window.filterProducts = filterProducts;
     window.syncPosSearch = syncPosSearch;
+    window.addFromSearch = addFromSearch;
     window.togglePosFilterMenu = togglePosFilterMenu;
     window.setCategory = setCategory;
     window.setSubCategory = setSubCategory;

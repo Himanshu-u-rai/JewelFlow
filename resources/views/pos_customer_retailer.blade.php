@@ -42,16 +42,6 @@
         position: relative;
         overflow: hidden;
     }
-    .pos-header::after {
-        content: "";
-        position: absolute;
-        right: -120px;
-        top: -120px;
-        width: 260px;
-        height: 260px;
-        background: radial-gradient(circle, rgba(252,163,17,0.14) 0%, rgba(252,163,17,0) 70%);
-        pointer-events: none;
-    }
     .pos-header-left { display: flex; align-items: center; gap: 16px; }
     .pos-back {
         display: inline-flex; align-items: center; gap: 6px;
@@ -270,15 +260,20 @@
         color: #475569;
     }
 
+    /* an icon close at a 40px touch size (was a 27px "Close" word) */
     .item-picker-panel-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        margin: -8px -8px -8px 0;
         border: 0;
         background: transparent;
         color: #64748b;
-        font-size: 12px;
-        font-weight: 700;
         cursor: pointer;
-        padding: 4px 6px;
-        border-radius: 8px;
+        padding: 0;
+        border-radius: 10px;
     }
 
     .item-picker-panel-close:hover {
@@ -1528,6 +1523,452 @@
         .items-mobile-card { padding: 11px; }
         .items-mobile-breakdown { gap: 7px; }
     }
+
+    /* ─── Responsive pass (owner, 2026-11-15) ─────────────────────────────────────────────────────
+       The page follows the screen instead of jumping at two breakpoints: text scales between phone and desktop
+       (nothing under 11px), the item lists grow with their items up to a limit instead of fixed boxes, the
+       breakdown and payment tiles reflow to fit, and Back and remove are icons. Later in this sheet on purpose:
+       it replaces the fixed sizes above. */
+    .pos-page {
+        --pos-fs-micro: clamp(11px, 0.15vw + 10.4px, 12px);
+        --pos-fs-label: clamp(12px, 0.15vw + 11.4px, 13px);
+        --pos-fs-body: clamp(13px, 0.2vw + 12.2px, 14px);
+        --pos-fs-title: clamp(14px, 0.25vw + 13px, 16px);
+        --pos-fs-name: clamp(16px, 0.6vw + 13.6px, 20px);
+        --pos-fs-amount: clamp(14px, 0.25vw + 13px, 16px);
+        --pos-fs-total: clamp(20px, 1vw + 16px, 28px);
+        padding: clamp(10px, 1.6vw, 24px) clamp(10px, 1.6vw, 24px) 28px;
+    }
+
+    .pos-customer-name { font-size: var(--pos-fs-name); line-height: 1.2; }
+    .pos-customer-phone { font-size: var(--pos-fs-body); }
+    .card-title { font-size: var(--pos-fs-title); }
+    .field-label { font-size: var(--pos-fs-label); }
+    .summary-row { font-size: var(--pos-fs-body); }
+    .summary-total-val { font-size: var(--pos-fs-total); }
+    .btn-sell { font-size: clamp(15px, 0.3vw + 14px, 17px); }
+    .pay-mode-btn { font-size: var(--pos-fs-micro); }
+    .items-table-empty,
+    .items-tablet-inline-pill,
+    .items-mobile-total-label,
+    .items-mobile-breakdown-label { font-size: var(--pos-fs-micro); }
+    .items-mobile-title { font-size: var(--pos-fs-title); }
+    .items-mobile-meta { font-size: var(--pos-fs-label); }
+    .items-mobile-total-value { font-size: var(--pos-fs-amount); }
+    .items-mobile-breakdown-value { font-size: var(--pos-fs-body); }
+
+    /* the item lists: as tall as their items, scrolling only past a limit */
+    .items-table-scroll { height: auto; max-height: var(--items-table-height); }
+    .items-tablet-scroll { height: auto; max-height: min(430px, 62vh); }
+    .items-mobile-scroll { height: auto; max-height: min(520px, 60vh); }
+
+    /* price parts and payment modes take as many columns as fit */
+    .items-mobile-breakdown { grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr)); }
+
+    /* remove an item: a quiet icon button, red only on hover or focus */
+    .items-table-remove,
+    .items-mobile-remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .items-mobile-remove { width: 40px; height: 40px; margin: -8px -8px 0 0; }
+    .items-table-remove:hover,
+    .items-mobile-remove:hover,
+    .items-table-remove:focus-visible,
+    .items-mobile-remove:focus-visible {
+        color: var(--danger);
+        background: rgba(220, 38, 38, 0.08);
+        border-color: rgba(220, 38, 38, 0.18);
+        outline: none;
+    }
+
+    @media (max-width: 1024px) {
+        .pay-mode-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr)); }
+
+        /* one header row: an arrow back, then the customer (Back stays as the arrow's accessible name) */
+        .pos-header { flex-direction: row; align-items: center; padding: 10px 12px; }
+        .pos-header-left { flex-wrap: nowrap; align-items: center; width: 100%; min-width: 0; gap: 10px; }
+        .pos-header-left > div { min-width: 0; }
+        .pos-customer-name,
+        .pos-customer-phone { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pos-back {
+            flex: none;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 10px;
+        }
+        .pos-back-label { display: none; }
+    }
+
+    /* ─── Phone item card (owner, 2026-11-15) ─────────────────────────────────────────────────────────
+       The item, then its total large and right-aligned, then the six price parts listed like Dhiran's phone tables:
+       one row each, the label left and the amount right in even-width figures, parts at ₹0 greyed so the real
+       charges stand out. */
+    .items-mobile-view .items-mobile-card {
+        padding: 12px;
+        border-radius: 14px;
+        background: #ffffff;
+    }
+    .items-mobile-view .items-mobile-top {
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+    }
+    .items-mobile-view .items-mobile-top .items-table-thumb {
+        width: 44px;
+        height: 44px;
+    }
+    .items-mobile-view .items-mobile-remove {
+        margin: -6px -6px 0 0;
+        align-self: start;
+    }
+    .items-mobile-view .items-mobile-total {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #eef2f7;
+    }
+    .items-mobile-view .items-mobile-total-label {
+        font-size: var(--pos-fs-label);
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--muted);
+    }
+    .items-mobile-view .items-mobile-total-value {
+        font-size: clamp(18px, 0.8vw + 15px, 20px);
+        font-weight: 800;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .items-mobile-view .items-mobile-breakdown {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        margin: 8px 0 0;
+        padding: 2px 12px;
+        border: 1px solid #eef2f7;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+    .items-mobile-view .items-mobile-part {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
+        padding: 4px 0;
+        line-height: 1.3;
+        border-bottom: 1px solid #e8edf4;
+    }
+    .items-mobile-view .items-mobile-part:last-child {
+        border-bottom: 0;
+    }
+    /* quieter than the item total above them: small, light rows (owner, 2026-11-15) */
+    .items-mobile-view .items-mobile-part dt {
+        font-size: var(--pos-fs-micro);
+        font-weight: 400;
+        color: var(--muted);
+    }
+    .items-mobile-view .items-mobile-part dd {
+        margin: 0;
+        font-size: var(--pos-fs-label);
+        font-weight: 500;
+        color: var(--ink-soft);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .items-mobile-view .items-mobile-part.is-zero dd {
+        font-weight: 400;
+        color: #94a3b8;
+    }
+
+    /* ─── Rest of the checkout (owner, 2026-11-15) ─────────────────────────────────────────────────────
+       The app's phone rule gives every button in a page 13px and outranks these single-class rules, which left
+       Complete Sale 43px tall with 13px text; .pos-page puts the page's own sizes first. */
+    .pos-page .btn-sell {
+        min-height: 52px;
+        font-size: clamp(16px, 0.3vw + 15px, 17px);
+    }
+    .summary-row-note {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        font-weight: 400;
+        color: #94a3b8;
+    }
+    .pos-page :is(.field-hint, .field-label-hint, .pay-status-label) {
+        font-size: 12px;
+    }
+    @media (max-width: 1024px) {
+        /* 44px touch targets on phones and tablets */
+        .pos-page .items-list-add { width: 44px; height: 44px; }
+        .pos-page .items-list-clear { min-height: 44px; }
+        .pos-page .offers-trigger { min-height: 44px; }
+        .pos-page .items-table-remove { width: 40px; height: 40px; }
+    }
+
+    @media (max-width: 640px) {
+
+        /* payment modes: three to a row, and a seventh (EMI) takes the last row whole instead of sitting alone */
+        .pos-page .pay-mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .pos-page .pay-mode-btn:last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+        .pos-page .pay-mode-btn { font-size: 13px; }
+    }
+
+    /* ─── Phone bottom sheets (owner, 2026-11-15) ──────────────────────────────────────────────────────
+       Discounts and Payment: on phones a summary row opens the fields as a bottom sheet, the filters' design;
+       tablets and desktop keep them in place, as before: the same dialog stays open inline there (it all fits
+       at those widths). Offers & Redemption opens as the same sheet on phones. */
+    .pos-sheet {
+        display: block;
+        position: static;
+        width: auto;
+        max-width: none;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        overflow: visible;
+    }
+    .pos-sheet:not([open]) { display: none; }
+    .pos-sheet::backdrop { background: rgba(15, 23, 42, 0.42); }
+    .pos-page .pos-sheet-trigger,
+    .pos-sheet-head,
+    .pos-sheet-foot { display: none; }
+    .items-list-add-label { display: none; }
+
+    @media (max-width: 640px) {
+        .pos-page .pos-sheet-trigger { display: flex; }
+        .pos-sheet-trigger-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .pos-page :is(.discount-mobile-card, .payment-card) > .card-title { display: none; }
+
+        .pos-sheet:modal {
+            position: fixed;
+            inset: auto 0 0 0;
+            width: 100%;
+            max-width: none;
+            max-height: min(85dvh, 680px);
+            margin: 0;
+            padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            border: 1px solid var(--border);
+            border-bottom: 0;
+            border-radius: 18px 18px 0 0;
+            background: #ffffff;
+            box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.18);
+            animation: pos-sheet-up 180ms ease-out;
+        }
+        .pos-sheet:modal .pos-sheet-head {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 -14px 12px;
+            padding: 14px 14px 10px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .pos-sheet-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); }
+        .pos-sheet-head button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin: -8px -10px -8px 0;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--muted);
+        }
+        .pos-sheet:modal .pos-sheet-foot {
+            position: sticky;
+            bottom: calc(-14px - env(safe-area-inset-bottom));
+            display: block;
+            margin: 14px -14px 0;
+            padding: 12px 14px 14px;
+            background: #ffffff;
+            border-top: 1px solid var(--border-light);
+        }
+        .pos-sheet-done {
+            width: 100%;
+            min-height: 48px;
+            border: 0;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        /* Offers & Redemption: its popup docks to the bottom as the same sheet */
+        div[role="dialog"]:has(.offers-stack) {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            max-height: min(85dvh, 680px);
+            margin: 0 !important;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            border-radius: 18px 18px 0 0 !important;
+        }
+
+        /* Selected Items: light text buttons, not a dark square and an outlined red pill */
+        .pos-page .items-list-add,
+        .pos-page .items-list-clear {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            width: auto;
+            height: 40px;
+            min-height: 40px;
+            padding: 0 8px;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            box-shadow: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .pos-page .items-list-add { color: var(--accent); }
+        .pos-page .items-list-add svg { width: 18px; height: 18px; }
+        .pos-page .items-list-add-label { display: inline; }
+        .pos-page .items-list-clear { color: var(--danger); }
+        .pos-page .items-list-clear svg { display: none; }
+        .pos-page :is(.items-list-add, .items-list-clear):hover { background: var(--border-light); }
+    }
+
+    /* Phones and tablets, one column (owner, 2026-11-15): the choices that change the bill (offers, discounts,
+       payment) come before the Price Summary they feed, and Complete Sale last. Desktop keeps its sidebar. */
+    @media (max-width: 1024px) {
+        .pos-page .items-main-card { order: 1; }
+        .pos-page .offers-mobile-card { order: 2; }
+        .pos-page .discount-mobile-card { order: 3; }
+        .pos-page .payment-card { order: 4; }
+        .pos-page .summary-mobile-card { order: 5; }
+        .pos-page .sell-mobile-block { order: 6; }
+    }
+
+    @keyframes pos-sheet-up {
+        from { transform: translateY(24px); opacity: 0.6; }
+        to { transform: none; opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .pos-sheet:modal { animation: none; }
+    }
+
+    /* ─── Item list by room, touch sizes by pointer (owner, 2026-11-15) ────────────────────────────────
+       The list picks its view by its own width: the full table (1040px of columns) where it fits, the compact
+       table below that, the cards in a phone-sized column. With the sidebar open on a 1281-1440px screen the
+       column is 570-720px, and the full table scrolled sideways with Total and Remove out of sight. */
+    .pos-page .items-views { container: pos-items / inline-size; }
+    @container pos-items (min-width: 600px) and (max-width: 1100px) {
+        .items-views .items-desktop-view { display: none; }
+        .items-views .items-tablet-view { display: block; }
+        .items-views .items-mobile-view { display: none; }
+    }
+    @container pos-items (max-width: 599.98px) {
+        .items-views .items-desktop-view,
+        .items-views .items-tablet-view { display: none; }
+        .items-views .items-mobile-view { display: block; }
+    }
+    .items-tablet-table thead th { font-size: var(--pos-fs-micro); }
+
+    /* Any touch screen, an iPad in landscape too: 44px targets whatever the width */
+    @media (pointer: coarse) {
+        .pos-page :is(.pos-back, .items-list-add, .items-table-remove, .pay-mode-btn, .offers-trigger) { min-height: 44px; }
+        .pos-page :is(.pos-back, .items-list-add, .items-table-remove) { min-width: 44px; }
+        div[role="dialog"]:has(.offers-stack) .offer-mode-btn { min-height: 44px; }
+    }
+
+    /* Offers popup: a close target you can hit, and mode buttons at 40px */
+    div[role="dialog"]:has(.offers-stack) .p-6 > .flex:first-child > button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        margin: -10px -10px -10px 0;
+        border-radius: 10px;
+    }
+    div[role="dialog"]:has(.offers-stack) .offer-mode-btn { min-height: 40px; }
+
+    /* Compliance alert: same edges as the header and cards, and the header's spacing below it
+       (mx-4 doubled the page padding, and nothing separated it from the cards). */
+    .pos-page .pos-compliance-alert { margin: 0 0 20px; overflow-wrap: anywhere; }
+    @media (max-width: 1024px) { .pos-page .pos-compliance-alert { margin-bottom: 14px; } }
+
+    /* ─── Checkout messages (all sizes) ───────────────────────────────── */
+    .pos-page .sell-block-reason { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); text-align: center; }
+    .pos-page .btn-sell-amount { font-variant-numeric: tabular-nums; }
+    .pos-page .items-no-price { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: #b45309; font-size: 13px; font-weight: 600; }
+    .pos-page .items-no-price a { color: #b45309; text-decoration: underline; text-underline-offset: 2px; }
+    .pos-page .items-list-clear.is-armed,
+    .pos-page .items-list-clear.is-armed:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+    /* ─── Desktop checkout (owner, 2026-11-15) ─────────────────────────── */
+    @media (min-width: 1025px) {
+        /* The sale is always one click away. The side column was sticky, but at ~800px it is taller than a
+           laptop window, so it never stuck and Complete Sale sat below the fold. Now the button block
+           sticks to the bottom of the window while the column scrolls past. */
+        .pos-page .pos-sidebar { position: static; }
+        .pos-page .sell-sidebar-block {
+            position: sticky; bottom: 0; z-index: 5;
+            margin: 0 -6px; padding: 18px 6px 16px;
+            background: linear-gradient(to bottom, rgba(246, 249, 253, 0) 0, #f6f9fd 18px);
+        }
+        .pos-page .sell-sidebar-block .btn-sell-offset { margin-top: 0; }
+        .pos-page .btn-sell { padding: 16px; font-size: 17px; }
+
+        /* Header: Back and the sale-type label are not actions to push, so they drop the navy fill
+           that the Complete Sale button uses. */
+        .pos-page .pos-back { background: #fff; color: var(--ink); border-color: var(--border); box-shadow: none; }
+        .pos-page .pos-back:hover { background: var(--border-light); color: var(--ink); border-color: #cbd5e1; }
+        .pos-page .pos-badge { background: transparent; color: var(--muted); border-color: var(--border); }
+
+        /* Round-off is a ±₹1 paise fix: one compact row, not a full-width field. */
+        .pos-page .discount-sidebar-card .field:has(.roundoff-input) { display: grid; grid-template-columns: minmax(0, 1fr) 112px; align-items: center; column-gap: 12px; }
+        .pos-page .discount-sidebar-card .field:has(.roundoff-input) .field-label { margin: 0; }
+        .pos-page .discount-sidebar-card .field:has(.roundoff-input) .field-hint { grid-column: 1 / -1; margin-top: 6px !important; }
+        .pos-page .discount-sidebar-card .roundoff-input { height: 40px; min-height: 40px; padding-block: 0; }
+
+        /* One control height and a 12px floor for text. */
+        .pos-page .discount-stack .field-input:not(.roundoff-input) { height: 44px; min-height: 44px; padding-block: 0; }
+        .pos-page :is(.items-table-item-meta, .items-list-badge) { font-size: 12px; }
+        .pos-page .pay-mode-btn { min-height: 40px; font-size: 13px; }
+        .pos-page :is(.items-list-add, .items-list-clear) { height: 40px; }
+        .pos-page .items-list-add { width: 40px; }
+    }
+    @media (min-width: 1600px) {
+        /* Wide screens: the summary column grows a little instead of the item list stretching on. */
+        .pos-page .pos-body { grid-template-columns: minmax(0, 1fr) 420px; }
+    }
 </style>
 
 <div class="pos-page" x-data="retailerPos()"
@@ -1536,27 +1977,30 @@
     <!-- ─── Header ──────────────────────────────── -->
     <div class="pos-header">
         <div class="pos-header-left">
-            <a href="{{ route('pos.index') }}" class="pos-back">
-                <x-icon name="chevron-left" size="16" />
-                Back
+            <a href="{{ route('pos.index') }}" class="pos-back" aria-label="Back to POS">
+                <x-icon name="chevron-left" size="18" />
+                <span class="pos-back-label">Back</span>
             </a>
             <div>
                 <div class="pos-customer-name">{{ $customer->name }}</div>
                 <div class="pos-customer-phone">{{ $customer->phone }}{{ $customer->email ? ' · '.$customer->email : '' }}</div>
             </div>
+            {{-- The customer's points chip is off the checkout header for now (owner, 2026-11-15): the POS has no way to
+                 redeem points yet. The points system is unchanged. To show it again, restore:
             @if(($customerLoyaltyPoints ?? 0) > 0)
             <div class="loyalty-pill">
                 <x-icon name="star" size="16" />
-                <span class="loyalty-pill-points">{{ number_format($customerLoyaltyPoints) }} pts</span>
-                <span class="loyalty-pill-value">₹{{ number_format(($customerLoyaltyPoints) * ($loyaltyPointValue ?? 0.25), 2) }}</span>
+                <span class="loyalty-pill-points">{ { number_format($customerLoyaltyPoints) } } pts</span>
+                <span class="loyalty-pill-value">₹{ { number_format(($customerLoyaltyPoints) * ($loyaltyPointValue ?? 0.25), 2) } }</span>
             </div>
             @endif
+            --}}
         </div>
         <div class="pos-badge">Retail Sale</div>
     </div>
 
     @if($splitAlertTotal ?? false)
-    <div class="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    <div class="pos-compliance-alert flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
         <x-icon name="triangle-alert" class="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
         <span>
             <strong>Compliance alert:</strong> Combined today's total for {{ $customer->name }} is
@@ -1581,7 +2025,7 @@
                         <div class="item-picker-panel-head">
                             <div class="item-picker-panel-title-row">
                                 <span class="item-picker-panel-title">Search stock</span>
-                                <button type="button" class="item-picker-panel-close" @click="closeItemPicker(true)">Close</button>
+                                <button type="button" class="item-picker-panel-close" @click="closeItemPicker(true)" aria-label="Close" title="Close"><x-icon name="x" size="18" /></button>
                             </div>
                             <input type="text"
                                    class="item-picker-filter"
@@ -1657,14 +2101,24 @@
                     <div class="items-list-actions">
                         <button type="button" class="items-list-add" @click="openItemPicker()" aria-label="Add item" title="Add item">
                             <x-icon name="plus" />
+                            <span class="items-list-add-label" aria-hidden="true">Add</span>
                         </button>
-                        <button type="button" class="items-list-clear" x-show="items.length > 0" x-cloak @click="clearItems()">
+                        {{-- Two clicks: the first arms it for 4 s, the second clears. One stray click used to empty the bill. --}}
+                        <button type="button" class="items-list-clear" x-show="items.length > 0" x-cloak
+                                x-data="{ armed: false, timer: null }"
+                                :class="{ 'is-armed': armed }"
+                                :aria-label="armed ? 'Click again to remove all items' : 'Clear all items'"
+                                @click="if (armed) { clearTimeout(timer); armed = false; clearItems(); } else { armed = true; timer = setTimeout(() => armed = false, 4000); }"
+                                @blur="armed = false">
                             <x-icon name="x" />
-                            Clear All
+                            <span x-text="armed ? 'Click again to clear' : 'Clear All'">Clear All</span>
                         </button>
                     </div>
                 </div>
 
+                {{-- The list picks its view by the room it has, not the screen (owner, 2026-11-15): a container of its own, so
+                     the item picker (fixed, outside it) is unaffected. --}}
+                <div class="items-views">
                 <div class="items-desktop-view">
                     <div class="items-table-shell">
                         <div class="items-table-scroll">
@@ -1729,9 +2183,17 @@
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.hallmarkCharges)"></span></td>
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.rhodiumCharges)"></span></td>
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.otherCharges)"></span></td>
-                                            <td><span class="items-table-total" x-text="'₹' + money(itm.selling)"></span></td>
+                                            <td>
+                                                <span class="items-table-total" x-show="Number(itm.selling) > 0" x-text="'₹' + money(itm.selling)"></span>
+                                                <span class="items-no-price" x-show="!(Number(itm.selling) > 0)">
+                                                    No price
+                                                    @can('inventory.edit')
+                                                        <a :href="'{{ url('/inventory/items') }}/' + itm.id + '/edit'" data-turbo-frame="_top">Set price</a>
+                                                    @endcan
+                                                </span>
+                                            </td>
                                             <td class="items-table-action-cell">
-                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
+                                                <button type="button" class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item" :aria-label="'Remove ' + (itm.design || itm.category || 'item')"><x-icon name="trash-2" size="16" /></button>
                                             </td>
                                         </tr>
                                     </template>
@@ -1745,13 +2207,15 @@
                     <div class="items-tablet-shell">
                         <div class="items-tablet-scroll">
                             <table class="items-tablet-table jf-grid">
+                                {{-- The remove column is a fixed 52px (a 44px touch button); 6% was 35px in a 600px list and
+                                     the button pushed the list sideways. The item column takes what is left. --}}
                                 <colgroup>
-                                    <col style="width: 46%;">
-                                    <col style="width: 12%;">
-                                    <col style="width: 12%;">
-                                    <col style="width: 12%;">
-                                    <col style="width: 12%;">
-                                    <col style="width: 6%;">
+                                    <col>
+                                    <col style="width: 13%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 52px;">
                                 </colgroup>
                                 <thead>
                                     <tr>
@@ -1790,10 +2254,11 @@
                                                             <span x-text="itm.weight + 'g'"></span> ·
                                                             <span x-text="itm.purity + 'K'"></span>
                                                         </div>
-                                                        <div class="items-tablet-inline-breakdown">
-                                                            <span class="items-tablet-inline-pill">Hm <strong x-text="'₹' + money(itm.hallmarkCharges)"></strong></span>
-                                                            <span class="items-tablet-inline-pill">Rh <strong x-text="'₹' + money(itm.rhodiumCharges)"></strong></span>
-                                                            <span class="items-tablet-inline-pill">Ot <strong x-text="'₹' + money(itm.otherCharges)"></strong></span>
+                                                        {{-- Only charges the item actually has, named in full (Hm/Rh/Ot ₹0.00 was noise). --}}
+                                                        <div class="items-tablet-inline-breakdown" x-show="Number(itm.hallmarkCharges) > 0 || Number(itm.rhodiumCharges) > 0 || Number(itm.otherCharges) > 0">
+                                                            <span class="items-tablet-inline-pill" x-show="Number(itm.hallmarkCharges) > 0">Hallmark <strong x-text="'₹' + money(itm.hallmarkCharges)"></strong></span>
+                                                            <span class="items-tablet-inline-pill" x-show="Number(itm.rhodiumCharges) > 0">Rhodium <strong x-text="'₹' + money(itm.rhodiumCharges)"></strong></span>
+                                                            <span class="items-tablet-inline-pill" x-show="Number(itm.otherCharges) > 0">Other <strong x-text="'₹' + money(itm.otherCharges)"></strong></span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1801,9 +2266,17 @@
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.cost)"></span></td>
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.makingCharges)"></span></td>
                                             <td><span class="items-table-money" x-text="'₹' + money(itm.stoneCharges)"></span></td>
-                                            <td><span class="items-table-total" x-text="'₹' + money(itm.selling)"></span></td>
+                                            <td>
+                                                <span class="items-table-total" x-show="Number(itm.selling) > 0" x-text="'₹' + money(itm.selling)"></span>
+                                                <span class="items-no-price" x-show="!(Number(itm.selling) > 0)">
+                                                    No price
+                                                    @can('inventory.edit')
+                                                        <a :href="'{{ url('/inventory/items') }}/' + itm.id + '/edit'" data-turbo-frame="_top">Set price</a>
+                                                    @endcan
+                                                </span>
+                                            </td>
                                             <td class="items-table-action-cell">
-                                                <button class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
+                                                <button type="button" class="items-table-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item" :aria-label="'Remove ' + (itm.design || itm.category || 'item')"><x-icon name="trash-2" size="16" /></button>
                                             </td>
                                         </tr>
                                     </template>
@@ -1826,6 +2299,8 @@
                                 <div class="items-mobile-list">
                                     <template x-for="(itm, idx) in items" :key="'mobile-' + itm.id + '-' + idx">
                                         <article class="items-mobile-card">
+                                            {{-- Phones (owner, 2026-11-15): the item, its total large and right-aligned, then the six price parts one
+                                                 row each, label left and amount right (parts at ₹0 greyed), not six boxes. --}}
                                             <div class="items-mobile-top">
                                                 <div class="items-table-thumb">
                                                     <template x-if="itm.image">
@@ -1840,38 +2315,44 @@
                                                         <span x-text="itm.purity + 'K'"></span>
                                                     </div>
                                                 </div>
-                                                <div class="items-mobile-total">
-                                                    <button class="items-mobile-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item">&times;</button>
-                                                    <span class="items-mobile-total-label">Total</span>
-                                                    <span class="items-mobile-total-value" x-text="'₹' + money(itm.selling)"></span>
-                                                </div>
+                                                <button type="button" class="items-mobile-remove" @click="removeItem(idx)" title="Remove" aria-label="Remove item" :aria-label="'Remove ' + (itm.design || itm.category || 'item')"><x-icon name="trash-2" size="16" /></button>
                                             </div>
-                                            <div class="items-mobile-breakdown">
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Metal</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.cost)"></div>
-                                                </div>
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Making</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.makingCharges)"></div>
-                                                </div>
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Stone</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.stoneCharges)"></div>
-                                                </div>
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Hallmark</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.hallmarkCharges)"></div>
-                                                </div>
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Rhodium</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.rhodiumCharges)"></div>
-                                                </div>
-                                                <div class="items-mobile-breakdown-cell">
-                                                    <div class="items-mobile-breakdown-label">Other</div>
-                                                    <div class="items-mobile-breakdown-value" x-text="'₹' + money(itm.otherCharges)"></div>
-                                                </div>
+                                            <div class="items-mobile-total">
+                                                <span class="items-mobile-total-label">Item total</span>
+                                                <span class="items-mobile-total-value" x-show="Number(itm.selling) > 0" x-text="'₹' + money(itm.selling)"></span>
+                                                <span class="items-no-price" x-show="!(Number(itm.selling) > 0)">
+                                                    No price
+                                                    @can('inventory.edit')
+                                                        <a :href="'{{ url('/inventory/items') }}/' + itm.id + '/edit'" data-turbo-frame="_top">Set price</a>
+                                                    @endcan
+                                                </span>
                                             </div>
+                                            <dl class="items-mobile-breakdown" aria-label="Price parts">
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.cost) > 0) }">
+                                                    <dt>Metal</dt>
+                                                    <dd x-text="'₹' + money(itm.cost)"></dd>
+                                                </div>
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.makingCharges) > 0) }">
+                                                    <dt>Making</dt>
+                                                    <dd x-text="'₹' + money(itm.makingCharges)"></dd>
+                                                </div>
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.stoneCharges) > 0) }">
+                                                    <dt>Stone</dt>
+                                                    <dd x-text="'₹' + money(itm.stoneCharges)"></dd>
+                                                </div>
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.hallmarkCharges) > 0) }">
+                                                    <dt>Hallmark</dt>
+                                                    <dd x-text="'₹' + money(itm.hallmarkCharges)"></dd>
+                                                </div>
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.rhodiumCharges) > 0) }">
+                                                    <dt>Rhodium</dt>
+                                                    <dd x-text="'₹' + money(itm.rhodiumCharges)"></dd>
+                                                </div>
+                                                <div class="items-mobile-part" :class="{ 'is-zero': !(Number(itm.otherCharges) > 0) }">
+                                                    <dt>Other</dt>
+                                                    <dd x-text="'₹' + money(itm.otherCharges)"></dd>
+                                                </div>
+                                            </dl>
                                         </article>
                                     </template>
                                 </div>
@@ -1879,13 +2360,33 @@
                         </template>
                     </div>
                 </div>
+                </div>
             </div>
 
             <!-- ── Discount & Round-off Card ── -->
             <div class="card discount-mobile-card">
+                {{-- Phones (owner, 2026-11-15): a summary row; the fields open as a bottom sheet like the filters. Tablets and
+                     desktop keep them in place (the same dialog stays open inline there). --}}
+                <button type="button" class="offers-trigger pos-sheet-trigger" aria-haspopup="dialog" aria-controls="pos-discount-sheet"
+                        @click="$refs.discountSheet.close(); $refs.discountSheet.showModal()">
+                    <span class="pos-sheet-trigger-copy">
+                        <span class="card-toggle-heading">Discounts</span>
+                        <span class="card-toggle-summary" x-text="discount > 0 ? '₹' + money(discount) + ' off' : 'No discount'"></span>
+                    </span>
+                    <span class="offers-trigger-action">Edit <x-icon name="chevron-right" size="16" /></span>
+                </button>
                 <div class="card-title discount-card-title">
                     <span><span class="card-title-icon"></span> Discounts</span>
                 </div>
+                <dialog id="pos-discount-sheet" class="pos-sheet" x-ref="discountSheet" aria-label="Discounts" open
+                        x-init="$el.open = window.innerWidth > 640"
+                        @resize.window="if (window.innerWidth > 640) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) { $el.close(); }"
+                        @turbo:before-cache.document="if (window.innerWidth <= 640) $el.close()"
+                        @click="if ($event.target === $el) $el.close()">
+                    <div class="pos-sheet-head">
+                        <h3>Discounts</h3>
+                        <button type="button" aria-label="Close discounts" @click="$refs.discountSheet.close()"><x-icon name="x" size="18" /></button>
+                    </div>
                 <div class="discount-stack">
                     <div class="discount-stack-row">
                         <div class="field">
@@ -1915,8 +2416,8 @@
                         <div class="field">
                             <label class="field-label">
                                 Round-off (₹)
-                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
-                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;margin-left:4px;">— enter payments first</span>
+                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
                             </label>
                             <div class="roundoff-controls">
                                 <input type="number" class="field-input roundoff-input"
@@ -1927,13 +2428,17 @@
                                        @input="clampAndRecalc()"
                                        placeholder="Auto">
                             </div>
-                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
+                            <p class="field-hint" style="color:#94a3b8;margin-top:3px;">Paise only, up to ±₹1. Use Discount for more.</p>
                         </div>
                     </template>
                     {{-- Auto round-off (Quote V2) is shown in the Price Summary
                          below, so it's intentionally not duplicated here. The
                          legacy manual round-off input above remains for non-V2 shops. --}}
                 </div>
+                    <div class="pos-sheet-foot">
+                        <button type="button" class="pos-sheet-done" @click="$refs.discountSheet.close()">Done</button>
+                    </div>
+                </dialog>
             </div>
 
             <div class="card offers-mobile-card">
@@ -1982,7 +2487,7 @@
                 <div class="summary-row">
                     <span>
                         Round-off
-                        <span style="display:block;font-size:11px;font-weight:400;color:#94a3b8;margin-top:2px;"
+                        <span class="summary-row-note"
                               x-text="roundOff > 0 ? 'Rounded up — paise added' : (roundOff < 0 ? 'Rounded down — paise waived' : 'No rounding applied')"></span>
                     </span>
                     <span class="summary-row-val" x-text="(roundOff > 0 ? '+ ₹ ' : roundOff < 0 ? '- ₹ ' : '₹ ') + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
@@ -1993,17 +2498,39 @@
                     <span class="summary-total-val" x-text="'₹ ' + Number(total).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
+                {{-- "Points you'll earn" is off the checkout for now, with the customer's points chip (owner, 2026-11-15):
+                     the POS has no way to redeem points yet. Points are still earned on the sale. To show it again, restore:
                 <div class="summary-row summary-loyalty-row" x-show="total > 0">
                     <span>Points you'll earn</span>
                     <span class="summary-loyalty-points" x-text="'+' + Math.floor(total * loyaltyPointsPerHundred / 100) + ' pts'"></span>
                 </div>
+                --}}
             </div>
 
             <!-- ── Payment Card ── -->
             <div class="card payment-card">
+                {{-- Phones (owner, 2026-11-15): a summary row; the fields open as a bottom sheet like the filters. Tablets and
+                     desktop keep them in place (the same dialog stays open inline there). --}}
+                <button type="button" class="offers-trigger pos-sheet-trigger" aria-haspopup="dialog" aria-controls="pos-payment-sheet"
+                        @click="$refs.paymentSheet.close(); $refs.paymentSheet.showModal()">
+                    <span class="pos-sheet-trigger-copy">
+                        <span class="card-toggle-heading">Payment</span>
+                        <span class="card-toggle-summary" x-text="payments.length === 0 ? 'Choose how the customer pays' : (remaining() > 0.01 ? '₹' + remaining().toLocaleString('en-IN', {minimumFractionDigits: 2}) + (hasEmiMode() ? ' in EMI' : ' left to pay') : 'Fully paid')"></span>
+                    </span>
+                    <span class="offers-trigger-action">Edit <x-icon name="chevron-right" size="16" /></span>
+                </button>
                 <div class="card-title">
                     <span><span class="card-title-icon"></span> Payment</span>
                 </div>
+                <dialog id="pos-payment-sheet" class="pos-sheet" x-ref="paymentSheet" aria-label="Payment" open
+                        x-init="$el.open = window.innerWidth > 640"
+                        @resize.window="if (window.innerWidth > 640) { if ($el.matches(':modal')) $el.close(); $el.open = true; } else if (!$el.matches(':modal')) { $el.close(); }"
+                        @turbo:before-cache.document="if (window.innerWidth <= 640) $el.close()"
+                        @click="if ($event.target === $el) $el.close()">
+                    <div class="pos-sheet-head">
+                        <h3>Payment</h3>
+                        <button type="button" aria-label="Close payment" @click="$refs.paymentSheet.close()"><x-icon name="x" size="18" /></button>
+                    </div>
 
                 <!-- Mode buttons: Cash/Other/EMI always shown; UPI/Bank/Wallet only if configured -->
                 <div class="pay-mode-grid">
@@ -2127,7 +2654,8 @@
                             </div>
                         </div>
                     </template>
-                    <template x-if="!hasEmiMode() && remaining() <= 0.01 && excess() <= 0.5">
+                    {{-- Only with something to pay and something paid: a ₹0 bill with no payment is not "paid". --}}
+                    <template x-if="!hasEmiMode() && total > 0 && (payments.length > 0 || appliedRedemptionAmount() > 0) && remaining() <= 0.01 && excess() <= 0.5">
                         <div class="pay-status pay-status-paid">
                             <x-icon name="circle-check" size="20" />
                             <span class="pay-status-paid-text">Fully paid</span>
@@ -2153,13 +2681,17 @@
                         </div>
                     </template>
                 </div>
+                    <div class="pos-sheet-foot">
+                        <button type="button" class="pos-sheet-done" @click="$refs.paymentSheet.close()">Done</button>
+                    </div>
+                </dialog>
             </div>
 
             <div class="sell-mobile-block">
                 <button class="btn-sell btn-sell-offset"
                         :disabled="!canSell()"
                         @click="completeSale()">
-                    <span x-show="!selling">Complete Sale</span>
+                    <span x-show="!selling">Complete Sale<span class="btn-sell-amount" x-show="total > 0" x-text="' · ₹' + Number(total).toLocaleString('en-IN', {minimumFractionDigits: 2})"></span></span>
                     <span x-show="selling">Processing…</span>
                 </button>
 
@@ -2170,7 +2702,10 @@
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
                     </div>
                 </div>
-                <p x-show="posQuoteV2Enabled && quote.status === 'pending' && items.length > 0" class="text-xs text-gray-500 mt-2 text-center">Updating price…</p>
+                {{-- Why the button is off. The account box above and quoteError below say it in more detail. --}}
+                <p class="sell-block-reason" aria-live="polite"
+                   x-show="!selling && sellBlockReason() !== '' && !missingAccountSelection() && !quoteError"
+                   x-text="sellBlockReason()"></p>
                 <p x-show="quoteError" class="text-sm text-red-600 mt-3 text-center" role="alert" x-text="quoteError"></p>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
@@ -2211,8 +2746,8 @@
                         <div class="field">
                             <label class="field-label">
                                 Round-off (₹)
-                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
-                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;margin-left:4px;">— enter payments first</span>
+                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
                             </label>
                             <div class="roundoff-controls">
                                 <input type="number" class="field-input roundoff-input"
@@ -2223,7 +2758,7 @@
                                        @input="clampAndRecalc()"
                                        placeholder="Auto">
                             </div>
-                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
+                            <p class="field-hint" style="color:#94a3b8;margin-top:3px;">Paise only, up to ±₹1. Use Discount for more.</p>
                         </div>
                     </template>
                     {{-- Auto round-off (Quote V2) is shown in the Price Summary
@@ -2278,7 +2813,7 @@
                 <div class="summary-row">
                     <span>
                         Round-off
-                        <span style="display:block;font-size:11px;font-weight:400;color:#94a3b8;margin-top:2px;"
+                        <span class="summary-row-note"
                               x-text="roundOff > 0 ? 'Rounded up — paise added' : (roundOff < 0 ? 'Rounded down — paise waived' : 'No rounding applied')"></span>
                     </span>
                     <span class="summary-row-val" x-text="(roundOff > 0 ? '+ ₹ ' : roundOff < 0 ? '- ₹ ' : '₹ ') + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
@@ -2289,17 +2824,20 @@
                     <span class="summary-total-val" x-text="'₹ ' + Number(total).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
+                {{-- "Points you'll earn" is off the checkout for now, with the customer's points chip (owner, 2026-11-15):
+                     the POS has no way to redeem points yet. Points are still earned on the sale. To show it again, restore:
                 <div class="summary-row summary-loyalty-row" x-show="total > 0">
                     <span>Points you'll earn</span>
                     <span class="summary-loyalty-points" x-text="'+' + Math.floor(total * loyaltyPointsPerHundred / 100) + ' pts'"></span>
                 </div>
+                --}}
             </div>
 
             <div class="sell-sidebar-block">
                 <button class="btn-sell btn-sell-offset"
                         :disabled="!canSell()"
                         @click="completeSale()">
-                    <span x-show="!selling">Complete Sale</span>
+                    <span x-show="!selling">Complete Sale<span class="btn-sell-amount" x-show="total > 0" x-text="' · ₹' + Number(total).toLocaleString('en-IN', {minimumFractionDigits: 2})"></span></span>
                     <span x-show="selling">Processing…</span>
                 </button>
 
@@ -2310,7 +2848,10 @@
                         <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
                     </div>
                 </div>
-                <p x-show="posQuoteV2Enabled && quote.status === 'pending' && items.length > 0" class="text-xs text-gray-500 mt-2 text-center">Updating price…</p>
+                {{-- Why the button is off. The account box above and quoteError below say it in more detail. --}}
+                <p class="sell-block-reason" aria-live="polite"
+                   x-show="!selling && sellBlockReason() !== '' && !missingAccountSelection() && !quoteError"
+                   x-text="sellBlockReason()"></p>
                 <p x-show="quoteError" class="text-sm text-red-600 mt-3 text-center" role="alert" x-text="quoteError"></p>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
@@ -2900,6 +3441,8 @@ function retailerPos() {
 
         clearItems() {
             this.items = [];
+            // Payments were entered against the bill being cleared; kept, they showed an empty bill as "Overpaid".
+            this.payments = [];
             this.recalc();
             this.syncUrl();
             this.renderItemPicker();
@@ -3369,8 +3912,10 @@ function retailerPos() {
                 pay.payment_method_id = methods[0].id;
                 pay.reference = methods[0].account_label;
             }
-            // Auto-fill remaining amount when this is the first payment row
-            if (this.payments.length === 0 && mode !== 'emi') {
+            // Pre-fill what is still owed: always for the first row, and for a split payment's later
+            // money rows too (old metal is valued from its weight, and EMI takes what is left by itself).
+            const isMetal = mode === 'old_gold' || mode === 'old_silver';
+            if (mode !== 'emi' && (this.payments.length === 0 || !isMetal)) {
                 pay.amount = Math.max(0, this.remaining());
             }
             this.payments.push(pay);
@@ -3442,28 +3987,43 @@ function retailerPos() {
         },
 
         canSell() {
-            if (!(this.items.length > 0
-                && this.total > 0
-                && !this.selling)) {
-                return false;
+            return !this.selling && this.sellBlockReason() === '';
+        },
+
+        // The first thing that stops the sale, in words the cashier can act on; '' when it can go through.
+        // canSell() is exactly "no reason", so the button and its message can never disagree.
+        sellBlockReason() {
+            if (this.items.length === 0) return 'Add an item to bill.';
+            if (!(this.total > 0)) {
+                return this.items.some(i => !(Number(i.selling) > 0))
+                    ? 'An item has no selling price. Set its price in Stock first.'
+                    : 'The total is ₹0.';
             }
 
             // The sale bills the quote's numbers: only a quote that priced exactly what is on screen may be used.
-            if (this.posQuoteV2Enabled && !this.quote.readyFor(this.quotePayload())) return false;
-
-            const hasAnySettlement = this.payments.length > 0 || this.appliedRedemptionAmount() > 0;
-            if (!hasAnySettlement) return false;
-
-            if (this.missingAccountSelection()) return false;
-
-            if (this.hasEmiMode()) {
-                const hasOnlyEmi = this.payments.length === 1 && this.payments[0].mode === 'emi';
-                return hasOnlyEmi && this.appliedRedemptionAmount() <= 0;
+            if (this.posQuoteV2Enabled && !this.quote.readyFor(this.quotePayload())) {
+                return this.quote.status === 'failed' ? 'The price could not be updated.' : 'Updating price…';
             }
 
-            if (this.excess() > 0.01 && !this.excessStoredAsCredit()) return false;
+            if (this.payments.length === 0 && this.appliedRedemptionAmount() <= 0) return 'Add a payment to continue.';
 
-            return this.remaining() <= 0.01;
+            if (this.missingAccountSelection()) return 'Choose the account for each UPI or bank payment.';
+
+            if (this.hasEmiMode()) {
+                if (!(this.payments.length === 1 && this.payments[0].mode === 'emi')) return 'EMI must be the only payment.';
+                if (this.appliedRedemptionAmount() > 0) return 'Remove the scheme redemption to use EMI.';
+                return '';
+            }
+
+            if (this.excess() > 0.01 && !this.excessStoredAsCredit()) {
+                return '₹' + this.excess().toLocaleString('en-IN', { minimumFractionDigits: 2 }) + ' more than the total. Reduce a payment.';
+            }
+
+            if (this.remaining() > 0.01) {
+                return '₹' + this.remaining().toLocaleString('en-IN', { minimumFractionDigits: 2 }) + ' still to collect.';
+            }
+
+            return '';
         },
 
         async completeSale() {
