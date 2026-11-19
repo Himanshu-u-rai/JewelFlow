@@ -67,7 +67,7 @@ class VendorController extends Controller
             $query->archived();
         }
 
-        $vendors = $query->latest()->paginate(15)->withQueryString();
+        $vendors = $query->latest()->orderByDesc('id')->paginate(15)->withQueryString();
 
         $editorId = filter_var($request->query('editor'), FILTER_VALIDATE_INT);
         $restoreVendorEditor = auth()->user()->can('vendors.manage')

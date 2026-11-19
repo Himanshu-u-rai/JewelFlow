@@ -29,7 +29,7 @@ class InstallmentController extends Controller
             $query->where('status', 'active');
         }
 
-        $plans = $query->latest()->paginate(15);
+        $plans = $query->latest()->orderByDesc('id')->paginate(15);
 
         $activePlansCount = InstallmentPlan::where('shop_id', $shopId)
             ->where('status', 'active')

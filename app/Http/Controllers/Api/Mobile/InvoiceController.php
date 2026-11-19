@@ -55,7 +55,7 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query
-            ->orderByDesc('created_at')
+            ->orderByDesc('created_at')->orderByDesc('id')
             ->paginate((int) $request->input('per_page', 20));
 
         $invoices->getCollection()->transform(function (Invoice $invoice) {

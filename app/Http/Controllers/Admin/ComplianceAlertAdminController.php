@@ -44,7 +44,7 @@ class ComplianceAlertAdminController extends Controller
             $query->whereDate('compliance_alerts.created_at', '<=', $request->to);
         }
 
-        $alerts = $query->orderByDesc('compliance_alerts.created_at')->paginate(25)->withQueryString();
+        $alerts = $query->orderByDesc('compliance_alerts.created_at')->orderByDesc('compliance_alerts.id')->paginate(25)->withQueryString();
 
         return view('super-admin.compliance.alerts', compact('alerts'));
     }

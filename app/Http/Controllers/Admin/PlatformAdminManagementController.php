@@ -20,7 +20,7 @@ class PlatformAdminManagementController extends Controller
 
     public function index(): View
     {
-        $platformAdmins = PlatformAdmin::query()->latest()->paginate(25);
+        $platformAdmins = PlatformAdmin::query()->latest()->orderByDesc('id')->paginate(25);
         $permissions = PlatformAdmin::PERMISSIONS;
         return view('super-admin.platform-admins.index', compact('platformAdmins', 'permissions'));
     }

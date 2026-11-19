@@ -85,6 +85,7 @@ class VendorController extends Controller
             'updated' => $query->latest('updated_at'),
             default   => $query->latest(),
         };
+        $query->orderByDesc('id');
 
         $paginator = $query->paginate($perPage);
 
@@ -261,7 +262,7 @@ class VendorController extends Controller
         // Paginated ledger entries: one per item.
         $paginator = Item::query()
             ->where('vendor_id', $vendor->id)
-            ->latest('created_at')
+            ->latest('created_at')->orderByDesc('id')
             ->paginate($perPage, [
                 'id', 'barcode', 'category', 'sub_category', 'cost_price',
                 'status', 'created_at', 'gross_weight', 'purity',

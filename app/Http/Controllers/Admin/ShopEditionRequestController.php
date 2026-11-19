@@ -38,7 +38,7 @@ class ShopEditionRequestController extends Controller
             $query->where('status', $status);
         }
 
-        $requests = $query->latest()->paginate(25)->withQueryString();
+        $requests = $query->latest()->orderByDesc('id')->paginate(25)->withQueryString();
 
         $pendingCount = ShopEditionRequest::withoutGlobalScope('shop')
             ->where('status', 'pending')

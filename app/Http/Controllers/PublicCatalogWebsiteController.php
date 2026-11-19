@@ -100,7 +100,7 @@ class PublicCatalogWebsiteController extends Controller
             default      => $query->latest(),
         };
 
-        $items = $query->paginate(24)->withQueryString();
+        $items = $query->orderByDesc('id')->paginate(24)->withQueryString();
 
         $imageUrls = [];
         foreach ($items as $item) {
@@ -143,7 +143,7 @@ class PublicCatalogWebsiteController extends Controller
             default      => $query->latest(),
         };
 
-        $items = $query->paginate(24)->withQueryString();
+        $items = $query->orderByDesc('id')->paginate(24)->withQueryString();
 
         $imageUrls = [];
         foreach ($items as $item) {

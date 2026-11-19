@@ -102,7 +102,7 @@ class ItemController extends Controller
             });
         }
 
-        $items = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+        $items = $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate(20)->withQueryString();
 
         // Stats — single query with FILTER aggregates instead of 4 separate queries
         $rawStats = DB::table('items')

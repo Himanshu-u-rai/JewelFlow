@@ -113,7 +113,7 @@ class CustomerController extends Controller
                 });
             }
 
-            $loyaltyCustomers = $loyaltyQuery->orderByDesc('loyalty_points')->paginate(15, ['*'], 'loyalty_page');
+            $loyaltyCustomers = $loyaltyQuery->orderByDesc('loyalty_points')->orderByDesc('id')->paginate(15, ['*'], 'loyalty_page');
 
             $totalPointsIssued = LoyaltyTransaction::where('shop_id', $shopId)
                 ->where('type', 'earn')
@@ -135,7 +135,7 @@ class CustomerController extends Controller
                 $installmentQuery->where('status', $installmentStatus);
             }
 
-            $installmentPlans = $installmentQuery->latest()->paginate(15, ['*'], 'emi_page');
+            $installmentPlans = $installmentQuery->latest()->orderByDesc('id')->paginate(15, ['*'], 'emi_page');
 
             $overduePlans = InstallmentPlan::where('shop_id', $shopId)
                 ->active()
@@ -384,7 +384,7 @@ class CustomerController extends Controller
             'quick-bills' => \App\Models\QuickBill::where('shop_id', $shopId)->where('customer_id', $customer->id),
             'repairs'     => \App\Models\Repair::where('shop_id', $shopId)->where('customer_id', $customer->id),
         };
-        $rows = $rows->latest()->paginate(20)->withQueryString();
+        $rows = $rows->latest()->orderByDesc('id')->paginate(20)->withQueryString();
 
         return view('customers.history', compact('customer', 'tabs', 'tab', 'rows'));
     }

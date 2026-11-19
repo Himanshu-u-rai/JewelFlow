@@ -69,7 +69,7 @@ class StockController extends Controller
         }
 
         $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
-        $items = $query->orderBy('created_at', 'desc')
+        $items = $query->orderBy('created_at', 'desc')->orderByDesc('id')
             ->paginate($perPage);
 
         $items->getCollection()->transform(function (Item $item) use ($request) {

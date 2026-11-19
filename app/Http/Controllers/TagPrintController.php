@@ -34,7 +34,7 @@ class TagPrintController extends Controller
         // bloating the page payload and localStorage for large catalogues.
         $allMatchingIds = (clone $query)->limit(500)->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
 
-        $items = $query->latest()->paginate(20)->withQueryString();
+        $items = $query->latest()->orderByDesc('id')->paginate(20)->withQueryString();
 
         $categories = Item::where('shop_id', $shopId)
             ->where('status', 'in_stock')

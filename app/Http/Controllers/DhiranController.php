@@ -785,7 +785,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         if ($request->query('export') === 'csv') {
             return app(\App\Services\Dhiran\DhiranExports::class)->customers($query->orderBy('first_name')->orderBy('id'));
         }
-        $borrowers = $query->orderBy('first_name')->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
+        $borrowers = $query->orderBy('first_name')->orderBy('id')->paginate(\App\Services\Dhiran\DhiranListFilters::perPage($request))->withQueryString();
 
         // Outstanding per borrower (active loans only), scoped to this shop.
         $outstanding = [];
@@ -1047,7 +1047,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->latest('loan_date')->orderByDesc('id'), 'active-loans-' . now()->toDateString());
         }
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
+        $loans = $query->with('customer')->latest('loan_date')->orderByDesc('id')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.active', compact('loans', 'totals', 'filters'));
     }
@@ -1062,7 +1062,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->orderBy('maturity_date')->orderBy('id'), 'overdue-loans-' . now()->toDateString());
         }
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->orderBy('maturity_date')->paginate($filters::perPage($request))->withQueryString();
+        $loans = $query->with('customer')->orderBy('maturity_date')->orderBy('id')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.overdue', compact('loans', 'totals', 'filters'));
     }
@@ -1086,7 +1086,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         }
         $payments = $rows()
             ->with(['loan', 'loan.customer'])
-            ->latest('payment_date')
+            ->latest('payment_date')->orderByDesc('id')
             ->paginate($filters::perPage($request))
             ->withQueryString();
 
@@ -1173,7 +1173,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
             return app(\App\Services\Dhiran\DhiranExports::class)->loans($query->latest('loan_date')->orderByDesc('id'), "profitability-{$from}-to-{$to}");
         }
         $totals = $this->loanTotals($query);
-        $loans = $query->with('customer')->latest('loan_date')->paginate($filters::perPage($request))->withQueryString();
+        $loans = $query->with('customer')->latest('loan_date')->orderByDesc('id')->paginate($filters::perPage($request))->withQueryString();
 
         return view('dhiran.reports.profitability', compact('loans', 'from', 'to', 'totals', 'filters'));
     }

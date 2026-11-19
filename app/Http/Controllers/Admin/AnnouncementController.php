@@ -17,7 +17,7 @@ class AnnouncementController extends Controller
 
     public function index(): View
     {
-        $announcements = PlatformAnnouncement::orderByDesc('created_at')->paginate(20);
+        $announcements = PlatformAnnouncement::orderByDesc('created_at')->orderByDesc('id')->paginate(20);
 
         return view('super-admin.announcements.index', compact('announcements'));
     }

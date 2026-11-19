@@ -49,7 +49,7 @@ class SchemeController extends Controller
             $query->where('type', $request->type);
         }
 
-        $schemes = $query->withCount('enrollments')->latest()->paginate(15)->withQueryString();
+        $schemes = $query->withCount('enrollments')->latest()->orderByDesc('id')->paginate(15)->withQueryString();
 
         return view('schemes.index', compact('schemes', 'stats'));
     }
@@ -78,7 +78,7 @@ class SchemeController extends Controller
 
         $enrollments = $scheme->enrollments()
             ->with('customer')
-            ->latest()
+            ->latest()->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 
