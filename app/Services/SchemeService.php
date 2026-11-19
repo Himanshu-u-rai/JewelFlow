@@ -645,7 +645,7 @@ class SchemeService
             ->value('financial_lock_date');
 
         if ($lockDate && $operationDate <= $lockDate) {
-            throw new LogicException("Financial lock is active through {$lockDate}. Operation blocked.");
+            throw new LogicException(\App\Support\NotAvailable::unlessOwner("Financial lock is active through {$lockDate}. Operation blocked.", null, \App\Support\NotAvailable::LOCKED_ENTRY));
         }
     }
 }

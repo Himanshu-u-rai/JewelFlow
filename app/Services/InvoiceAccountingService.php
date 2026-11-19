@@ -549,7 +549,7 @@ class InvoiceAccountingService
             ->value('financial_lock_date');
 
         if ($lockDate && $date <= $lockDate) {
-            throw new LogicException("Financial lock is active through {$lockDate}.");
+            throw new LogicException(\App\Support\NotAvailable::financialLock($lockDate));
         }
     }
 }

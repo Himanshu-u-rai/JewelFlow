@@ -988,7 +988,7 @@ class BulkImportService
     {
         $lockDate = DB::table('shop_rules')->where('shop_id', $shopId)->value('financial_lock_date');
         if ($lockDate && now()->toDateString() <= $lockDate) {
-            throw new LogicException("Financial lock is active through {$lockDate}.");
+            throw new LogicException(\App\Support\NotAvailable::financialLock($lockDate));
         }
     }
 
