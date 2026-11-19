@@ -542,6 +542,25 @@ class BackdatingSpeedBumpTest extends TestCase
         $this->assertSame(self::REASON, $log->data['reason']);
     }
 
+    /** Acceptance 2026-11-19: the web form sent no reason and the controller filled in "Cancelled by user". */
+    public function test_cancelling_a_previous_year_invoice_from_the_web_form_needs_a_written_reason(): void
+    {
+        $invoice = $this->finalizedInvoiceIn('2026-01-10 11:00:00');
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->actingAs($this->user);
+
+        TenantContext::runFor($this->shopId, fn () => $this->put(route('invoices.update', $invoice), ['action' => 'cancel']))
+            ->assertSessionHasErrors('invoice');
+        $this->assertNull($invoice->fresh()->reversed_by_invoice_id);
+        $this->assertSame(0, $this->audits()->count());
+
+        TenantContext::runFor($this->shopId, fn () => $this->put(route('invoices.update', $invoice), ['action' => 'cancel', 'cancellation_reason' => self::REASON]))
+            ->assertSessionHasNoErrors();
+        TenantContext::set($this->shopId);
+        $this->assertNotNull($invoice->fresh()->reversed_by_invoice_id);
+        $this->assertSame(self::REASON, $this->audits()->sole()->data['reason']);
+    }
+
     public function test_cancelling_a_current_year_invoice_needs_no_extra_permission(): void
     {
         $invoice = $this->finalizedInvoiceIn('2026-09-10 11:00:00');

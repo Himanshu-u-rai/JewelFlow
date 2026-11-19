@@ -262,6 +262,9 @@ class InvoiceAccountingService
                 if (! self::userMayBackdate($actor)) {
                     throw new LogicException(\App\Support\NotAvailable::MESSAGE);
                 }
+                if (mb_strlen(trim($reason)) < self::BACKDATE_MIN_REASON) {
+                    throw new LogicException("This bill is from financial year {$year->label()}, which has ended. Give a reason (at least " . self::BACKDATE_MIN_REASON . ' characters).');
+                }
                 $backdatedYear = $year->label();
             }
         }

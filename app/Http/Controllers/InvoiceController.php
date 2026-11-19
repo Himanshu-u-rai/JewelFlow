@@ -205,7 +205,12 @@ class InvoiceController extends Controller
                     ->with('success', 'Invoice finalized successfully.');
             }
 
-            $reason   = trim((string) ($validated['cancellation_reason'] ?? 'Cancelled by user'));
+            // A previous-year bill needs the user's own reason (InvoiceAccountingService::cancelByReversal); only a
+            // current-year cancel falls back to the generic wording.
+            $reason   = trim((string) ($validated['cancellation_reason'] ?? ''));
+            if ($reason === '' && ! ($invoice->fiscal_year && \App\Support\FinancialYear::fromLabel((string) $invoice->fiscal_year)->isBefore(\App\Support\FinancialYear::current()))) {
+                $reason = 'Cancelled by user';
+            }
             $reversal = InvoiceAccountingService::cancelByReversal($invoice, $reason);
 
             return redirect()->route('invoices.show', $reversal)
