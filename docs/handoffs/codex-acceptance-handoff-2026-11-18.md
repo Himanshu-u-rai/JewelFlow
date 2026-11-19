@@ -213,7 +213,9 @@ pending — treat that screen family as needing acceptance checks.
   31 March snapshot rate NULL when no rate that day (falls back to the latest earlier rate and records its
   date);
   cancelled sales reduced twice (`CancelledSalesStayInTheirPeriodTest` probe, fixed by the issued-sales rule);
-  lock refusal text broke the "hide without explaining" rule (now `NotAvailable::MESSAGE`).
+  lock refusal text broke the "hide without explaining" rule (now `NotAvailable::MESSAGE`). *Correction
+  (2026-11-19 acceptance): this covers the `books.backdate` and lock/unlock-permission refusals only; the
+  period-lock refusal itself still reads "Financial lock is active through <date>" for everyone — see §7.3.*
 - Banner spacing: returns queue value box and product-preferences notice touching card edges (`77dea72b`).
 
 ### 3.3 Unresolved
@@ -373,3 +375,63 @@ Highest risk first. "Owner" / "Manager" / "Cashier" = the demo roles.
 5. Decide the admin 2FA 500 fix (small, separate commit) and fill `config/legal.php` business details.
 6. Mobile: app tests on the pushed mobile branch and one emulator pass of POS sale → bill number and a
    refused late return; no build or OTA until the owner says.
+
+## 7. Local acceptance result (2026-11-19)
+
+Local only: no staging or production access, deployment, merge to main, build, OTA, real notification or OTP
+work. Evidence and scripts: `jewelflow-worktrees/build-logs/acceptance-20261118/` (outside the repo;
+`ACCEPTANCE-REPORT.md` there is the detailed report).
+
+### 7.1 Exact SHAs
+
+- Candidate tested first: web `c5c46e452c6f23a4dad80caacf4223806a54e3fe` (handoff head
+  `f093ff351fc7a93e44b7596bb595df33ce822a7b`); mobile `efdf71f700dbf9eca6e6458e4ebd8977eb95fca5` (uncommitted
+  Stock badge and stash left untouched).
+- Review branch `review/acceptance-fixes-20261118` (on top of `f093ff35`, not merged to main). **Final code SHA
+  `d23915c3b1638334a6565c9cc52c779587bce682`**; the commit that adds this section changes only this file.
+  1. `fdd6e64b` admin 2FA setup/settings pages render instead of a 500.
+  2. `303d5bc1` starting number can go down again before a series' first bill.
+  3. `eed4eb1e` cancelling a bill from a finished financial year needs a written reason.
+  4. `d23915c3` Customers list keeps one order across pages (id breaks `created_at` ties). Found by the direct
+     narrow-screen check: on the acceptance data customers 19–25 were on page 1 and page 2 and seven others on
+     neither, at every width. The earlier "rows 16–30" pass only read row-number labels.
+- Each fix has a test that fails without it.
+
+### 7.2 What ran on which SHA
+
+| Check | SHA | Result |
+|---|---|---|
+| Migration rehearsal (synthetic `main` DB, 2 shops; N22/N23 0 rows; 22 migrations; numbers unchanged; next number by peek and real sale) | c5c46e45 | pass, synthetic only |
+| Full PHPUnit on host with Chromium | c5c46e45 | 4,882; only 2 backup tests failed from a storage override, 11/11 without it |
+| Full PHPUnit on host with Chromium | eed4eb1e | 4,888, 0 failures |
+| Full PHPUnit on host with Chromium | **d23915c3** | **4,889, 0 failures, 1 skipped** |
+| Frontend (Playwright + Chrome; previously skipped browser cases included) | c5c46e45 | 464, 0 fail (no frontend change since) |
+| Checklist 1–7 acceptance tests (synthetic shops; owner/manager/cashier; DB asserted) | d23915c3 | 44/50; the 6 failures are lock wording (§7.3) |
+| UI, headless Chrome emulation 1280/768/390: Customers scroll + sticky headings, Settings Keep editing/Discard, POS sale, PDF export | c5c46e45 | 23/25; the 2 failures were the narrow pagination check, redone below |
+| Customers page 2 at 768 and 390 (emulation), click Next, compare card customer ids with laptop rows | d23915c3 | navigation pass; cards pass (page 1 = rows 1–15, page 2 = rows 16–30, no overlap) |
+| Emulator `jf_test`, local backend, airplane mode: sale + late-return refusal | mobile efdf71f7 against web c5c46e45 | pass |
+
+### 7.3 Owner decisions (not changed)
+
+- **Lock wording (one decision).** A manager/cashier refused by the period lock is told "Financial lock is
+  active through <date>" (`InvoiceAccountingService::assertShopLockForDate`; also `SchemeService`,
+  `BulkImportService`, `ItemManufacturingService`). The recorded rule (owner 2026-10-30: never explain to a
+  non-owner why something is refused; show `NotAvailable::MESSAGE`) does not mention the lock or its date, so
+  it is ambiguous whether the date counts as a reason. The six acceptance assertions expecting the plain
+  message stay failing until the owner decides. The refusals themselves pass: nothing is written into a locked
+  day, and the same actions dated after the lock save.
+- **Item cost.** Kept as recorded (owner 2026-10-31, cost shown like the web): a role without `reports.money`
+  still sees cost on the item page. Separately confirmed: such a role (with `reports.view`) gets 403 on
+  missing-costs, P&L, sales register, daily, GSTR-1, closing stock, trading account, inventory valuation, day
+  book and cash; the owner opens P&L. The earlier assertion that hid item cost contradicted the rule and was
+  rewritten.
+- `config/legal.php` business details are still placeholders.
+
+### 7.4 Not tested — gates before production
+
+- **Rehearsal on an authorized restored production backup** of all 22 migrations, including the N22/N23
+  pre-checks and unchanged invoice numbers. Only synthetic data was used; the pre-check queries alone do not
+  replace this rehearsal.
+- Physical phone and tablet (all widths above were emulation); real browser Back/Forward and native refresh
+  prompts; Dhiran host.
+- The other twelve `latest()->paginate` lists have the same tie risk as Customers had (not changed here).
