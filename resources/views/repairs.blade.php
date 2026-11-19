@@ -439,6 +439,9 @@
         [data-repair-table-fit] .repairs-table-card > .repairs-card-header,
         [data-repair-table-fit] .repairs-register-footer { flex: none; }
         [data-repair-table-fit] [data-repair-rows] { flex: 1; min-height: 0; overflow-y: auto; }
+        /* While the intake is (partly) open on desktop, the wheel over the rows scrolls the page — which collapses the
+           form — instead of a table hidden behind it; the rows scroll once it has fully collapsed (repair-intake.js). */
+        [data-repair-steady]:not([data-repair-collapsed]) [data-repair-rows] { overflow-y: hidden; }
         [data-repair-table-fit] .repairs-table thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
         .repairs-card-header {
             display: flex;

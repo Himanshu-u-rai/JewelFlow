@@ -394,6 +394,34 @@ test('short windows or wrapped controls fall back to normal page scrolling rathe
     }
 });
 
+// Live staging, 2026-11-19 (1920x870): with the intake open, the wheel over the rows scrolled the table hidden behind
+// the form (two rows visible), and a later upward page scroll reopened the form and threw the rows back to row one.
+test('rows stay still behind the open intake and scroll only once it has fully collapsed', () => {
+    const f = fixture({ width: 1364, animated: true });
+    assert.equal(f.attrs.has('data-repair-steady'), true);
+    assert.equal(f.attrs.has('data-repair-collapsed'), false, 'open intake: the wheel collapses it first');
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    assert.equal(f.details.open, false);
+    assert.equal(f.attrs.has('data-repair-collapsed'), true, 'fully collapsed: now the rows scroll');
+    f.shell.scrollTop = 300; f.send('shell', 'scroll');
+    assert.equal(f.details.open, true, 'scrolling back up at row one reopens it, as before');
+    assert.equal(f.attrs.has('data-repair-collapsed'), false);
+});
+
+test('scrolling back up from the middle of the rows never reopens the intake or jumps to row one', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    assert.equal(f.details.open, false);
+    f.pane.scrollTop = 500;
+    f.shell.scrollTop = 300; f.send('shell', 'scroll');
+    assert.equal(f.details.open, false, 'rows are not at the top yet');
+    assert.equal(f.shell.scrollTop, 380, 'the page stays at the collapsed position');
+    assert.equal(f.pane.scrollTop, 500, 'the list keeps its place');
+    f.pane.scrollTop = 0;
+    f.shell.scrollTop = 300; f.send('shell', 'scroll');
+    assert.equal(f.details.open, true, 'back at row one: scrolling up reopens it');
+});
+
 test('row scrolling does not collapse or reopen the form; only returning the page to top does', () => {
     const f = fixture();
     f.pane.scrollTop = 100;

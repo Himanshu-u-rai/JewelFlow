@@ -21,6 +21,10 @@ export function createRepairIntake(root, doc = document, win = window) {
         root.style.setProperty('--repair-scroll-offset', `${steady.offset}px`);
         if (steady.offset) root.setAttribute('data-repair-scrolled', '');
         else root.removeAttribute('data-repair-scrolled');
+        // Until the intake has fully collapsed, the rows behind it stay still (CSS), so the wheel collapses the form
+        // first instead of scrolling a table that is mostly hidden behind it.
+        if (steady.offset >= steady.height) root.setAttribute('data-repair-collapsed', '');
+        else root.removeAttribute('data-repair-collapsed');
         if (syncScroll) scrollTo(steady.offset);
     };
 
@@ -39,6 +43,7 @@ export function createRepairIntake(root, doc = document, win = window) {
         root.removeAttribute('data-repair-intake-pin');
         root.removeAttribute('data-repair-steady');
         root.removeAttribute('data-repair-scrolled');
+        root.removeAttribute('data-repair-collapsed');
         root.style.removeProperty('--repair-workspace-height');
         root.style.removeProperty('--repair-table-height');
         root.style.removeProperty('--repair-intake-top');
@@ -145,7 +150,12 @@ export function createRepairIntake(root, doc = document, win = window) {
         const current = position();
         if (steady) offset(current);
         if (details.open && current > 24 && !form.contains(doc.activeElement) && root.dataset.intakeErrors !== 'true') close();
-        else if (steady && !details.open && current < steady.height - 1) open();
+        else if (steady && !details.open && current < steady.height - 1) {
+            // Scrolling back up reopens the intake only once the rows are back at row one; from mid-list the page
+            // stays collapsed and the list keeps its place (never a jump back to row one).
+            if (panes.every(p => p.scrollTop <= 0)) open();
+            else offset(steady.height, true);
+        }
         else if (!details.open && current <= 1 && upwardIntent && (!upwardPane || upwardPane.scrollTop === 0)) open();
     };
     const schedule = () => { if (active && !frame) frame = win.requestAnimationFrame(measure); };

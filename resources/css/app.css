@@ -13312,6 +13312,24 @@ input::-webkit-calendar-picker-indicator {
     padding: 7px 10px;
 }
 
+/* Desktop: one header row. The title gives way first (ellipsis); the view tabs, Add Customer and the
+   bell never wrap under each other. The actions are sized to their content, not a share of the row. */
+@media (min-width: 1024px) {
+    .customers-directory-header { flex-wrap: nowrap; }
+    .customers-directory-header > .min-w-0 { flex: 1 1 auto; min-width: 0; }
+    .customers-directory-header .page-title,
+    .customers-directory-header .page-subtitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .customers-directory-header .page-actions { flex: 0 1 auto; flex-wrap: nowrap; }
+    .customers-directory-header .customers-view-toggle { flex-wrap: nowrap; }
+    .customers-directory-header .customers-view-toggle .customers-view-tab { white-space: nowrap; }
+}
+/* The narrowest desktop headers (no sidebar up to ~1100px; sidebar shown just above 1280px):
+   Add Customer keeps its icon, aria-label and tooltip, and drops the visible label. */
+@media (min-width: 1024px) and (max-width: 1100px), (min-width: 1281px) and (max-width: 1380px) {
+    .customers-directory-header .customers-add-label { display: none; }
+    .customers-directory-header .customers-add-btn svg { margin-right: 0; }
+}
+
 .customers-index-page .customers-table-card,
 .customers-show-page .customers-show-table-card {
     border-radius: 14px;
@@ -32409,7 +32427,8 @@ body.app-shell [data-section-list].is-open :is([aria-current="page"], [aria-pres
     }
 }
 
-@media (max-width: 768px) {
+/* Phones and tablets (owner, 2026-11-19: "drop down as mobile for tab too"); 1024px+ keeps the strip. */
+@media (max-width: 1023px) {
     .customers-directory-header .page-title-text,
     .inventory-items-header .page-title-text {
         display: none;

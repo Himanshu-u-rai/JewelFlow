@@ -28,8 +28,9 @@ test('the switch is hidden on wide screens and reads as the title where it shows
 
 test('each page swaps its title and strip for the switch at its own width', () => {
     assert.match(block, /@media \(max-width: 900px\)[^@]*\.settings-page-header \.jf-section-switch\s*\{[^}]*display:\s*inline-flex/);
+    // Customers and Stock: phones AND tablets get the drop-down (owner, 2026-11-19); 1024px+ keeps the strip.
     for (const page of ['customers-directory-header', 'inventory-items-header']) {
-        assert.match(block, new RegExp(`@media \\(max-width: 768px\\)[^@]*\\.${page} \\.jf-section-switch`), page);
+        assert.match(block, new RegExp(`@media \\(max-width: 1023px\\)[^@]*\\.${page} \\.jf-section-switch`), page);
     }
     assert.match(block, /\[data-section-list\]:not\(\.is-open\)[^{]*\{[^}]*display:\s*none/, 'the list waits for a tap');
     assert.match(block, /\[data-section-list\]\.is-open\s*\{[^}]*position:\s*fixed/, 'and floats under the header');
