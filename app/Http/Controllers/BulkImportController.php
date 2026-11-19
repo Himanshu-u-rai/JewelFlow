@@ -33,7 +33,7 @@ class BulkImportController extends Controller
     {
         abort_if($import->shop_id !== auth()->user()->shop_id, 403);
 
-        $rows = $import->rows()->orderBy('row_number')->paginate(100);
+        $rows = $import->rows()->orderBy('row_number')->orderBy('id')->paginate(100);
         return view('imports.show', compact('import', 'rows'));
     }
 

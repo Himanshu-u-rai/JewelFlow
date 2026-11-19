@@ -60,7 +60,7 @@ class RepairController extends Controller
             $query->where('customer_id', (int) $request->input('customer_id'));
         }
 
-        $repairs = $query->orderBy('created_at', 'desc')
+        $repairs = $query->orderBy('created_at', 'desc')->orderByDesc('id')
             ->paginate($request->input('per_page', 20));
         $repairs->setCollection(
             $repairs->getCollection()->map(fn (Repair $repair) => $this->serializeRepair($repair))

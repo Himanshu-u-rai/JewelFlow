@@ -57,7 +57,7 @@ class PlatformInvoiceAdminController extends Controller
             'revenue' => (clone $filteredQuery)->where('status', 'issued')->sum('total_amount'),
         ];
 
-        $invoices = $query->latest('issued_at')->paginate(25)->withQueryString();
+        $invoices = $query->latest('issued_at')->orderByDesc('id')->paginate(25)->withQueryString();
 
         $plans = Plan::orderBy('name')->get(['id', 'name']);
 

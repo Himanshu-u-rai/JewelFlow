@@ -18,7 +18,7 @@ class RepairService
         $query = Repair::where('shop_id', $shopId)->with(['customer', 'invoice']);
         $this->applyFilters($query, $fromDate, $toDate, $status);
 
-        $repairs = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
+        $repairs = $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate(25)->withQueryString();
 
         $totalsQuery = Repair::where('shop_id', $shopId);
         $this->applyFilters($totalsQuery, $fromDate, $toDate, $status);

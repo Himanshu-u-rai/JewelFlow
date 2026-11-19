@@ -47,7 +47,7 @@ class UserManagementController extends Controller
                 }
             });
 
-        $users = $query->latest()->paginate(25)->withQueryString();
+        $users = $query->latest()->orderByDesc('id')->paginate(25)->withQueryString();
 
         return view('super-admin.users.index', compact('users'));
     }

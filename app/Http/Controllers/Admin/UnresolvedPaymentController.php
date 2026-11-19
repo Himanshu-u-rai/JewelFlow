@@ -41,7 +41,7 @@ class UnresolvedPaymentController extends Controller
             $query->where('after->payment_id', $request->input('payment_id'));
         }
 
-        $events = $query->orderByDesc('created_at')->paginate(25)->withQueryString();
+        $events = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(25)->withQueryString();
 
         return view('super-admin.payments.unresolved', compact('events', 'status'));
     }

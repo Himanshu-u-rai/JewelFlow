@@ -18,7 +18,7 @@ class JobOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = JobOrder::query()->with(['karigar'])->latest();
+        $query = JobOrder::query()->with(['karigar'])->latest()->orderByDesc('id');
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);

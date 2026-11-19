@@ -865,7 +865,7 @@ class SubscriptionController extends Controller
                 'featureLabels' => self::featureLabels(),
                 'invoices'      => PlatformInvoice::where('shop_id', $shop->id)
                     ->with('plan')
-                    ->latest('issued_at')
+                    ->latest('issued_at')->orderByDesc('id')
                     ->paginate(10)
                     ->withQueryString(),
             ]);

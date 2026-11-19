@@ -52,7 +52,7 @@ class CatalogController extends Controller
         $perPage = min($perPage, 80);
 
         $items = $query
-            ->latest()
+            ->latest()->orderByDesc('id')
             ->paginate($perPage);
 
         $collection = $items->getCollection();

@@ -57,7 +57,7 @@ class InvoiceController extends Controller
             });
         }
 
-        $invoices = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+        $invoices = $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate(20)->withQueryString();
 
         // Stats — single aggregate query using PostgreSQL FILTER syntax.
         // Monetary totals (today/month) count the bills ISSUED (finalized, or cancelled after issue — a reversal bill

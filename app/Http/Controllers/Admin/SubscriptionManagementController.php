@@ -30,7 +30,7 @@ class SubscriptionManagementController extends Controller
             $query->where('shops.name', 'ilike', '%' . $request->q . '%');
         }
 
-        $subscriptions = $query->latest('shop_subscriptions.created_at')->paginate(25)->withQueryString();
+        $subscriptions = $query->latest('shop_subscriptions.created_at')->orderByDesc('shop_subscriptions.id')->paginate(25)->withQueryString();
 
         // Calculate computed properties. days_remaining is whole calendar days
         // (start-of-day to start-of-day), not a fractional time-of-day diff.

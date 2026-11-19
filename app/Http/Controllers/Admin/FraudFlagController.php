@@ -17,7 +17,7 @@ class FraudFlagController extends Controller
     public function index(Request $request): View
     {
         $query = PlatformFraudFlag::with('shop')
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')->orderByDesc('id');
 
         // Filter by reviewed status (default: unreviewed only)
         $reviewed = $request->input('reviewed', '0');
