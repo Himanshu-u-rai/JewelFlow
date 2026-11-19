@@ -73,7 +73,8 @@ class CustomerController extends Controller
             $query->withSum('goldTransactions', 'fine_gold');
         }
 
-        $customers = $query->latest()->paginate(15)->withQueryString();
+        // id breaks created_at ties so every page is cut from the same order (no repeats, nobody skipped).
+        $customers = $query->latest()->orderByDesc('id')->paginate(15)->withQueryString();
 
         // Stats computed via DB — not in-PHP collection methods on the current page.
         $totalCustomers = $customers->total(); // already known from paginator
