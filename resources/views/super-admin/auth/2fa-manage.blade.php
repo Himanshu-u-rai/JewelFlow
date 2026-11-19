@@ -1,8 +1,4 @@
-@extends('super-admin.layout')
-
-@section('title', '2FA Settings')
-
-@section('content')
+<x-super-admin.layout title="2FA Settings">
 <div class="max-w-lg mx-auto mt-8">
     <h2 class="text-lg font-semibold text-white mb-1">Two-Factor Authentication</h2>
     <p class="text-sm text-slate-400 mb-6">Your account is protected with 2FA.</p>
@@ -33,4 +29,4 @@
         </form>
     </div>
 </div>
-@endsection
+</x-super-admin.layout>
