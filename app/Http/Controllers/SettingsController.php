@@ -673,8 +673,9 @@ class SettingsController extends Controller
             $log->save();
         }
 
-        // Keep invoice counter aligned with settings.
-        // It can only move forward (never backward) to avoid duplicate sequences.
+        // Keep invoice counter aligned with settings. Once a number of the running series is used (a bill or a
+        // numbering event) it only moves forward, so no number is handed out twice; before that it follows the
+        // setting exactly, down included (starting-number rules: free before the series' first bill).
         // The counter this year's bills use: 'invoice' (continuous) or 'invoice:<fy>' (yearly series).
         DB::transaction(function () use ($shop, $billing): void {
             $fy = \App\Support\FinancialYear::current()->label();
@@ -693,7 +694,9 @@ class SettingsController extends Controller
                 ->first();
 
             $currentValue = (int) ($counter?->current_value ?? 0);
-            $nextSafeBase = max($currentValue, $maxIssuedSequence, $settingsBase);
+            $numberUsed = $maxIssuedSequence > 0 || DB::table('invoice_number_events')->where('shop_id', $shop->id)
+                ->when($yearly, fn ($q) => $q->where('fiscal_year', $fy))->exists();
+            $nextSafeBase = $numberUsed ? max($currentValue, $maxIssuedSequence, $settingsBase) : $settingsBase;
 
             if ($counter) {
                 if ($nextSafeBase !== $currentValue) {

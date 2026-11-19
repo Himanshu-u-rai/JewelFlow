@@ -64,6 +64,15 @@ class InvoiceStartNumberTest extends TestCase
         $this->assertSame('INV-5001', $this->sell()->invoice_number);
     }
 
+    /** Acceptance 2026-11-19: raising then lowering before any bill left the counter at the higher number. */
+    public function test_before_the_first_bill_the_starting_number_can_also_go_down(): void
+    {
+        $this->save($this->owner, ['invoice_start_number' => 3000])->assertSessionHasNoErrors();
+        $this->save($this->owner, ['invoice_start_number' => 2000])->assertSessionHasNoErrors();
+
+        $this->assertSame('INV-2000', $this->sell()->invoice_number);
+    }
+
     public function test_after_billing_a_jump_must_be_confirmed_and_names_the_unused_numbers(): void
     {
         $this->sell();
