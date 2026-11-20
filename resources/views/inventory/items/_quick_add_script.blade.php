@@ -4,7 +4,9 @@
         // While a dialog's save is on its way it stays open and cannot send twice: closing it then let the cashier
         // reopen it (button enabled again), save a duplicate, and have the late answer close the new dialog and
         // change the picker underneath.
-        const quickAdd = {
+        // var, not const: Turbo runs this page script again on every visit in the same document, and a second
+        // top-level const throws before any of the item form's script runs (staging, 2026-11-20).
+        var quickAdd = {
             saving(id) { return document.getElementById(id)?.dataset.saving === '1'; },
             begin(id) {
                 const modal = document.getElementById(id);
@@ -18,7 +20,7 @@
         // "+ New …" and "Custom…" options open a dialog; they are not a choice (audit M6). Choosing one puts the
         // select back on what it showed, so the screen and the hidden fields saved with it never disagree (a blank
         // supplier picker used to keep the old vendor_id).
-        const ACTION_OPTIONS = ['__new_category__', '__new_sub_category__', '__new_supplier__', '__custom__'];
+        var ACTION_OPTIONS = ['__new_category__', '__new_sub_category__', '__new_supplier__', '__custom__'];
         function noteChoice(select) {
             if (select && !ACTION_OPTIONS.includes(select.value)) select.dataset.chosen = select.value;
         }
