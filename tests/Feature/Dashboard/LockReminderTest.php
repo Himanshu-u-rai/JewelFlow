@@ -76,6 +76,21 @@ class LockReminderTest extends TestCase
             ->assertSee(route('settings.edit', ['tab' => 'billing']).'#lock-books', false);
     }
 
+    // Owner, 2026-11-20: the year-end page was only reachable from a small link inside Settings; the year-end
+    // reminder now opens it for the year that just ended. The monthly reminder does not.
+    public function test_year_end_banner_also_opens_the_year_end_page_for_the_year_that_ended(): void
+    {
+        $this->at('2026-11-05 10:00');
+        $this->lockAt('2026-01-31');
+
+        $this->dash()->assertOk()->assertSee(route('books.year-end', ['fy' => '2025-26']), false);
+
+        $this->at('2026-11-21 09:00');
+        $this->lockAt('2026-09-30');
+        $this->dash()->assertOk()->assertSee('data-lock-reminder="month"', false)
+            ->assertDontSee(route('books.year-end', ['fy' => '2025-26']), false);
+    }
+
     public function test_banner_shows_when_nothing_has_ever_been_locked(): void
     {
         $this->at('2026-11-05 10:00');

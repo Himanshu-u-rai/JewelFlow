@@ -34,6 +34,8 @@
                 ['Closing Stock (Financial Year)', 'Every piece held on 31 March, valued at the lower of cost and closing rate', 'report.closing-stock', null],
                 ['Stock Register by Weight', 'Opening, received, sold, melted and closing grams per metal and purity — Form 3CD clause 35', 'report.stock-register-weight', null],
                 ['Trading Account with Stock', 'Opening stock + purchases - closing stock = cost of goods sold, and gross profit for the year', 'report.trading-account', null],
+                // Owner only (role:owner on the route; RouteAccess hides it from everyone else).
+                ['Year-End Close', 'Checklist, closing snapshot and balances for each financial year', 'books.year-end', null],
                 ['Cash Flow', 'Cash in vs out over the period', 'report.cash', null],
                 ['Daily Closing', 'End-of-day close figures', 'report.closing', null],
                 ['Historical Sales Register', 'Search pre-JewelFlow sales evidence imported from your old records', 'report.historical-register', null],

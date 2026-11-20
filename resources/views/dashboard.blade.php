@@ -3903,11 +3903,15 @@
             </div>
         @endif
 
-        {{-- Owner-only lock reminder (DashboardController / LockReminderService). Only links to the lock screen. --}}
+        {{-- Owner-only lock reminder (DashboardController / LockReminderService). Links to the lock screen and, for a
+             year that ended, to that year's year-end page (owner, 2026-11-20: make year-end easy to find). --}}
         @if (! empty($lockReminder))
             <div data-lock-reminder="{{ $lockReminder['kind'] }}" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
                 <div style="font-weight:700;color:#92400e;">{{ $lockReminder['title'] }}</div>
                 <div style="display:flex;gap:8px;align-items:center;">
+                    @if (($lockReminder['kind'] ?? null) === 'year' && ! empty($lockReminder['fy']))
+                        <a href="{{ route('books.year-end', ['fy' => $lockReminder['fy']]) }}" data-turbo-frame="_top" style="padding:8px 14px;background:#fff;color:#92400e;border:1px solid #fcd34d;border-radius:8px;text-decoration:none;white-space:nowrap;">Year-end checklist</a>
+                    @endif
                     <a href="{{ route('settings.edit', ['tab' => 'billing']) }}#lock-books" data-turbo-frame="_top" style="padding:8px 16px;background:#b45309;color:#fff;border-radius:8px;text-decoration:none;white-space:nowrap;">Review and lock</a>
                     <form method="POST" action="{{ route('dashboard.lock-reminder.dismiss') }}" data-turbo-frame="_top" style="margin:0;">
                         @csrf

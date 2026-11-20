@@ -51,6 +51,21 @@ class ReportsAccessGateTest extends TestCase
         });
     }
 
+    // Owner, 2026-11-20: the year-end page needs an obvious home. The Reports hub shows it to the owner only
+    // (its route is role:owner); staff who can read reports never see a link they would be refused.
+    public function test_year_end_close_is_on_the_reports_hub_for_the_owner_only(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $link = '/books/year-end"';
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(self::ERP . '/reports'))
+            ->assertOk()->assertSee('Year-End Close')->assertSee($link, false);
+
+        $staff = $this->userWithPerms($shop, ['reports.view'], '9876500411');
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($staff)->get(self::ERP . '/reports'))
+            ->assertOk()->assertDontSee('Year-End Close')->assertDontSee($link, false);
+    }
+
     // ── Guest gating ────────────────────────────────────────────────────────
 
     public function test_guest_cannot_reach_report_hub(): void

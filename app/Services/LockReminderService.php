@@ -20,7 +20,7 @@ class LockReminderService
 {
     public const MONTHLY_FROM_DAY = 21;
 
-    /** @return array{kind: string, title: string, through: string}|null */
+    /** @return array{kind: string, title: string, through: string, fy?: string}|null  fy: the year that ended (year kind) */
     public static function forShop(int $shopId, ?CarbonInterface $now = null): ?array
     {
         $local = CarbonImmutable::instance($now ?? CarbonImmutable::now())->setTimezone(FinancialYear::TIMEZONE);
@@ -38,6 +38,7 @@ class LockReminderService
                 'kind' => 'year',
                 'title' => "Financial year {$previous->label()} has ended. Lock its books so they can't change?",
                 'through' => $previous->endDate(),
+                'fy' => $previous->label(),
             ];
         }
 
