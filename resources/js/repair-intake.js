@@ -169,14 +169,30 @@ export function createRepairIntake(root, doc = document, win = window) {
         upwardPane = event.target?.closest?.('[data-repair-rows]') ?? null;
         if (up) schedule();
     };
+    // Collapsed, the browser would move the page by a whole wheel step before measure() runs a frame later, so the
+    // heading dropped and snapped back on every frame (a shake). The controller takes the upward wheel itself: rows
+    // first, then the reveal. While the form animates, wheel steps cannot fight the reveal's own scroll.
+    const wheelStep = (e, pane) => e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? pane.clientHeight : 1);
+    const wheel = e => {
+        if (steady && animation) return e.preventDefault();
+        if (steady && !details.open && e.deltaY < 0) {
+            const pane = panes.find(p => p.getClientRects().length);
+            if (!pane || pane.scrollTop <= 0) { e.preventDefault(); return open(); }
+            if (e.target?.closest?.('[data-repair-rows]') !== pane) {
+                e.preventDefault();
+                pane.scrollTop = Math.max(0, pane.scrollTop + wheelStep(e, pane));
+            }
+        }
+        intent(e.deltaY < 0, e);
+    };
     const gestures = [
-        ['wheel', e => intent(e.deltaY < 0, e)],
+        ['wheel', wheel],
         ['keydown', e => intent(['ArrowUp', 'PageUp', 'Home'].includes(e.key), e)],
         ['touchstart', e => { touchY = e.touches[0]?.clientY ?? 0; upwardIntent = false; }],
         ['touchmove', e => { const y = e.touches[0]?.clientY ?? touchY; intent(y > touchY, e); touchY = y; }],
         ['pointerdown', e => intent(e.target === shell, e)],
     ];
-    for (const [type, handler] of gestures) shell.addEventListener(type, handler, { passive: true });
+    for (const [type, handler] of gestures) shell.addEventListener(type, handler, { passive: type !== 'wheel' });
     shell.addEventListener('scroll', schedule, { passive: true });
     summary.addEventListener('click', toggle);
     form.addEventListener('invalid', revealInvalid, true);

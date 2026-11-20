@@ -422,6 +422,57 @@ test('scrolling back up from the middle of the rows never reopens the intake or 
     assert.equal(f.details.open, true, 'back at row one: scrolling up reopens it');
 });
 
+// Owner, 2026-11-20: "when Receive New Repair opens on scroll the whole panel shakes". The browser moved the collapsed
+// page by the whole wheel step before the controller could react a frame later, so the heading dropped and snapped
+// back on every frame of the scroll. Collapsed, the controller now takes the upward wheel itself.
+const wheel = (f, deltaY, overRows) => {
+    const event = { deltaY, deltaMode: 0, prevented: false, target: { closest: () => (overRows ? f.pane : null) } };
+    event.preventDefault = () => { event.prevented = true; };
+    f.listeners.get('shell:wheel')(event); f.flush();
+    return event;
+};
+
+test('collapsed at row one, an upward wheel opens the intake itself instead of letting the page jump first', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    assert.equal(f.details.open, false);
+    const event = wheel(f, -100, true);
+    assert.equal(event.prevented, true, 'the page must not move before the reveal starts');
+    assert.equal(f.details.open, true);
+    assert.equal(f.shell.scrollTop, 380, 'the reveal starts from the collapsed position, with no one-frame drop');
+    f.motions[0].finish();
+    assert.equal(f.shell.scrollTop, 0);
+});
+
+test('collapsed mid-list, an upward wheel anywhere scrolls the rows; over the rows the list scrolls natively', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    f.pane.scrollTop = 500;
+    const outside = wheel(f, -100, false);
+    assert.equal(outside.prevented, true);
+    assert.equal(f.pane.scrollTop, 400, 'the rows move instead of the page');
+    assert.equal(f.shell.scrollTop, 380);
+    assert.equal(f.details.open, false);
+    const over = wheel(f, -100, true);
+    assert.equal(over.prevented, false, 'the list scrolls itself');
+    assert.equal(f.details.open, false);
+});
+
+test('while the intake opens, further wheel steps cannot fight the reveal', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    wheel(f, -100, true);
+    assert.equal(wheel(f, -100, true).prevented, true);
+    assert.equal(wheel(f, 100, true).prevented, true);
+    assert.equal(f.motions.length, 1, 'one reveal, not restarted');
+});
+
+test('the rows keep their scrollbar space, so the columns never shift sideways when the lock changes', async () => {
+    const { readFileSync } = await import('node:fs');
+    const view = readFileSync(new URL('../../resources/views/repairs.blade.php', import.meta.url), 'utf8');
+    assert.match(view, /\[data-repair-steady\] \[data-repair-rows\]\s*\{[^}]*scrollbar-gutter:\s*stable/);
+});
+
 test('row scrolling does not collapse or reopen the form; only returning the page to top does', () => {
     const f = fixture();
     f.pane.scrollTop = 100;

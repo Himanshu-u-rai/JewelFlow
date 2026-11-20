@@ -442,6 +442,8 @@
         /* While the intake is (partly) open on desktop, the wheel over the rows scrolls the page — which collapses the
            form — instead of a table hidden behind it; the rows scroll once it has fully collapsed (repair-intake.js). */
         [data-repair-steady]:not([data-repair-collapsed]) [data-repair-rows] { overflow-y: hidden; }
+        /* The lock above hides the scrollbar; keep its space so the columns never shift sideways (a shake). */
+        [data-repair-steady] [data-repair-rows] { scrollbar-gutter: stable; }
         [data-repair-table-fit] .repairs-table thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
         .repairs-card-header {
             display: flex;
