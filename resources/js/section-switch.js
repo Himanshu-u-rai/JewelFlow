@@ -28,6 +28,14 @@ export function sectionLabel(items, fallback = 'Settings') {
     return open ? textOf(open).replace(/\s+/g, ' ').trim() : fallback;
 }
 
+// Desktop (owner, 2026-11-20): a strip that wraps onto a second row, or runs past its box, becomes the drop-down.
+export function stripNeedsSwitch(tabs, list) {
+    const shown = tabs.filter((t) => t.getClientRects().length);
+    if (!shown.length) return false;
+    const first = shown[0].getBoundingClientRect().top;
+    return shown.some((t) => Math.abs(t.getBoundingClientRect().top - first) > 2) || list.scrollWidth > list.clientWidth + 1;
+}
+
 const bound = new WeakSet();
 
 export function initializeSectionSwitch(doc = globalThis.document, win = globalThis.window) {
@@ -56,7 +64,28 @@ export function initializeSectionSwitch(doc = globalThis.document, win = globalT
         }
     };
 
+    // Pages opt in with data-section-fit on the switch. CSS owns phones and tablets (<1024px); on desktop the strip
+    // is measured as laid out (compact off) and the header swaps when it would wrap. Re-measured on resize and when
+    // the header's width changes (the sidebar opening or closing).
+    const widths = new WeakMap();
+    const fit = (p) => {
+        const header = p.button.hasAttribute('data-section-fit') && p.button.closest('.content-header');
+        if (!header) return;
+        header.removeAttribute('data-section-compact');
+        if (win.innerWidth < 1024) return;
+        if (stripNeedsSwitch(items(p.list), p.list)) header.setAttribute('data-section-compact', '');
+    };
+    const observer = win.ResizeObserver ? new win.ResizeObserver((entries) => entries.forEach((entry) => {
+        const width = Math.round(entry.contentRect.width);
+        if (widths.get(entry.target) === width) return; // our own swap changes only the height
+        widths.set(entry.target, width);
+        parts().filter((p) => p.button.closest('.content-header') === entry.target).forEach(fit);
+    })) : null;
+
     const sync = () => parts().forEach((p) => {
+        fit(p);
+        const header = p.button.closest('.content-header');
+        if (observer && header && p.button.hasAttribute('data-section-fit')) observer.observe(header);
         if (p.label) {
             p.label.dataset.fallback ??= p.label.textContent.trim();
             p.label.textContent = sectionLabel(items(p.list), p.label.dataset.fallback);
@@ -89,7 +118,7 @@ export function initializeSectionSwitch(doc = globalThis.document, win = globalT
     doc.addEventListener('turbo:render', sync);
     doc.addEventListener('turbo:frame-load', () => win.requestAnimationFrame(sync));
     doc.addEventListener('turbo:before-cache', () => parts().forEach((p) => setOpen(p, false)));
-    win.addEventListener('resize', () => parts().forEach((p) => setOpen(p, false)));
+    win.addEventListener('resize', () => parts().forEach((p) => { setOpen(p, false); fit(p); }));
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', sync, { once: true });
     else sync();
 }

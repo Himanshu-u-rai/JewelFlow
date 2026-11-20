@@ -17,7 +17,7 @@
             <span class="page-title-text">{{ $stockTitle }}</span>
             {{-- Phones: the open Stock page is the title; a tap lists the Stock pages (the header's section links,
                  shown as a dropdown; section-switch.js). --}}
-            <button type="button" class="jf-section-switch" data-section-switch
+            <button type="button" class="jf-section-switch" data-section-switch data-section-fit
                     aria-haspopup="true" aria-expanded="false" aria-controls="stock-sections">
                 <span data-section-label>{{ $stockTitle }}</span>
                 <x-icon name="chevron-down" size="18" />

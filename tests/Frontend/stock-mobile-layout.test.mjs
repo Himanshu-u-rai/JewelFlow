@@ -14,14 +14,15 @@ const value = (selector, prop) => {
     return found;
 };
 
-test('Stock mobile overrides are bundled and screen/phone scoped, not desktop or print changes', () => {
+test('Stock mobile overrides are bundled and screen/phone-or-tablet scoped, not desktop or print changes', () => {
     const app = readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8');
     assert.match(app, /@import "\.\/stock-mobile\.css";/);
     assert.ok(css.nodes.length);
+    // The header block also covers tablets (owner, 2026-11-20: one row, no second header row); the rest is phones.
     for (const node of css.nodes.filter(node => node.type !== 'comment')) {
         assert.equal(node.type, 'atrule');
         assert.equal(node.name, 'media');
-        assert.equal(node.params, 'screen and (max-width: 768px)');
+        assert.ok(['screen and (max-width: 768px)', 'screen and (max-width: 1023px)'].includes(node.params), node.params);
     }
     css.walkRules(rule => { for (const selector of rule.selectors) assert.ok(selector.startsWith(prefix)); });
 });

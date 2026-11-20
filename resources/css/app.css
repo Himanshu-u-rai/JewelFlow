@@ -32450,6 +32450,32 @@ body.app-shell [data-section-list].is-open :is([aria-current="page"], [aria-pres
     }
 }
 
+/* Desktop (owner, 2026-11-20): the same swap the moment the strip would wrap onto a second row
+   (section-switch.js measures it and sets data-section-compact), e.g. beside the sidebar at 1100 or 1440px. */
+.customers-directory-header[data-section-compact] .page-title-text,
+.inventory-items-header[data-section-compact] .page-title-text {
+    display: none;
+}
+
+.customers-directory-header[data-section-compact] .jf-section-switch,
+.inventory-items-header[data-section-compact] .jf-section-switch {
+    display: inline-flex;
+}
+
+body.app-shell .customers-directory-header[data-section-compact] [data-section-list]:not(.is-open),
+body.app-shell .inventory-items-header[data-section-compact] [data-section-list]:not(.is-open) {
+    display: none !important;
+}
+
+body.app-shell .inventory-items-header[data-section-compact] .items-header-nav {
+    display: contents !important;
+}
+
+/* The strip's column goes with it, so Create Item sits beside the bell instead of in the strip's old slot. */
+body.app-shell .inventory-items-header[data-section-compact] .page-actions {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 @media (prefers-reduced-motion: reduce) {
     body.app-shell [data-section-list].is-open {
         animation: none;

@@ -18,7 +18,7 @@
         @if($isRetailer)
         {{-- Phones: the open view is the title; a tap lists the views (the buttons below; section-switch.js). --}}
         <x-slot:titleSwitch>
-            <button type="button" class="jf-section-switch" data-section-switch
+            <button type="button" class="jf-section-switch" data-section-switch data-section-fit
                     aria-haspopup="true" aria-expanded="false" aria-controls="customer-views">
                 <span data-section-label>Customers</span>
                 <x-icon name="chevron-down" size="18" />
