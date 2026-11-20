@@ -173,9 +173,18 @@ export function createRepairIntake(root, doc = document, win = window) {
     // heading dropped and snapped back on every frame (a shake). The controller takes the upward wheel itself: rows
     // first, then the reveal. While the form animates, wheel steps cannot fight the reveal's own scroll.
     const wheelStep = (e, pane) => e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? pane.clientHeight : 1);
+    // Zoom, the page header (notice panel) and any other scroller inside the workspace (a dropdown) keep their wheel.
+    const ownScroller = target => {
+        for (let n = target; n && n !== root; n = n.parentElement) {
+            if (!panes.includes(n) && n.scrollHeight > n.clientHeight
+                && /auto|scroll/.test(win.getComputedStyle(n).overflowY)) return true;
+        }
+        return false;
+    };
     const wheel = e => {
-        if (steady && animation) return e.preventDefault();
-        if (steady && !details.open && e.deltaY < 0) {
+        const mine = steady && !e.ctrlKey && !e.metaKey && root.contains(e.target) && !ownScroller(e.target);
+        if (mine && animation) return e.preventDefault();
+        if (mine && !details.open && e.deltaY < 0) {
             const pane = panes.find(p => p.getClientRects().length);
             if (!pane || pane.scrollTop <= 0) { e.preventDefault(); return open(); }
             if (e.target?.closest?.('[data-repair-rows]') !== pane) {

@@ -42,6 +42,7 @@ function fixture({ room = 400, height = 925, width = 0, cardHeight = 460, errors
         querySelector: s => s === '.repairs-layout' ? layout : details,
         querySelectorAll: s => s === '[data-repair-rows]' ? [pane] : [],
         getBoundingClientRect: () => ({ top: 90 - shell.scrollTop }),
+        contains: node => !node?.outsideWorkspace,
         setAttribute: (k, v) => attrs.set(k, v), removeAttribute: k => attrs.delete(k),
         style: { setProperty: (k, v) => styles.set(k, v), removeProperty: k => styles.delete(k) },
     };
@@ -50,7 +51,7 @@ function fixture({ room = 400, height = 925, width = 0, cardHeight = 460, errors
     const win = {
         ...target(), key: 'win', innerHeight: height, innerWidth: width, scrollY: 0,
         matchMedia: () => ({ matches: reducedMotion }),
-        getComputedStyle: e => ({ overflowY: 'auto', paddingTop: e === root ? '32px' : '0px',
+        getComputedStyle: e => ({ overflowY: e.overflowY ?? 'auto', paddingTop: e === root ? '32px' : '0px',
             paddingBottom: e === root ? '32px' : '0px', rowGap: e === layout ? '20px' : '0px' }),
         requestAnimationFrame(fn) { frames.set(++serial, fn); return serial; },
         cancelAnimationFrame: id => frames.delete(id),
@@ -465,6 +466,22 @@ test('while the intake opens, further wheel steps cannot fight the reveal', () =
     assert.equal(wheel(f, -100, true).prevented, true);
     assert.equal(wheel(f, 100, true).prevented, true);
     assert.equal(f.motions.length, 1, 'one reveal, not restarted');
+});
+
+test('ctrl+wheel zoom and wheels from outside the workspace or inside another scroller are left to the browser', () => {
+    const f = fixture({ width: 1364, animated: true });
+    f.shell.scrollTop = 380; f.send('shell', 'scroll');
+    const send = extras => {
+        const event = { deltaY: -100, deltaMode: 0, prevented: false, target: { closest: () => null }, ...extras };
+        event.preventDefault = () => { event.prevented = true; };
+        f.listeners.get('shell:wheel')(event); f.flush();
+        return event;
+    };
+    assert.equal(send({ ctrlKey: true }).prevented, false, 'zoom');
+    assert.equal(send({ target: { closest: () => null, outsideWorkspace: true } }).prevented, false, 'the notice panel in the page header');
+    const menu = { closest: () => null, scrollHeight: 300, clientHeight: 100, scrollTop: 50, overflowY: 'auto' };
+    assert.equal(send({ target: menu }).prevented, false, 'a dropdown that can still scroll');
+    assert.equal(f.details.open, false, 'none of them opened the intake');
 });
 
 test('the rows keep their scrollbar space, so the columns never shift sideways when the lock changes', async () => {

@@ -117,7 +117,10 @@ export function initializeSectionSwitch(doc = globalThis.document, win = globalT
     doc.addEventListener('turbo:load', sync);
     doc.addEventListener('turbo:render', sync);
     doc.addEventListener('turbo:frame-load', () => win.requestAnimationFrame(sync));
-    doc.addEventListener('turbo:before-cache', () => parts().forEach((p) => setOpen(p, false)));
+    // Leaving the page: forget its headers (the next page's sync observes its own).
+    doc.addEventListener('turbo:before-cache', () => { observer?.disconnect(); parts().forEach((p) => setOpen(p, false)); });
+    // Web fonts can widen the tabs after the first measurement without changing the header's width.
+    doc.fonts?.ready?.then(() => parts().forEach(fit));
     win.addEventListener('resize', () => parts().forEach((p) => { setOpen(p, false); fit(p); }));
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', sync, { once: true });
     else sync();
