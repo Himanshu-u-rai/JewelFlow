@@ -370,7 +370,7 @@
             }
         });
         
-        const removeButton = document.getElementById('removeImageButton');
+        var removeButton = document.getElementById('removeImageButton');
         if (removeButton) {
             removeButton.addEventListener('click', function () {
                 const shouldRemove = removeButton.dataset.removeImageState !== '1';

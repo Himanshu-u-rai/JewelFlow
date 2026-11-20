@@ -457,7 +457,7 @@
     @push('scripts')
     <script>
         (() => {
-        const registerDhiranCreateForm = () => {
+        var registerDhiranCreateForm = () => {
             Alpine.data('dhiranCreateForm', () => ({
                 // The borrower is one value, selectedCustomer; the posted id is read from it, so the form can never
                 // send an id for a borrower the screen does not show (owner 2026-11-12, state-machine audit).

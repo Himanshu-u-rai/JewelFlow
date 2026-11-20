@@ -1087,10 +1087,11 @@
 </div>
 
 <script>
-const CSRF = '{{ csrf_token() }}';
-const CUSTOMER_ID = {{ $customer->id }};
-const POS_SELL_URL = @json(route('pos.sell'));
-const INVOICE_BASE_URL = @json(url('/invoices'));
+// var, not const/let: Turbo runs this script again on a repeat visit, and a second top-level const/let throws.
+var CSRF = '{{ csrf_token() }}';
+var CUSTOMER_ID = {{ $customer->id }};
+var POS_SELL_URL = @json(route('pos.sell'));
+var INVOICE_BASE_URL = @json(url('/invoices'));
 
 // Phase 2 feature flag: when on, this view talks to /pos/quote (signed
 // server-side quote) instead of /api/price-preview, and the manual
@@ -1099,11 +1100,11 @@ window.POS_QUOTE_V2_ENABLED = {{ config('features.pos_quote_v2') ? 'true' : 'fal
 window.POS_QUOTE_URL = @json(route('pos.quote'));
 window.POS_QUOTE_PERSIST_URL = @json(route('pos.quote.persist'));
 
-let lastPreview = null;
-let paymentRowIndex = 1;
+var lastPreview = null;
+var paymentRowIndex = 1;
 
 // Quote v2 state (used only when POS_QUOTE_V2_ENABLED).
-let currentQuote = {
+var currentQuote = {
     id: null,
     signature: null,
     breakdown_json: null,
@@ -1370,7 +1371,7 @@ function initItemPicker() {
 }
 
 // ─── Price preview ───────────────────────────────────────
-let previewTimer = null;
+var previewTimer = null;
 function updatePreview() {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(_fetchPreview, 250);
@@ -1851,7 +1852,7 @@ function completeSale() {
     });
 }
 
-const saleFormEl = document.getElementById('saleForm');
+var saleFormEl = document.getElementById('saleForm');
 if (saleFormEl && saleFormEl.dataset.boundSubmit !== 'true') {
     saleFormEl.dataset.boundSubmit = 'true';
     saleFormEl.addEventListener('submit', function(event) {

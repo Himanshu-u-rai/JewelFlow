@@ -228,7 +228,7 @@
     </div>
 
     <script>
-        const purityProfiles = @json($profileOptions);
+        var purityProfiles = @json($profileOptions);
 
         // Image modal
         function openImageModal(src, caption) {
@@ -272,11 +272,11 @@
         }
         
         // Filter sub-categories based on category
-        const categorySelect = document.getElementById('category_id');
-        const subCategorySelect = document.getElementById('sub_category_id');
-        const allSubOptions = [...subCategorySelect.querySelectorAll('option[data-category]')];
-        const metalTypeSelect = document.getElementById('metal_type');
-        const defaultPuritySelect = document.getElementById('default_purity');
+        var categorySelect = document.getElementById('category_id');
+        var subCategorySelect = document.getElementById('sub_category_id');
+        var allSubOptions = [...subCategorySelect.querySelectorAll('option[data-category]')];
+        var metalTypeSelect = document.getElementById('metal_type');
+        var defaultPuritySelect = document.getElementById('default_purity');
 
         function filterSubCategories() {
             const selectedCategory = categorySelect.value;

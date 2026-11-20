@@ -50,8 +50,8 @@
     </div>
 
     <script>
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const msg = (text, ok) => { const m=document.getElementById('msg'); m.className='msg '+(ok?'ok':'err'); m.textContent=text; };
+        var csrf = document.querySelector('meta[name="csrf-token"]').content;
+        var msg = (text, ok) => { const m=document.getElementById('msg'); m.className='msg '+(ok?'ok':'err'); m.textContent=text; };
         async function post(url, body) {
             const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf,'Accept':'application/json'}, body:JSON.stringify(body) });
             let data={}; try { data = await r.json(); } catch(e){}

@@ -318,10 +318,10 @@
     </div>
 
     <script>
-        let selectedLotPurity = 0;
-        let selectedLotRemaining = 0;
-        let selectedLotCost = 0;
-        let pendingSubCategorySelection = @json(old('sub_category'));
+        var selectedLotPurity = 0;
+        var selectedLotRemaining = 0;
+        var selectedLotCost = 0;
+        var pendingSubCategorySelection =@json(old('sub_category'));
 
         function refreshCreateDropdown(select) {
             if (window.refreshEnhancedFilterSelect) {

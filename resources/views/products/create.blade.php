@@ -219,8 +219,8 @@
     </div>
 
     <script>
-        const categoryOptions = @json($categoriesData);
-        const purityProfiles = @json($profileOptions);
+        var categoryOptions = @json($categoriesData);
+        var purityProfiles = @json($profileOptions);
 
         // Image modal
         function openImageModal(src, caption) {
