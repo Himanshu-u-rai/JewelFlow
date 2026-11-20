@@ -414,14 +414,15 @@
             overflow: visible !important;
         }
         .repairs-form-card[data-intake-animating] > [data-repair-intake-body] { overflow: clip; }
-        .repairs-intake-summary { list-style: none; cursor: pointer; border-radius: 12px 12px 0 0; }
+        /* The card's radius inside its 1px border; the card itself is not clipped (dropdowns escape it). */
+        .repairs-intake-summary { list-style: none; cursor: pointer; border-radius: calc(var(--app-card-radius, 12px) - 1px) calc(var(--app-card-radius, 12px) - 1px) 0 0; }
         .repairs-intake-summary::-webkit-details-marker { display: none; }
         .repairs-intake-summary:focus-visible { outline: 2px solid var(--r-accent); outline-offset: -3px; }
         .repairs-intake-arrow { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; color: var(--r-accent-dark); border: 1px solid var(--r-border-soft); border-radius: 8px; }
         .repairs-intake-arrow svg { width: 18px; height: 18px; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
         details[open]:not([data-intake-closing]) > .repairs-intake-summary .repairs-intake-arrow svg { transform: rotate(180deg); }
         @media (prefers-reduced-motion: reduce) { .repairs-intake-arrow svg { transition: none; } }
-        details:not([open]) > .repairs-intake-summary { border-bottom-color: transparent; border-radius: 12px; }
+        details:not([open]) > .repairs-intake-summary { border-bottom-color: transparent; border-radius: calc(var(--app-card-radius, 12px) - 1px); }
         .repairs-management-page[data-repair-fit] { height: var(--repair-workspace-height); min-height: 0; overflow-anchor: none; }
         .repairs-management-page[data-repair-steady] {
             height: calc(var(--repair-workspace-height) + var(--repair-scroll-range));

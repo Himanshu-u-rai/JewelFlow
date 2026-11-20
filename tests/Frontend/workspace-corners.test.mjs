@@ -33,6 +33,21 @@ test('painted register and form headers inherit top corners including fieldsets 
     assert.ok(headers.nodes.some(node => node.prop === 'border-top-right-radius' && node.value === 'inherit'));
 });
 
+// A <summary> inherits through its <details>' internal slot (radius 0), never from the card, so "inherit" squared its
+// corners and the painted Receive New Repair heading poked past the rounded card (owner, 2026-11-20). Summaries set
+// their own radius instead.
+test('the inherit correction skips summaries, which cannot inherit the card radius', () => {
+    const headers = rules.find(rule => rule.selector.includes('.customers-table-card-header'));
+    assert.match(headers.selector, /:not\(summary\):first-child/);
+});
+
+test('the Repairs intake heading follows its card radius inside the border, open and closed', () => {
+    const view = readFileSync(new URL('../../resources/views/repairs.blade.php', import.meta.url), 'utf8');
+    const inner = 'calc\\(var\\(--app-card-radius, 12px\\) - 1px\\)';
+    assert.match(view, new RegExp(`\\.repairs-intake-summary \\{[^}]*border-radius: ${inner} ${inner} 0 0`));
+    assert.match(view, new RegExp(`details:not\\(\\[open\\]\\) > \\.repairs-intake-summary \\{[^}]*border-radius: ${inner};`));
+});
+
 test('tag form wrappers pass the board radius through to the bottom pagination surface', () => {
     assert.ok(rules.some(rule => rule.selector.includes('#print-form') && rule.nodes.some(node => node.prop === 'border-radius')));
     assert.ok(rules.some(rule => rule.selector.includes('.stock-tool-footer') && rule.nodes.some(node => node.prop === 'border-bottom-left-radius')));
