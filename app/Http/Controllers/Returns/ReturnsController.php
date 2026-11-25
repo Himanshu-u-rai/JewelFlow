@@ -313,10 +313,7 @@ class ReturnsController extends Controller
             $query->whereDate('created_at', '<=', $request->input('to'));
         }
         if ($request->filled('customer')) {
-            $search = '%' . $request->input('customer') . '%';
-            $query->whereHas('customer', fn ($q) => $q->where('first_name', 'like', $search)
-                ->orWhere('last_name', 'like', $search)
-                ->orWhere('mobile', 'like', $search));
+            $query->whereHas('customer', fn ($q) => $q->matchingNameOrMobile((string) $request->input('customer')));
         }
 
         $returnOrders = $query->latest('id')->paginate(25)->withQueryString();

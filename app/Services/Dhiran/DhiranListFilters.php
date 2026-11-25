@@ -167,10 +167,7 @@ final class DhiranListFilters
         $like = '%' . addcslashes($s, '%_\\') . '%';
 
         return $q->where(fn ($w) => $w->where('loan_number', 'ilike', $like)
-            ->orWhereHas('customer', fn ($c) => $c->where('first_name', 'ilike', $like)
-                ->orWhere('last_name', 'ilike', $like)
-                ->orWhere('mobile', 'ilike', $like)
-                ->orWhereRaw("concat(first_name, ' ', last_name) ilike ?", [$like])));
+            ->orWhereHas('customer', fn ($c) => $c->matchingNameOrMobile($s)));
     }
 
     /** Everything that narrows a DhiranLoan query; $dateColumn is what the period means on this page. */

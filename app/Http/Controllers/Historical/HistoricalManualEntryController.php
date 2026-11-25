@@ -157,9 +157,7 @@ class HistoricalManualEntryController extends Controller
             ->where('shop_id', $shopId)
             ->active()
             ->where(function ($builder) use ($query, $digits): void {
-                $builder->where('first_name', 'ilike', "%{$query}%")
-                    ->orWhere('last_name', 'ilike', "%{$query}%")
-                    ->orWhereRaw("CONCAT_WS(' ', first_name, last_name) ILIKE ?", ["%{$query}%"])
+                $builder->matchingNameOrMobile($query)
                     ->orWhere('gstin', 'ilike', "%{$query}%");
 
                 if (strlen($digits) >= 3) {

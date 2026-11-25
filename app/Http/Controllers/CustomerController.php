@@ -33,11 +33,7 @@ class CustomerController extends Controller
         $search = $request->filled('search') ? $request->search : null;
         $applySearch = function ($q) use ($search) {
             if ($search !== null) {
-                $q->where(function ($inner) use ($search) {
-                    $inner->where('first_name', 'ilike', "%{$search}%")
-                        ->orWhere('last_name', 'ilike', "%{$search}%")
-                        ->orWhere('mobile', 'like', "%{$search}%");
-                });
+                $q->matchingNameOrMobile($search);
             }
 
             return $q;
@@ -106,11 +102,7 @@ class CustomerController extends Controller
 
             if ($request->filled('loyalty_search')) {
                 $ls = $request->loyalty_search;
-                $loyaltyQuery->where(function ($q) use ($ls) {
-                    $q->where('first_name', 'ilike', "%{$ls}%")
-                      ->orWhere('last_name', 'ilike', "%{$ls}%")
-                      ->orWhere('mobile', 'like', "%{$ls}%");
-                });
+                $loyaltyQuery->matchingNameOrMobile($ls);
             }
 
             $loyaltyCustomers = $loyaltyQuery->orderByDesc('loyalty_points')->orderByDesc('id')->paginate(15, ['*'], 'loyalty_page');

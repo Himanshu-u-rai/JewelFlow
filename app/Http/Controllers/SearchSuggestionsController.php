@@ -90,10 +90,7 @@ class SearchSuggestionsController extends Controller
         // Archived filter on the customer index.
         return Customer::where('shop_id', $shopId)
             ->active()
-            ->where(fn ($query) => $query
-                ->where('first_name', 'ilike', "%{$q}%")
-                ->orWhere('last_name', 'ilike', "%{$q}%")
-                ->orWhere('mobile', 'like', "%{$q}%"))
+            ->matchingNameOrMobile($q)
             ->orderByDesc('updated_at')
             ->limit(8)
             ->get(['id', 'first_name', 'last_name', 'mobile'])
@@ -130,10 +127,7 @@ class SearchSuggestionsController extends Controller
         return Invoice::where('shop_id', $shopId)
             ->where(fn ($query) => $query
                 ->where('invoice_number', 'ilike', "%{$q}%")
-                ->orWhereHas('customer', fn ($cq) => $cq
-                    ->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name', 'ilike', "%{$q}%")
-                    ->orWhere('mobile', 'like', "%{$q}%")))
+                ->orWhereHas('customer', fn ($cq) => $cq->matchingNameOrMobile($q)))
             ->with('customer:id,first_name,last_name')
             ->orderByDesc('created_at')
             ->limit(8)
@@ -207,10 +201,7 @@ class SearchSuggestionsController extends Controller
                 ->where('repair_number', 'ilike', "%{$q}%")
                 ->orWhere('item_description', 'ilike', "%{$q}%")
                 ->orWhere('description', 'ilike', "%{$q}%")
-                ->orWhereHas('customer', fn ($cq) => $cq
-                    ->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name', 'ilike', "%{$q}%")
-                    ->orWhere('mobile', 'like', "%{$q}%")))
+                ->orWhereHas('customer', fn ($cq) => $cq->matchingNameOrMobile($q)))
             ->with('customer:id,first_name,last_name,mobile')
             ->orderByDesc('updated_at')
             ->limit(8)
@@ -361,10 +352,7 @@ class SearchSuggestionsController extends Controller
         return InstallmentPlan::where('shop_id', $shopId)
             ->where(fn ($query) => $query
                 ->whereRaw('CAST(id AS TEXT) ILIKE ?', ["%{$q}%"])
-                ->orWhereHas('customer', fn ($cq) => $cq
-                    ->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name', 'ilike', "%{$q}%")
-                    ->orWhere('mobile', 'like', "%{$q}%"))
+                ->orWhereHas('customer', fn ($cq) => $cq->matchingNameOrMobile($q))
                 ->orWhereHas('invoice', fn ($iq) => $iq->where('invoice_number', 'ilike', "%{$q}%")))
             ->with('customer:id,first_name,last_name', 'invoice:id,invoice_number')
             ->orderByDesc('updated_at')

@@ -7,6 +7,7 @@ use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Services\BusinessIdentifierService;
 use App\Support\Mobile;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +24,26 @@ class Customer extends Model
     public function profilePhoto()
     {
         return $this->hasOne(CustomerProfilePhoto::class);
+    }
+
+    /**
+     * The one customer search: first name, last name, the full name ("Ramesh
+     * Kumar") or mobile contains the text, case-insensitively. first_name and
+     * last_name are separate columns, so the full name is matched on the two
+     * joined with a space. % and _ in the text are literal, not wildcards.
+     * Shop scoping stays with the BelongsToShop scope / the caller's where.
+     */
+    public function scopeMatchingNameOrMobile(Builder $query, string $search): Builder
+    {
+        $like = '%' . addcslashes(preg_replace('/\s+/', ' ', trim($search)), '\\%_') . '%';
+        $first = $query->qualifyColumn('first_name');
+        $last = $query->qualifyColumn('last_name');
+
+        return $query->where(fn (Builder $q) => $q
+            ->where($first, 'ilike', $like)
+            ->orWhere($last, 'ilike', $like)
+            ->orWhereRaw("concat_ws(' ', {$first}, {$last}) ilike ?", [$like])
+            ->orWhere($query->qualifyColumn('mobile'), 'ilike', $like));
     }
 
     /**

@@ -749,11 +749,7 @@ class PosController extends Controller
         $query = Customer::where('shop_id', $shopId)->active();
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'ilike', '%' . $search . '%')
-                  ->orWhere('last_name', 'ilike', '%' . $search . '%')
-                  ->orWhere('mobile', 'ilike', '%' . $search . '%');
-            });
+            $query->matchingNameOrMobile($search);
         }
 
         return response()->json(

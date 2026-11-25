@@ -33,11 +33,7 @@ class QuickBillController extends Controller
                 $builder->where('bill_number', 'ilike', "%{$search}%")
                     ->orWhere('customer_name', 'ilike', "%{$search}%")
                     ->orWhere('customer_mobile', 'like', "%{$search}%")
-                    ->orWhereHas('customer', function ($customerQuery) use ($search): void {
-                        $customerQuery->where('first_name', 'ilike', "%{$search}%")
-                            ->orWhere('last_name', 'ilike', "%{$search}%")
-                            ->orWhere('mobile', 'like', "%{$search}%");
-                    });
+                    ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->matchingNameOrMobile($search));
             });
         }
 

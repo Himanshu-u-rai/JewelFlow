@@ -43,11 +43,7 @@ class RepairController extends Controller
             $number = preg_match('/^(?:rep-?)?0*(\d+)$/i', $search, $m) ? (int) $m[1] : null;
             $query->where(function ($q) use ($search, $number) {
                 $q->where('item_description', 'ilike', "%{$search}%")
-                    ->orWhereHas('customer', function ($cq) use ($search) {
-                        $cq->where('first_name', 'ilike', "%{$search}%")
-                            ->orWhere('last_name', 'ilike', "%{$search}%")
-                            ->orWhere('mobile', 'like', "%{$search}%");
-                    });
+                    ->orWhereHas('customer', fn ($cq) => $cq->matchingNameOrMobile($search));
                 if ($number !== null) {
                     $q->orWhere('repair_number', $number);
                 }

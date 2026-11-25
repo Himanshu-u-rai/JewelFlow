@@ -44,11 +44,7 @@ class RepairController extends Controller
                 $q->where('item_description', 'ilike', "%{$s}%")
                   ->orWhere('description', 'ilike', "%{$s}%")
                   ->orWhere('repair_number', 'like', "%{$s}%")
-                  ->orWhereHas('customer', function ($c) use ($s) {
-                      $c->where('first_name', 'ilike', "%{$s}%")
-                        ->orWhere('last_name', 'ilike', "%{$s}%")
-                        ->orWhere('mobile', 'like', "%{$s}%");
-                  });
+                  ->orWhereHas('customer', fn ($c) => $c->matchingNameOrMobile($s));
             });
         }
 

@@ -775,9 +775,7 @@ class DhiranController extends Controller implements \Illuminate\Routing\Control
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
-                $q->where('first_name', 'ilike', "%{$s}%")
-                  ->orWhere('last_name', 'ilike', "%{$s}%")
-                  ->orWhere('mobile', 'ilike', "%{$s}%")
+                $q->matchingNameOrMobile($s)
                   ->orWhere('customer_code', 'ilike', "%{$s}%");
             });
         }

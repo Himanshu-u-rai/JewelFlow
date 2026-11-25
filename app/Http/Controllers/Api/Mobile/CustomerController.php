@@ -59,15 +59,7 @@ class CustomerController extends Controller
         };
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'ilike', '%' . $search . '%')
-                  ->orWhere('last_name', 'ilike', '%' . $search . '%')
-                  ->orWhere('mobile', 'like', '%' . $search . '%')
-                  ->orWhereRaw(
-                      "CONCAT(first_name, ' ', COALESCE(last_name, '')) ILIKE ?",
-                      ['%' . $search . '%']
-                  );
-            });
+            $query->matchingNameOrMobile($search);
         }
 
         $paginated = $query->paginate($perPage);
