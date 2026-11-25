@@ -49,7 +49,7 @@ class ItemQuickAddDialogsTest extends TestCase
     public function test_both_item_pages_render_the_one_shared_quick_add_script(): void
     {
         foreach ($this->pages() as $page => $html) {
-            $this->assertSame(1, substr_count($html, 'const quickAdd = {'), "{$page}: the shared dialog script, once");
+            $this->assertSame(1, substr_count($html, 'var quickAdd = {'), "{$page}: the shared dialog script, once");
             $refresher = $page === 'create' ? 'refreshCreateDropdown' : 'refreshEditDropdown';
             $this->assertStringContainsString("{$refresher}(picker)", $html, "{$page}: its own dropdown refresher");
         }
@@ -75,7 +75,7 @@ class ItemQuickAddDialogsTest extends TestCase
     public function test_the_dialogs_exist_before_the_script_that_binds_them(): void
     {
         foreach ($this->pages() as $page => $html) {
-            $script = strpos($html, 'const quickAdd = {');
+            $script = strpos($html, 'var quickAdd = {');
             foreach (['newSupplierModal', 'newSupplierCancel', 'newSupplierConfirm', 'newCategoryModal', 'newCategoryConfirm',
                 'newSubCategoryModal', 'newSubCategoryConfirm', 'customPurityModal', 'customPurityConfirm'] as $id) {
                 $element = strpos($html, 'id="' . $id . '"');
