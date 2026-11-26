@@ -37,11 +37,10 @@ class PasswordResetLinkController extends Controller
             'realm' => Realm::current($request),
         ];
 
-        $status = Password::sendResetLink($credentials);
+        // Same reply whatever the outcome (sent, no such account, resend throttled), so the
+        // page cannot be used to find out which email addresses have an account.
+        Password::sendResetLink($credentials);
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        return back()->with('status', __('If an account uses that email address, we have sent it a password reset link.'));
     }
 }

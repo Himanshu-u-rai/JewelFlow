@@ -45,6 +45,43 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    public function test_the_reply_does_not_reveal_whether_an_account_uses_the_email(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'known@example.com']);
+
+        $known = $this->from('/forgot-password')->post('/forgot-password', ['email' => 'known@example.com']);
+        $knownStatus = session('status');
+        $this->flushSession();
+        $unknown = $this->from('/forgot-password')->post('/forgot-password', ['email' => 'nobody@example.com']);
+
+        $unknown->assertRedirect('/forgot-password')->assertSessionHasNoErrors();
+        $known->assertRedirect('/forgot-password');
+        $this->assertNotEmpty($knownStatus);
+        $this->assertSame($knownStatus, session('status'), 'Known and unknown emails must get the same reply.');
+        $this->assertStringNotContainsStringIgnoringCase("can't find", (string) $knownStatus);
+    }
+
+    public function test_a_repeat_request_gets_the_same_reply_and_sends_only_one_email(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'repeat@example.com']);
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+        $first = session('status');
+        $this->flushSession();
+        $second = $this->post('/forgot-password', ['email' => $user->email]);
+
+        $second->assertSessionHasNoErrors();
+        $this->assertSame($first, session('status'), 'The per-user resend throttle must not reveal that the account exists.');
+        Notification::assertSentToTimes($user, ResetPassword::class, 1);
+    }
+
+    public function test_an_invalid_email_is_still_rejected_as_invalid(): void
+    {
+        $this->post('/forgot-password', ['email' => 'not-an-email'])->assertSessionHasErrors('email');
+    }
+
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();
