@@ -5,7 +5,7 @@
     <h2>1. Two kinds of data</h2>
     <ul>
         <li><strong>Your account data</strong>: details about you, your shop and your staff. For this we decide how it is used.</li>
-        <li><strong>Your business records</strong>: what you enter about your own customers, borrowers, karigars and vendors (names, phone numbers, addresses, PAN or other KYC details, photos, purchases, loans). You decide why this data is collected; we process it only on your instructions to run the service.</li>
+        <li><strong>Your business records</strong>: what you enter about your own customers, karigars and vendors (names, phone numbers, addresses, PAN or other KYC details, photos, purchases). You decide why this data is collected; we process it only on your instructions to run the service.</li>
     </ul>
 
     <h2>2. What we collect</h2>
@@ -20,7 +20,7 @@
     <ul>
         <li>To provide, secure and support the service, including sending verification codes and service messages.</li>
         <li>To bill you and keep the tax and accounting records the law requires.</li>
-        <li>To tell account owners about our products and offers, which you can switch off in Settings → Product preferences.</li>
+        <li>To tell account owners about our offers inside the app; each offer can be dismissed.</li>
     </ul>
     <p>We do not sell personal data and do not use your business records for advertising.</p>
 

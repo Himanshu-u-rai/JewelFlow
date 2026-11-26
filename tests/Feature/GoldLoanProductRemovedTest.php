@@ -33,10 +33,10 @@ class GoldLoanProductRemovedTest extends TestCase
 
     public function test_public_pages_do_not_mention_the_removed_product(): void
     {
-        foreach (['/', '/login', '/register', '/forgot-password', '/about', '/terms'] as $uri) {
+        foreach (['/', '/login', '/register', '/forgot-password', '/about', '/terms', '/privacy'] as $uri) {
             $response = $this->get($uri);
             $response->assertOk();
-            $this->assertDoesNotMatchRegularExpression('/dhiran|gold.?loan|pledge/i', $response->getContent(), $uri);
+            $this->assertDoesNotMatchRegularExpression('/dhiran|gold.?loan|pledge|borrower|product preferences/i', $response->getContent(), $uri);
         }
     }
 
