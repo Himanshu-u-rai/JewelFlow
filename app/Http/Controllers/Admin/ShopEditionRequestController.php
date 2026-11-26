@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Dhiran\DhiranSettings;
 use App\Models\Shop;
 use App\Models\ShopEditionRequest;
 use App\Services\PlatformAuditService;
 use App\Support\ShopEdition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -67,18 +65,10 @@ class ShopEditionRequestController extends Controller
             if ($editionRequest->action === ShopEditionRequest::ACTION_ADD) {
                 if (! $shop->hasEdition($edition)) {
                     ShopEdition::grantTo($shop, $edition, null);
-                    if ($edition === ShopEdition::DHIRAN) {
-                        DhiranSettings::withoutGlobalScope('shop')
-                            ->where('shop_id', $shop->id)->update(['is_enabled' => DB::raw('true')]);
-                    }
                 }
             } else {
                 if ($shop->hasEdition($edition) && count($shop->editionList()) > 1) {
                     ShopEdition::revokeFrom($shop, $edition, null, $editionRequest->reason);
-                    if ($edition === ShopEdition::DHIRAN) {
-                        DhiranSettings::withoutGlobalScope('shop')
-                            ->where('shop_id', $shop->id)->update(['is_enabled' => DB::raw('false')]);
-                    }
                 }
             }
 

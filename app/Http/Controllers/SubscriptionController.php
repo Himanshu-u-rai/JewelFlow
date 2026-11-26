@@ -95,7 +95,7 @@ class SubscriptionController extends Controller
         // Product-scoped selection: show the plans for the chosen edition's
         // product. grantsEdition() resolves plan → edition string via the linked
         // platform product (with a code-prefix fallback), so this is explicit
-        // and correct — and Dhiran is selectable without any retail shop_type.
+        // and correct.
         $plans = $allPlans->filter(
             fn ($plan) => $plan->grantsEdition() === $shopType
         )->values();

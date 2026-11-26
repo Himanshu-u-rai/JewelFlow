@@ -8,7 +8,7 @@ use Illuminate\Auth\Passwords\PasswordBrokerManager;
 /**
  * Password broker manager that builds the realm-aware token repository
  * (RealmDatabaseTokenRepository, keyed by email + realm) for the database-backed
- * 'users' broker, so password resets are realm-scoped (Dhiran vs ERP). The cache
+ * 'users' broker, so password resets are realm-scoped. The cache
  * driver branch is left identical to the framework default.
  *
  * Wired in AppServiceProvider by rebinding the 'auth.password' singleton.

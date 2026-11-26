@@ -31,7 +31,6 @@ class PlatformProduct extends Model
     }
 
     public const CODE_RETAIL         = 'retail';
-    public const CODE_DHIRAN         = 'dhiran';
     public const CODE_MANUFACTURING  = 'manufacturing';
     public const CODE_CRM            = 'crm';
     public const CODE_ANALYTICS      = 'analytics';
@@ -41,13 +40,12 @@ class PlatformProduct extends Model
      * The single source of truth for product.code ↔ edition string.
      *
      * Products use 'retail' / 'manufacturing'; the editions table (and the 15+
-     * shipped call-sites) use 'retailer' / 'manufacturer' / 'dhiran'. This is the
+     * shipped call-sites) use 'retailer' / 'manufacturer'. This is the
      * ONE place that reconciles the two — never rename the existing edition
      * strings, just translate here.
      *
      *   retail         → retailer
      *   manufacturing  → manufacturer
-     *   dhiran         → dhiran
      *   crm            → crm
      *   analytics      → analytics
      *   mobile_premium → mobile_premium
@@ -57,7 +55,6 @@ class PlatformProduct extends Model
         return match ($productCode) {
             self::CODE_RETAIL        => ShopEdition::RETAILER,
             self::CODE_MANUFACTURING => ShopEdition::MANUFACTURER,
-            self::CODE_DHIRAN        => ShopEdition::DHIRAN,
             default                  => $productCode, // crm / analytics / mobile_premium map 1:1
         };
     }
@@ -79,7 +76,6 @@ class PlatformProduct extends Model
         return match ($edition) {
             ShopEdition::RETAILER     => self::CODE_RETAIL,
             ShopEdition::MANUFACTURER => self::CODE_MANUFACTURING,
-            ShopEdition::DHIRAN       => self::CODE_DHIRAN,
             default                   => $edition,
         };
     }

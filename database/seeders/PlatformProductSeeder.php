@@ -24,7 +24,6 @@ class PlatformProductSeeder extends Seeder
 
         $products = [
             ['code' => 'retail',         'name' => 'Retail Billing',  'description' => 'Point of sale, inventory, customers, invoices and reports for a retail jewellery shop.', 'is_active' => DB::raw('true'),  'sort_order' => 10],
-            ['code' => 'dhiran',         'name' => 'Dhiran',          'description' => 'Gold loan / pledge management. A standalone product — works with or without a retail shop.',  'is_active' => DB::raw('true'),  'sort_order' => 20],
             ['code' => 'manufacturing',  'name' => 'Manufacturing',   'description' => 'Karigar workflow, gold-lot inventory and manufacturing for a making unit.',               'is_active' => DB::raw('true'),  'sort_order' => 30],
             ['code' => 'crm',            'name' => 'CRM',             'description' => 'Customer relationship and outreach tools. Coming soon.',                                   'is_active' => DB::raw('false'), 'sort_order' => 40],
             ['code' => 'analytics',      'name' => 'Analytics',       'description' => 'Advanced business analytics and dashboards. Coming soon.',                                 'is_active' => DB::raw('false'), 'sort_order' => 50],

@@ -46,28 +46,6 @@ Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     }
 
-    // Dhiran subdomain (dhiran.jewelflows.com/) is a separate product front door.
-    // The realm is derived from the host, so the root must never leak the ERP
-    // landing or the ERP dashboard to a Dhiran visitor (and vice-versa).
-    if (\App\Support\Realm::current() === \App\Support\Realm::DHIRAN) {
-        $user = auth()->user();
-
-        if (! $user) {
-            // Guest → Dhiran-branded login (its own entry page).
-            return redirect()->route('login');
-        }
-
-        // ERP account on the Dhiran host → bounce to its own realm; it never
-        // gets the Dhiran app experience.
-        if (! $user->isDhiran()) {
-            return redirect('/dashboard');
-        }
-
-        // Dhiran account → the Dhiran dashboard. That controller itself renders
-        // the activation/onboarding placeholder when Dhiran isn't set up yet.
-        return redirect()->route('dhiran.dashboard');
-    }
-
     if (auth()->check()) {
         return redirect('/dashboard');
     }
@@ -126,21 +104,6 @@ Route::post('/api/scan', [\App\Http\Controllers\ScanSessionController::class, 'p
 
 require __DIR__.'/admin.php';
 
-// Separate paths retain each product's existing realm and session boundaries.
-// Metadata only: billing/access holds cannot prevent opt-out or consent withdrawal.
-// The controller independently requires an active user with exact current ownership;
-// business routes retain account.active/subscription.active unchanged.
-foreach (['erp' => 'product-preferences', 'dhiran' => 'dhiran/product-preferences'] as $realm => $path) {
-    Route::middleware(['auth', 'tenant', 'realm:'.$realm, 'nocache'])
-        ->prefix($path)->name(($realm === 'dhiran' ? 'dhiran.' : '').'product-preferences.')
-        ->controller(\App\Http\Controllers\ProductPromotionController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            foreach (['preference', 'start', 'approve', 'finish', 'cancel', 'revoke'] as $action) {
-                Route::post('/'.$action, $action)->middleware('throttle:6,1')->name($action);
-            }
-        });
-}
-
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATED USERS WITHOUT A SHOP
@@ -172,31 +135,6 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
         ->whereNumber('pincode')
         ->name('shops.pincode-lookup');
 });
-
-/*
-|--------------------------------------------------------------------------
-| DHIRAN ONBOARDING (Phase 3)
-| Authenticated Dhiran-realm user, NO shop yet.
-| → Dhiran-only plan selection + Dhiran business creation.
-|--------------------------------------------------------------------------
-| Deliberately NOT inside the shop.exists / subscription.active groups: the
-| Dhiran customer reaches these before having a shop or a subscription. realm:dhiran
-| keeps the flow Dhiran-only (an ERP account is bounced out). The shared payment
-| screens (subscription.payment / .initiate / .callback, above) are reused as-is.
-*/
-Route::middleware(['auth', 'tenant', 'account.active', 'realm:dhiran'])
-    ->prefix('dhiran')
-    ->name('dhiran.')
-    ->group(function () {
-        Route::get('/plans', [\App\Http\Controllers\DhiranOnboardingController::class, 'plans'])
-            ->name('plans');
-        Route::post('/subscribe', [\App\Http\Controllers\DhiranOnboardingController::class, 'subscribe'])
-            ->name('subscribe');
-        Route::get('/onboarding', [\App\Http\Controllers\DhiranOnboardingController::class, 'onboarding'])
-            ->name('onboarding');
-        Route::post('/onboarding', [\App\Http\Controllers\DhiranOnboardingController::class, 'store'])
-            ->name('onboarding.store');
-    });
 
 /*
 |--------------------------------------------------------------------------
@@ -245,8 +183,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('throttle:30,1')->name('notices.downloads.clear');
 
     // Masters Hub — permission/edition-aware index of existing master-data
-    // screens. `edition:retailer,manufacturer` blocks Dhiran-only shops (no
-    // applicable masters); realm:erp keeps it inside the ERP product.
+    // screens. `edition:retailer,manufacturer` blocks shops without a core
+    // edition (no applicable masters); realm:erp keeps it inside the ERP product.
     Route::get('/masters', [\App\Http\Controllers\MastersController::class, 'index'])
         ->middleware(['realm:erp', 'edition:retailer,manufacturer'])
         ->name('masters.index');
@@ -588,10 +526,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::delete('/customers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'destroy'])->middleware('can:customers.edit')->name('customers.photo.destroy');
     });
     // Staff: view + create (needed for POS). Edit = owner + manager. Delete = owner only.
-    // The ERP customer screens are retailer/manufacturer-only. edition:retailer,
-    // manufacturer keeps a Dhiran-ONLY shop out of the ERP customer UI (Dhiran has
-    // its own shop-scoped borrower creation). Data is already shop-scoped; this
-    // prevents ERP-screen exposure inside Dhiran.
+    // The ERP customer screens are retailer/manufacturer-only. Data is already
+    // shop-scoped; edition:retailer,manufacturer keeps shops without a core
+    // edition out of the customer UI.
     Route::get('/customers', [CustomerController::class, 'index'])->middleware(['edition:retailer,manufacturer', 'can:customers.view'])->name('customers.index');
     Route::get('/customers/create', [CustomerController::class, 'create'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.create');
     Route::post('/customers', [CustomerController::class, 'store'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.store');
@@ -1107,125 +1044,6 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Legacy aliases — keep old names resolving so any bookmarked links or nav items still work
     Route::get('/report/whatsapp', [CatalogController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('report.whatsapp');
     Route::post('/report/whatsapp/collection-link', [CatalogController::class, 'storeCollection'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('report.whatsapp.collection-link');
-
-    // ======= DHIRAN (Gold Loan / Pledge Module) =======
-    // The real Dhiran routes are registered first (below). The main-domain →
-    // subdomain redirect catch-all is registered AFTER them so it only catches
-    // paths the real routes didn't, and never shadows them on the subdomain.
-
-    // realm:dhiran — an ERP-realm account can never reach Dhiran app routes
-    // (it is redirected to its own dashboard), and vice-versa. Belt-and-suspenders
-    // on top of the per-host session cookie isolation.
-    Route::prefix('dhiran')->name('dhiran.')->middleware(['realm:dhiran', 'dhiran.email-verified'])->group(function () {
-        // Email-verification gate. A Dhiran account has no email at registration,
-        // so it cannot recover a forgotten password. This page (exempt from the
-        // gate middleware) captures + verifies an email via the email-OTP flow;
-        // until verified, every other Dhiran route redirects here.
-        Route::get('/verify-email', [\App\Http\Controllers\DhiranController::class, 'verifyEmail'])->name('verify-email');
-        // Dhiran-local email-OTP endpoints — reachable by any authed Dhiran user
-        // (no shop/subscription requirement), so the gate can never deadlock.
-        Route::post('/verify-email/send',   [\App\Http\Controllers\EmailVerificationOtpController::class, 'sendOtp'])->middleware('throttle:5,1')->name('verify-email.send');
-        Route::post('/verify-email/verify', [\App\Http\Controllers\EmailVerificationOtpController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('verify-email.verify');
-        Route::post('/verify-email/resend', [\App\Http\Controllers\EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('verify-email.resend');
-
-        // Dashboard & Activation — no dhiran.enabled check (dashboard shows activation page)
-        Route::get('/', [\App\Http\Controllers\DhiranController::class, 'dashboard'])->middleware('can:dhiran.view')->name('dashboard');
-        Route::post('/activate', [\App\Http\Controllers\DhiranController::class, 'activate'])->middleware('can:dhiran.settings')->name('activate');
-
-        // All remaining routes require dhiran to be enabled
-        Route::middleware(['dhiran.enabled'])->group(function () {
-            // Loan CRUD — create permission
-            Route::get('/create', [\App\Http\Controllers\DhiranController::class, 'create'])->middleware('can:dhiran.create')->name('create');
-            Route::post('/', [\App\Http\Controllers\DhiranController::class, 'store'])->middleware('can:dhiran.create')->name('store');
-
-            // Inline borrower creation from the New Loan page (Dhiran-scoped).
-            Route::post('/customers', [\App\Http\Controllers\DhiranController::class, 'storeCustomer'])->middleware('can:dhiran.create')->name('customers.store');
-            // Save a customer's details without a loan (declared before /borrowers/{customer}).
-            Route::get('/borrowers/create', [\App\Http\Controllers\DhiranController::class, 'createCustomer'])->middleware('can:dhiran.create')->name('borrowers.create');
-
-            // Private evidence attachments (item photos, ID proof, loan documents).
-            Route::post('/attachments', [\App\Http\Controllers\DhiranController::class, 'storeAttachment'])->middleware('can:dhiran.create')->name('attachments.store');
-            Route::get('/attachments/{attachment}', [\App\Http\Controllers\DhiranController::class, 'showAttachment'])->middleware('can:dhiran.view')->name('attachments.show');
-
-            // Loan listing & detail — view permission
-            Route::get('/loans', [\App\Http\Controllers\DhiranController::class, 'loans'])->middleware('can:dhiran.view')->name('loans');
-            Route::get('/loans/{loan}', [\App\Http\Controllers\DhiranController::class, 'show'])->middleware('can:dhiran.view')->name('show');
-            // Activate a pending-evidence loan (evidence-gated in the service).
-            Route::post('/loans/{loan}/activate', [\App\Http\Controllers\DhiranController::class, 'activateLoan'])->middleware('can:dhiran.create')->name('activate-loan');
-
-            // Payments — pay permission
-            Route::post('/loans/{loan}/pay-interest', [\App\Http\Controllers\DhiranController::class, 'payInterest'])->middleware('can:dhiran.pay')->name('pay-interest');
-            Route::post('/loans/{loan}/repay', [\App\Http\Controllers\DhiranController::class, 'repay'])->middleware('can:dhiran.pay')->name('repay');
-            Route::post('/loans/{loan}/pre-close', [\App\Http\Controllers\DhiranController::class, 'preClose'])->middleware('can:dhiran.pay')->name('pre-close');
-            Route::post('/loans/{loan}/close', [\App\Http\Controllers\DhiranController::class, 'close'])->middleware('can:dhiran.pay')->name('close');
-            Route::post('/loans/{loan}/cancel', [\App\Http\Controllers\DhiranController::class, 'cancel'])->middleware('can:dhiran.create')->name('cancel');
-
-            // Old Loans: bring a shop's running paper loans in, borrower and loan together (owner 2026-11-12)
-            Route::get('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'index'])->middleware('can:dhiran.create')->name('old-loans.index');
-            Route::get('/old-loans/create', [\App\Http\Controllers\DhiranOldLoanController::class, 'create'])->middleware('can:dhiran.create')->name('old-loans.create');
-            Route::post('/old-loans', [\App\Http\Controllers\DhiranOldLoanController::class, 'store'])->middleware('can:dhiran.create')->name('old-loans.store');
-            Route::get('/old-loans/template', [\App\Http\Controllers\DhiranOldLoanController::class, 'template'])->middleware('can:dhiran.create')->name('old-loans.template');
-            Route::get('/old-loans/upload', [\App\Http\Controllers\DhiranOldLoanController::class, 'uploadForm'])->middleware('can:dhiran.create')->name('old-loans.upload');
-            Route::post('/old-loans/upload', [\App\Http\Controllers\DhiranOldLoanController::class, 'upload'])->middleware('can:dhiran.create')->name('old-loans.upload.store');
-            Route::get('/old-loans/upload/{token}', [\App\Http\Controllers\DhiranOldLoanController::class, 'preview'])->middleware('can:dhiran.create')->name('old-loans.upload.preview');
-            Route::post('/old-loans/upload/{token}', [\App\Http\Controllers\DhiranOldLoanController::class, 'confirmUpload'])->middleware('can:dhiran.create')->name('old-loans.upload.confirm');
-
-            // Release item — release permission
-            Route::post('/loans/{loan}/release-item', [\App\Http\Controllers\DhiranController::class, 'releaseItem'])->middleware('can:dhiran.release')->name('release-item');
-
-            // Renew — renew permission
-            Route::post('/loans/{loan}/renew', [\App\Http\Controllers\DhiranController::class, 'renew'])->middleware('can:dhiran.renew')->name('renew');
-
-            // Forfeiture — forfeit permission
-            Route::post('/loans/{loan}/send-notice', [\App\Http\Controllers\DhiranController::class, 'sendNotice'])->middleware('can:dhiran.forfeit')->name('send-notice');
-            Route::post('/loans/{loan}/forfeit', [\App\Http\Controllers\DhiranController::class, 'forfeit'])->middleware('can:dhiran.forfeit')->name('forfeit');
-
-            // Printable documents — view permission
-            Route::get('/loans/{loan}/receipt', [\App\Http\Controllers\DhiranController::class, 'receipt'])->middleware('can:dhiran.view')->name('receipt');
-            Route::get('/loans/{loan}/closure-certificate', [\App\Http\Controllers\DhiranController::class, 'closureCertificate'])->middleware('can:dhiran.view')->name('closure-certificate');
-            Route::get('/loans/{loan}/forfeiture-notice', [\App\Http\Controllers\DhiranController::class, 'forfeitureNotice'])->middleware('can:dhiran.view')->name('forfeiture-notice');
-            Route::get('/loans/{loan}/payments/{payment}/receipt', [\App\Http\Controllers\DhiranController::class, 'paymentReceipt'])->middleware('can:dhiran.view')->name('payment-receipt');
-
-            // Borrowers (Dhiran customer profiles) — view permission. Shop-scoped.
-            Route::get('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'show'])->middleware('can:dhiran.view')->name('borrowers.photo.show');
-            Route::post('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'store'])->middleware('can:dhiran.create')->name('borrowers.photo.store');
-            Route::delete('/borrowers/{customer}/photo', [\App\Http\Controllers\CustomerProfilePhotoController::class, 'destroy'])->middleware('can:dhiran.create')->name('borrowers.photo.destroy');
-            Route::get('/borrowers', [\App\Http\Controllers\DhiranController::class, 'borrowers'])->middleware('can:dhiran.view')->name('borrowers.index');
-            Route::get('/borrowers/{customer}', [\App\Http\Controllers\DhiranController::class, 'borrowerProfile'])->middleware('can:dhiran.view')->name('borrowers.show');
-
-            // Pledged item detail — view permission. Shop-scoped.
-            Route::get('/items/{item}', [\App\Http\Controllers\DhiranController::class, 'itemDetail'])->middleware('can:dhiran.view')->name('items.show');
-
-            // Legacy customer-loans route → redirect into the borrower profile (no duplicate page).
-            Route::get('/customers/{customer}', function (\App\Models\Customer $customer) {
-                return redirect()->route('dhiran.borrowers.show', $customer);
-            })->middleware('can:dhiran.view')->name('customer-loans');
-
-            // Settings — settings permission
-            Route::get('/settings', [\App\Http\Controllers\DhiranController::class, 'settings'])->middleware('can:dhiran.settings')->name('settings');
-            Route::patch('/settings', [\App\Http\Controllers\DhiranController::class, 'updateSettings'])->middleware('can:dhiran.settings')->name('settings.update');
-
-            // Reports — reports permission
-            Route::get('/reports', [\App\Http\Controllers\DhiranController::class, 'reports'])->middleware('can:dhiran.reports')->name('reports.index');
-            Route::get('/reports/active', [\App\Http\Controllers\DhiranController::class, 'reportActive'])->middleware('can:dhiran.reports')->name('reports.active');
-            Route::get('/reports/overdue', [\App\Http\Controllers\DhiranController::class, 'reportOverdue'])->middleware('can:dhiran.reports')->name('reports.overdue');
-            Route::get('/reports/interest', [\App\Http\Controllers\DhiranController::class, 'reportInterest'])->middleware('can:dhiran.reports')->name('reports.interest');
-            Route::get('/reports/forfeiture', [\App\Http\Controllers\DhiranController::class, 'reportForfeiture'])->middleware('can:dhiran.reports')->name('reports.forfeiture');
-            Route::get('/reports/cashbook', [\App\Http\Controllers\DhiranController::class, 'reportCashbook'])->middleware('can:dhiran.reports')->name('reports.cashbook');
-            Route::get('/reports/profitability', [\App\Http\Controllers\DhiranController::class, 'reportProfitability'])->middleware('can:dhiran.reports')->name('reports.profitability');
-        });
-    });
-
-    // Main-domain → subdomain redirect for /dhiran/*. Registered AFTER the real
-    // Dhiran routes so it only catches paths they didn't (it never shadows the
-    // dashboard or module routes on the subdomain). On the subdomain a genuinely
-    // unknown /dhiran/* path 404s as expected.
-    Route::get('/dhiran/{any}', function (string $any) {
-        if (! str_starts_with(request()->getHost(), 'dhiran.')) {
-            return redirect('https://dhiran.jewelflows.com/' . request()->path(), 301);
-        }
-        abort(404);
-    })->where('any', '.*')->name('dhiran.maindomain-redirect');
 });
 
 /*

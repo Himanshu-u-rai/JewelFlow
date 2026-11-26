@@ -14,9 +14,7 @@ use Illuminate\Support\Facades\DB;
  * Lifecycle: pending → approved | denied | cancelled.
  *
  * `remove` requests are rare because shop owners can self-serve most removes
- * via the /settings/services controller. Removes that hit a data-guard
- * (e.g. active Dhiran loans) fall through to a remove-request so support
- * can coordinate with the owner.
+ * via the /settings/services controller.
  */
 class ShopEditionRequest extends Model
 {

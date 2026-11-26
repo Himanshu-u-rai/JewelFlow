@@ -19,13 +19,11 @@ use Illuminate\View\View;
 class RegisteredUserController extends Controller
 {
     /**
-     * Show registration form — Dhiran-branded on the dhiran.* host, ERP otherwise.
+     * Show registration form.
      */
     public function create(Request $request): View
     {
-        return Realm::current($request) === Realm::DHIRAN
-            ? view('auth.dhiran.register')
-            : view('auth.register');
+        return view('auth.register');
     }
 
     /**
@@ -33,9 +31,7 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // The realm is determined by the host: registering on dhiran.* creates a
-        // Dhiran account; the main domain creates an ERP account. Mobile must be
-        // unique WITHIN the realm (the same phone may exist once per realm).
+        // Every account is an ERP account. Mobile must be unique within the realm.
         $realm = Realm::current($request);
 
         $request->validate([
@@ -61,12 +57,7 @@ class RegisteredUserController extends Controller
             // Log in the user immediately
             Auth::login($user);
 
-            // Dhiran accounts go to the Dhiran area (its dashboard shows the
-            // activation/onboarding placeholder until a Dhiran shop exists);
-            // ERP accounts keep the existing shop-type onboarding.
-            return $realm === Realm::DHIRAN
-                ? redirect()->route('dhiran.dashboard')
-                : redirect()->route('shops.choose-type');
+            return redirect()->route('shops.choose-type');
 
         } catch (\Exception $e) {
             DB::rollBack();

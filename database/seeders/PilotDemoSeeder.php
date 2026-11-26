@@ -38,7 +38,7 @@ use Illuminate\Support\Facades\Hash;
  * - Demo-only. Refuses to run on production unless PILOT_DEMO_ALLOW_PROD=true.
  * - Idempotent: keyed on a fixed demo owner mobile; re-running reuses the shop
  *   instead of duplicating or overwriting real shops.
- * - Fake names / phones / GST only. No real personal data. No Dhiran data.
+ * - Fake names / phones / GST only. No real personal data.
  * - No destructive deletes. Only creates, scoped to the demo shop.
  * - Uses real write paths on non-immutable tables (model create) and the
  *   append-only CashTransaction::record() for cash entries — never raw SQL.

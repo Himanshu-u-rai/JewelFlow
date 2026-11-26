@@ -1,5 +1,5 @@
 @php
-    $home = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? url('/dhiran') : route('dashboard');
+    $home = route('dashboard');
     $prev = url()->previous() !== url()->current() ? url()->previous() : $home;
     // The refusal's own message when it has one (plan or turned-off reasons reach the owner only).
     $reason = trim((string) (($exception ?? null)?->getMessage() ?? ''));

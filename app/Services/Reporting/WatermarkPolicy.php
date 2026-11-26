@@ -13,7 +13,7 @@ use App\Services\Reporting\Definition\ReportProfile;
  *    meant to be filed/shared formally — a watermark would look invalid).
  *  - Period not finalized → DRAFT.
  *  - Audit class → INTERNAL USE ONLY (+ CONFIDENTIAL).
- *  - Sensitive columns opted in, or a CONFIDENTIAL baseline (cost/margin, Dhiran)
+ *  - Sensitive columns opted in, or a CONFIDENTIAL baseline (cost/margin)
  *    → CONFIDENTIAL.
  */
 class WatermarkPolicy

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Dhiran\DhiranSettings;
 use App\Models\Platform\Plan;
 use App\Models\Platform\PlatformProduct;
 use App\Models\Platform\PlatformSetting;
@@ -316,20 +315,8 @@ class ShopServicesController extends Controller
             return back()->with('error', 'You cannot remove the only active service. Contact support to cancel your subscription instead.');
         }
 
-        if ($guard = $this->dataGuard($shop, $edition)) {
-            // Data guard hit — file a remove-request so support can help (once: a pending one already notified them).
-            $this->fileRequest($shop->id, $user->id, ShopEditionRequest::ACTION_REMOVE, $edition, $validated['reason']." [blocked: {$guard}]");
-
-            return back()->with('error', $guard.' Our team has been notified and will contact you to help close this out.');
-        }
-
         DB::transaction(function () use ($shop, $edition, $user, $validated) {
             ShopEdition::revokeFrom($shop, $edition, null, $validated['reason']);
-
-            if ($edition === ShopEdition::DHIRAN) {
-                DhiranSettings::where('shop_id', $shop->id)
-                    ->update(['is_enabled' => '0']);
-            }
         });
 
         return back()->with('success', ucfirst($edition).' has been removed from your shop.');
@@ -370,20 +357,5 @@ class ShopServicesController extends Controller
         }
 
         return true;
-    }
-
-    private function dataGuard($shop, string $edition): ?string
-    {
-        if ($edition === ShopEdition::DHIRAN) {
-            $active = DB::table('dhiran_loans')
-                ->where('shop_id', $shop->id)
-                ->whereIn('status', ['active', 'renewed'])
-                ->exists();
-            if ($active) {
-                return 'Cannot remove Dhiran while you have active or renewed loans.';
-            }
-        }
-
-        return null;
     }
 }

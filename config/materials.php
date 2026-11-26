@@ -22,7 +22,7 @@ return [
     |
     | Tier 1 (Full Support): every operational flow without restriction.
     | Tier 2 (Limited Support): inventory, invoicing, manual valuation,
-    |    reconciliation, reporting — but NOT dhiran collateral, exchange
+    |    reconciliation, reporting — but NOT exchange
     |    payment, live-rate auto-fetch, or auto-reprice.
     | Tier 3 (Blocked): rejected at controller, service, and DB layers.
     |
@@ -37,7 +37,6 @@ return [
     //   - manual valuation: REQUIRED (no auto-reprice for Tier 2)
     //   - reconciliation: ALLOWED (separated by metal_type)
     //   - reporting: VISIBLE
-    //   - dhiran collateral: BLOCKED
     //   - exchange payment (old-metal trade-in): BLOCKED
     //   - live-rate auto-fetch: BLOCKED
     //   - retailer auto-reprice job: SKIPPED

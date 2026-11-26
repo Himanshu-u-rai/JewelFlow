@@ -22,10 +22,9 @@ class SendPlatformInvoiceEmail implements ShouldQueue
     /**
      * Never queue until the surrounding transaction has committed.
      *
-     * Two of this job's four dispatch sites (ShopController::store and
-     * DhiranOnboardingController) sit inside the shop-creation transaction. A
-     * bare dispatch there queues the job while the invoice row is still
-     * uncommitted: a worker picks it up, finds nothing, and logs "invoice not
+     * Some of this job's dispatch sites (e.g. ShopController::store) sit inside
+     * the shop-creation transaction. A bare dispatch there queues the job
+     * while the invoice row is still uncommitted: a worker picks it up, finds nothing, and logs "invoice not
      * found" — or, if the transaction rolls back, the shop never exists but the
      * customer has already been emailed an invoice for it.
      *

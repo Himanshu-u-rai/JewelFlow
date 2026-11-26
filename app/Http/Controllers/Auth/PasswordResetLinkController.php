@@ -31,9 +31,7 @@ class PasswordResetLinkController extends Controller
         ]);
 
         // Normalize to lowercase — PostgreSQL is case-sensitive,
-        // and we always store emails in lowercase. Scope to the current realm so
-        // a reset on dhiran.* can only ever resolve a Dhiran account (and vice
-        // versa) — the same email may exist in both realms.
+        // and we always store emails in lowercase. Scope to the current realm.
         $credentials = [
             'email' => strtolower(trim($request->email)),
             'realm' => Realm::current($request),

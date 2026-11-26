@@ -18,7 +18,6 @@ class PlatformSettingsController extends Controller
         $settings = [
             'retailer_enabled'     => PlatformSetting::retailerEnabled(),
             'manufacturer_enabled' => PlatformSetting::manufacturerEnabled(),
-            'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
             'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
             'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlows is temporarily down for maintenance. We\'ll be back shortly.'),
             'subscription_trial_days' => PlatformSetting::trialDays(),
@@ -49,24 +48,21 @@ class PlatformSettingsController extends Controller
 
         $retailer            = $request->boolean('retailer_enabled');
         $manufacturer        = $request->boolean('manufacturer_enabled');
-        $dhiran              = $request->boolean('dhiran_enabled');
         $maintenanceMode     = $request->boolean('maintenance_mode');
         $maintenanceMessage  = strip_tags(trim((string) $request->input('maintenance_message', '')));
 
-        if (!$retailer && !$manufacturer && !$dhiran) {
+        if (!$retailer && !$manufacturer) {
             return back()->with('error', 'At least one edition must remain enabled. You cannot disable all.');
         }
 
         $before = [
             'retailer_enabled'     => PlatformSetting::retailerEnabled(),
             'manufacturer_enabled' => PlatformSetting::manufacturerEnabled(),
-            'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
             'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
         ];
 
         PlatformSetting::set('retailer_enabled',     $retailer     ? 'true' : 'false');
         PlatformSetting::set('manufacturer_enabled', $manufacturer ? 'true' : 'false');
-        PlatformSetting::set('dhiran_enabled',       $dhiran       ? 'true' : 'false');
         PlatformSetting::set('maintenance_mode',     $maintenanceMode ? 'true' : 'false');
         if ($maintenanceMessage) {
             PlatformSetting::set('maintenance_message', $maintenanceMessage);
@@ -75,7 +71,6 @@ class PlatformSettingsController extends Controller
         $after = [
             'retailer_enabled'     => $retailer,
             'manufacturer_enabled' => $manufacturer,
-            'dhiran_enabled'       => $dhiran,
             'maintenance_mode'     => $maintenanceMode,
         ];
 

@@ -15,7 +15,6 @@
         <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Active Services') }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             @foreach($active as $ed)
-                @if($ed === 'dhiran') @continue @endif
                 @php
                     $meta = [
                         'retailer'     => ['label' => 'Retailer',     'tint' => 'amber'],
@@ -45,7 +44,7 @@
                                 <label class="block text-xs text-gray-600">{{ __('Why are you removing this?') }}</label>
                                 <textarea name="reason" rows="2" required minlength="4" maxlength="500"
                                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                                          placeholder="{{ __('e.g. We are no longer offering gold loans.') }}"></textarea>
+                                          placeholder="{{ __('e.g. We no longer need this service.') }}"></textarea>
                                 <label class="flex items-start gap-2 text-xs text-gray-600">
                                     <input type="checkbox" name="confirm" value="1" required class="mt-0.5">
                                     <span>{{ __('I understand this removes access to this service.') }}</span>
@@ -71,7 +70,6 @@
             <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Add a Service') }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 @foreach($available as $ed)
-                    @if($ed === 'dhiran') @continue @endif
                     @php
                         $meta = [
                             'retailer'     => ['label' => 'Retailer', 'desc' => 'Buy & sell ready-made jewellery with POS.'],

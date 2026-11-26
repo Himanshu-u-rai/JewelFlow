@@ -15,13 +15,11 @@ use Illuminate\View\View;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view — Dhiran-branded on the dhiran.* host, ERP otherwise.
+     * Display the login view.
      */
     public function create(Request $request): View
     {
-        return Realm::current($request) === Realm::DHIRAN
-            ? view('auth.dhiran.login')
-            : view('auth.login');
+        return view('auth.login');
     }
 
     /**
@@ -103,12 +101,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         // After successful login, redirect based on whether the user has a shop.
-        // A Dhiran account with no shop goes to the Dhiran area (its dashboard is
-        // the onboarding/activation placeholder), NEVER the ERP shop-create flow.
         if (auth()->user()->shop_id === null) {
-            return auth()->user()->isDhiran()
-                ? redirect()->route('dhiran.dashboard')
-                : redirect()->route('shops.create');
+            return redirect()->route('shops.create');
         }
 
         // Enforce concurrent web session seat limit (owner is always exempt).
@@ -126,14 +120,6 @@ class AuthenticatedSessionController extends Controller
                         : "All {$seat['session_limit']} web seats are in use. Ask an active user to log out first.",
                     ]);
             }
-        }
-
-        // Dhiran accounts (realm) land on the Dhiran dashboard. (Legacy Dhiran-only
-        // shops on the ERP realm are also caught by the edition check, for
-        // backwards-compatibility with shops created before realms existed.)
-        if (auth()->user()->isDhiran()
-            || ($shop && $shop->hasEdition('dhiran') && ! $shop->hasAnyEdition('retailer', 'manufacturer'))) {
-            return redirect()->route('dhiran.dashboard');
         }
 
         return redirect()->route('dashboard');

@@ -17,7 +17,7 @@ class CustomerProfilePhoto extends Model
 
     public function url(string $realm = 'erp'): string
     {
-        $prefix = ['dhiran' => 'dhiran.borrowers', 'mobile' => 'mobile.customers'][$realm] ?? 'customers';
+        $prefix = ['mobile' => 'mobile.customers'][$realm] ?? 'customers';
 
         return route($prefix.'.photo.show', [
             'customer' => $this->customer_id, 'version' => $this->version,

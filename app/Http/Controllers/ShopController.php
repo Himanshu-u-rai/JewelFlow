@@ -25,7 +25,7 @@ class ShopController extends Controller
      * Shop-type (edition) chooser. Renders a multi-select form; POST stores
      * the chosen edition set in session and moves the user to plan selection.
      *
-     * Primary edition precedence when multiple are chosen: retailer > manufacturer > dhiran.
+     * Primary edition precedence when multiple are chosen: retailer > manufacturer.
      * The primary is written to users.onboarding_shop_type and shops.shop_type so
      * legacy billing/plan code (Phase 5 work) keeps functioning.
      */
@@ -37,10 +37,7 @@ class ShopController extends Controller
             return redirect()->route('dashboard');
         }
 
-        // The editions this screen can actually put on screen. Deliberately NOT
-        // enabledShopTypes(): Dhiran is platform-enabled but is served on its own
-        // subdomain and has never had a card here, so counting it kept the chooser
-        // alive showing one card — a question with a single possible answer.
+        // The editions this screen can actually put on screen.
         // One list decides all three things below: whether to skip, what to
         // accept on POST, and what the view draws.
         $offered = PlatformSetting::erpSelectableShopTypes();
@@ -57,13 +54,12 @@ class ShopController extends Controller
             // A shop picks ONE type at onboarding. Adding or switching the other
             // is done later from shop settings, so this is single-select.
             $validated = $request->validate([
-                'edition' => 'required|string|in:retailer,manufacturer,dhiran',
+                'edition' => 'required|string|in:retailer,manufacturer',
             ]);
 
             $edition = $validated['edition'];
 
-            // Refuse anything the GET never offered — including Dhiran, which is
-            // not merely disabled here but onboarded somewhere else entirely.
+            // Refuse anything the GET never offered.
             if (! in_array($edition, $offered, true)) {
                 return back()
                     ->with('error', ucfirst($edition) . ' registration is currently unavailable.')
@@ -316,11 +312,6 @@ class ShopController extends Controller
                 ShopEdition::grantTo($shop, $edition, $user);
             }
 
-            if (in_array(ShopEdition::DHIRAN, $sessionEditions, true)) {
-                \App\Models\Dhiran\DhiranSettings::getForShop($shop->id)
-                    ->update(['is_enabled' => true]);
-            }
-
             $roles = $this->tenantRoleService->ensureDefaultsForShop($shop->id);
             $ownerRole = $roles['owner'] ?? null;
 
@@ -392,13 +383,13 @@ class ShopController extends Controller
     }
 
     /**
-     * Pick the primary edition from a chosen set. Retailer > Manufacturer > Dhiran.
+     * Pick the primary edition from a chosen set. Retailer > Manufacturer.
      * Used to populate the legacy shops.shop_type column and any read-sites that
      * still expect a single edition value.
      */
     public static function primaryEdition(array $editions): string
     {
-        foreach ([ShopEdition::RETAILER, ShopEdition::MANUFACTURER, ShopEdition::DHIRAN] as $preferred) {
+        foreach ([ShopEdition::RETAILER, ShopEdition::MANUFACTURER] as $preferred) {
             if (in_array($preferred, $editions, true)) {
                 return $preferred;
             }

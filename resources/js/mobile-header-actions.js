@@ -287,7 +287,7 @@ export function initMobileHeaderActionFabs() {
     const recordPage = isRecordPage(window.location.pathname);
 
     document.querySelectorAll('.content-header').forEach((header) => {
-        if (header.closest('.admin-shell') || header.classList.contains('dh-page-header')) return;
+        if (header.closest('.admin-shell')) return;
         if (header.dataset.mobileHeader === 'manual') return;
 
         tuckSubtitle(header);

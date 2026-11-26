@@ -382,7 +382,7 @@ class Shop extends Model
     }
 
     /**
-     * Active editions as a flat array, e.g. ['retailer', 'dhiran'].
+     * Active editions as a flat array, e.g. ['retailer', 'manufacturer'].
      *
      * Source of truth is the shop_editions table. shops.shop_type is kept in
      * sync for backward compatibility during the editions refactor but must
@@ -416,11 +416,6 @@ class Shop extends Model
     public function isManufacturer(): bool
     {
         return $this->hasEdition('manufacturer');
-    }
-
-    public function hasDhiran(): bool
-    {
-        return $this->hasEdition('dhiran');
     }
 
     /**
@@ -479,7 +474,7 @@ class Shop extends Model
         });
 
         static::created(function (Shop $shop): void {
-            if (in_array($shop->shop_type, ['retailer', 'manufacturer', 'dhiran'], true)) {
+            if (in_array($shop->shop_type, ['retailer', 'manufacturer'], true)) {
                 // firstOrCreate keeps this idempotent against a subscription
                 // grant that may have already created the row (UNIQUE shop_id +
                 // edition). The 'seed' source means it is treated like an admin
@@ -490,32 +485,6 @@ class Shop extends Model
                         'source'       => ShopEditionAssignment::SOURCE_SEED,
                         'activated_at' => now(),
                     ]
-                );
-            }
-        });
-
-        // Financial-safety guard (Phase 5, Part A). A hard Shop::delete() would
-        // otherwise be the only thing standing between an operator mistake and the
-        // destruction of regulated pawn/loan history. The DB-level RESTRICT FKs are
-        // the last line of defence; this app-level hook fails earlier with a clear,
-        // owner-friendly message. Use deactivation (access_mode) to retire a shop,
-        // never a hard delete, while it holds financial records.
-        static::deleting(function (Shop $shop): void {
-            // Only guards a TRUE hard delete. SoftDeletes (if ever added) sets
-            // forceDeleting=false; we let those through.
-            if (method_exists($shop, 'isForceDeleting') && ! $shop->isForceDeleting()) {
-                return;
-            }
-
-            $hasDhiranFinancialData = DB::table('dhiran_loans')->where('shop_id', $shop->id)->exists()
-                || DB::table('dhiran_payments')->where('shop_id', $shop->id)->exists()
-                || DB::table('dhiran_ledger_entries')->where('shop_id', $shop->id)->exists()
-                || DB::table('dhiran_cash_entries')->where('shop_id', $shop->id)->exists();
-
-            if ($hasDhiranFinancialData) {
-                throw new \RuntimeException(
-                    'This shop has Dhiran gold-loan records and cannot be deleted. '
-                    . 'Pawn and loan history must be kept. Deactivate the shop instead.'
                 );
             }
         });
@@ -562,14 +531,14 @@ class Shop extends Model
      * subscription. Returns -1 for unlimited.
      *
      * Multi-product decision: staff seats are a RETAIL-ERP concept (POS,
-     * inventory, multiple counter staff). A Dhiran-only shop, or the Dhiran
-     * subscription on a retail+dhiran shop, does not define the seat count —
+     * inventory, multiple counter staff). A shop without a retail product
+     * subscription does not define the seat count from it —
      * so we read staff_limit from the retail subscription's plan when present.
      *
      * Resolution order:
      *   1. retail product subscription (if any) → its plan's staff_limit
      *   2. else fall back to the latest subscription's plan (back-compat for
-     *      single-product shops such as a manufacturer-only or dhiran-only shop)
+     *      single-product shops such as a manufacturer-only shop)
      *   3. else -1 (unlimited / unconfigured)
      */
     public function staffLimit(): int

@@ -24,7 +24,7 @@
 <body>
     <div class="wrap">
         <div class="header">
-            <div class="logo">@if($brand === 'Dhiran')Dhiran @else Jewel<span>Flows</span>@endif</div>
+            <div class="logo">Jewel<span>Flows</span></div>
         </div>
         <div class="body">
             <p class="greeting">Hi{{ $shopName ? ', ' . $shopName : ' there' }},</p>
@@ -46,7 +46,7 @@
             <p class="ignore">If you didn't request this, you can safely ignore this email. Your account remains secure.</p>
         </div>
         <div class="footer">
-            &copy; {{ date('Y') }} {{ $brand }} &mdash; {{ $brand === 'Dhiran' ? 'Gold Loan & Pledge Management' : 'Jewellery ERP & POS Platform' }}
+            &copy; {{ date('Y') }} {{ $brand }} &mdash; Jewellery ERP & POS Platform
         </div>
     </div>
 </body>

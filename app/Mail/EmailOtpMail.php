@@ -14,14 +14,13 @@ class EmailOtpMail extends Mailable
 
     public string $otp;
     public string $shopName;
-    /** Dhiran mail never says JewelFlows (owner 2026-11-12); the brand follows the host the code was asked from. */
     public string $brand;
 
     public function __construct(string $otp, string $shopName)
     {
         $this->otp      = $otp;
         $this->shopName = $shopName;
-        $this->brand    = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlows';
+        $this->brand    = 'JewelFlows';
     }
 
     public function envelope(): Envelope

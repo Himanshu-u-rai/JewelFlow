@@ -83,9 +83,8 @@ class SubscriptionGateService
      * shop is never orphaned with zero editions. But a surviving seed row still
      * needs a live subscription to WRITE — only admin_grant writes for free.
      *
-     * This removes the old one-shop-one-subscription assumption: a Dhiran-only
-     * shop is writable on its Dhiran edition without any retail subscription,
-     * and a retail+dhiran shop is writable while EITHER product is entitled.
+     * This removes the old one-shop-one-subscription assumption: a shop is
+     * writable while ANY of its product editions is entitled.
      *
      * Fails closed: no active editions, or every active edition's only backing
      * is a lapsed subscription (or an unbacked seed) → blocked.

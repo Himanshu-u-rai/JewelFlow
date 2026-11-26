@@ -3,11 +3,11 @@
 namespace App\Support;
 
 /**
- * Aadhaar privacy helper (Dhiran KYC).
+ * Aadhaar privacy helper (retail KYC).
  *
  * Full Aadhaar numbers must NEVER be persisted. This normalises any input to a
  * masked form that keeps only the last 4 digits — "XXXX-XXXX-1234" — which is the
- * only value stored in dhiran_loans.kyc_aadhaar and the only value ever displayed.
+ * only value ever stored or displayed.
  *
  * Inputs accepted: a full 12-digit number (with/without spaces or hyphens) or an
  * already-masked value. Anything without at least 4 trailing digits returns null.

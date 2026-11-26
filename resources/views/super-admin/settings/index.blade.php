@@ -93,43 +93,6 @@
                     </div>
                 </div>
 
-                {{-- Dhiran --}}
-                <div class="admin-setting-card {{ $settings['dhiran_enabled'] ? 'is-active' : '' }}">
-                    <div class="admin-setting-card-head">
-                        <div class="admin-setting-card-body">
-                            <div class="admin-setting-title-row">
-                                <span class="admin-setting-icon"><x-icon name="coins" size="20" style="display:block" /></span>
-                                <span class="admin-setting-title">Dhiran</span>
-                                @if($settings['dhiran_enabled'])
-                                    <span class="admin-setting-status is-active">Enabled</span>
-                                @else
-                                    <span class="admin-setting-status is-inactive">Disabled</span>
-                                @endif
-                            </div>
-                            <p class="admin-setting-copy">
-                                Gold-loan / pledge management. Can be picked standalone or alongside Retailer / Manufacturer.
-                            </p>
-                        </div>
-
-                        {{-- Toggle --}}
-                        <div class="shrink-0 mt-0.5">
-                            <input type="hidden" name="dhiran_enabled" value="0">
-                            <input type="checkbox" name="dhiran_enabled" value="1" id="dhiran_toggle"
-                                   {{ $settings['dhiran_enabled'] ? 'checked' : '' }}
-                                   onchange="updateToggle(this)"
-                                   class="admin-switch-input">
-                            <div id="dhiran_toggle_ui"
-                                 onclick="document.getElementById('dhiran_toggle').click()"
-                                 class="admin-switch {{ $settings['dhiran_enabled'] ? 'is-on' : '' }}">
-                                <div class="admin-switch-thumb"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="admin-setting-note">
-                        <div>When disabled: new users cannot select Dhiran; existing Dhiran shops are unaffected.</div>
-                    </div>
-                </div>
-
             </div>
 
             {{-- Effective behaviour summary --}}
@@ -138,7 +101,6 @@
                     $enabledLabels = array_filter([
                         $settings['retailer_enabled'] ? 'Retailer' : null,
                         $settings['manufacturer_enabled'] ? 'Manufacturer' : null,
-                        $settings['dhiran_enabled'] ? 'Dhiran' : null,
                     ]);
                 @endphp
                 <span><strong>Current behaviour for new registrations:</strong> </span>
@@ -199,7 +161,7 @@
                         <span class="ml-2 text-xs font-bold rounded px-2 py-0.5 border {{ $settings['free_trials_offered'] ? 'bg-emerald-900 text-emerald-300 border-emerald-700' : 'bg-slate-800 text-slate-300 border-slate-600' }}">{{ $settings['free_trials_offered'] ? 'ON' : 'OFF' }}</span>
                     </label>
                     <p class="text-sm text-slate-400 mt-1">
-                        New Retail and Dhiran accounts that are eligible can start a self-service free trial.
+                        New Retail accounts that are eligible can start a self-service free trial.
                         Off hides the offer and blocks new trials. Trials already running keep their end dates;
                         paid plans are not affected.
                     </p>

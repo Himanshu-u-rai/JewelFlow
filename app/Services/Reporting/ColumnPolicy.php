@@ -24,7 +24,7 @@ use App\Services\Reporting\Definition\ReportProfile;
  *  - Sensitive columns: included ONLY when the user opts in, holds
  *    `permissions->sensitive`, AND the profile is not CA Standard or Fixed
  *    (CA Standard never includes sensitive; CA allows opt-in) (§7.1, §18).
- *  - Masked columns (Dhiran KYC) may be revealed in full only with the sensitive
+ *  - Masked columns (KYC) may be revealed in full only with the sensitive
  *    permission and an explicit reveal; the dataset service applies the mask
  *    (Addendum B §23).
  */

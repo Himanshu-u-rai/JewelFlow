@@ -39,9 +39,7 @@ class DevOnboardComplete extends Command
             return self::FAILURE;
         }
 
-        // Dhiran accounts live on the dhiran realm and must trial the Dhiran plan
-        // even before they reach dhiran/subscribe (where onboarding_shop_type is set).
-        $type = $user->isDhiran() ? 'dhiran' : ($user->onboarding_shop_type ?? 'retailer');
+        $type = $user->onboarding_shop_type ?? 'retailer';
         $plan = Plan::whereRaw('is_active IS TRUE')->where('code', "{$type}_monthly")->first();
         if (! $plan) {
             $this->error("No active {$type}_monthly plan to trial.");

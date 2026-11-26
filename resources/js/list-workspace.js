@@ -75,7 +75,7 @@ export function initializeListWorkspaces(doc = document, win = window) {
     win.addEventListener('resize', resize);
     win.visualViewport?.addEventListener('resize', resize);
     doc.addEventListener('turbo:load', mount);
-    // A results frame refreshed in place (Dhiran live search) brings a new table: fit it again.
+    // A results frame refreshed in place brings a new table: fit it again.
     doc.addEventListener('turbo:frame-render', mount);
     doc.addEventListener('turbo:before-cache', clear);
     doc.addEventListener('turbo:before-render', clear);

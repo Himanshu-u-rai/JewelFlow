@@ -11,9 +11,9 @@ namespace App\Services\Reporting\Definition;
  *  - sensitive:   column/export-layer gate for sensitive data
  *                 (default `reports.export_sensitive`).
  *  - surfaceGate: optional WHOLE-surface owner/manager gate — the §28 exception
- *                 set (Audit reports, Dhiran forfeiture/profitability) use
+ *                 set (Audit reports) use
  *                 `reports.audit`. When set, it replaces `view` at the route.
- *  - familyGate:  optional family baseline (Dhiran = `dhiran.reports`), required
+ *  - familyGate:  optional family baseline, required
  *                 in addition to the above, UNCONDITIONALLY (every request).
  *  - historicalModeGate: optional MODE-DEPENDENT baseline — required only when
  *                 the request's `sales_source` is `historical`/`combined`

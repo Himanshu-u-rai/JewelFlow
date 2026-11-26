@@ -1,9 +1,9 @@
 @php use App\Support\LegalInfo as L; @endphp
-<x-legal-page title="Terms & Conditions" intro="The terms for using JewelFlows Retail and JewelFlows Dhiran.">
+<x-legal-page title="Terms & Conditions" intro="The terms for using JewelFlows Retail.">
     <p>These terms are an agreement between you (the business that signs up, and everyone it invites) and {{ config('legal.company') }} ("we", "us"), the provider of JewelFlows. By creating an account or using JewelFlows you accept them.</p>
 
     <h2>1. The service</h2>
-    <p>JewelFlows is online software for running a jewellery shop (Retail) or a gold loan business (Dhiran), with an Android companion app. Features depend on the plan you choose. We may improve or change features; we will not remove a core function you pay for during a paid period without notice.</p>
+    <p>JewelFlows is online software for running a jewellery shop (Retail), with an Android companion app. Features depend on the plan you choose. We may improve or change features; we will not remove a core function you pay for during a paid period without notice.</p>
 
     <h2>2. Your account</h2>
     <ul>

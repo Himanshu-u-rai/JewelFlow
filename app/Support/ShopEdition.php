@@ -10,25 +10,24 @@ use App\Models\User;
  * Central helper for edition checks and mutations.
  *
  * Post editions-refactor (Phase 2), editions are a SET, not a single
- * value — a shop can be retailer + dhiran, manufacturer only, dhiran
- * only, etc. The legacy type() / isRetailer() / isManufacturer() calls
+ * value — a shop can be retailer + manufacturer, manufacturer only,
+ * etc. The legacy type() / isRetailer() / isManufacturer() calls
  * still work but now delegate to the shop_editions pivot.
  *
  * Usage:
  *   ShopEdition::isRetailer()            → true if auth shop has retailer edition
- *   ShopEdition::activeFor($shop)        → ['retailer', 'dhiran']
- *   ShopEdition::grantTo($shop, 'dhiran', $admin)
- *   ShopEdition::revokeFrom($shop, 'dhiran', $admin, 'customer request')
+ *   ShopEdition::activeFor($shop)        → ['retailer', 'manufacturer']
+ *   ShopEdition::grantTo($shop, 'manufacturer', $admin)
+ *   ShopEdition::revokeFrom($shop, 'manufacturer', $admin, 'customer request')
  */
 class ShopEdition
 {
     public const RETAILER     = 'retailer';
     public const MANUFACTURER = 'manufacturer';
-    public const DHIRAN       = 'dhiran';
 
     // Future product editions. These map 1:1 to platform product codes and are
     // accepted by the DB CHECK constraint, but are not yet surfaced in the
-    // owner-facing add/remove UI (which stays on the three core editions).
+    // owner-facing add/remove UI (which stays on the core editions).
     public const CRM            = 'crm';
     public const ANALYTICS      = 'analytics';
     public const MOBILE_PREMIUM = 'mobile_premium';
@@ -37,7 +36,7 @@ class ShopEdition
      * The core editions the owner-facing UI exposes today. Kept as-is so
      * /settings/services validation and the admin grant dropdown are unchanged.
      */
-    public const ALL = [self::RETAILER, self::MANUFACTURER, self::DHIRAN];
+    public const ALL = [self::RETAILER, self::MANUFACTURER];
 
     /**
      * Every edition string the system can grant — including the future product
@@ -47,7 +46,6 @@ class ShopEdition
     public const GRANTABLE = [
         self::RETAILER,
         self::MANUFACTURER,
-        self::DHIRAN,
         self::CRM,
         self::ANALYTICS,
         self::MOBILE_PREMIUM,
@@ -66,7 +64,6 @@ class ShopEdition
         return match ($edition) {
             self::RETAILER       => 'Retail',
             self::MANUFACTURER   => 'Manufacturer',
-            self::DHIRAN         => 'Dhiran',
             self::CRM            => 'CRM',
             self::ANALYTICS      => 'Analytics',
             self::MOBILE_PREMIUM => 'Mobile Premium',
@@ -77,7 +74,7 @@ class ShopEdition
     /**
      * Primary edition of the current auth user's shop, for legacy call
      * sites that expect a single value. Prefers retailer/manufacturer
-     * over dhiran since those are the "core" shop types.
+     * over other editions since those are the "core" shop types.
      */
     public static function type(): ?string
     {
@@ -87,7 +84,7 @@ class ShopEdition
         }
 
         $editions = $shop->editionList();
-        foreach ([self::RETAILER, self::MANUFACTURER, self::DHIRAN] as $preferred) {
+        foreach ([self::RETAILER, self::MANUFACTURER] as $preferred) {
             if (in_array($preferred, $editions, true)) {
                 return $preferred;
             }
@@ -104,11 +101,6 @@ class ShopEdition
     public static function isManufacturer(): bool
     {
         return auth()->user()?->shop?->hasEdition(self::MANUFACTURER) ?? false;
-    }
-
-    public static function hasDhiran(): bool
-    {
-        return auth()->user()?->shop?->hasEdition(self::DHIRAN) ?? false;
     }
 
     /**
@@ -128,7 +120,7 @@ class ShopEdition
     public static function for(Shop $shop): string
     {
         $editions = $shop->editionList();
-        foreach ([self::RETAILER, self::MANUFACTURER, self::DHIRAN] as $preferred) {
+        foreach ([self::RETAILER, self::MANUFACTURER] as $preferred) {
             if (in_array($preferred, $editions, true)) {
                 return $preferred;
             }

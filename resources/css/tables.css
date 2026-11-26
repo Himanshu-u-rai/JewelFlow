@@ -1,5 +1,5 @@
 /*
- * Shared data-table pattern (Retail, Dhiran, platform admin).
+ * Shared data-table pattern (Retail and platform admin).
  *
  * Opt-in and scoped: nothing here applies unless a <table> carries .jf-table, so unrelated screens, print documents and
  * editable entry grids (POS, invoice, historical entry) are untouched. Cell selectors use child combinators so they win over
@@ -13,7 +13,7 @@
  *       actions: <div class="jf-table-actions"> wraps inside its cell instead of widening the column
  *       empty:   <td colspan="N" class="jf-table-empty">
  *
- * Palette stays per product through the custom properties below (Retail slate, Dhiran warm, admin dark).
+ * Palette stays per product through the custom properties below (Retail slate, admin dark).
  */
 
 .jf-table-wrap {
@@ -38,7 +38,6 @@
     --sb-thumb-color: #b45309;
     --sb-size: 14px;
 }
-.dh-app .jf-scrollbar, .dh-app [data-list-scroll] { --sb-thumb-color: var(--dh-scrollbar-thumb); --sb-track-color: var(--dh-scrollbar-track); }
 .admin-main .jf-scrollbar, .admin-main [data-list-scroll] { --sb-thumb-color: #b45309; --sb-track-color: #f1f3f9; }
 .jf-scrollbar::-webkit-scrollbar,
 [data-list-scroll]::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
@@ -401,15 +400,6 @@
     .jf-table > thead > tr > th { font-size: 11px; }
 }
 
-/* product palettes */
-.dh-app .jf-table {
-    --jf-t-zebra: #fdfbf6;
-    --jf-t-zebra-solid: #fdfbf6;
-    --jf-t-hover: #fbf3e0;
-    --jf-t-hover-solid: #fbf3e0;
-    --jf-t-focus: #d98b00;
-    --jf-t-row-line: #efe9dc;
-}
 /* platform admin: the cool-grey header the admin tables already render (#f1f3f9) and its amber row hover, on white rows */
 .jf-table.admin-table {
     --jf-t-head-bg: #f1f3f9;

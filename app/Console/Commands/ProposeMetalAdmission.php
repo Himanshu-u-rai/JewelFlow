@@ -125,7 +125,7 @@ class ProposeMetalAdmission extends Command
 
         if ($tier === 2) {
             $this->line('▸ STEP 4 (Tier 2 only): extend test_metal_registry_tier_2_capabilities_blocked');
-            $this->line("  Add capability-blocked assertions for '{$metal}' (isLiveRateEligible, isAutoRepricedEligible, isDhiranEligible, isExchangePaymentEligible all false).");
+            $this->line("  Add capability-blocked assertions for '{$metal}' (isLiveRateEligible, isAutoRepricedEligible, isExchangePaymentEligible all false).");
             $this->newLine();
         }
 

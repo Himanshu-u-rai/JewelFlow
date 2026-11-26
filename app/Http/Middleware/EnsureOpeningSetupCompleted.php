@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
  *
  * Modelled on EnsureShopAccessOpen (owner-vs-staff split, JSON-vs-redirect
  * split, fail-open on missing shop context). Applied ONLY to the main
- * authenticated tenant ERP route group — never global, never Dhiran/platform/
+ * authenticated tenant ERP route group — never global, never platform/
  * public/auth/billing-portal routes.
  */
 class EnsureOpeningSetupCompleted
@@ -31,9 +31,6 @@ class EnsureOpeningSetupCompleted
      * profile live outside this route group and are already exempt.
      */
     private const ALLOWLIST = [
-        // Dhiran (loans) is a separate product nested in the same route group but
-        // has no opening-balance concept — the gate must never touch it.
-        'dhiran.*',
         'onboarding.*',
         'imports.*',
         'subscription.status',

@@ -285,11 +285,6 @@ class Customer extends Model
         return $this->hasMany(InstallmentPlan::class);
     }
 
-    public function dhiranLoans(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(\App\Models\Dhiran\DhiranLoan::class);
-    }
-
     public function kycDocuments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(KycDocument::class);

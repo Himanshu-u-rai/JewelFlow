@@ -3884,11 +3884,6 @@
     </script>
 
     <div class="content-inner dash-root dash-loading space-y-3" data-dashboard-shell>
-        {{-- Owner-only introduction, atomically claimed once on the server. --}}
-        @php
-            $dhiranRegisterUrl = app(\App\Services\ProductPromotionService::class)->claimIntroduction(request());
-            $showDhiranPromo = $dhiranRegisterUrl !== null;
-        @endphp
         {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
         <x-promo-banner realm="erp" />
 
@@ -3919,17 +3914,6 @@
                     </form>
                 </div>
             </div>
-        @endif
-
-        @if($showDhiranPromo)
-            <x-cross-promo-card
-                key="dhiran"
-                realm="erp"
-                heading="Offer gold-loan services?"
-                body="Use Dhiran to manage pledges, interest, repayments, renewals and closures — as its own separate service."
-                cta="Explore Dhiran"
-                :url="$dhiranRegisterUrl"
-            />
         @endif
 
         <div

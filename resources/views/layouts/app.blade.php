@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="turbo-cache-control" content="{{ request()->routeIs('product-preferences.*') ? 'no-cache' : 'no-preview' }}">
+        <meta name="turbo-cache-control" content="no-preview">
         @if(session('success'))
             <meta name="flash-success" content="{{ session('success') }}">
         @endif
@@ -165,14 +165,11 @@
     <body class="app-shell">
 
         @php
-            // ERP app shell. Dhiran is a separate customer-facing product served by
-            // its own x-dhiran-layout on the dhiran.* subdomain, so this layout is
-            // always the ERP (JewelFlows) chrome — it never re-skins itself as Dhiran.
+            // ERP app shell.
             $authUser = auth()->user();
             $authShop = $authUser?->shop;
             $hasRetailer = (bool) $authShop?->isRetailer();
             $hasManufacturer = (bool) $authShop?->isManufacturer();
-            $hasDhiran = (bool) $authShop?->hasDhiran();
             $homeRoute = 'dashboard';
             $brandName = 'JewelFlows';
             $brandSubtitle = __('By Factual Technologies');
@@ -542,10 +539,6 @@
                     @endif
                     @endif
 
-                    {{-- Dhiran (Gold Loans) is its own product on the dhiran.* subdomain
-                         with its own x-dhiran-layout nav. It is intentionally NOT shown
-                         in the ERP sidebar. --}}
-
                     {{-- Fallbacks when a permitted export/import has no accessible hub. --}}
                     @if($strandedExport || $strandedImport)
                     <div class="nav-section">
@@ -616,8 +609,7 @@
             <!-- Main Content Area -->
             @php
                 // Small inline notices only (info/warning/critical). Big "banner"
-                // offers/deals and "cross_promo" toast overrides render via their
-                // own surfaces (x-promo-banner / cross-promo toast), not here.
+                // offers/deals render via their own surface (x-promo-banner), not here.
                 $activeAnnouncements = \App\Models\Platform\PlatformAnnouncement::active()
                     ->whereIn('type', \App\Models\Platform\PlatformAnnouncement::SYSTEM_TYPES)
                     ->whereNotExists(function($q) {

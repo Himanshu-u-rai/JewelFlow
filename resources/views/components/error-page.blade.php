@@ -11,8 +11,7 @@
 ])
 @php
     // One shared error / recovery surface (UI audit F16). Styles are inline on purpose: no Vite or session needed.
-    // Wording follows the host's product: Dhiran never says JewelFlows.
-    $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlows';
+    $brand = 'JewelFlows';
     $tones = [
         'amber' => ['#b45309', '#fef3c7'],
         'red' => ['#b91c1c', '#fee2e2'],

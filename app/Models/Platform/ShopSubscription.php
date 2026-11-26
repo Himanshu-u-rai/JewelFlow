@@ -85,7 +85,7 @@ class ShopSubscription extends Model
      * to revoke anyway.
      *
      * Edition-scoped: only subscriptions whose plan grants the SAME edition
-     * as the shop's own shop_type are considered. A Dhiran subscription can
+     * as the shop's own shop_type are considered. A subscription for another product can
      * never justify Retail/ERP access and vice versa — a shop that holds
      * both products is judged on the ERP-edition row alone here, regardless
      * of the other product's state.

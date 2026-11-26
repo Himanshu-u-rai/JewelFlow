@@ -9,7 +9,6 @@
                         $cls = match($ed) {
                             'retailer'     => 'admin-badge-sky',
                             'manufacturer' => 'admin-badge-amber',
-                            'dhiran'       => 'admin-badge-emerald',
                             default        => 'admin-badge-slate',
                         };
                     @endphp
@@ -402,7 +401,7 @@
                             <label class="block text-xs text-slate-400">Reason (required, audit log)</label>
                             <textarea name="reason" rows="2" required minlength="4" maxlength="500"
                                       class="admin-control w-full"
-                                      placeholder="e.g. Customer requested removal of Dhiran service on 2026-04-18 ticket #4421"></textarea>
+                                      placeholder="e.g. Customer requested removal of Manufacturer service on 2026-04-18 ticket #4421"></textarea>
                             <div class="flex items-center gap-2">
                                 <button type="submit" class="admin-btn admin-btn-danger admin-btn-xs">Revoke {{ ucfirst($ed) }}</button>
                                 <span class="text-xs text-slate-500">Shop must keep at least one active edition.</span>

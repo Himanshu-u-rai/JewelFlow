@@ -22,7 +22,6 @@ use Illuminate\Validation\Rule;
  *
  * Guards match the user-side guards in Phase 5:
  *   - cannot revoke if it would leave the shop with zero editions
- *   - revoking 'dhiran' while active loans exist is blocked (data integrity)
  *   - revoking 'retailer' / 'manufacturer' is allowed but logs explicit reason
  *
  * Gated by permission 'shops.editions.manage' via admin middleware.
@@ -57,12 +56,6 @@ class ShopEditionManagementController extends Controller
 
         DB::transaction(function () use ($shop, $edition, $reason, $before, $admin, $request) {
             ShopEdition::grantTo($shop, $edition, null);
-
-            if ($edition === ShopEdition::DHIRAN) {
-                \App\Models\Dhiran\DhiranSettings::withoutGlobalScope('shop')
-                    ->where('shop_id', $shop->id)
-                    ->update(['is_enabled' => DB::raw('true')]);
-            }
 
             $this->audit->log(
                 $admin,
@@ -103,20 +96,10 @@ class ShopEditionManagementController extends Controller
             return back()->with('error', 'Cannot revoke the only active edition. Suspend the shop instead.');
         }
 
-        if ($guard = $this->dataGuard($shop, $edition)) {
-            return back()->with('error', $guard);
-        }
-
         $admin = auth('platform_admin')->user();
 
         DB::transaction(function () use ($shop, $edition, $reason, $admin, $request) {
             ShopEdition::revokeFrom($shop, $edition, null, $reason);
-
-            if ($edition === ShopEdition::DHIRAN) {
-                \App\Models\Dhiran\DhiranSettings::withoutGlobalScope('shop')
-                    ->where('shop_id', $shop->id)
-                    ->update(['is_enabled' => '0']);
-            }
 
             $this->audit->log(
                 $admin,
@@ -131,24 +114,5 @@ class ShopEditionManagementController extends Controller
         });
 
         return back()->with('success', ucfirst($edition).' edition revoked from '.$shop->name.'.');
-    }
-
-    /**
-     * Block a revoke if removing the edition would orphan live data.
-     * Returns an error message string, or null if safe to proceed.
-     */
-    private function dataGuard(Shop $shop, string $edition): ?string
-    {
-        if ($edition === ShopEdition::DHIRAN) {
-            $active = DB::table('dhiran_loans')
-                ->where('shop_id', $shop->id)
-                ->whereIn('status', ['active', 'renewed'])
-                ->exists();
-            if ($active) {
-                return 'Cannot revoke Dhiran: shop has active or renewed loans. Close all loans first.';
-            }
-        }
-
-        return null;
     }
 }

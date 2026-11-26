@@ -33,7 +33,6 @@
                     <option value="">All</option>
                     <option value="retailer" @selected(request('type') === 'retailer')>Retail</option>
                     <option value="manufacturer" @selected(request('type') === 'manufacturer')>Manufacturer</option>
-                    <option value="dhiran" @selected(request('type') === 'dhiran')>Dhiran</option>
                 </select>
             </div>
             <div>

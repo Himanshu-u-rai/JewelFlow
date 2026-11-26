@@ -1613,7 +1613,7 @@
     }
 
     /* ─── Phone item card (owner, 2026-11-15) ─────────────────────────────────────────────────────────
-       The item, then its total large and right-aligned, then the six price parts listed like Dhiran's phone tables:
+       The item, then its total large and right-aligned, then the six price parts listed as stacked rows:
        one row each, the label left and the amount right in even-width figures, parts at ₹0 greyed so the real
        charges stand out. */
     .items-mobile-view .items-mobile-card {

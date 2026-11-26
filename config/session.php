@@ -152,15 +152,6 @@ return [
         Str::slug((string) env('APP_NAME', 'laravel')).'-platform-admin-session'
     )),
 
-    // Dhiran (dhiran.* subdomain) uses its own session cookie so a Dhiran login
-    // and an ERP login can coexist in the same browser without overwriting each
-    // other (SESSION_DOMAIN is shared across subdomains). Selected at runtime by
-    // UseRouteScopedSessionCookie when the host is dhiran.*.
-    'dhiran_cookie' => $namespace(env(
-        'DHIRAN_SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-dhiran-session'
-    )),
-
     /*
     |--------------------------------------------------------------------------
     | Session Cookie Path
@@ -186,7 +177,7 @@ return [
     */
 
     // Honoured in production only (production's hosts share one login across
-    // jewelflows.com, www and dhiran). Elsewhere cookies are host-only: a
+    // jewelflows.com and www). Elsewhere cookies are host-only: a
     // parent-domain cookie from staging would also reach production, and
     // XSRF-TOKEN and remember_* have fixed names that no namespace changes.
     'domain' => $production ? env('SESSION_DOMAIN') : null,

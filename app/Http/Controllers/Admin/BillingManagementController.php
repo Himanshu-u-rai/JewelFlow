@@ -109,7 +109,7 @@ class BillingManagementController extends Controller
             // commit/rollback). Two racing submits cannot both pass the check and
             // create two authoritative rows — the second blocks here, then re-reads
             // the committed row under the lock and hits the no-op branch below.
-            // Retail and Dhiran hash to different keys and never block each other.
+            // Different products hash to different keys and never block each other.
             DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [
                 'shop_sub:' . $shop->id . ':' . ($newEdition ?? 'none'),
             ]);
@@ -169,7 +169,7 @@ class BillingManagementController extends Controller
 
             // Prevent competing active subscriptions: retire any prior entitling row
             // for the SAME product on this shop. Scoped by edition so a Retail edit
-            // never disturbs a live Dhiran subscription on the same owner.
+            // never disturbs a live subscription for another product on the same owner.
             ShopSubscription::query()
                 ->where('shop_id', $shop->id)
                 ->where('id', '!=', $subscription->id)

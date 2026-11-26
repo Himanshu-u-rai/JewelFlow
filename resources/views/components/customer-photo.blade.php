@@ -1,10 +1,10 @@
 @props(['customer' => null, 'realm' => 'erp', 'mode' => 'profile'])
 @php
     $photo = $customer?->profilePhoto;
-    $permission = $mode === 'form' ? ($customer ? 'customers.edit' : 'customers.create') : ($realm === 'dhiran' ? 'dhiran.create' : 'customers.edit');
+    $permission = $mode === 'form' ? ($customer ? 'customers.edit' : 'customers.create') : 'customers.edit';
     $canChange = auth()->user()?->can($permission);
     $id = 'customer-photo-'.$realm.'-'.($customer?->id ?? 'new').'-'.$mode;
-    $url = $customer?->exists ? route(($realm === 'dhiran' ? 'dhiran.borrowers' : 'customers').'.photo.show', $customer) : '';
+    $url = $customer?->exists ? route('customers.photo.show', $customer) : '';
     $actions = [
         'camera' => ['Take photo', 'camera'],
         'upload' => ['Upload photo', 'upload'],

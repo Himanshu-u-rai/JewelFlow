@@ -13,8 +13,6 @@ class PlatformAnnouncement extends Model
     public const SYSTEM_TYPES = ['info', 'warning', 'critical'];
     /** Big admin offers/deals banner type. */
     public const TYPE_BANNER = 'banner';
-    /** Overrides the product cross-promo toast text/CTA. */
-    public const TYPE_CROSS_PROMO = 'cross_promo';
 
     protected $fillable = [
         'title',
@@ -77,7 +75,7 @@ class PlatformAnnouncement extends Model
         return false;
     }
 
-    /** Whether this announcement targets the given realm ('erp'|'dhiran'). Null realm = both. */
+    /** Whether this announcement targets the given realm ('erp'). Null realm = both. */
     public function isForRealm(?string $realm): bool
     {
         return $this->realm === null || $this->realm === $realm;
@@ -87,14 +85,6 @@ class PlatformAnnouncement extends Model
     public function scopeOfType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type);
-    }
-
-    /** The first active cross-promo override for a realm, or null (caller falls back to config). */
-    public static function crossPromoFor(?string $realm): ?self
-    {
-        return static::query()->active()->ofType(self::TYPE_CROSS_PROMO)
-            ->orderByDesc('created_at')->get()
-            ->first(fn (self $a) => $a->isForRealm($realm));
     }
 
     public function createdBy(): BelongsTo

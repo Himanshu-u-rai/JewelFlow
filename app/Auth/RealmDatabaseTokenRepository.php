@@ -11,11 +11,8 @@ use Illuminate\Support\Carbon;
  * Password-reset token repository keyed by (email, realm) instead of email only.
  *
  * Laravel's stock DatabaseTokenRepository keys every token row by the user's
- * email. Once Dhiran exists, the same email can belong to an 'erp' account AND a
- * 'dhiran' account, so an email-only key is ambiguous — one realm's reset could
- * overwrite or match the other's token. This subclass adds the user's realm to
- * every where/payload, so each realm has its own independent token row for the
- * same email. Mirrors the table change in
+ * email. This subclass adds the user's realm to every where/payload, so each
+ * realm has its own independent token row for the same email. Mirrors the table change in
  * …_add_realm_to_password_reset_tokens (PK (email, realm)).
  *
  * The realm comes from the user model (App\Models\User has a `realm` attribute),

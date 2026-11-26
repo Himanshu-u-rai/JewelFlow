@@ -30,12 +30,11 @@ class AnnouncementController extends Controller
             'body'         => ['required', 'string', 'max:5000'],
             'cta_label'    => ['nullable', 'string', 'max:80'],
             'cta_url'      => ['nullable', 'string', 'max:2048', 'url'],
-            // info/warning/critical = system notice; banner = big offers/deals;
-            // cross_promo = overrides the product cross-promo toast.
-            'type'         => ['required', 'in:info,warning,critical,banner,cross_promo'],
+            // info/warning/critical = system notice; banner = big offers/deals.
+            'type'         => ['required', 'in:info,warning,critical,banner'],
             'target'       => ['required', 'in:all,plan,edition'],
             'target_value' => ['nullable', 'string', 'max:100'],
-            'realm'        => ['nullable', 'in:erp,dhiran'],
+            'realm'        => ['nullable', 'in:erp'],
             'publish_at'   => ['nullable', 'date'],
             'expires_at'   => ['nullable', 'date', 'after:publish_at'],
             'send_email'   => ['boolean'],

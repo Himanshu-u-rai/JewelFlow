@@ -29,11 +29,8 @@ class EmailVerificationOtpController extends Controller
         $email = strtolower(trim($request->email));
 
         // Reject only if this email is already verified by another account IN THE
-        // SAME REALM. Login + password reset are realm-scoped (the same email may
-        // legitimately exist on both an ERP and a Dhiran account — e.g. a merchant
-        // running both products), so a cross-realm match must not block verification
-        // here or that merchant could never verify (and so never recover) the
-        // second account.
+        // SAME REALM. Login + password reset are realm-scoped, so the check is
+        // scoped the same way.
         $taken = User::where('email', $email)
             ->where('realm', $user->realm)
             ->where('id', '!=', $user->id)

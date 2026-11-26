@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, CanonicalisesMobileNumbers, Concerns\InvalidatesProductRecognition;
+    use HasApiTokens, HasFactory, Notifiable, CanonicalisesMobileNumbers;
 
     /** @var array<int, string> */
     protected static array $mobileColumns = ['mobile_number'];
@@ -44,16 +44,13 @@ class User extends Authenticatable implements MustVerifyEmail
         // not $request->all(), so this is not a mass-assignment risk). Fillable
         // so factories/tests can seed already-verified accounts.
         'email_verified_at',
-        // Which customer-facing product this account belongs to: 'erp' | 'dhiran'.
-        // One account = one product (no combined multi-product account). Defaults
-        // to 'erp' (see the booted() creating hook) so all existing behaviour is
-        // unchanged. Set server-side at registration based on the request realm.
+        // Which customer-facing product this account belongs to: always 'erp'.
+        // Defaults to 'erp' (see the booted() creating hook).
         'realm',
     ];
 
     public const REALM_ERP = 'erp';
-    public const REALM_DHIRAN = 'dhiran';
-    public const REALMS = [self::REALM_ERP, self::REALM_DHIRAN];
+    public const REALMS = [self::REALM_ERP];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -83,7 +80,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Default the realm to 'erp' on create when not explicitly set, so any code
      * path that creates a user without specifying a realm keeps today's ERP
-     * behaviour. Dhiran registration sets realm='dhiran' explicitly.
+     * behaviour.
      */
     protected static function booted(): void
     {
@@ -94,16 +91,10 @@ class User extends Authenticatable implements MustVerifyEmail
         });
     }
 
-    /** Scope to a single realm: User::realm('dhiran')->... */
+    /** Scope to a single realm: User::realm('erp')->... */
     public function scopeRealm($query, string $realm)
     {
         return $query->where('realm', $realm);
-    }
-
-    /** This account belongs to the Dhiran product. */
-    public function isDhiran(): bool
-    {
-        return ($this->realm ?? self::REALM_ERP) === self::REALM_DHIRAN;
     }
 
     /** This account belongs to the Retail ERP product (the default). */

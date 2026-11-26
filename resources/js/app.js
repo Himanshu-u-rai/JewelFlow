@@ -744,8 +744,6 @@ function initSearchAutoSubmit() {
         if (!form || form.method.toLowerCase() !== 'get') return;
         if (_searchAutoSubmitInited.has(input)) return;
         if (input.hasAttribute('data-suggest') || input.hasAttribute('data-live-filter')) return;
-        // Dhiran search boxes refresh only their results frame and keep the cursor (x-dhiran.search).
-        if (input.closest('[data-dhiran-search]')) return;
         _searchAutoSubmitInited.add(input);
 
         let timer = null;

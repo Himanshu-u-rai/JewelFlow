@@ -32021,80 +32021,81 @@ a.notice-bell-item:focus-visible {
 /* ── Page header size standard (owner, 2026-11-15) ───────────────────────────────────────────────────────────
    One size for every retail page header's title, subtitle, buttons and icons: about thirty page families had set
    their own (titles 17-22px at 600 or 700, buttons 36-44px, icons 13-18px, corners 6-16px). Last in the file and
-   important on purpose, so a family rule cannot drift from it again. Dhiran has its own header. */
-body.app-shell .content-header:not(.dh-page-header) .page-title {
+   important on purpose, so a family rule cannot drift from it again. The doubled .content-header keeps
+   the specificity this block was tuned with. */
+body.app-shell .content-header.content-header .page-title {
     font-size: 22px !important;
     font-weight: 700 !important;
     line-height: 1.15 !important;
     letter-spacing: 0 !important;
 }
 
-body.app-shell .content-header:not(.dh-page-header) .page-subtitle {
+body.app-shell .content-header.content-header .page-subtitle {
     font-size: 13px !important;
     font-weight: 400 !important;
     line-height: 1.35 !important;
 }
 
-body.app-shell .content-header:not(.dh-page-header) .page-actions > :is(a, button):not(.jf-header-icon-only),
-body.app-shell .content-header:not(.dh-page-header) .page-actions > form > button:not(.jf-header-icon-only) {
+body.app-shell .content-header.content-header .page-actions > :is(a, button):not(.jf-header-icon-only),
+body.app-shell .content-header.content-header .page-actions > form > button:not(.jf-header-icon-only) {
     min-height: 40px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
     border-radius: 10px !important;
 }
 
-body.app-shell .content-header:not(.dh-page-header) .page-actions > :is(a, button):not(.jf-header-icon-only) svg,
-body.app-shell .content-header:not(.dh-page-header) .page-actions > form > button:not(.jf-header-icon-only) svg {
+body.app-shell .content-header.content-header .page-actions > :is(a, button):not(.jf-header-icon-only) svg,
+body.app-shell .content-header.content-header .page-actions > form > button:not(.jf-header-icon-only) svg {
     width: 14px !important;
     height: 14px !important;
 }
 
-body.app-shell .content-header:not(.dh-page-header) {
+body.app-shell .content-header.content-header {
     padding-top: 20px !important;
     padding-bottom: 20px !important;
 }
 
 @media (max-width: 1024px) {
-    body.app-shell .content-header:not(.dh-page-header) {
+    body.app-shell .content-header.content-header {
         padding-top: 16px !important;
         padding-bottom: 16px !important;
         padding-left: 24px !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-title {
+    body.app-shell .content-header.content-header .page-title {
         font-size: 20px !important;
     }
 }
 
 /* tablets: the bell is in the row, so both sides take the same edge (pages used 24px or 32px) */
 @media (min-width: 769px) and (max-width: 1024px) {
-    body.app-shell .content-header:not(.dh-page-header) {
+    body.app-shell .content-header.content-header {
         padding-right: 24px !important;
     }
 }
 
 @media (max-width: 768px) {
     /* the right side stays the bell's (its own rule reserves it) */
-    body.app-shell .content-header:not(.dh-page-header) {
+    body.app-shell .content-header.content-header {
         padding-top: 12px !important;
         padding-bottom: 12px !important;
         padding-left: 12px !important;
         column-gap: 8px !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-title {
+    body.app-shell .content-header.content-header .page-title {
         font-size: 17px !important;
         line-height: 1.2 !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-subtitle {
+    body.app-shell .content-header.content-header .page-subtitle {
         font-size: 12px !important;
     }
 
     /* every control in a phone header is one 44px touch target: menu, icon actions, bell */
-    body.app-shell .content-header:not(.dh-page-header) .mobile-menu-btn,
-    body.app-shell .content-header:not(.dh-page-header) .page-actions > .jf-header-icon-only,
-    body.app-shell .content-header:not(.dh-page-header) .page-actions > form > .jf-header-icon-only {
+    body.app-shell .content-header.content-header .mobile-menu-btn,
+    body.app-shell .content-header.content-header .page-actions > .jf-header-icon-only,
+    body.app-shell .content-header.content-header .page-actions > form > .jf-header-icon-only {
         width: 44px !important;
         min-width: 44px !important;
         height: 44px !important;
@@ -32103,12 +32104,12 @@ body.app-shell .content-header:not(.dh-page-header) {
         border-radius: 10px !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-actions > .jf-header-icon-only svg {
+    body.app-shell .content-header.content-header .page-actions > .jf-header-icon-only svg {
         width: 18px !important;
         height: 18px !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .notice-bell-toggle {
+    body.app-shell .content-header.content-header .notice-bell-toggle {
         width: 44px !important;
         height: 44px !important;
     }
@@ -32209,26 +32210,26 @@ body.app-shell .content-header:not(.dh-page-header) {
 /* Phones and tablets: the title sits level with the header's buttons, flush left, with no margins of its own
    (pages had added 2px nudges, centring and top margins) */
 @media (max-width: 1024px) {
-    body.app-shell .content-header:not(.dh-page-header) > .content-header-nav + *,
-    body.app-shell .content-header:not(.dh-page-header) > :first-child:not(.content-header-nav) {
+    body.app-shell .content-header.content-header > .content-header-nav + *,
+    body.app-shell .content-header.content-header > :first-child:not(.content-header-nav) {
         align-self: center;
         margin: 0 !important;
         text-align: left !important;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-title {
+    body.app-shell .content-header.content-header .page-title {
         margin: 0 !important;
         text-align: left !important;
         justify-content: flex-start !important;
     }
 
     /* a title row a page centred (exchange) starts at the left too */
-    body.app-shell .content-header:not(.dh-page-header) :has(> .page-title) {
+    body.app-shell .content-header.content-header :has(> .page-title) {
         justify-content: flex-start !important;
     }
 
     /* the description card opens on tap; the title keeps one line of its own */
-    body.app-shell .content-header:not(.dh-page-header) .page-title:has(> .jf-header-info) {
+    body.app-shell .content-header.content-header .page-title:has(> .jf-header-info) {
         display: flex;
         align-items: center;
         justify-content: flex-start;
@@ -32236,7 +32237,7 @@ body.app-shell .content-header:not(.dh-page-header) {
         min-width: 0;
     }
 
-    body.app-shell .content-header:not(.dh-page-header) .page-title > .jf-header-info {
+    body.app-shell .content-header.content-header .page-title > .jf-header-info {
         margin: -6px 0;
         flex: 0 0 auto;
     }

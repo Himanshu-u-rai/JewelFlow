@@ -134,44 +134,6 @@ class PlanSeeder extends Seeder
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
-            [
-                'code' => 'dhiran_monthly',
-                'name' => 'Dhiran Monthly',
-                'price_monthly' => 1852.00,
-                'price_yearly' => null,
-                'trial_days' => 0,
-                'grace_days' => 7,
-                'downgrade_to_read_only_on_due' => \DB::raw('true'),
-                'is_active' => \DB::raw('true'),
-                'features' => json_encode([
-                    "customers" => true,
-                    "reports" => true,
-                    "installments" => true,
-                    "staff_limit" => 3,
-                    "max_items" => 1000
-                ]),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'code' => 'dhiran_yearly',
-                'name' => 'Dhiran Yearly',
-                'price_monthly' => 1667.00,
-                'price_yearly' => 19999.00,
-                'trial_days' => 0,
-                'grace_days' => 14,
-                'downgrade_to_read_only_on_due' => \DB::raw('true'),
-                'is_active' => \DB::raw('true'),
-                'features' => json_encode([
-                    "customers" => true,
-                    "reports" => true,
-                    "installments" => true,
-                    "staff_limit" => 7,
-                    "max_items" => 3000
-                ]),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
         ];
 
         // Resolve the platform product each plan belongs to so plan selection
@@ -196,7 +158,6 @@ class PlanSeeder extends Seeder
         $productCode = match (true) {
             str_starts_with($planCode, 'retailer_')      => 'retail',
             str_starts_with($planCode, 'manufacturer_')   => 'manufacturing',
-            str_starts_with($planCode, 'dhiran_')         => 'dhiran',
             default                                       => null,
         };
 

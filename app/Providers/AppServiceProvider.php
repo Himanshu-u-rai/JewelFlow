@@ -59,9 +59,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Realm-aware password resets: rebind the broker manager so reset tokens
-        // are keyed by (email, realm), not email alone. This keeps Dhiran and ERP
-        // resets independent for the same email. Behaviour is identical to the
-        // framework default for ERP (the only realm pre-Dhiran).
+        // are keyed by (email, realm), not email alone. Behaviour is identical to
+        // the framework default for ERP accounts.
         $this->app->extend('auth.password', function ($manager, $app) {
             return new \App\Auth\RealmPasswordBrokerManager($app);
         });
@@ -127,7 +126,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\JobOrder::observe(\App\Observers\JobOrderObserver::class);
         \App\Models\ReturnOrder::observe(\App\Observers\ReturnOrderObserver::class);
 
-        // Dotted ability names (e.g. "dhiran.pay", "invoices.create") are treated
+        // Dotted ability names (e.g. "invoices.create") are treated
         // as permission keys and resolved via User::hasPermission(). Returning
         // null on miss lets Laravel fall through to policies/explicit gates.
         // Non-dotted abilities ("view-dashboard") bypass this and use normal Gate routing.

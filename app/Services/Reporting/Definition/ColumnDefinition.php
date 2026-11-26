@@ -5,7 +5,7 @@ namespace App\Services\Reporting\Definition;
 /**
  * One column in a report's fixed catalogue (frozen §7). Immutable, declarative.
  * `tier` drives default selection + the sensitive gate; `masking` covers
- * Dhiran KYC (Addendum B §23). There is no free-form/SQL/expression column —
+ * KYC (Addendum B §23). There is no free-form/SQL/expression column —
  * the hard guard against becoming a builder (frozen §13).
  */
 final class ColumnDefinition

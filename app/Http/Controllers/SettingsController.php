@@ -1043,26 +1043,9 @@ class SettingsController extends Controller
         // Snapshot the current permission set so we can audit the diff.
         $beforeIds = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
 
-        // Dhiran is a separate product whose permissions are intentionally NOT
-        // manageable from the JewelFlow Roles UI. The form never renders them,
-        // but `exists:permissions,id` alone would accept a crafted payload that
-        // injects a Dhiran id. Constrain the writable set to the non-Dhiran
-        // catalogue so a hand-built request can never attach a hidden permission.
-        $manageableIds = \App\Models\Permission::where('group', '!=', 'dhiran')
-            ->orWhereNull('group')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id);
-
         $afterIds = collect($validated['permissions'] ?? [])
             ->map(fn ($id) => (int) $id)
-            ->intersect($manageableIds);
-
-        // Preserve any Dhiran permissions the role already has — saving here must
-        // neither strip nor add them; they are owned by the Dhiran product.
-        $preserveIds = $role->permissions()
-            ->where('permissions.group', 'dhiran')
-            ->pluck('permissions.id');
-        $afterIds = $afterIds->merge($preserveIds)->unique()->sort()->values()->all();
+            ->unique()->sort()->values()->all();
 
         $role->permissions()->sync($afterIds);
 
@@ -1186,7 +1169,7 @@ class SettingsController extends Controller
      * carries a price_yearly), so the card never offers a cycle the backend would
      * then reject. Anything not purchasable falls back to the request-add form.
      *
-     * @param  array<int, string>  $available  edition strings (e.g. ['retailer','dhiran'])
+     * @param  array<int, string>  $available  edition strings (e.g. ['retailer','manufacturer'])
      * @return array<string, array<string, mixed>>  keyed by edition string
      */
     private function buildServicePurchaseOptions(array $available): array

@@ -6,8 +6,7 @@ use App\Services\Reporting\Definition\ColumnDefinition;
 
 /**
  * One table within a dataset (frozen §3.1). Single-table reports have exactly
- * one section; multi-part reports (e.g. GSTR-1 B2B / B2CS / HSN, or a Dhiran
- * loan statement's summary/payments/pledged-items) have several, each with its
+ * one section; multi-part reports (e.g. GSTR-1 B2B / B2CS / HSN) have several, each with its
  * own columns/rows/totals. Rows carry NATIVE typed values keyed by column key;
  * renderers format per ColumnType — the dataset never holds formatted strings
  * (frozen §3.1, §5).

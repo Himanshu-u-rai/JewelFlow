@@ -16,7 +16,6 @@ class BusinessIdentifierService
     public const KEY_INVOICE = 'invoice';
     public const KEY_CREDIT_NOTE = 'credit_note';
     public const KEY_QUICK_BILL = 'quick_bill';
-    public const KEY_DHIRAN = 'dhiran';
     public const KEY_PURCHASE = 'purchase';
     public const KEY_JOB_ORDER = 'job_order';
     public const KEY_CHALLAN = 'challan';

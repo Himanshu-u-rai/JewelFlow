@@ -19,7 +19,7 @@ use LogicException;
  * Three tiers govern operational capability:
  *   - Tier 1 (FULL):    gold, silver — every flow without restriction
  *   - Tier 2 (LIMITED): platinum, copper — inventory + invoicing only,
- *                       no dhiran, no exchange payment, no auto-reprice,
+ *                       no exchange payment, no auto-reprice,
  *                       no live-rate auto-fetch
  *   - Tier 3 (BLOCKED): everything else — rejected at three layers
  *                       (controller validator, service guard, DB CHECK)
@@ -421,15 +421,6 @@ final class MetalRegistry
      * job skips them.
      */
     public static function isAutoRepricedEligible(string $metalType): bool
-    {
-        return self::tierFor($metalType) === self::TIER_1;
-    }
-
-    /**
-     * Dhiran (gold-loan collateral) is Tier 1 only. Tier 2 metals cannot
-     * be used as loan collateral.
-     */
-    public static function isDhiranEligible(string $metalType): bool
     {
         return self::tierFor($metalType) === self::TIER_1;
     }

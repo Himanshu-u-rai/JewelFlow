@@ -2,7 +2,7 @@
 
 @php
     // Big admin-editable offers/deals banner (type='banner'). Resolved here so any
-    // dashboard can drop in <x-promo-banner realm="erp|dhiran" />. Targets by realm
+    // dashboard can drop in <x-promo-banner realm="erp" />. Targets by realm
     // (null = both), by shop edition/target, and respects per-user dismissal.
     $user = auth()->user();
     $shop = $user?->shop;
@@ -30,7 +30,7 @@
             padding: 20px 22px;
             border: 1px solid var(--jf-border, #e2e8f0);
             border-radius: 16px;
-            /* Warm offers/deals surface, same family as the cross-promo toast. */
+            /* Warm offers/deals surface. */
             background:
                 radial-gradient(120% 140% at 0% 0%, rgba(244,163,0,0.10), transparent 60%),
                 var(--jf-surface, #fff);

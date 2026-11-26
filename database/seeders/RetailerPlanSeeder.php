@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Seeds ONLY the retailer subscription plans.
  *
- * Deliberately excludes manufacturer_* and dhiran_* plans — this seeder
+ * Deliberately excludes manufacturer_* plans — this seeder
  * exists so a retailer-only SaaS deployment can be provisioned without
- * exposing the other editions. The full catalogue (all three editions)
+ * exposing the other editions. The full catalogue (all editions)
  * still lives in PlanSeeder for deployments that need it.
  *
  * Idempotent: updateOrInsert keyed by `code`, so re-running refreshes the

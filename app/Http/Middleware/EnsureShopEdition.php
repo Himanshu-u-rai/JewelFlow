@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
  *   ->middleware('edition:retailer')              — retailer shops
  *   ->middleware('edition:retailer,manufacturer') — either (OR semantics)
  *
- * A shop with multiple editions (e.g. retailer + dhiran) passes any gate
+ * A shop with multiple editions (e.g. retailer + manufacturer) passes any gate
  * that matches ANY of its editions — which is the correct default for
  * feature gates post-editions-refactor. Routes that need AND semantics
  * (rare) should compose multiple middleware entries.

@@ -22,7 +22,6 @@
                         <label class="block text-xs text-slate-400 mb-1">Type <span class="text-rose-400">*</span></label>
                         <select name="type" id="ann-type" required class="admin-control admin-select w-full">
                             <option value="banner"      {{ old('type') === 'banner'           ? 'selected' : '' }}>Banner (offers / deals)</option>
-                            <option value="cross_promo" {{ old('type') === 'cross_promo'      ? 'selected' : '' }}>Cross-promo toast (override)</option>
                             <option value="info"        {{ old('type', 'info') === 'info'     ? 'selected' : '' }}>System: Info</option>
                             <option value="warning"     {{ old('type') === 'warning'          ? 'selected' : '' }}>System: Warning</option>
                             <option value="critical"    {{ old('type') === 'critical'         ? 'selected' : '' }}>System: Critical</option>
@@ -45,14 +44,6 @@
                     <label class="block text-xs text-slate-400 mb-1">Target Value</label>
                     <input type="text" name="target_value" id="ann-target-value" value="{{ old('target_value') }}" maxlength="100"
                            class="admin-control w-full" placeholder="e.g. retailer, manufacturer, plan-id">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Product surface</label>
-                    <select name="realm" id="ann-realm" class="admin-control admin-select w-full">
-                        <option value="" {{ old('realm') === null || old('realm') === '' ? 'selected' : '' }}>Both (ERP + Dhiran)</option>
-                        <option value="erp"    {{ old('realm') === 'erp'    ? 'selected' : '' }}>ERP only</option>
-                        <option value="dhiran" {{ old('realm') === 'dhiran' ? 'selected' : '' }}>Dhiran only</option>
-                    </select>
                 </div>
             </div>
 
@@ -117,7 +108,6 @@
                         <th class="px-4 py-2 text-left">Title</th>
                         <th class="px-4 py-2 text-left">Type</th>
                         <th class="px-4 py-2 text-left">Target</th>
-                        <th class="px-4 py-2 text-left">Surface</th>
                         <th class="px-4 py-2 text-left">Publish At</th>
                         <th class="px-4 py-2 text-left">Expires At</th>
                         <th class="px-4 py-2 text-right">Actions</th>
@@ -135,8 +125,6 @@
                                     <span class="admin-badge bg-amber-900/60 text-amber-300 border-amber-700">Warning</span>
                                 @elseif($ann->type === 'banner')
                                     <span class="admin-badge bg-emerald-900/60 text-emerald-300 border-emerald-700">Banner</span>
-                                @elseif($ann->type === 'cross_promo')
-                                    <span class="admin-badge bg-violet-900/60 text-violet-300 border-violet-700">Cross-promo</span>
                                 @else
                                     <span class="admin-badge bg-blue-900/60 text-blue-300 border-blue-700">Info</span>
                                 @endif
@@ -147,7 +135,6 @@
                                     <span class="text-xs text-slate-500">({{ $ann->target_value }})</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-xs text-slate-400">{{ $ann->realm ? ucfirst($ann->realm) : 'Both' }}</td>
                             <td class="px-4 py-3 text-xs text-slate-400">
                                 {{ $ann->publish_at ? $ann->publish_at->format('d M Y, H:i') : '— immediate —' }}
                             </td>
@@ -165,7 +152,6 @@
                                         "type" => $ann->type,
                                         "target" => $ann->target,
                                         "target_value" => $ann->target_value,
-                                        "realm" => $ann->realm,
                                         "publish_at" => optional($ann->publish_at)->format("Y-m-d\TH:i"),
                                         "expires_at" => optional($ann->expires_at)->format("Y-m-d\TH:i"),
                                         "send_email" => (bool) $ann->send_email,
@@ -185,7 +171,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="jf-table-empty">No messages yet.</td>
+                            <td colspan="7" class="jf-table-empty">No messages yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -226,7 +212,7 @@
                     setVal('ann-title', a.title); setVal('ann-body', a.body);
                     setVal('ann-cta-label', a.cta_label); setVal('ann-cta-url', a.cta_url);
                     setVal('ann-type', a.type); setVal('ann-target', a.target);
-                    setVal('ann-target-value', a.target_value); setVal('ann-realm', a.realm || '');
+                    setVal('ann-target-value', a.target_value);
                     setVal('ann-publish-at', a.publish_at); setVal('ann-expires-at', a.expires_at);
                     document.getElementById('ann-send-email').checked = !!a.send_email;
                     document.getElementById('ann-target-value-wrap').style.display = (a.target === 'all') ? 'none' : 'block';

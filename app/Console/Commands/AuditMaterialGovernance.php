@@ -92,16 +92,16 @@ class AuditMaterialGovernance extends Command
         $this->info('▸ Check 3: MetalRegistry capabilities consistent with tier classification');
         foreach ($supportedAll as $metal) {
             $tier = \App\Services\MetalRegistry::tierFor($metal);
-            // Tier 1 metals should have ALL capabilities; Tier 2 should NOT have live-rate/auto-reprice/dhiran/exchange.
+            // Tier 1 metals should have ALL capabilities; Tier 2 should NOT have live-rate/auto-reprice/exchange.
             if ($tier === \App\Services\MetalRegistry::TIER_1) {
-                $checks = ['isLiveRateEligible', 'isAutoRepricedEligible', 'isDhiranEligible', 'isExchangePaymentEligible'];
+                $checks = ['isLiveRateEligible', 'isAutoRepricedEligible', 'isExchangePaymentEligible'];
                 foreach ($checks as $m) {
                     if (! \App\Services\MetalRegistry::$m($metal)) {
                         $violations[] = "Tier 1 metal '{$metal}' missing capability {$m} — Tier 1 must be fully supported.";
                     }
                 }
             } elseif ($tier === \App\Services\MetalRegistry::TIER_2) {
-                $forbidden = ['isLiveRateEligible', 'isAutoRepricedEligible', 'isDhiranEligible', 'isExchangePaymentEligible'];
+                $forbidden = ['isLiveRateEligible', 'isAutoRepricedEligible', 'isExchangePaymentEligible'];
                 foreach ($forbidden as $m) {
                     if (\App\Services\MetalRegistry::$m($metal)) {
                         $violations[] = "Tier 2 metal '{$metal}' has capability {$m} — Tier 2 metals must be restricted.";

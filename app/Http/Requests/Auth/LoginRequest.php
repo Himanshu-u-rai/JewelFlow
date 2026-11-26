@@ -63,10 +63,8 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        // Login is scoped to the current realm (from the host): a login on
-        // dhiran.* only ever authenticates a Dhiran account, and the main domain
-        // only an ERP account. The same mobile may exist in both realms, so the
-        // realm is part of both the existence check and the auth attempt.
+        // Login is scoped to the current realm: the realm is part of both the
+        // existence check and the auth attempt.
         $realm = Realm::current($this);
 
         // Product decision: distinguish "unknown mobile" from "wrong password"

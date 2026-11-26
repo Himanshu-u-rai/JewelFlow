@@ -174,7 +174,6 @@
 
         .card-retailer .type-icon     { background: rgba(245,158,11,0.14); }
         .card-manufacturer .type-icon { background: rgba(217,119,6,0.16); }
-        .card-dhiran .type-icon       { background: rgba(13,148,136,0.14); }
 
         .type-card h3 { font-size: 17px; font-weight: 700; color: #1f2430; margin: 0 0 4px; }
         .type-subtitle {
@@ -196,7 +195,6 @@
         .feature-dot { width: 5px; height: 5px; border-radius: 9999px; flex-shrink: 0; margin-top: 7px; }
         .card-retailer .feature-dot     { background: var(--gold-500); }
         .card-manufacturer .feature-dot { background: var(--gold-600); }
-        .card-dhiran .feature-dot       { background: #0d9488; }
 
         .actions {
             margin-top: 28px;
@@ -267,9 +265,8 @@
 @php
     // The controller decides which editions this screen offers and hands them
     // over — the view no longer keeps its own opinion. That split is what let the
-    // skip-condition and the rendered cards disagree: the controller counted
-    // Dhiran, the view hardcoded it off, and the screen asked a one-answer
-    // question. PlatformSetting::erpSelectableShopTypes() is now the only list.
+    // skip-condition and the rendered cards disagree.
+    // PlatformSetting::erpSelectableShopTypes() is now the only list.
     $offered = collect($offeredTypes ?? []);
     // The grid sizes to the cards ACTUALLY rendered, else a missing card leaves
     // an empty column and the rest pin to the side.
@@ -343,8 +340,6 @@
                     </div>
                 </label>
             @endif
-
-            {{-- Dhiran is a separate product served on its own subdomain; not shown here --}}
         </div>
 
         <div class="actions">

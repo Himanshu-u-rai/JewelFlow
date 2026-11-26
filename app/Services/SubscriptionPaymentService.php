@@ -197,7 +197,7 @@ class SubscriptionPaymentService
      * midnight scheduler had not yet transitioned.
      *
      * All three are judged PER PRODUCT. One shop holds many product
-     * subscriptions, so a live ERP term must not block buying Dhiran — being
+     * subscriptions, so a live term for one product must not block buying another — being
      * product-blind here charged the card and then refused to activate,
      * leaving the owner paid-up with no service and a support ticket. Product
      * identity comes from Plan::grantsEdition(), the same mapping
@@ -235,7 +235,7 @@ class SubscriptionPaymentService
         // still counts as a live paid term is hasLivePaidTermToday() (the P0
         // hotfix). Keeping the old status list would let a legacy `read_only`
         // row block a lapsed shop's renewal; dropping the per-product lookup
-        // would let a live ERP term block buying Dhiran.
+        // would let a live term for one product block buying another.
         if (ShopSubscription::hasLivePaidTermToday($current)) {
             throw new \LogicException(
                 'Shop already has an active paid subscription for '
@@ -780,9 +780,7 @@ class SubscriptionPaymentService
      * The "trial family" an edition belongs to. A shop gets one free trial per
      * family, NOT per individual edition:
      *   - retailer + manufacturer share the 'erp' family (the core JewelFlow ERP)
-     *   - dhiran is its own family
-     * So a shop that trialed retailer cannot also trial manufacturer for free,
-     * but it can separately trial Dhiran.
+     * So a shop that trialed retailer cannot also trial manufacturer for free.
      */
     public function trialFamilyFor(string $edition): string
     {
@@ -858,7 +856,7 @@ class SubscriptionPaymentService
      *
      * `$unresolvableDisqualifies` decides what happens to a row whose plan will
      * not map to a family at all. Plan::grantsEdition() prefers the platform
-     * product, falls back to a `retailer_|manufacturer_|dhiran_` code prefix, and
+     * product, falls back to a `retailer_|manufacturer_` code prefix, and
      * otherwise returns null — so rows predating the platform-product table, and
      * any bespoke or enterprise plan code, resolve to nothing. Skipping them made
      * a shop that had genuinely paid read as a virgin account and collect a free

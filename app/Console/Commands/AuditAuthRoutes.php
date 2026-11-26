@@ -78,7 +78,6 @@ class AuditAuthRoutes extends Command
     private const ALLOWLIST_URIS = [
         'api/mobile/auth/logout',
         'api/mobile/auth/me',
-        'dhiran/{any?}',  // redirect-only catch-all
         'confirm-password',  // Laravel-scaffolded password confirmation (no name on POST)
     ];
 

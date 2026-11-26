@@ -42,10 +42,6 @@ use InvalidArgumentException;
  *                     "owed" cannot be stated; purchases = confirmed/stocked stock_purchases (purchase_date).
  *   loyalty_points   {total_points, total_value, customers:[{customer_id, name, points}]}  earn - redeem, value
  *                    at the shop's current point value (LoyaltyService::pointsToRupees)
- *   dhiran           null for a shop without Dhiran, else {total_principal, total_interest, total_penalty,
- *                    interest_collected_to_date, loans:[{loan_id, loan_number, customer_id, status, principal,
- *                    interest, penalty}]}  last dhiran_ledger_entries balances on or before the date: interest
- *                    is what was BOOKED by then (accrual is lazy), not recomputed to the date.
  *   opening_balances {customers:[{customer_id, name, receivable, payable}], suppliers:[{vendor_id, name,
  *                    receivable, payable}], customer_receivable_total, customer_payable_total,
  *                    supplier_receivable_total, supplier_payable_total}  as_of_date <= date
@@ -81,7 +77,6 @@ final class BalancesAsAt
             'karigar' => $this->karigar(),
             'supplier_payables' => $this->supplierPayables(),
             'loyalty_points' => $this->loyalty(),
-            'dhiran' => $this->dhiran(),
             'opening_balances' => $this->openingBalances(),
         ];
     }
@@ -314,34 +309,6 @@ final class BalancesAsAt
         $total = array_sum(array_column($out, 'points'));
 
         return ['total_points' => $total, 'total_value' => self::m(app(LoyaltyService::class)->pointsToRupees($total, $this->shopId)), 'customers' => $out];
-    }
-
-    private function dhiran(): ?array
-    {
-        $s = $this->shopId;
-        $has = DB::table('shop_editions')->where('shop_id', $s)->where('edition', 'dhiran')->whereNull('deactivated_at')->exists()
-            || DB::table('dhiran_loans')->where('shop_id', $s)->exists();
-        if (! $has) {
-            return null;
-        }
-        $rows = DB::table('dhiran_ledger_entries as e')->join('dhiran_loans as l', 'l.id', '=', 'e.dhiran_loan_id')
-            ->where('e.shop_id', $s)
-            ->whereIn('e.id', fn ($q) => $q->from('dhiran_ledger_entries')->where('shop_id', $s)->where('created_at', '<', $this->endExclusive)
-                ->selectRaw('MAX(id)')->groupBy('dhiran_loan_id'))
-            ->orderBy('l.id')
-            ->get(['l.id', 'l.loan_number', 'l.customer_id', 'l.status', 'e.balance_after', 'e.interest_balance_after', 'e.penalty_balance_after', 'e.entry_type'])
-            ->map(fn ($r) => ['loan_id' => (int) $r->id, 'loan_number' => $r->loan_number, 'customer_id' => (int) $r->customer_id,
-                'status' => $r->status, 'principal' => self::m($r->balance_after), 'interest' => self::m($r->interest_balance_after), 'penalty' => self::m($r->penalty_balance_after)])
-            ->filter(fn ($r) => $r['principal'] > 0 || $r['interest'] > 0 || $r['penalty'] > 0)->values()->all();
-        $collected = DB::table('dhiran_payments')->where('shop_id', $s)->whereRaw('payment_date <= ?', [$this->date])->sum('interest_component');
-
-        return [
-            'total_principal' => self::m(array_sum(array_column($rows, 'principal'))),
-            'total_interest' => self::m(array_sum(array_column($rows, 'interest'))),
-            'total_penalty' => self::m(array_sum(array_column($rows, 'penalty'))),
-            'interest_collected_to_date' => self::m($collected),
-            'loans' => $rows,
-        ];
     }
 
     private function openingBalances(): array

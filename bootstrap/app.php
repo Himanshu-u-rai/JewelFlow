@@ -52,7 +52,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\NormalizeHumanTextInput::class,
             \App\Http\Middleware\CanonicaliseMobileInput::class,
             \App\Http\Middleware\SetShopLocale::class,
-            \App\Http\Middleware\ForceDhiranSubdomain::class,
         ]);
 
         // Both groups: `Rule::unique` compares the raw submitted string while the
@@ -70,11 +69,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Middleware execution priority.
         //
-        // Realm separation (Dhiran): EnsureRealm MUST run before EnsureShopExists
-        // so the product boundary is the FIRST authoritative gate — a cross-realm
-        // user is bounced to their own realm before shop-onboarding can redirect a
-        // shopless visitor into the wrong product's onboarding (e.g. a shopless
-        // Dhiran user must never be sent to the ERP shops.choose-type chooser).
+        // EnsureRealm MUST run before EnsureShopExists so the realm boundary is
+        // the FIRST authoritative gate, ahead of shop-onboarding redirects.
         // The list below preserves Laravel's default ordering and only inserts the
         // realm/tenant gates ahead of shop existence; routes only re-sort the
         // middleware they actually carry, so untouched routes are unaffected.
@@ -121,8 +117,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'account.active' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
-            'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
-            'dhiran.email-verified' => \App\Http\Middleware\EnsureDhiranEmailVerified::class,
             'realm' => \App\Http\Middleware\EnsureRealm::class,
             'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
             'mobile.envelope'  => \App\Http\Middleware\MobileEnvelope::class,

@@ -111,9 +111,6 @@
                     [__('Stock purchases from vendors'), $rupee($b['supplier_payables']['purchases_total'] ?? 0),
                         ($b['supplier_payables']['payments_tracked'] ?? true) ? null : __('payments to vendors are not recorded in the app')],
                     [__('Loyalty points outstanding'), number_format((float) ($b['loyalty_points']['total_points'] ?? 0)) . ' pts (' . $rupee($b['loyalty_points']['total_value'] ?? 0) . ')', null],
-                    isset($b['dhiran']) && $b['dhiran'] !== null
-                        ? [__('Gold loans: principal outstanding'), $rupee($b['dhiran']['total_principal'] ?? 0), __('interest booked: :i', ['i' => $rupee($b['dhiran']['total_interest'] ?? 0)])]
-                        : null,
                 ]);
             @endphp
             <table class="ye-table"><tbody>

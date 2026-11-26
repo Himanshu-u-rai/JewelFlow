@@ -85,13 +85,6 @@ final class ReportDefinition
                 "Report [{$this->key}] ({$this->classification->value}) may not offer CA Standard (frozen §18 scope)."
             );
         }
-
-        // The Dhiran family carries a baseline gate (Addendum B §23).
-        if ($this->family === ReportFamily::Dhiran && $this->permissions->familyGate === null) {
-            throw new InvalidArgumentException(
-                "Dhiran report [{$this->key}] must declare a family gate (e.g. dhiran.reports) (Addendum B §23)."
-            );
-        }
     }
 
     public function supportsFormat(ExportFormat $format): bool

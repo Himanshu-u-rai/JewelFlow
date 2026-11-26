@@ -6,7 +6,6 @@ namespace App\Services\Reporting\Definition;
  * The class that sets a report's export rules (frozen §11).
  * Receivables is a first-class value (frozen §22 RECEIVABLES), not a sub-label,
  * so every matrix row maps to exactly one classification with no exception.
- * The Dhiran *family* is an orthogonal axis — see ReportFamily.
  */
 enum ReportClassification: string
 {

@@ -2116,7 +2116,6 @@
     // Imports stay in Settings, as a header action (owner, 2026-11-15): a header button on desktop, an entry in the
     // floating button on phones and tablets. Data Exports opens from the Reports header.
     $canImportData = ($shop->isRetailer() || $shop->isManufacturer()) && auth()->user()->can('imports.manage');
-    $canProductPreferences = auth()->user()?->isShopOwner();
 @endphp
 <x-page-header class="settings-page-header">
     <div>
@@ -2131,15 +2130,12 @@
             </button>
         </h1>
     </div>
-    @if($canImportData || $canProductPreferences)
+    @if($canImportData)
         <div class="page-actions">
             @if($canImportData)
             <a href="{{ route('imports.index') }}" class="btn btn-secondary">
                 <x-icon name="upload" size="16" /> {{ __('Import Data') }}
             </a>
-            @endif
-            @if($canProductPreferences)
-            <a href="{{ route('product-preferences.index') }}" class="btn btn-secondary" data-turbo="false">Product preferences</a>
             @endif
         </div>
     @endif
@@ -3545,10 +3541,6 @@
 
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
-                                            {{-- Dhiran is a separate product (own subdomain); never surface its
-                                                 permission group in the JewelFlows Roles UI. The DB group key is
-                                                 'dhiran' (this guard previously checked a label that never matched). --}}
-                                            @if($group === 'dhiran') @continue @endif
                                             <div class="perm-group">
                                                 <div class="perm-group-title">{{ __($group) }}</div>
                                                 @foreach($groupPerms as $perm)
@@ -4302,7 +4294,6 @@
                         <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('What you have now') }}</h3>
                         <div class="settings-record-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @foreach($active as $ed)
-                                @if($ed === 'dhiran') @continue @endif
                                 @php
                                     $meta = [
                                         'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
@@ -4375,7 +4366,6 @@
                                         $meta = [
                                             'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
                                             'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
-                                            'dhiran'       => ['label' => 'Dhiran (Gold Loan)', 'desc' => 'Give gold loans and manage pledged items.'],
                                         ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
                                         $pending = $pendingRequests->firstWhere(fn($r) => $r->edition === $ed && $r->action === 'add');
                                         $buy     = $purchaseOptions[$ed] ?? null;

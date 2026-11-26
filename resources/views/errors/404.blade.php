@@ -1,5 +1,5 @@
 @php
-    $home = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? url('/dhiran') : route('dashboard');
+    $home = route('dashboard');
     $prev = url()->previous() !== url()->current() ? url()->previous() : $home;
 @endphp
 <x-error-page title="Page not found" message="This page doesn't exist or may have been moved." icon="zoom-out" tone="slate" :actions="[
