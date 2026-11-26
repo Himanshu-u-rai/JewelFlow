@@ -57,4 +57,25 @@ class RealmAuthFrontDoorTest extends TestCase
         // Guest at jewelflows.com/ → ERP landing (unchanged behavior).
         $this->get('https://jewelflows.com/')->assertOk();
     }
+
+    public function test_realm_middleware_lets_guests_and_erp_accounts_through_and_refuses_others(): void
+    {
+        $middleware = new \App\Http\Middleware\EnsureRealm();
+        $next = fn () => response('reached', 200);
+        $request = fn (?User $u) => tap(\Illuminate\Http\Request::create('https://jewelflows.com/masters'))->setUserResolver(fn () => $u);
+
+        // Guests are left to the route's own auth middleware.
+        $this->assertSame('reached', $middleware->handle($request(null), $next, 'erp')->getContent());
+
+        $erp = User::create(['mobile_number' => '9300000020', 'password' => bcrypt('x'), 'realm' => 'erp', 'is_active' => true]);
+        $this->assertSame('reached', $middleware->handle($request($erp), $next, 'erp')->getContent());
+
+        // A route gated to some other realm refuses an ERP account outright.
+        try {
+            $middleware->handle($request($erp), $next, 'other');
+            $this->fail('A realm mismatch was let through.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+    }
 }

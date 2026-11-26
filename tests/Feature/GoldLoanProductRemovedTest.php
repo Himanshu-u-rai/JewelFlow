@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
@@ -16,7 +17,7 @@ use Tests\TestCase;
  */
 class GoldLoanProductRemovedTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, CreatesTestTenant;
 
     private const MIGRATION = 'database/migrations/2026_11_26_100000_remove_gold_loan_product.php';
 
@@ -103,5 +104,30 @@ class GoldLoanProductRemovedTest extends TestCase
         // The guard runs before any change.
         $this->assertTrue(DB::table('dhiran_loans')->exists());
         $this->assertTrue(DB::table('permissions')->where('id', $permissionId)->exists());
+    }
+
+    public function test_migration_refuses_in_production_while_a_shop_of_that_type_or_its_billing_exists(): void
+    {
+        $shop = $this->createShop('retailer');
+        DB::table('shops')->where('id', $shop->id)->update(['shop_type' => 'dhiran']);
+        $planId = DB::table('plans')->insertGetId(['code' => 'dhiran_yearly', 'name' => 'Legacy', 'is_active' => DB::raw('true'), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('shop_subscriptions')->insert([
+            'shop_id' => $shop->id, 'plan_id' => $planId, 'status' => 'active', 'billing_cycle' => 'yearly',
+            'starts_at' => now()->toDateString(), 'ends_at' => now()->addYear()->toDateString(),
+            'grace_ends_at' => now()->addYear()->toDateString(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->app['env'] = 'production';
+        try {
+            (require base_path(self::MIGRATION))->up();
+            $this->fail('The migration ran in production while a shop of the retired type existed.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('shops.shop_type=dhiran', $e->getMessage());
+            $this->assertStringContainsString('subscriptions or invoices on its plans', $e->getMessage());
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+
+        $this->assertTrue(DB::table('plans')->where('id', $planId)->exists());
     }
 }

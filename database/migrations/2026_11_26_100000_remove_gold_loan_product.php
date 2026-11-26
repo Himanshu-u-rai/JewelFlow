@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\Schema;
  * no longer sign in (login only resolves ERP accounts).
  *
  * Safety: in production this migration refuses to run when any loan, payment,
- * ledger, cash, attachment row or any such account exists. Production is
+ * ledger, cash, attachment row, any such account, any shop of that type, or any
+ * subscription or invoice on its plans exists. Production is
  * expected to have none; if it does, nothing is changed (PostgreSQL runs the
  * whole migration in one transaction) and the deploy stops for a decision.
  *
@@ -132,6 +133,15 @@ return new class extends Migration
         }
         if (DB::table('users')->where('realm', 'dhiran')->exists()) {
             $found[] = 'users.realm=dhiran';
+        }
+        if (DB::table('shops')->where('shop_type', 'dhiran')->exists()) {
+            $found[] = 'shops.shop_type=dhiran';
+        }
+        // Billing history on its plans would keep them (inactive) and visible to platform admins.
+        $planIds = DB::table('plans')->where('code', 'like', 'dhiran\_%')->pluck('id');
+        if ($planIds->isNotEmpty() && (DB::table('shop_subscriptions')->whereIn('plan_id', $planIds)->exists()
+            || DB::table('platform_invoices')->whereIn('plan_id', $planIds)->exists())) {
+            $found[] = 'subscriptions or invoices on its plans';
         }
 
         if ($found !== []) {
