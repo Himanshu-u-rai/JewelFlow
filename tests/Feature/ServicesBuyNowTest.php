@@ -73,18 +73,18 @@ class ServicesBuyNowTest extends TestCase
 
     public function test_purchasable_service_renders_buy_now_button(): void
     {
-        // Retailer tenant already owns the retailer edition (not dhiran).
+        // Retailer tenant already owns the retailer edition (not manufacturer).
         [$user, $shop] = $this->createRetailerTenant();
 
-        // Make dhiran self-serve: dhiran product is seeded active; give it plans.
-        $this->priceProduct('dhiran');
+        // Make manufacturing self-serve: the product is seeded active; give it plans.
+        $this->priceProduct('manufacturing');
 
         $response = $this->actingAs($user)->get(route('settings.edit', ['tab' => 'services']));
 
         $response->assertOk();
         // The buy-now affordance for the priced, active product.
         $response->assertSee('Buy &amp; activate now', false);
-        $response->assertSee('data-product="dhiran"', false);
+        $response->assertSee('data-product="manufacturing"', false);
         // Price the owner sees (yearly 14,999 / monthly 1,499).
         $response->assertSee('1,499');
         $response->assertSee('14,999');
@@ -109,14 +109,14 @@ class ServicesBuyNowTest extends TestCase
     {
         [$user, $shop] = $this->createRetailerTenant();
 
-        // Price dhiran but flip the product inactive: must NOT be buyable.
-        $this->priceProduct('dhiran');
-        DB::table('platform_products')->where('code', 'dhiran')->update(['is_active' => DB::raw('false')]);
+        // Price manufacturing but flip the product inactive: must NOT be buyable.
+        $this->priceProduct('manufacturing');
+        DB::table('platform_products')->where('code', 'manufacturing')->update(['is_active' => DB::raw('false')]);
 
         $response = $this->actingAs($user)->get(route('settings.edit', ['tab' => 'services']));
 
         $response->assertOk();
-        $response->assertDontSee('data-product="dhiran"', false);
+        $response->assertDontSee('data-product="manufacturing"', false);
     }
 
     // ── add-callback: server-side checkout completion ───────────────
@@ -155,9 +155,9 @@ class ServicesBuyNowTest extends TestCase
 
     public function test_add_callback_creates_subscription_and_grants_edition(): void
     {
-        [$user, $shop] = $this->createRetailerTenant();   // owns retailer, not dhiran
-        $this->priceProduct('dhiran');
-        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'dhiran')->value('id'))
+        [$user, $shop] = $this->createRetailerTenant();   // owns retailer, not manufacturer
+        $this->priceProduct('manufacturing');
+        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'manufacturing')->value('id'))
             ->whereNotNull('price_yearly')->first();
 
         $this->actingAs($user);
@@ -174,15 +174,15 @@ class ServicesBuyNowTest extends TestCase
         $response->assertRedirect(route('settings.edit', ['tab' => 'services']));
         $response->assertSessionHas('success');
 
-        // A real dhiran subscription now exists and granted the dhiran edition.
+        // A real manufacturing subscription now exists and granted the manufacturer edition.
         $this->assertDatabaseHas('shop_subscriptions', [
             'shop_id'             => $shop->id,
             'razorpay_payment_id' => 'pay_TEST1',
             'status'              => 'active',
         ]);
-        $this->assertTrue($shop->fresh()->hasEdition('dhiran'));
+        $this->assertTrue($shop->fresh()->hasEdition('manufacturer'));
         $this->assertDatabaseHas('shop_editions', [
-            'shop_id' => $shop->id, 'edition' => 'dhiran', 'source' => 'subscription',
+            'shop_id' => $shop->id, 'edition' => 'manufacturer', 'source' => 'subscription',
         ]);
     }
 
@@ -190,8 +190,8 @@ class ServicesBuyNowTest extends TestCase
     {
         // L1: the server-issued order is bound to its initiating user via notes.user_id.
         [$user, $shop] = $this->createRetailerTenant();
-        $this->priceProduct('dhiran');
-        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'dhiran')->value('id'))
+        $this->priceProduct('manufacturing');
+        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'manufacturing')->value('id'))
             ->whereNotNull('price_yearly')->first();
 
         $this->actingAs($user);
@@ -206,19 +206,19 @@ class ServicesBuyNowTest extends TestCase
 
         $response->assertSessionHas('error');
         $this->assertDatabaseMissing('shop_subscriptions', ['razorpay_payment_id' => 'pay_X']);
-        $this->assertFalse($shop->fresh()->hasEdition('dhiran'));
+        $this->assertFalse($shop->fresh()->hasEdition('manufacturer'));
     }
 
     public function test_add_callback_skips_when_shop_already_owns_the_service(): void
     {
         // M1: if the edition was acquired after initiate, don't create a duplicate.
         [$user, $shop] = $this->createRetailerTenant();
-        $this->priceProduct('dhiran');
-        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'dhiran')->value('id'))
+        $this->priceProduct('manufacturing');
+        $plan = Plan::where('platform_product_id', PlatformProduct::where('code', 'manufacturing')->value('id'))
             ->whereNotNull('price_yearly')->first();
 
-        // Grant dhiran by another path first (admin grant).
-        \App\Support\ShopEdition::grantTo($shop, 'dhiran', null, \App\Models\ShopEditionAssignment::SOURCE_ADMIN_GRANT);
+        // Grant manufacturer by another path first (admin grant).
+        \App\Support\ShopEdition::grantTo($shop, 'manufacturer', null, \App\Models\ShopEditionAssignment::SOURCE_ADMIN_GRANT);
 
         $this->actingAs($user);
         $this->fakePaymentService($plan, 'order_DUP', 'pay_DUP', $user->id);

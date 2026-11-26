@@ -3,13 +3,11 @@
 namespace Tests\Feature\FinancialYear;
 
 use App\Models\Customer;
-use App\Models\Dhiran\DhiranSettings;
 use App\Models\Shop;
 use App\Reporting\LedgerService;
 use App\Reporting\ReceivablesService;
 use App\Reporting\ReportPeriod;
 use App\Services\BalancesAsAt;
-use App\Services\DhiranService;
 use App\Services\InstallmentService;
 use App\Support\TenantContext;
 use Carbon\Carbon;
@@ -74,7 +72,7 @@ class BalancesAsAtTest extends TestCase
 
     // ───────── shape / empty / isolation ─────────
 
-    public function test_empty_shop_returns_zeros_not_errors_and_retail_has_no_dhiran(): void
+    public function test_empty_shop_returns_zeros_not_errors_and_has_no_gold_loan_section(): void
     {
         $s = $this->snap();
         $this->assertSame(0.0, $s['receivables']['total']);
@@ -87,7 +85,7 @@ class BalancesAsAtTest extends TestCase
         $this->assertSame([], $s['karigar']['karigars']);
         $this->assertSame([], $s['supplier_payables']['vendors']);
         $this->assertSame(0, $s['loyalty_points']['total_points']);
-        $this->assertNull($s['dhiran']);
+        $this->assertArrayNotHasKey('dhiran', $s);
         $this->assertSame(0.0, $s['opening_balances']['customer_receivable_total']);
         $this->assertSame(self::D, $s['as_at']);
     }
@@ -380,45 +378,5 @@ class BalancesAsAtTest extends TestCase
         $this->assertSame(70, $l['total_points']);
         $this->assertSame(round(app(\App\Services\LoyaltyService::class)->pointsToRupees(70, $this->shop->id), 2), $l['total_value']);
         $this->assertSame(120, $this->snap(null, '2026-11-16')['loyalty_points']['total_points']);
-    }
-
-    // ───────── dhiran ─────────
-
-    public function test_dhiran_principal_and_booked_interest_as_at(): void
-    {
-        $shop = Shop::create([
-            'name' => 'Pawn Co', 'shop_type' => 'dhiran', 'phone' => '9990000000', 'owner_first_name' => 'O', 'owner_last_name' => 'W',
-            'owner_mobile' => '9990000000', 'country' => 'India', 'gst_rate' => 3.0, 'wastage_recovery_percent' => 0,
-        ]);
-        DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
-        $svc = app(DhiranService::class);
-
-        $this->at('2026-03-01 10:00:00');
-        $loan = TenantContext::runFor($shop->id, function () use ($shop, $svc) {
-            $cust = Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'D', 'mobile' => '98'.fake()->unique()->numerify('########')]);
-
-            return $svc->createLoan($shop, $cust, [[
-                'description' => 'Chain', 'metal_type' => 'gold', 'purity' => 24, 'gross_weight' => 100, 'rate_per_gram_at_pledge' => 6000,
-            ]], [
-                'principal_amount' => 100000, 'gold_rate_on_date' => 6000, 'interest_rate_monthly' => 2.0, 'interest_type' => 'flat',
-                'penalty_rate_monthly' => 0, 'tenure_months' => 12, 'min_lock_months' => 0, 'min_interest_months' => 0,
-                'loan_date' => '2026-03-01', 'created_by' => null,
-            ]);
-        });
-        $this->at('2026-03-31 20:00:00');
-        TenantContext::runFor($shop->id, fn () => $svc->accrueInterest($loan->fresh()));
-        $this->at('2026-04-20 12:00:00');
-        TenantContext::runFor($shop->id, fn () => $svc->accrueInterest($loan->fresh()));
-        $this->at('2026-11-16 12:00:00');
-
-        $d = $this->snap($shop->id)['dhiran'];
-        $this->assertNotNull($d);
-        $this->assertSame(100000.0, $d['total_principal']);
-        $this->assertSame(2000.0, $d['total_interest']);       // 30 days at 2%/month, booked by 31 March
-        $this->assertSame($loan->id, $d['loans'][0]['loan_id']);
-        $now = $this->snap($shop->id, '2026-11-16')['dhiran'];
-        $this->assertGreaterThan(2000.0, $now['total_interest']);
-        $this->assertSame((float) $loan->fresh()->outstanding_interest, $this->snap($shop->id, '2026-04-20')['dhiran']['total_interest']);
-        $this->assertNull($this->snap()['dhiran']);              // the retail shop still has none
     }
 }

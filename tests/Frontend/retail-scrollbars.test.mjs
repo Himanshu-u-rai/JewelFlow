@@ -6,7 +6,7 @@ import postcss from 'postcss';
 const path = new URL('../../resources/css/retail-scrollbars.css', import.meta.url);
 const css = postcss.parse(existsSync(path) ? readFileSync(path, 'utf8') : '');
 
-test('Retail scrollbar rules cannot reach admin, Dhiran or other document shells', () => {
+test('Retail scrollbar rules cannot reach admin or other document shells', () => {
     const rules = [];
     css.walkRules(rule => rules.push(rule));
     assert.ok(rules.length > 0, 'The Retail scrollbar theme must exist');

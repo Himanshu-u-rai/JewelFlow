@@ -2,14 +2,9 @@
 
 namespace Tests\Feature\Tables;
 
-use App\Models\Customer;
-use App\Models\Dhiran\DhiranLoan;
-use App\Models\Dhiran\DhiranLoanItem;
 use App\Models\Repair;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\ViewErrorBag;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -22,70 +17,6 @@ class TableConsistencyUiTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-    }
-
-    private function forfeitureReport(bool $populated, int $total = 1): \DOMXPath
-    {
-        $shop = $this->createShop('dhiran');
-        $owner = $this->createOwnerUser($shop, $this->createOwnerRole($shop->id));
-        $this->actingAs($owner);
-
-        // Unsaved financial snapshots: this presentation test creates no loan or ledger entries.
-        $loan = new DhiranLoan([
-            'loan_number' => 'TABLE-REVIEW-001', 'principal_amount' => 12345.67,
-            'outstanding_principal' => 12000, 'outstanding_interest' => 345.67,
-            'outstanding_penalty' => 5, 'forfeited_at' => '2026-10-31',
-            'forfeiture_notice_sent_at' => '2026-10-01',
-        ]);
-        $loan->id = 123;
-        $loan->setRelation('customer', new Customer(['first_name' => 'Table', 'last_name' => 'Example']));
-        $loan->setRelation('items', collect([new DhiranLoanItem(), new DhiranLoanItem()]));
-        $loan->items_count = 2; // the report reads the controller's withCount('items')
-        $loans = new LengthAwarePaginator($populated ? [$loan] : [], $populated ? $total : 0, 20, 1, [
-            'path' => url('/dhiran/reports/forfeiture'),
-        ]);
-        $html = TenantContext::runFor($shop->id, function () use ($loans) {
-            view()->share('errors', new ViewErrorBag());
-            // The controller always passes the period filters and the report totals (Dhiran reports, 2026-11).
-            $totals = ['count' => $loans->total(), 'principal' => 0, 'outstanding' => 0, 'items' => 0];
-
-            return view('dhiran.reports.forfeiture', compact('loans', 'totals'))->render();
-        });
-        $dom = new \DOMDocument();
-        $previous = libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
-
-        return new \DOMXPath($dom);
-    }
-
-    public function test_forfeiture_uses_shared_table_without_changing_values_or_alignment(): void
-    {
-        $xp = $this->forfeitureReport(true);
-        $this->assertSame(1, $xp->query('//div[contains(@class,"jf-table-wrap")]/table[contains(@class,"jf-table")]')->length);
-        // Columns: row number, Loan #, Customer, Mobile (Dhiran tables, 2026-11), then Principal and Written Off.
-        foreach ([5, 6] as $column) {
-            $this->assertSame(1, $xp->query('//table/thead/tr/th['.$column.'][contains(@class,"text-right")]')->length);
-            $this->assertSame(1, $xp->query('//table/tbody/tr/td['.$column.'][contains(@class,"text-right")]')->length);
-        }
-        $this->assertSame('12,345.67', trim($xp->query('//table/tbody/tr/td[5]')->item(0)->textContent));
-        $this->assertSame('12,350.67', trim($xp->query('//table/tbody/tr/td[6]')->item(0)->textContent));
-        $this->assertSame('2', trim($xp->query('//table/tbody/tr/td[7][contains(@class,"text-center")]')->item(0)->textContent));
-        $this->assertSame(1, $xp->query('//table/tbody/tr/td/a[contains(@href,"/dhiran/loans/123")]')->length);
-    }
-
-    public function test_forfeiture_empty_state_uses_shared_seven_column_cell(): void
-    {
-        $xp = $this->forfeitureReport(false);
-        // Nine columns now: row number and Mobile were added to the Dhiran tables (2026-11).
-        $this->assertSame(1, $xp->query('//td[@colspan="9" and contains(@class,"jf-table-empty") and normalize-space(.)="No forfeited loans found"]')->length);
-    }
-
-    public function test_forfeiture_exposes_existing_server_pagination_when_more_rows_exist(): void
-    {
-        $xp = $this->forfeitureReport(true, 21);
-        $this->assertGreaterThan(0, $xp->query('//nav//a[contains(@href,"page=2")]')->length);
     }
 
     private function xpath(string $html): \DOMXPath

@@ -28,22 +28,15 @@ class AuthUnitTest extends TestCase
 
     // ── Realm helper ───────────────────────────────────────────────────────
 
-    public function test_realm_from_host_defaults_to_erp(): void
+    public function test_realm_current_is_erp(): void
     {
-        $this->assertSame(Realm::ERP, Realm::fromHost('jewelflows.com'));
-        $this->assertSame(Realm::ERP, Realm::fromHost('www.jewelflows.com'));
-        $this->assertSame(Realm::ERP, Realm::fromHost(null));
-    }
-
-    public function test_realm_from_host_detects_dhiran_subdomain(): void
-    {
-        $this->assertSame(Realm::DHIRAN, Realm::fromHost('dhiran.jewelflows.com'));
+        $this->assertSame(Realm::ERP, Realm::current());
     }
 
     public function test_realm_is_valid(): void
     {
         $this->assertTrue(Realm::isValid('erp'));
-        $this->assertTrue(Realm::isValid('dhiran'));
+        $this->assertFalse(Realm::isValid('dhiran'));
         $this->assertFalse(Realm::isValid('admin'));
         $this->assertFalse(Realm::isValid(null));
         $this->assertFalse(Realm::isValid(''));
@@ -52,7 +45,6 @@ class AuthUnitTest extends TestCase
     public function test_realm_constants_match_user(): void
     {
         $this->assertSame(User::REALM_ERP, Realm::ERP);
-        $this->assertSame(User::REALM_DHIRAN, Realm::DHIRAN);
     }
 
     // ── Login input rules ──────────────────────────────────────────────────

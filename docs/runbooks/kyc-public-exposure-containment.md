@@ -63,7 +63,7 @@ All production checks are read-only. Timestamps are the server's own clock.
 | Deployed baseline | `018b3d810e37d534f498033ab582ee41f3197c27` | `git rev-parse HEAD` in `/var/www/jewelflow`. First checked 2026-09-16T17:29:11+00:00; **re-checked 2026-09-20T18:36:08+00:00, unchanged.** Must be re-read again immediately before any approved action |
 | nginx version | 1.18.0 (Ubuntu) | `nginx -v`, same session |
 | Enabled vhosts | `jewelflow`, `staging.jewelflows.com` | `ls -l /etc/nginx/sites-enabled/` |
-| Serving hostnames, production vhost | **`jewelflows.com`, `www.jewelflows.com`, `dhiran.jewelflows.com`** | `/etc/nginx/sites-available/jewelflow` line 24, confirmed present in `nginx -T` output |
+| Serving hostnames, production vhost | **`jewelflows.com`, `www.jewelflows.com`** | `/etc/nginx/sites-available/jewelflow` line 24, confirmed present in `nginx -T` output |
 | Production docroot | `/var/www/jewelflow/public` | line 26 |
 | Public storage symlink | `public/storage -> /var/www/jewelflow/storage/app/public` | `ls -ld` |
 | KYC files on the public tree | 2 (count only; filenames deliberately not recorded) | `find … -type f \| wc -l` |
@@ -89,7 +89,7 @@ Effective-configuration evidence, from `nginx -T` (not the source file):
 ```
 # configuration file /etc/nginx/sites-enabled/jewelflow:
 196: server {            207: listen 80;        208: server_name jewelflows.com www.jewelflows.com;
-217: server {            218: listen 443 ssl;   219: server_name jewelflows.com www.jewelflows.com dhiran.jewelflows.com;
+217: server {            218: listen 443 ssl;   219: server_name jewelflows.com www.jewelflows.com;
                          221: root /var/www/jewelflow/public;
 # configuration file /etc/nginx/sites-enabled/staging.jewelflows.com:
 288: server {            310: listen 443 ssl;   289: server_name staging.jewelflows.com;
@@ -106,7 +106,7 @@ the default server's certificate:
 
 ```
 SNI unknown.example        -> subject CN = jewelflows.com
-                              SAN: dhiran.jewelflows.com, jewelflows.com, www.jewelflows.com
+                              SAN: jewelflows.com, www.jewelflows.com
 SNI staging.jewelflows.com -> subject CN = staging.jewelflows.com      (control: name matching works)
 Host unknown.example :80   -> 301 (production block; the staging :80 block returns 404)
 ```
@@ -118,10 +118,10 @@ So:
   hostname allow-list at the edge therefore cannot contain this on its own.
 * The nginx rule must be **host-independent**, and it — not the Cloudflare rule —
   is the authoritative control.
-* `dhiran.jewelflows.com` is absent from the `:80` `server_name` (line 13), so
-  plain HTTP to that host is handled by the default `:80` block and `301`-ed to
-  `https://jewelflows.com$request_uri` — into a hostname the rules already cover.
-  No separate HTTP rule is needed, but the redirect target must stay covered.
+* The old `dhiran.jewelflows.com` host is retired. If it still exists in nginx
+  (`server_name`), the TLS certificate or DNS, it should 301 to
+  `https://jewelflows.com$request_uri` or be removed from all three; until then
+  it resolves to this same docroot and the rules above still apply to it.
 
 **`set_real_ip_from` is not a network filter.** It is absent here, and it would
 not matter to containment if it were present: `ngx_http_realip_module` only
@@ -129,10 +129,6 @@ decides whether nginx *replaces the recorded client address* with one taken from
 a trusted header. It grants and denies nothing. There is currently **no**
 origin-level restriction limiting access to Cloudflare address ranges, which is
 another reason the origin deny — not the edge rule — has to be the control.
-
-`dhiran.jewelflows.com` is in scope here **only** as a name that resolves to this
-docroot. This procedure does not touch, audit, or change anything else about the
-Dhiran business.
 
 ---
 
@@ -157,7 +153,7 @@ Dhiran business.
 Business/Enterprise-only operator. The portable form is `starts_with`:
 
 ```
-(starts_with(http.request.uri.path, "/storage/kyc/") and http.host in {"jewelflows.com" "www.jewelflows.com" "dhiran.jewelflows.com"})
+(starts_with(http.request.uri.path, "/storage/kyc/") and http.host in {"jewelflows.com" "www.jewelflows.com"})
 ```
 
 * Action: **Block**
@@ -338,7 +334,6 @@ valid prefix-purge entry and silently covers nothing:
 ```
 jewelflows.com/storage/kyc/
 www.jewelflows.com/storage/kyc/
-dhiran.jewelflows.com/storage/kyc/
 ```
 
 One entry per serving hostname, because Cloudflare keys the cache per hostname.
@@ -370,16 +365,16 @@ first-party check, which does not go through `/storage/`.
 P=/storage/kyc/__containment-probe-does-not-exist
 
 # Origin, host-independent (from the server itself; bypasses Cloudflare)
-for h in jewelflows.com www.jewelflows.com dhiran.jewelflows.com unknown.example; do
+for h in jewelflows.com www.jewelflows.com unknown.example; do
   curl -sS -o /dev/null -w "$h %{http_code}\n" -k --resolve "$h:443:127.0.0.1" "https://$h$P"
 done
-# Expected after §4: 403 403 403 403   (baseline today: 404 404 404 404)
+# Expected after §4: 403 403 403  (baseline today: 404 404 404)
 
 # Edge — see "Telling an edge block from an origin 403" below. A 403 status
 # alone does NOT show the edge rule works: once §4 is in place the origin
 # answers 403 too, and Cloudflare passes that through.
 PE="/storage/kyc/__edge-probe-$(date +%s)-$RANDOM"   # unique per run: nothing can be cached for it
-for h in jewelflows.com www.jewelflows.com dhiran.jewelflows.com; do
+for h in jewelflows.com www.jewelflows.com; do
   curl -sS -o /tmp/edge-body.$h -w "$h %{http_code}\n" "https://$h$PE"
 done
 # Then, on the origin, for that exact probe path:
@@ -393,10 +388,6 @@ sudo grep -F "$PE" /var/log/nginx/access.log | wc -l
 PO="/storage/kyc/__origin-probe-$(date +%s)-$RANDOM"
 curl -sS -o /dev/null -k --resolve "jewelflows.com:443:127.0.0.1" "https://jewelflows.com$PO"
 sudo grep -F "$PO" /var/log/nginx/access.log | wc -l     # expected: 1
-
-# HTTP path still funnels into a covered hostname
-curl -sSI http://dhiran.jewelflows.com$P | head -2
-# Expected: 301 -> https://jewelflows.com/...
 ```
 
 **Telling an edge block from an origin 403 (correction).** An earlier

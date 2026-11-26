@@ -595,12 +595,4 @@ class ShopAccessTest extends TestCase
         $this->assertFalse((bool) $fresh->shop_access_enabled);
         $this->assertTrue((bool) $fresh->quick_bill_enabled, 'mobile toggle must not wipe quick_bill_enabled');
     }
-
-    // ── 35. feature stays out of Dhiran ─────────────────────────────────────────
-
-    public function test_middleware_does_not_touch_dhiran(): void
-    {
-        $src = file_get_contents(app_path('Http/Middleware/EnsureShopAccessOpen.php'));
-        $this->assertStringNotContainsStringIgnoringCase('dhiran', $src);
-    }
 }

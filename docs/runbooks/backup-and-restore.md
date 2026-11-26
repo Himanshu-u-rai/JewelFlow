@@ -106,7 +106,7 @@ sudo -u postgres createdb jewelflow_restore_test
 sudo -u postgres psql jewelflow_restore_test -f db-dumps/postgresql-jewelflow.sql
 
 # 3. Smoke-check the restored data, then drop the scratch DB:
-sudo -u postgres psql jewelflow_restore_test -c "SELECT count(*) FROM users; SELECT count(*) FROM dhiran_loans;"
+sudo -u postgres psql jewelflow_restore_test -c "SELECT count(*) FROM users;"
 sudo -u postgres dropdb jewelflow_restore_test
 ```
 

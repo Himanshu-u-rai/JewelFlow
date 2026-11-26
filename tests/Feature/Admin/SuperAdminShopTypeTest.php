@@ -16,10 +16,9 @@ use Tests\TestCase;
  *
  * The shops list used to render the label with a two-way ternary
  * ($shop->shop_type === 'retailer' ? 'Retail' : 'Manufacturer'), which
- * mislabeled a stored 'dhiran' shop as "Manufacturer", and the Type filter
- * only offered Retail/Manufacturer. The label now comes from the central,
- * exhaustive ShopEdition::label() so an unknown type can NEVER silently show
- * as "Manufacturer", and Dhiran is filterable.
+ * mislabeled any other stored shop type as "Manufacturer". The label now
+ * comes from the central, exhaustive ShopEdition::label() so an unknown type
+ * can NEVER silently show as "Manufacturer".
  */
 class SuperAdminShopTypeTest extends TestCase
 {
@@ -64,16 +63,6 @@ class SuperAdminShopTypeTest extends TestCase
         ]);
     }
 
-    public function test_dhiran_shop_renders_dhiran_label(): void
-    {
-        $this->makeShop('dhiran', 'Dhiran Shop A');
-
-        $res = $this->actingAsSuperAdmin()->get(route('admin.shops.index'));
-
-        $res->assertOk();
-        $res->assertSee('<td class="px-4 py-3">Dhiran</td>', false);
-    }
-
     public function test_retailer_shop_renders_retail_label(): void
     {
         $this->makeShop('retailer', 'Retail Shop A');
@@ -94,30 +83,6 @@ class SuperAdminShopTypeTest extends TestCase
         $res->assertSee('<td class="px-4 py-3">Manufacturer</td>', false);
     }
 
-    public function test_dhiran_filter_returns_dhiran_shops(): void
-    {
-        $this->makeShop('dhiran', 'Dhiran Filtered Shop');
-        $this->makeShop('manufacturer', 'Manufacturer Other Shop');
-
-        $res = $this->actingAsSuperAdmin()->get(route('admin.shops.index', ['type' => 'dhiran']));
-
-        $res->assertOk();
-        $res->assertSee('Dhiran Filtered Shop');
-        $res->assertDontSee('Manufacturer Other Shop');
-    }
-
-    public function test_manufacturer_filter_excludes_dhiran_shops(): void
-    {
-        $this->makeShop('dhiran', 'Dhiran Excluded Shop');
-        $this->makeShop('manufacturer', 'Manufacturer Included Shop');
-
-        $res = $this->actingAsSuperAdmin()->get(route('admin.shops.index', ['type' => 'manufacturer']));
-
-        $res->assertOk();
-        $res->assertSee('Manufacturer Included Shop');
-        $res->assertDontSee('Dhiran Excluded Shop');
-    }
-
     /**
      * The exhaustive safe fallback: an unrecognised shop_type must render as
      * itself, never collapse to "Manufacturer" (the old ternary's default).
@@ -135,24 +100,23 @@ class SuperAdminShopTypeTest extends TestCase
         // Known types still map exactly.
         $this->assertSame('Retail', ShopEdition::label('retailer'));
         $this->assertSame('Manufacturer', ShopEdition::label('manufacturer'));
-        $this->assertSame('Dhiran', ShopEdition::label('dhiran'));
     }
 
     /**
-     * The presentation fix must not touch entitlements: a Dhiran shop's edition
+     * The presentation fix must not touch entitlements: a shop's edition
      * assignment (its capability source of truth) is unchanged by rendering the
      * admin list.
      */
     public function test_tenant_editions_unchanged_by_shop_listing(): void
     {
-        $shop = $this->makeShop('dhiran', 'Dhiran Editions Shop');
+        $shop = $this->makeShop('retailer', 'Retail Editions Shop');
         $before = $shop->fresh()->editionList();
 
         $res = $this->actingAsSuperAdmin()->get(route('admin.shops.index'));
         $res->assertOk();
 
-        $this->assertSame(['dhiran'], $before);
+        $this->assertSame(['retailer'], $before);
         $this->assertSame($before, $shop->fresh()->editionList());
-        $this->assertTrue($shop->fresh()->hasDhiran());
+        $this->assertTrue($shop->fresh()->hasEdition('retailer'));
     }
 }

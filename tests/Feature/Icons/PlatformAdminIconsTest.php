@@ -57,9 +57,11 @@ class PlatformAdminIconsTest extends TestCase
     {
         $xp = $this->page($this->admin(), route('admin.settings.index'));
 
-        foreach (['store', 'factory', 'coins'] as $card) {
+        foreach (['store', 'factory'] as $card) {
             $this->assertSame(1, $xp->query("//span[contains(@class, 'admin-setting-icon')]//svg[@data-icon='{$card}' and @width='20']")->length, "{$card} card icon");
         }
+        // The retired gold-loan product's card (coins icon) is gone.
+        $this->assertSame(0, $xp->query("//span[contains(@class, 'admin-setting-icon')]//svg[@data-icon='coins']")->length);
     }
 
     public function test_the_activity_feed_marks_known_actions_with_an_icon_and_leaves_other_rows_with_a_bullet(): void

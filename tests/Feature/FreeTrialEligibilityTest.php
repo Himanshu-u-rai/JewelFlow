@@ -400,10 +400,6 @@ class FreeTrialEligibilityTest extends TestCase
         $this->assertTrue($svc->hasPriorEntitlementForFamily($shopA->id, \App\Support\ShopEdition::MANUFACTURER, $userA->id),
             'retailer history must block the manufacturer trial — one family');
 
-        // Different family → unaffected.
-        $this->assertFalse($svc->hasPriorEntitlementForFamily($shopA->id, 'dhiran', $userA->id),
-            'an ERP subscription must not consume the Dhiran trial');
-
         // Another tenant entirely → unaffected.
         [$shopB, $userB] = $this->shopAndUser();
         $this->assertFalse($svc->hasPriorEntitlementForFamily($shopB->id, \App\Support\ShopEdition::RETAILER, $userB->id),

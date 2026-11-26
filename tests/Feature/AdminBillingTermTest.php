@@ -25,7 +25,7 @@ use Tests\TestCase;
  *     entitling term, and a To ≤ From,
  *   - requires an override reason when dates diverge from the safe suggestion,
  *   - retires competing same-product subscriptions without touching other
- *     products (Retail vs Dhiran).
+ *     products (Retail vs Manufacturer).
  * Also pins that the scheduler + enforcement middleware leave a valid paid term
  * alone while still downgrading a genuinely expired one.
  */
@@ -76,11 +76,11 @@ class AdminBillingTermTest extends TestCase
         ]);
     }
 
-    private function dhiranPlan(): Plan
+    private function manufacturerPlan(): Plan
     {
         return Plan::create([
-            'code' => 'dhiran_billing_' . fake()->unique()->numberBetween(1000, 999999),
-            'name' => 'Dhiran',
+            'code' => 'manufacturer_billing_' . fake()->unique()->numberBetween(1000, 999999),
+            'name' => 'Manufacturer',
             'price_monthly' => 2999,
             'price_yearly' => 30000,
             'trial_days' => 20,
@@ -266,12 +266,12 @@ class AdminBillingTermTest extends TestCase
         $admin      = $this->verifiedAdmin();
         $shop       = $this->createShop('retailer');
         $retailPlan = $this->retailPlan();
-        $dhiranPlan = $this->dhiranPlan();
+        $manufacturerPlan = $this->manufacturerPlan();
 
-        // A live Dhiran subscription on the same shop — must survive a Retail edit.
-        $dhiranSub = ShopSubscription::create([
+        // A live Manufacturer subscription on the same shop — must survive a Retail edit.
+        $otherSub = ShopSubscription::create([
             'shop_id' => $shop->id,
-            'plan_id' => $dhiranPlan->id,
+            'plan_id' => $manufacturerPlan->id,
             'status' => 'active',
             'starts_at' => now()->subMonth()->toDateString(),
             'ends_at' => now()->addYear()->toDateString(),
@@ -299,7 +299,7 @@ class AdminBillingTermTest extends TestCase
         ]))->assertRedirect();
 
         $this->assertSame('cancelled', $priorRetail->fresh()->status, 'Prior same-product sub must be superseded.');
-        $this->assertSame('active', $dhiranSub->fresh()->status, 'Other-product sub must be untouched.');
+        $this->assertSame('active', $otherSub->fresh()->status, 'Other-product sub must be untouched.');
     }
 
     // 8 — scheduler leaves a valid paid yearly term alone.

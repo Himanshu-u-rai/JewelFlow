@@ -960,7 +960,7 @@ Each needs credentials, hardware, or a setting this session may not change.
    rules → Custom rule, action Block, expression
 
    ```
-   (http.host in {"jewelflows.com" "www.jewelflows.com" "dhiran.jewelflows.com"} and (lower(url_decode(http.request.uri.path)) contains "/storage/kyc/" or lower(url_decode(http.request.uri.path)) contains "/storage/signatures/" or lower(url_decode(http.request.uri.path)) contains "/storage/karigar-invoices/" or lower(url_decode(http.request.uri.path)) contains "/storage/purchases/"))
+   (http.host in {"jewelflows.com" "www.jewelflows.com"} and (lower(url_decode(http.request.uri.path)) contains "/storage/kyc/" or lower(url_decode(http.request.uri.path)) contains "/storage/signatures/" or lower(url_decode(http.request.uri.path)) contains "/storage/karigar-invoices/" or lower(url_decode(http.request.uri.path)) contains "/storage/purchases/"))
    ```
 
    One verification for either state: `… verify-edge` on the VPS. Exit 3 with
@@ -1024,7 +1024,7 @@ are listed at its end.
 | Mobile, local | `rebrand/jewelflows-mobile` at `4f10a3b5df7d64c11b39b90713169155c713d233` — unchanged since the baseline; owner's uncommitted `src/utils/storage.ts` (+20/−1, preserved) and 19 untracked QA files | observed: `git status` |
 | Mobile, GitHub | `rebrand/jewelflows-mobile` at `a987e99845b29d55cc12be2a35eed436cdcc4998` | observed: `git ls-remote` |
 | Mobile divergence | local only: `ffcd034456ce60fcff344d8923003c5e40884e2d` (S3-04 signature warning), `2cad553b50e77890088488a43b72a2e7bd4f68ef` (S3-09c uncertain outcome), `4f10a3b` (reconciled-request message); remote only: `c877312c35530899d9153dd67464cd731d1dc639`, `a987e99` (both 2026-07-18; no file overlap; `storage.ts` untouched). **Not pushed; no build distributed** | observed: `git log` |
-| Health | `/health` and `/login` 200 on jewelflows.com, www, dhiran and staging | observed: curl, 22:39Z |
+| Health | `/health` and `/login` 200 on jewelflows.com, www and staging | observed: curl, 22:39Z |
 | Errors since the release | production: one line, 03:44:28 IST — Claude's bootless `php -r` inspection, not traffic; staging: none | observed: daily logs |
 
 ### Every change since `c68114e`
@@ -1079,7 +1079,7 @@ project work affecting this release: none — every other branch active after
   loses them too.
 * **R6/R7 origin.** The loaded configuration (`nginx -T`) has
   `location ^~ /storage/kyc/` and `^~ /storage/signatures/` with `deny all` in
-  the one :443 block serving jewelflows.com, www and dhiran; it is the first
+  the one :443 block serving jewelflows.com and www (and a third host since retired); it is the first
   :443 block, so it also answers a bare IP or an unknown Host; there is no IPv6
   listener. Random-name probes (no real file requested): 403 from nginx on all
   three hosts and both prefixes; control path 404 from the application; `/login`
@@ -1220,7 +1220,7 @@ action: change or remove that account on staging.
 
 Type→table map read from the writers in `app/`; production, read-only. Every
 resolvable reference stays in its shop (0 crossing) across cash_transactions
-(both pairs), customer_gold_transactions, dhiran_attachments, entity_events,
+(both pairs), customer_gold_transactions, entity_events,
 metal_movements and audit_logs; `ShopPreferences` audit rows carry the shop id
 itself (same shop); 28 audit rows point at scan records the daily
 `scan:cleanup` deleted (nothing left to cross into); orchestration_events,
@@ -1234,9 +1234,9 @@ pending_uploads and store_credit_movements hold no references. Note:
 | SEC-001 backup dump restored as superuser | M | **Fixed** `7d23e96`: pre-scan + restore as the app role (tested on the real schema) |
 | SEC-002 artisan as root when www-data can't read .env | M | **Fixed** `7d23e96`: refuses |
 | SEC-003 packet scan misses real secret formats; whole-line exceptions | M | **Fixed** `e157850`: 9/9 real shapes flagged, 0/8 placeholders |
-| SEC-004 Route::bind() dropped by route:cache (admin edition approve/deny 404 in production; Dhiran route hijacked in tests) | L (functional) | **Fixed** `b77418c`, verified with routes cached |
+| SEC-004 Route::bind() dropped by route:cache (admin edition approve/deny 404 in production; a route hijacked in tests) | L (functional) | **Fixed** `b77418c`, verified with routes cached |
 | SEC-005 rotation revert states unchecked | L | Open — the rotation already ran; for a future rotation |
-| SEC-006 nginx check ignores dhiran-only / IPv6-only blocks | L | Open — production has one block for all three hosts |
+| SEC-006 nginx check ignores single-host / IPv6-only blocks | L | Open — production has one block for all its hosts |
 | SEC-007 no cleanup trap; verify ignores stale backups | L | **Fixed** `7d23e96`, `ddf61b5`: trap on the restore; `verify` fails after 26 h without an archive |
 | SEC-008 admin register reveals admin mobiles; no throttle | L | **Fixed** `5d30426` |
 | SEC-009 audit command skips polymorphic columns | L | Open in the command; the manual type-aware check above covers today's data |
@@ -1360,8 +1360,8 @@ triggers, 144/144 tables; scratch database and extracted dump removed.
   superseded signature (`signatures/…png`); staging has none. The application
   never builds a `/storage/kyc/` URL: KYC documents are streamed by
   `KycDocumentController` through `Storage::disk(...)->response()` — the
-  origin deny cannot affect authenticated viewing (Dhiran included).
-* jewelflows.com, www and dhiran are proxied by Cloudflare (`server:
+  origin deny cannot affect authenticated viewing.
+* jewelflows.com and www (and a third host since retired) are proxied by Cloudflare (`server:
   cloudflare`, `cf-ray`); staging.jewelflows.com is DNS-only (no edge cache).
   No Cloudflare token or CLI exists on this machine.
 * The edge package (printed by the operator run): a WAF custom rule blocking
@@ -1379,7 +1379,7 @@ Run by the user from their laptop (`ssh -t jewelflow '… run'`); evidence in
 | env-read | `.env` dev:dev 640 → **dev:www-data 640**; www-data reads, cannot write |
 | rotate (S3-22) | **rotated**; maintenance 22:20:59–22:21:01Z; config cache, php8.2-fpm, the worker and a fresh CLI use the new password; `/login` and `/health` 200, staging `/health` 200; **0 failed logins** for the role since the switch (checked again ≈22:35Z); 0 application errors |
 | backup (R9) | first run 22:21Z: `backup:run` as www-data **succeeded** (`2026-09-26-03-51-07.zip`, 36 MB — the first since 2026-09-14), then the check stopped on a **false positive** of mine: one empty directory entry `storage/app/backup-temp/` (0 bytes). Fixed (`250e76c`: files only). Second run 22:24Z: `2026-09-26-03-54-46.zip` **verified** — required paths present, excluded paths absent, archived `.env` equal to the live one, dump restored into a scratch database: 14/14 row counts, 42 triggers; scratch removed. Directory `www-data 700` |
-| origin (R7, R6) | denies applied 22:24:56Z (`nginx -t` ok). The first probes, right after the reload, reached the application on jewelflows.com (old workers still answering; www and dhiran, a second later, got nginx's 403); a direct probe then got 403. The run's last lines were lost (`exec > >(tee)` + ssh closing). Both fixed (`a7f32b4`: wait out the reload; a pipeline that finishes writing). Re-verified 22:31Z: **403 from nginx on all three hosts for both prefixes, 12 refusals logged**, `/login` 200, unmatched `/storage/` still reaches the application. Rollback point that keeps the denies: `operator-20260925T223134Z/jewelflow.vhost.protected` |
+| origin (R7, R6) | denies applied 22:24:56Z (`nginx -t` ok). The first probes, right after the reload, reached the application on jewelflows.com (old workers still answering; www, a second later, got nginx's 403); a direct probe then got 403. The run's last lines were lost (`exec > >(tee)` + ssh closing). Both fixed (`a7f32b4`: wait out the reload; a pipeline that finishes writing). Re-verified 22:31Z: **403 from nginx on all three hosts for both prefixes, 12 refusals logged**, `/login` 200, unmatched `/storage/` still reaches the application. Rollback point that keeps the denies: `operator-20260925T223134Z/jewelflow.vhost.protected` |
 | edge | **cached copies purged** ≈22:45Z: Custom Purge by URL of the 9 addresses (3 files × 3 hosts) in the Cloudflare dashboard, done by Claude in the user's signed-in Chrome with the user's explicit "yes purge"; Cloudflare: "Purge request successfully received". Checked from outside, header-only (no content fetched): all 9 answer **403** through Cloudflare, `cf-cache-status: BYPASS` (nothing served from cache). The WAF block rule is **not** added: an extra lock (it would hold if the origin deny ever regressed); a security setting, so the user's to add |
 
 Releases for those fixes (code-only, docs and scripts): `250e76c` (22:23Z) and
@@ -1391,7 +1391,7 @@ Releases for those fixes (code-only, docs and scripts): `250e76c` (22:23Z) and
 2026-09-25 ≈11:45Z): **237 references checked** (232 declared, 1 implied by
 name, 4 through a parent), **0 crossing**. **Not covered by it: 21 columns** —
 11 polymorphic (`*_id` beside `*_type`: shop_notifications, orchestration_events,
-entity_events, dhiran_attachments, pending_uploads, customer_gold_transactions,
+entity_events, pending_uploads, customer_gold_transactions,
 cash_transactions ×2, metal_movements, store_credit_movements, audit_logs) and
 10 that name no shop table (UPI, Razorpay, device-install, quote and
 certificate identifiers). Of the polymorphic ones, only `shop_notifications`
@@ -1409,7 +1409,7 @@ on `.jewelflows.com`. Both environments had the same three names (derived
 from `APP_NAME`) and `SESSION_DOMAIN=.jewelflows.com`.
 
 Fix (`3898fea`, config only): outside production every session cookie name
-(tenant, platform-admin, Dhiran) carries `APP_ENV`, even a name copied from
+(tenant, platform-admin) carries `APP_ENV`, even a name copied from
 production's `.env`; `SESSION_DOMAIN` is honoured in production only, so every
 staging cookie — including `XSRF-TOKEN` and `remember_*`, whose names no
 namespace changes — is host-only. Production's names and domain are
@@ -2908,18 +2908,18 @@ Impact is stated as **"no identified first-party viewing regression"**. External
 consumers remain unverified; that is a gap in the evidence, not a clean bill.
 
 **Serving hostnames, named rather than counted.** Production vhost
-`/etc/nginx/sites-available/jewelflow` line 24 serves `jewelflows.com`,
-`www.jewelflows.com` and `dhiran.jewelflows.com`. Staging is a separate vhost
+`/etc/nginx/sites-available/jewelflow` line 24 serves `jewelflows.com`
+and `www.jewelflows.com`. Staging is a separate vhost
 and a separate document root (`/var/www/jewelflow-staging/public`) and is
-untouched by this package. `dhiran.jewelflows.com` is in scope **only** as a
-third name resolving to the same document root — no part of this expands the
-unrelated Dhiran business audit.
+untouched by this package. A third host that once served the same document
+root is retired; if it still exists in nginx, the certificate or DNS, it should
+301 to the main domain or be removed.
 
 **Corrected Cloudflare expression.** `matches` requires Business or Enterprise,
 so it is not available here:
 
 ```
-(starts_with(http.request.uri.path, "/storage/kyc/") and http.host in {"jewelflows.com" "www.jewelflows.com" "dhiran.jewelflows.com"})
+(starts_with(http.request.uri.path, "/storage/kyc/") and http.host in {"jewelflows.com" "www.jewelflows.com"})
 ```
 
 **Purge entries are hostname-qualified.** A bare `/storage/kyc/` is incomplete —
@@ -2928,7 +2928,6 @@ Cloudflare keys the cache per hostname:
 ```
 jewelflows.com/storage/kyc/
 www.jewelflows.com/storage/kyc/
-dhiran.jewelflows.com/storage/kyc/
 ```
 
 Sequence remains **edge block → origin deny → purge**, subject to the ordering,
@@ -4538,7 +4537,7 @@ earlier 12/18-line window is withdrawn) and `tests/Inventory/request_id_sweep.ph
 | Models with `shop_id`, no trait (15) | tenant-facing bindings: `User` (staff ×4, device revoke), `PlatformInvoice` (billing), `StockPurchaseItem` (vault) | explicit | `guardStaffTarget`, shop checks in `destroyAllForUser`, `BillingController@show`; purchase-identity guard | **inspected** (all three read); **behavioural**: vault lines (reused `StockPurchaseLineOwnershipTest`), staff edit/terminate/reactivate/role and device disconnect across shops (5 existing tests in `StaffManagementTest`, `StaffTerminateRecoverTest`, reused), and — **new** — another shop's platform billing invoice is refused (403, number not shown) while the shop's own opens (`TenantForeignReferenceTest`) | `IdempotencyKey`, `InvoicePaymentClaim`, `ScanSession`, `PendingUpload`, `MetalRate`, `ShopCounter`: explicit shop filters, inspected only; 7 platform models behind the platform guard |
 | Ownership through a parent (8 tables without `shop_id`) | `invoice_items`, `catalog_collection_items`, `scan_events`, `role_permission`, `mobile_change_requests`, `platform_announcement_dismissals`, `personal_access_tokens`, `otps` | the parent row | web returns: `Rule::exists(...)->where('invoice_id')`; mobile returns: service loads lines through the caller's invoice; catalog: `validateItemsBelongToShop`; scan: token + shop (authenticated) or token only (public pairing, 48 chars); roles: scoped binding + global permission ids; the rest: own user/session | **behavioural (new)**: a mobile return naming another shop's line on the caller's own invoice is refused, nothing moves in either shop (`ReturnsApiTest`); **inspected**: the rest | `otps` carry no shop and are keyed by phone — by design |
 | Raw queries (`DB::table`, raw SQL) | services, controllers, reports | explicit | `shop_id` in the same expression, or keyed by an owned record's id | **inspected**, per expression: tenant-facing writes without `shop_id` in the expression are keyed by an owned instance (`where('id', $owned->id)`), the caller's own user/session, or a payload whose `shop_id` comes from an owned record; no defect | expressions under `Admin/` and `Console/` were **not read individually** (counts in §8) |
-| Scope removals | `withoutTenant()`, `withoutGlobalScope('shop')`, `withoutGlobalScopes()` | explicit | same-expression `shop_id`, token lookups (public catalog), or existence checks keyed by own ids | **inspected**, per expression; Dhiran's 3 scheduled commands enumerate shops then `runFor` each | Admin/Console as above |
+| Scope removals | `withoutTenant()`, `withoutGlobalScope('shop')`, `withoutGlobalScopes()` | explicit | same-expression `shop_id`, token lookups (public catalog), or existence checks keyed by own ids | **inspected**, per expression | Admin/Console as above |
 | Request-supplied foreign keys | 168 id-bearing validation keys | the caller's shop | 61 `exists`+shop, 3 `exists`+parent, `*ExistsRule($shopId)` factories, or a scoped lookup afterwards | **behavioural**: all shape-only tenant-facing keys traced to their use; **two defects found and fixed — S3-14, S3-15** (`TenantForeignReferenceTest`); 3 `exists`-only rules are existence oracles whose value is unused or looked up through a scope (low) | — |
 | Relationships and joins | eager loads, `whereHas`, raw joins | the parent's scope | related models' own scopes | **inspected**; S3-15 showed the edge: a stored foreign id was harmless only because every reader used the scoped relation | a future raw join on such a column would not be |
 | Queued jobs (10) and listeners (none queued) | database queue (config default; `.env.example` says `sync`) | payload or the record itself | `runFor` in every tenant job; platform jobs carry explicit ids | **behavioural**: `queue_worker_tenant_reuse.php`, one real `queue:work` process — shop A, a job throwing inside A's context, a payload naming B's export under A, shop B: context absent before and after every job, each export names only its own shop, the mismatched payload writes nothing; `QueuedExportIsolationTest` (mismatch). **Found S3-18 (fixed) and S3-17 (open)** | production queue driver **not observed** |
@@ -4630,7 +4629,7 @@ candidate sets are **inspected, not individually exercised.**
 | **Missing context** (null) on `BelongsToShop` models | Trait source; `resolveTenantShopId` order | `TenantScopeFailClosedTest` 4 tests, mutation kills both denial tests; P-10 (indirect, one route) also fails under it | Models without the trait; raw SQL | Full suite not run under the mutation |
 | **Wrong or stale non-null context** | Every `set`/`clear` in `app/`: `EnsureTenantUser` (set `:28`, clear in `finally` `:32`), `ResolveCatalogShop` (`:35`/`:65`), `PaymentRaceHarness` (console harness, one shop per process); 22 `runFor` sites (restore in `finally`); `GenerateQueuedExportJob` looks its row up inside the payload's context, so a mismatched id finds nothing | `ProductionTenantResolutionTest::test_tenant_context_does_not_persist_across_sequential_requests`; S3-06 (`721c06d`, context released on throw); `runFor` restore (`TenantScopeFailClosedTest` test 4); S3-08 examined and closed | — | **Fail-closed gives no protection here** — the scope trusts any non-null id. No test hands a job a mismatched shop id; no test runs two tenants' jobs in one long-lived worker |
 | **Scope removal: `withoutTenant()`** | 144 sites / 58 files; 18 with no shop/key constraint within 12 lines, each read, 0 defects | Not individually exercised (the two public-catalog sites are covered by `PublicCatalogExposureTest`) | `app/Console/` (16 sites, operator-run) | 110 sites (144 − 16 − 18, derived) were **filtered out by the regex, not read**; a constraint within 12 lines was taken as sufficient |
-| **Scope removal: `withoutGlobalScope('shop')` / `withoutGlobalScopes()`** | Not in the original sweep. Enumerated now: 15 code sites outside the trait — 9 platform-admin, 4 Dhiran, 2 tenant-facing. Both tenant-facing ones read: `ScanSessionController:232` and `SettingsController:1018` (audit-log CSV, streamed after context is cleared) carry an explicit `shop_id` | None | 9 platform-admin (cross-shop is the feature); 4 Dhiran (separate business audit, §2) | The 13 excluded sites were not read |
+| **Scope removal: `withoutGlobalScope('shop')` / `withoutGlobalScopes()`** | Not in the original sweep. Enumerated now: 11 code sites outside the trait now — 9 platform-admin, 2 tenant-facing (15 at audit time; 4 belonged to a product since removed). Both tenant-facing ones read: `ScanSessionController:232` and `SettingsController:1018` (audit-log CSV, streamed after context is cleared) carry an explicit `shop_id` | None | 9 platform-admin (cross-shop is the feature) | The 9 excluded sites were not read |
 | **Raw SQL** (`DB::table`, `DB::select`) | 227 sites; in `Reporting`/`Services`/`Models`/`Http/Controllers` less `Admin/`, 31 with no `shop_id` within 18 lines, each read, 0 defects | Not individually exercised | `Admin/`, `Console/` | Sites with a nearby `shop_id` were not read; `DB::statement`/`update`/`insert`/`delete` and `whereRaw` joins not enumerated |
 | **Models with `shop_id`, no trait** (13) | All 13 classified; 5 tenant-facing traced, now including route binding | `StockPurchaseItem`: `StockPurchaseLineOwnershipTest` (below) | 7 platform models; `User` (global by necessity) | `ScanSession`, `PendingUpload`, `ShopCounter`, `MetalRate`: explicit shop filters read in source, no new tests |
 | **Ownership through a parent record** (tables with no `shop_id`) | `ScanEvent`, reached only through a token-resolved session | None new | — | **Not inventoried.** The tables outside the 114-table `shop_id` list were not enumerated. A route resolving such a child by request-supplied id without a parent check would bypass every scope |
@@ -5275,8 +5274,8 @@ Scan figures, for reproduction:
 grep -rn "withoutTenant(" app/            -> 144 occurrences, 58 files
   minus app/Console/ (16), minus a shop/key constraint within 12 lines
                                           -> 18 candidates read, 0 defects
-grep -rn "withoutGlobalScope" app/        -> 15 code sites outside the trait
-                                             (9 admin, 4 Dhiran, 2 tenant-facing read)
+grep -rn "withoutGlobalScope" app/        -> 15 code sites outside the trait at audit time
+                                             (9 admin, 2 tenant-facing read, 4 in a product since removed)
 grep -rn "DB::table(|DB::select(" app/    -> 227 occurrences
   restricted to app/{Reporting,Services,Models,Http/Controllers} less Admin/
   and with no shop_id within 18 lines     -> 31 candidates read, 0 defects

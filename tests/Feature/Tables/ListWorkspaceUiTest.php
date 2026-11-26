@@ -73,14 +73,6 @@ class ListWorkspaceUiTest extends TestCase
             'karigar invoices' => ['retailer', '/karigar-invoices'],
             // /report/occasions moved to the individual-report layout (one table that becomes cards on phones);
             // tests/Feature/Reporting/IndividualReportUiTest covers it there.
-            'borrowers' => ['dhiran', '/dhiran/borrowers'],
-            'loans' => ['dhiran', '/dhiran/loans'],
-            'active loan report' => ['dhiran', '/dhiran/reports/active'],
-            'overdue loan report' => ['dhiran', '/dhiran/reports/overdue'],
-            'interest report' => ['dhiran', '/dhiran/reports/interest'],
-            'forfeiture report' => ['dhiran', '/dhiran/reports/forfeiture'],
-            'profitability report' => ['dhiran', '/dhiran/reports/profitability'],
-            'cashbook report' => ['dhiran', '/dhiran/reports/cashbook'],
             'admin shops' => ['admin', '/admin/shops'],
             'admin edition requests' => ['admin', '/admin/edition-requests'],
             'admin users' => ['admin', '/admin/users'],
@@ -96,18 +88,11 @@ class ListWorkspaceUiTest extends TestCase
         if ($realm === 'admin') {
             $this->actingAs($this->createPlatformAdmin(), 'platform_admin')
                 ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true]);
-        } elseif ($realm === 'dhiran') {
-            $shop = $this->createShop('dhiran');
-            \App\Models\Dhiran\DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
-            $owner = $this->createOwnerUser($shop, $this->createOwnerRole($shop->id));
-            $owner->forceFill(['realm' => 'dhiran', 'email_verified_at' => now()])->save();
-            $this->createSubscription($shop->id, $this->createPlatformAdmin(), $this->createPlan('dhiran'));
-            $this->actingAs($owner);
         } else {
             [$owner] = $realm === 'retailer' ? $this->createRetailerTenant() : $this->createManufacturerTenant();
             $this->actingAs($owner);
         }
-        $response = $this->get($realm === 'dhiran' ? 'http://dhiran.localhost'.$url : $url);
+        $response = $this->get($url);
         $this->assertSame(200, $response->status(), $url.' '.$response->headers->get('Location').' '.substr(trim(preg_replace('/\s+/', ' ', strip_tags($response->getContent()))), 0, 600));
         $html = $response->getContent();
         $dom = new \DOMDocument();

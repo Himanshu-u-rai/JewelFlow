@@ -462,20 +462,6 @@ class DailyRateReadOnlyIncidentTest extends TestCase
         Bus::assertDispatchedTimes(RepriceRetailerInventoryJob::class, 1);
     }
 
-    public function test_active_dhiran_dashboard_behavior_is_unchanged(): void
-    {
-        [$user] = $this->createRetailerTenant();
-        $user->forceFill([
-            'realm' => 'dhiran',
-            'email_verified_at' => now(),
-        ])->save();
-
-        $this->actingAs(User::findOrFail($user->id))
-            ->get('https://dhiran.jewelflows.com/dhiran')
-            ->assertOk()
-            ->assertDontSee('Enter Today&#039;s Metal Rates', false);
-    }
-
     public function test_sales_counter_redirect_gives_active_owner_the_generic_missing_rates_message(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

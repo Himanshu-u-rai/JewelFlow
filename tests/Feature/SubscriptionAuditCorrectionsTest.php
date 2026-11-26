@@ -54,7 +54,7 @@ class SubscriptionAuditCorrectionsTest extends TestCase
                 Route::get('/api/_ac/erp-read', fn () => response()->json(['ok' => true]));
             });
 
-        // account.active ALONE. The commerce/Dhiran route groups carry exactly
+        // account.active ALONE. The commerce route groups carry exactly
         // this stack, and it is the only place EnsureAccountIsActive's expired
         // time-box auto-clear is reachable (for the full ERP stack,
         // EnsureSubscriptionIsActive denies an administrative suspension first).

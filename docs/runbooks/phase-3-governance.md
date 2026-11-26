@@ -16,7 +16,7 @@ This document governs the addition of any new metal beyond gold, silver, platinu
 To add a new metal, the following MUST be demonstrably true:
 
 1. **Real shop demand:** at least one pilot shop has been transacting in this material for **6+ months** using a documented workaround (manual entries, separate spreadsheet, etc.).
-2. **Tier classification proposal:** the new metal is proposed as Tier 1, Tier 2, or Tier 3 with a written rationale covering each capability flag (`isLiveRateEligible`, `isAutoRepricedEligible`, `isDhiranEligible`, `isExchangePaymentEligible`).
+2. **Tier classification proposal:** the new metal is proposed as Tier 1, Tier 2, or Tier 3 with a written rationale covering each capability flag (`isLiveRateEligible`, `isAutoRepricedEligible`, `isExchangePaymentEligible`).
 3. **No new abstractions:** the addition must be implementable via:
    - One config change in `config/materials.php` (`tier_1` or `tier_2` list)
    - One `MetalRegistry::allSupportedMetals` widening (implicit via config)
@@ -88,5 +88,5 @@ Permanently rejected proposals, regardless of business pressure:
 | Tier | Metals | Capability summary |
 |---|---|---|
 | Tier 1 | gold, silver | Full support: every flow without restriction |
-| Tier 2 | platinum, copper | Limited: inventory + invoicing + reconciliation + reporting; NO dhiran, NO exchange payment, NO auto-reprice, NO live-rate auto-fetch |
+| Tier 2 | platinum, copper | Limited: inventory + invoicing + reconciliation + reporting; NO exchange payment, NO auto-reprice, NO live-rate auto-fetch |
 | Tier 3 | (everything else) | Blocked at three layers: validator (422), service (`MetalRegistry::assertSupported`), DB CHECK constraint |

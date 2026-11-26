@@ -128,7 +128,7 @@ WHERE ss.razorpay_payment_id IS NOT NULL AND ss.price_paid > 0
   AND ( (ss.billing_cycle = 'yearly'  AND ss.ends_at <= ss.starts_at + INTERVAL '31 days')
      OR (ss.billing_cycle = 'monthly' AND ss.ends_at <= ss.starts_at + INTERVAL '8 days') );
 
--- 4. Platform products seeded (expect 6: retail/dhiran/manufacturing active; crm/analytics/mobile_premium inactive)
+-- 4. Platform products seeded (expect 5: retail/manufacturing active; crm/analytics/mobile_premium inactive; based on database/seeders/PlatformProductSeeder.php)
 SELECT code, is_active, sort_order FROM platform_products ORDER BY sort_order;
 
 -- 5. Every plan linked to a product (expect zero NULLs)
@@ -154,7 +154,7 @@ WHERE se.event_type IN ('subscription.refunded','subscription.partial_refund') G
 
 -- 10. No edition row violates the CHECK (defensive — should never return rows)
 SELECT DISTINCT edition FROM shop_editions
-WHERE edition NOT IN ('retailer','manufacturer','dhiran','crm','analytics','mobile_premium');
+WHERE edition NOT IN ('retailer','manufacturer','crm','analytics','mobile_premium');
 ```
 
 ---
@@ -172,9 +172,9 @@ Run on a **test-mode Razorpay key** where payment is involved, or against a non-
 | 5 | **Grace-period renewal** | New term anchors from the original `ends_at` (customer keeps paid days), not from payment date |
 | 6 | **Partial refund** (refund < price_paid) | Subscription stays active; `subscription.partial_refund` event logged; no access lost |
 | 7 | **Full refund** (refund ≈ price_paid) | Subscription `cancelled`; edition revoked **unless** an admin_grant/seed also backs it |
-| 8 | **Retail-only** subscription | retail edition only; ERP writable; Dhiran routes gated |
-| 9 | **Dhiran-only** subscription (no retail) | dhiran edition only; Dhiran writable WITHOUT a retail sub; retail routes gated |
-| 10 | **Retail + Dhiran** | two separate subscription rows; both editions active; both writable |
+| 8 | **Retail-only** subscription | retail edition only; ERP writable; manufacturing routes gated |
+| 9 | **Manufacturer-only** subscription (no retail) | manufacturer edition only; manufacturing writable WITHOUT a retail sub; retail routes gated |
+| 10 | **Retail + Manufacturer** | two separate subscription rows; both editions active; both writable |
 | 11 | **Edition grant/revoke** | Subscription activation grants the matching edition; full lapse revokes only subscription-sourced editions; admin grants survive a lapse |
 | 12 | **Write gate** | suspended/read_only shop hard-blocked; a shop with no entitled edition blocked; a shop entitled to one product writable on that product even if another lapsed |
 | 13 | **Subscription expiry** (scheduler) | `subscription:check-expiry` moves active→grace at `ends_at`, grace→expired/read_only at `grace_ends_at`; one product's lapse does not suspend a shop still entitled to another product |

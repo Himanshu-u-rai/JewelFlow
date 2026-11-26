@@ -41,7 +41,7 @@ class EditionRequestDecisionRaceTest extends TestCase
     {
         return TenantContext::runFor($shop->id, fn () => ShopEditionRequest::create([
             'shop_id' => $shop->id, 'user_id' => $owner->id, 'action' => ShopEditionRequest::ACTION_ADD,
-            'edition' => ShopEdition::DHIRAN, 'reason' => 'We lend against gold', 'status' => ShopEditionRequest::STATUS_PENDING,
+            'edition' => ShopEdition::MANUFACTURER, 'reason' => 'We make our own jewellery', 'status' => ShopEditionRequest::STATUS_PENDING,
         ]));
     }
 
@@ -85,7 +85,7 @@ class EditionRequestDecisionRaceTest extends TestCase
         $this->asAdmin('approve', $request)->assertSessionHas('error');
 
         $this->assertSame(ShopEditionRequest::STATUS_CANCELLED, $this->stateOf($request));
-        $this->assertFalse($shop->fresh()->hasEdition(ShopEdition::DHIRAN), 'no edition for a cancelled request');
+        $this->assertFalse($shop->fresh()->hasEdition(ShopEdition::MANUFACTURER), 'no edition for a cancelled request');
     }
 
     public function test_a_deny_after_another_admin_approved_leaves_the_approval(): void
@@ -119,24 +119,24 @@ class EditionRequestDecisionRaceTest extends TestCase
         $this->asAdmin('approve', $request)->assertSessionHas('success');
 
         $this->assertSame(ShopEditionRequest::STATUS_APPROVED, $this->stateOf($request));
-        $this->assertTrue($shop->fresh()->hasEdition(ShopEdition::DHIRAN));
+        $this->assertTrue($shop->fresh()->hasEdition(ShopEdition::MANUFACTURER));
     }
 
     /**
-     * Found breaking N4: approving a Dhiran add (above) and the admin's direct "grant Dhiran" both switched the
-     * shop's Dhiran settings on with a bulk update of PHP true, which PostgreSQL refuses for a boolean column: both
+     * Found breaking N4: approving an edition add (above) and the admin's direct grant both switched a
+     * settings flag on with a bulk update of PHP true, which PostgreSQL refuses for a boolean column: both
      * answered 500 and granted nothing.
      */
-    public function test_the_admin_can_grant_dhiran_directly(): void
+    public function test_the_admin_can_grant_an_edition_directly(): void
     {
         [, $shop] = $this->createRetailerTenant();
 
         $this->actingAs($this->admin(), 'platform_admin')
             ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
-            ->post(route('admin.shops.editions.grant', $shop), ['edition' => ShopEdition::DHIRAN, 'reason' => 'Pilot lender'])
+            ->post(route('admin.shops.editions.grant', $shop), ['edition' => ShopEdition::MANUFACTURER, 'reason' => 'Pilot manufacturer'])
             ->assertSessionHas('success');
 
-        $this->assertTrue($shop->fresh()->hasEdition(ShopEdition::DHIRAN));
+        $this->assertTrue($shop->fresh()->hasEdition(ShopEdition::MANUFACTURER));
     }
 
     public function test_one_pending_request_per_shop_edition_and_action_is_a_database_rule(): void
@@ -158,7 +158,7 @@ class EditionRequestDecisionRaceTest extends TestCase
         $third = $this->pendingAdd($shop, $owner);
         $remove = TenantContext::runFor($shop->id, fn () => ShopEditionRequest::create([
             'shop_id' => $shop->id, 'user_id' => $owner->id, 'action' => ShopEditionRequest::ACTION_REMOVE,
-            'edition' => ShopEdition::DHIRAN, 'reason' => 'Other ask', 'status' => ShopEditionRequest::STATUS_PENDING,
+            'edition' => ShopEdition::MANUFACTURER, 'reason' => 'Other ask', 'status' => ShopEditionRequest::STATUS_PENDING,
         ]));
 
         $migration->up();
@@ -186,7 +186,7 @@ class EditionRequestDecisionRaceTest extends TestCase
         });
 
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->post(self::ERP . '/settings/services/request-add', [
-            'edition' => ShopEdition::DHIRAN, 'reason' => 'We lend against gold',
+            'edition' => ShopEdition::MANUFACTURER, 'reason' => 'We make our own jewellery',
         ]))->assertSessionHas('error');
 
         $this->assertSame(1, DB::table('shop_edition_requests')->where('shop_id', $shop->id)->count());

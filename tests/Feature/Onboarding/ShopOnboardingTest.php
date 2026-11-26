@@ -19,7 +19,7 @@ use Tests\TestCase;
  * Covers the shops.store create flow end-to-end: shop_id + owner role + edition +
  * defaults are provisioned atomically; the onboarding guards (already-has-shop,
  * no-subscription, no-edition) route correctly; a forged shop_id is ignored;
- * tenant isolation holds; and a pure-ERP onboarding never creates a Dhiran shop.
+ * and tenant isolation holds.
  *
  * ERP host is jewelflows.com (realm from host). CSRF/throttle are disabled to
  * match the established web-flow test pattern.
@@ -268,21 +268,6 @@ class ShopOnboardingTest extends TestCase
         $res = $this->get(self::ERP . '/shops/create');
         $res->assertRedirect();
         $this->assertStringContainsString('/login', (string) $res->headers->get('Location'));
-    }
-
-    // ── Dhiran exclusion ───────────────────────────────────────────────────
-
-    public function test_erp_onboarding_does_not_create_a_dhiran_shop_or_settings(): void
-    {
-        $user = $this->onboardingUser('9876500012');
-        $this->store($user, $this->shopPayload())->assertRedirect();
-        $shop = Shop::find($user->fresh()->shop_id);
-
-        $this->assertSame('retailer', $shop->shop_type);
-        $this->assertFalse($shop->hasEdition(ShopEdition::DHIRAN), 'pure-ERP onboarding grants no Dhiran edition');
-        // No Dhiran settings row should be enabled for this shop.
-        $enabled = DB::table('dhiran_settings')->where('shop_id', $shop->id)->whereRaw('is_enabled IS TRUE')->exists();
-        $this->assertFalse($enabled, 'Dhiran must not be enabled by an ERP-only onboarding');
     }
 
     // ── Idempotency / re-run safety ────────────────────────────────────────

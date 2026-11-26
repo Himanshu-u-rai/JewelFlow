@@ -180,9 +180,9 @@ Every new feature that adds a top-level route, navigation entry, or standalone p
 
 Every material (metal or stone) operates under one of three tiers:
 
-**Tier 1 — Fully Supported.** Receives every operational flow without restriction. Auto-reprice, live-rate auto-fetch, dhiran collateral, exchange payment, all reports, all reconciliations.
+**Tier 1 — Fully Supported.** Receives every operational flow without restriction. Auto-reprice, live-rate auto-fetch, exchange payment, all reports, all reconciliations.
 
-**Tier 2 — Limited Support.** Receives inventory, invoicing, manual valuation, per-metal reconciliation, and reporting. Explicitly EXCLUDES one or more of: live-rate auto-fetch, retailer auto-reprice, dhiran collateral, exchange payment, weekly lot pooling. Tier 2 caveats are operator-visible (Settings → Materials warning copy) and audit-logged at the moment the operator opts in.
+**Tier 2 — Limited Support.** Receives inventory, invoicing, manual valuation, per-metal reconciliation, and reporting. Explicitly EXCLUDES one or more of: live-rate auto-fetch, retailer auto-reprice, exchange payment, weekly lot pooling. Tier 2 caveats are operator-visible (Settings → Materials warning copy) and audit-logged at the moment the operator opts in.
 
 **Tier 3 — Blocked.** Rejected at three layers:
   1. Controller validator returns 422 with clear error
@@ -224,7 +224,7 @@ Specifically forbidden, regardless of business pressure:
   3. Inside reference data seeders (`shop_metal_purity_profiles`, `gst_categories`, `stone_types`)
   4. Inside `config/materials.php` (the source MetalRegistry consults)
 
-All other code must consult `MetalRegistry::isSupported`, `MetalRegistry::tierFor`, `MetalRegistry::isLiveRateEligible`, `MetalRegistry::isAutoRepricedEligible`, `MetalRegistry::isDhiranEligible`, `MetalRegistry::isExchangePaymentEligible`, `MetalRegistry::enabledMetalsForShop`, etc.
+All other code must consult `MetalRegistry::isSupported`, `MetalRegistry::tierFor`, `MetalRegistry::isLiveRateEligible`, `MetalRegistry::isAutoRepricedEligible`, `MetalRegistry::isExchangePaymentEligible`, `MetalRegistry::enabledMetalsForShop`, etc.
 
 **Future enforcement:** a CI grep check rejects new commits introducing `=== 'gold'`, `=== 'silver'`, `Rule::in(['gold', 'silver'])`, or equivalent literals outside the whitelisted locations above. The check runs against the diff; existing literals in pre-Phase-1 code are grandfathered but flagged for refactor.
 

@@ -122,42 +122,6 @@ class RolePermissionEnforcementTest extends TestCase
         });
     }
 
-    public function test_owner_cannot_inject_a_hidden_dhiran_permission_via_crafted_payload(): void
-    {
-        [$owner, $shop] = $this->createRetailerTenant();
-
-        TenantContext::runFor($shop->id, function () use ($owner, $shop) {
-            // Owner with real (non-Dhiran) access, plus a staff role to edit.
-            $owner->role->syncPermissions(
-                Permission::where('group', '!=', 'dhiran')->orWhereNull('group')->pluck('name')->all()
-            );
-            Role::firstOrCreate(['name' => 'staff'], ['display_name' => 'Staff', 'shop_id' => $shop->id]);
-        });
-        $owner->unsetRelation('role');
-
-        $staffRole = TenantContext::runFor($shop->id, fn () => Role::where('name', 'staff')->first());
-        $dhiranIds = Permission::where('group', 'dhiran')->pluck('id')->all();
-        $invView   = Permission::where('name', 'inventory.view')->value('id');
-
-        // Drive the real controller action with a crafted payload that smuggles
-        // every Dhiran id alongside one legitimate permission. Invoking the
-        // controller (rather than the HTTP route) keeps the test off the tenant
-        // route-binding harness while still exercising the exact sync guard.
-        TenantContext::runFor($shop->id, function () use ($owner, $staffRole, $invView, $dhiranIds) {
-            $this->actingAs($owner);
-            $request = \Illuminate\Http\Request::create('/x', 'PATCH', [
-                'permissions' => array_merge([(string) $invView], array_map('strval', $dhiranIds)),
-            ]);
-            app(\App\Http\Controllers\SettingsController::class)->updateRolePermissions($request, $staffRole);
-
-            $applied = $staffRole->fresh()->permissions->pluck('name');
-            $this->assertTrue($applied->contains('inventory.view'), 'legit permission should apply');
-            foreach (['dhiran.view', 'dhiran.pay', 'dhiran.settings'] as $d) {
-                $this->assertFalse($applied->contains($d), "crafted payload must NOT inject {$d}");
-            }
-        });
-    }
-
     public function test_route_middleware_denies_when_permission_revoked(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

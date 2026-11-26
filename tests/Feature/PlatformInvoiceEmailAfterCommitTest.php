@@ -14,9 +14,8 @@ use Tests\TestCase;
  * The platform-invoice email must never leave the building from inside an open
  * transaction.
  *
- * Two of this job's dispatch sites — ShopController::store() and
- * DhiranOnboardingController — run inside the shop-creation transaction. A bare
- * dispatch there hands a worker an invoice id that is not yet visible (worker
+ * One of this job's dispatch sites, ShopController::store(), runs inside the
+ * shop-creation transaction. A bare dispatch there hands a worker an invoice id that is not yet visible (worker
  * logs "invoice not found"), or, on the sync driver, sends the customer an
  * invoice email for a shop the very next statement rolls back.
  *

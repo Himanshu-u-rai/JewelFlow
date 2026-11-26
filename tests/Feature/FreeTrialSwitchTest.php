@@ -71,7 +71,7 @@ class FreeTrialSwitchTest extends TestCase
         return $this->actingAs($admin ?? $this->admin, 'platform_admin')
             ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->patch(route('admin.settings.update'), array_merge([
-                'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'dhiran_enabled' => '1', 'maintenance_mode' => '0',
+                'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'maintenance_mode' => '0',
             ], $fields));
     }
 
@@ -165,24 +165,24 @@ class FreeTrialSwitchTest extends TestCase
     public function test_both_products_follow_the_switch_at_the_shared_gate(): void
     {
         [, $retail] = $this->owner('retailer');
-        [, $dhiran] = $this->owner('dhiran');
+        [, $manufacturer] = $this->owner('manufacturer');
         $retailOn = $this->refusal($retail, 'retailer_yearly');
-        $dhiranOn = $this->refusal($dhiran, 'dhiran_yearly');
+        $manufacturerOn = $this->refusal($manufacturer, 'manufacturer_yearly');
         $this->assertNull($retailOn);
 
         PlatformSetting::set('free_trials_offered', 'false');
         $this->assertStringContainsString('not being offered', $this->refusal($retail, 'retailer_yearly'));
-        $this->assertStringContainsString('not being offered', $this->refusal($dhiran, 'dhiran_yearly'));
-        $this->actingAs($dhiran);
+        $this->assertStringContainsString('not being offered', $this->refusal($manufacturer, 'manufacturer_yearly'));
+        $this->actingAs($manufacturer);
         $this->expectException(\LogicException::class);
         try {
-            app(SubscriptionPaymentService::class)->startTrial($this->plan('dhiran_yearly'));
+            app(SubscriptionPaymentService::class)->startTrial($this->plan('manufacturer_yearly'));
         } finally {
-            $this->assertSame(0, ShopSubscription::where('user_id', $dhiran->id)->count());
+            $this->assertSame(0, ShopSubscription::where('user_id', $manufacturer->id)->count());
             PlatformSetting::set('free_trials_offered', 'true');
             // Back ON: exactly the eligibility each product had before.
             $this->assertSame($retailOn, $this->refusal($retail, 'retailer_yearly'));
-            $this->assertSame($dhiranOn, $this->refusal($dhiran, 'dhiran_yearly'));
+            $this->assertSame($manufacturerOn, $this->refusal($manufacturer, 'manufacturer_yearly'));
         }
     }
 

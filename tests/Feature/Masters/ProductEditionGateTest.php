@@ -29,20 +29,6 @@ class ProductEditionGateTest extends TestCase
         parent::setUp();
     }
 
-    private function dhiranTenant(): array
-    {
-        $admin = $this->createPlatformAdmin();
-        $plan = $this->createPlan('dhiran');
-        $shop = $this->createShop('dhiran');
-        $role = $this->createOwnerRole($shop->id);
-        $user = $this->createOwnerUser($shop, $role);
-        $this->createSubscription($shop->id, $admin, $plan);
-        $this->createBillingSettings($shop->id);
-        $this->markShopOpeningSetupComplete($shop->id);
-
-        return [$user, $shop];
-    }
-
     public function test_manufacturer_shop_can_access_product_routes(): void
     {
         [$user] = $this->createManufacturerTenant();
@@ -59,14 +45,6 @@ class ProductEditionGateTest extends TestCase
 
         $this->get(route('products.index'))->assertForbidden();
         $this->get(route('products.create'))->assertForbidden();
-    }
-
-    public function test_dhiran_only_context_cannot_access_product_routes(): void
-    {
-        [$user] = $this->dhiranTenant();
-        $this->actingAs($user);
-
-        $this->get(route('products.index'))->assertForbidden();
     }
 
     public function test_multi_edition_shop_with_manufacturer_entitlement_is_allowed(): void
@@ -96,7 +74,7 @@ class ProductEditionGateTest extends TestCase
      * both edition:manufacturer and a permission gate (inventory.view for
      * index/show, catalog.manage for create/store/edit/update/destroy). The
      * tests above only exercised index/create; the tests below extend the same
-     * scenarios (authorized, retail-only, dhiran-only, multi-edition,
+     * scenarios (authorized, retail-only, multi-edition,
      * permission-stripped, cross-shop, missing) across every action, via real
      * HTTP requests rather than inspecting middleware strings.
      */
@@ -181,21 +159,6 @@ class ProductEditionGateTest extends TestCase
     public function test_retailer_only_shop_cannot_direct_hit_any_product_action(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
-        $product = $this->makeProduct($shop->id);
-        $this->actingAs($user);
-
-        $this->get(route('products.index'))->assertForbidden();
-        $this->get(route('products.create'))->assertForbidden();
-        $this->post(route('products.store'), $this->storePayload($product))->assertForbidden();
-        $this->get(route('products.show', $product))->assertForbidden();
-        $this->get(route('products.edit', $product))->assertForbidden();
-        $this->put(route('products.update', $product), $this->storePayload($product))->assertForbidden();
-        $this->delete(route('products.destroy', $product))->assertForbidden();
-    }
-
-    public function test_dhiran_only_context_cannot_access_any_product_action(): void
-    {
-        [$user, $shop] = $this->dhiranTenant();
         $product = $this->makeProduct($shop->id);
         $this->actingAs($user);
 

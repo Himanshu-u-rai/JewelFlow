@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
  *
  * `plans` has two price columns and no column saying which cycles the plan is
  * sold on — an unpriced cycle IS the way "not sold" is expressed, and the
- * seeded `retailer_monthly`, `manufacturer_monthly` and `dhiran_monthly` all
+ * seeded `retailer_monthly` and `manufacturer_monthly` both
  * ship with a null `price_yearly`. Every caller therefore had to repeat the
  * same two-part test against the raw columns, and the two that forgot are how
  * "yearly" became selectable on a plan that has no yearly price.

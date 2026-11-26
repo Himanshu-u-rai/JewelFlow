@@ -83,7 +83,7 @@ class AdminListPaginationTest extends TestCase
         foreach (range(1, 55) as $n) {
             $ids[] = ShopEditionRequest::withoutGlobalScopes()->create([
                 'shop_id' => $shop->id, 'user_id' => $owner->id, 'action' => ShopEditionRequest::ACTION_ADD,
-                'edition' => 'dhiran', 'reason' => 'r' . $n, 'status' => ShopEditionRequest::STATUS_DENIED,
+                'edition' => 'manufacturer', 'reason' => 'r' . $n, 'status' => ShopEditionRequest::STATUS_DENIED,
             ])->id;
         }
 

@@ -17,13 +17,13 @@ use Tests\TestCase;
  */
 class SessionCookieNamespaceTest extends TestCase
 {
-    private const NAMES = ['cookie', 'tenant_cookie', 'platform_admin_cookie', 'dhiran_cookie'];
+    private const NAMES = ['cookie', 'tenant_cookie', 'platform_admin_cookie'];
 
     private function sessionConfig(array $env): array
     {
         $unset = array_fill_keys([
             'SESSION_COOKIE', 'TENANT_SESSION_COOKIE', 'PLATFORM_ADMIN_SESSION_COOKIE',
-            'DHIRAN_SESSION_COOKIE', 'SESSION_DOMAIN',
+            'SESSION_DOMAIN',
         ], false);
         $process = new Process(
             // A bare Application (for storage_path()); it loads no .env, so the
@@ -44,7 +44,6 @@ class SessionCookieNamespaceTest extends TestCase
         $this->assertSame('jewelflows-session', $c['cookie']);
         $this->assertSame('jewelflows-session', $c['tenant_cookie']);
         $this->assertSame('jewelflows-platform-admin-session', $c['platform_admin_cookie']);
-        $this->assertSame('jewelflows-dhiran-session', $c['dhiran_cookie']);
         $this->assertSame('.jewelflows.com', $c['domain']);
     }
 

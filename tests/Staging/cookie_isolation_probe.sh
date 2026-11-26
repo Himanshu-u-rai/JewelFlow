@@ -17,8 +17,7 @@ set_cookies() { tr -d '\r' < "$JAR.h" | grep -i '^set-cookie:' \
   | sed -E 's/^[Ss]et-[Cc]ookie: ([^=]+)=[^;]*(.*)/\1\2/; s/; ?expires=[^;]*//I; s/; ?max-age=[^;]*//I' | sort -u; }
 fail=0
 for pair in "https://jewelflows.com/login|https://staging.jewelflows.com/login|tenant" \
-            "https://jewelflows.com/admin/login|https://staging.jewelflows.com/admin/login|platform-admin" \
-            "https://dhiran.jewelflows.com/login|https://staging.jewelflows.com/login|dhiran"; do
+            "https://jewelflows.com/admin/login|https://staging.jewelflows.com/admin/login|platform-admin"; do
   IFS='|' read -r prod stag label <<< "$pair"
   : > "$JAR"
   p1=$(tok "$prod"); p2=$(tok "$prod")

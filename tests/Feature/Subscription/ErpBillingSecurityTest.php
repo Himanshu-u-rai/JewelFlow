@@ -5,7 +5,6 @@ namespace Tests\Feature\Subscription;
 use App\Models\Platform\Plan;
 use App\Models\Platform\PlatformInvoice;
 use App\Models\Platform\ShopSubscription;
-use App\Support\ShopEdition;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Traits\CreatesTestTenant;
@@ -140,17 +139,6 @@ class ErpBillingSecurityTest extends TestCase
             str_contains($loc, 'plans') || str_contains($loc, 'subscription'),
             "expected a bounce to plan selection / subscription status, got: {$loc}"
         );
-    }
-
-    // ── Dhiran isolation: ERP billing must not grant Dhiran ────────────────
-
-    public function test_active_erp_subscription_does_not_grant_dhiran_edition(): void
-    {
-        [, $shop] = $this->createRetailerTenant();
-
-        $this->assertTrue($shop->fresh()->hasEdition(ShopEdition::RETAILER));
-        $this->assertFalse($shop->fresh()->hasEdition(ShopEdition::DHIRAN),
-            'an ERP (retailer) subscription must never grant the Dhiran edition');
     }
 
     // ── Guest cannot reach billing/subscription ────────────────────────────

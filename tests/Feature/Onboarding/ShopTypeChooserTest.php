@@ -16,13 +16,10 @@ use Tests\TestCase;
  *
  * The screen's skip-condition and the screen's contents must agree on ONE list.
  * They did not: the controller counted every platform-enabled edition, while the
- * view renders Retailer and Manufacturer only — Dhiran is a separate product on
- * its own subdomain with its own onboarding (see DhiranOnboardingTest, which
- * asserts the Dhiran flow never reaches this chooser at all).
+ * view renders Retailer and Manufacturer only.
  *
- * With the production setting manufacturer_enabled=false, the platform-enabled
- * count was 2 (retailer + dhiran) so the screen rendered, but only ONE card can
- * ever be drawn — asking the user a question with a single possible answer.
+ * With manufacturer_enabled=false only ONE card can ever be drawn — asking the
+ * user a question with a single possible answer must be skipped.
  */
 class ShopTypeChooserTest extends TestCase
 {
@@ -52,11 +49,10 @@ class ShopTypeChooserTest extends TestCase
         ]);
     }
 
-    private function setTypes(bool $retailer, bool $manufacturer, bool $dhiran): void
+    private function setTypes(bool $retailer, bool $manufacturer): void
     {
         PlatformSetting::set('retailer_enabled', $retailer ? '1' : '0');
         PlatformSetting::set('manufacturer_enabled', $manufacturer ? '1' : '0');
-        PlatformSetting::set('dhiran_enabled', $dhiran ? '1' : '0');
     }
 
     /**
@@ -73,12 +69,12 @@ class ShopTypeChooserTest extends TestCase
     }
 
     /**
-     * THE BUG. Production's exact settings: manufacturer off, dhiran on.
+     * THE BUG. Manufacturer off.
      * Only Retailer can be drawn, so there is no question to ask — skip it.
      */
     public function test_screen_is_skipped_when_only_one_type_can_actually_be_rendered(): void
     {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: false);
         $user = $this->chooser();
 
         $this->actingAs($user)
@@ -88,28 +84,10 @@ class ShopTypeChooserTest extends TestCase
         $this->assertSame(ShopEdition::RETAILER, session('onboarding_shop_type'));
     }
 
-    /** Dhiran being enabled must not, on its own, make this screen appear. */
-    public function test_dhiran_alone_does_not_keep_the_screen_alive(): void
-    {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
-
-        $this->actingAs($this->chooser('9390100002'))
-            ->get(self::ERP.'/shops/choose-type')
-            ->assertRedirect(route('subscription.plans'));
-
-        // And with Dhiran off the behaviour is identical — proving Dhiran was
-        // never a factor in the decision.
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: false);
-
-        $this->actingAs($this->chooser('9390100003'))
-            ->get(self::ERP.'/shops/choose-type')
-            ->assertRedirect(route('subscription.plans'));
-    }
-
     /** A genuine choice must still be offered. */
     public function test_screen_renders_when_two_types_can_be_rendered(): void
     {
-        $this->setTypes(retailer: true, manufacturer: true, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: true);
 
         $response = $this->actingAs($this->chooser('9390100004'))
             ->get(self::ERP.'/shops/choose-type');
@@ -117,27 +95,27 @@ class ShopTypeChooserTest extends TestCase
         $response->assertOk();
         $response->assertSee('value="retailer"', false);
         $response->assertSee('value="manufacturer"', false);
-        // Dhiran is never an option on this screen, however enabled it is.
+        // The retired gold-loan option is never offered.
         $response->assertDontSee('value="dhiran"', false);
     }
 
     /** The POST must refuse what the GET never offered. */
-    public function test_dhiran_cannot_be_chosen_through_the_erp_chooser(): void
+    public function test_retired_gold_loan_edition_cannot_be_chosen(): void
     {
-        $this->setTypes(retailer: true, manufacturer: true, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: true);
         $user = $this->chooser('9390100005');
 
         $this->actingAs($user)
             ->post(self::ERP.'/shops/choose-type', ['edition' => 'dhiran'])
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('edition');
 
-        $this->assertNotSame(ShopEdition::DHIRAN, session('onboarding_shop_type'));
+        $this->assertNotSame('dhiran', session('onboarding_shop_type'));
     }
 
     /** A disabled edition still cannot be posted. */
     public function test_disabled_type_cannot_be_chosen(): void
     {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: false);
         $user = $this->chooser('9390100006');
 
         $this->actingAs($user)
@@ -148,12 +126,11 @@ class ShopTypeChooserTest extends TestCase
     }
 
     /**
-     * Nothing this screen can offer → it must close, not silently onboard an ERP
-     * user into Dhiran (which lives on another subdomain entirely).
+     * Nothing this screen can offer → it must close, not silently onboard.
      */
-    public function test_chooser_closes_when_only_dhiran_is_enabled(): void
+    public function test_chooser_closes_when_no_type_is_enabled(): void
     {
-        $this->setTypes(retailer: false, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: false, manufacturer: false);
 
         $this->actingAs($this->chooser('9390100007'))
             ->get(self::ERP.'/shops/choose-type')
@@ -167,7 +144,7 @@ class ShopTypeChooserTest extends TestCase
      */
     public function test_skip_leaves_the_same_state_a_manual_pick_would(): void
     {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: false);
         $user = $this->chooser('9390100009');
 
         $this->actingAs($user)->get(self::ERP.'/shops/choose-type');
@@ -191,7 +168,7 @@ class ShopTypeChooserTest extends TestCase
      */
     public function test_plan_page_accepts_the_auto_picked_type_without_bouncing_back(): void
     {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: false);
         $this->retailerPlan();
         $user = $this->chooser('9390100010');
 
@@ -217,7 +194,7 @@ class ShopTypeChooserTest extends TestCase
      */
     public function test_change_business_type_link_is_hidden_when_there_is_no_choice(): void
     {
-        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: false);
         $this->retailerPlan();
         $user = $this->chooser('9390100011');
 
@@ -231,7 +208,7 @@ class ShopTypeChooserTest extends TestCase
     /** …and it must still be there when changing type is actually possible. */
     public function test_change_business_type_link_is_shown_when_a_choice_exists(): void
     {
-        $this->setTypes(retailer: true, manufacturer: true, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: true);
         $this->retailerPlan();
         $user = $this->chooser('9390100012');
 
@@ -245,7 +222,7 @@ class ShopTypeChooserTest extends TestCase
     /** A user who already has a shop never sees this screen. */
     public function test_user_with_shop_is_redirected_away(): void
     {
-        $this->setTypes(retailer: true, manufacturer: true, dhiran: true);
+        $this->setTypes(retailer: true, manufacturer: true);
         // A real tenant — users.shop_id is a foreign key, so a made-up id cannot
         // stand in for "this user already has a shop".
         [$owner] = $this->createRetailerTenant();

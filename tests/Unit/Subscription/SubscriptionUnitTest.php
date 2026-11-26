@@ -74,21 +74,13 @@ class SubscriptionUnitTest extends TestCase
         $svc->verifyAmount($this->rzpOrder(1999899), $plan, 'yearly'); // 1 paise short
     }
 
-    // ── trial family mapping (ERP vs Dhiran separation) ────────────────────
+    // ── trial family mapping ────────────────────────────────────────
 
     public function test_trial_family_groups_retail_and_manufacturer_as_erp(): void
     {
         $svc = app(SubscriptionPaymentService::class);
         $this->assertSame('erp', $svc->trialFamilyFor(ShopEdition::RETAILER));
         $this->assertSame('erp', $svc->trialFamilyFor(ShopEdition::MANUFACTURER));
-    }
-
-    public function test_trial_family_keeps_dhiran_separate(): void
-    {
-        $svc = app(SubscriptionPaymentService::class);
-        // Dhiran is its own family — an ERP trial must not consume a Dhiran trial.
-        $this->assertNotSame('erp', $svc->trialFamilyFor(ShopEdition::DHIRAN));
-        $this->assertSame(ShopEdition::DHIRAN, $svc->trialFamilyFor(ShopEdition::DHIRAN));
     }
 
     // ── hasUsedTrialForFamily eligibility ──────────────────────────────────
@@ -188,10 +180,6 @@ class SubscriptionUnitTest extends TestCase
         $this->assertTrue(
             $svc->hasPriorEntitlementForFamily(null, ShopEdition::MANUFACTURER, $user->id),
             'retailer and manufacturer share the erp family'
-        );
-        $this->assertFalse(
-            $svc->hasPriorEntitlementForFamily(null, 'dhiran', $user->id),
-            'a different family keeps its own trial'
         );
     }
 

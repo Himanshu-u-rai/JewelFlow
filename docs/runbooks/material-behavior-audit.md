@@ -52,7 +52,7 @@ The Tier 1/Tier 2 model approximates this but conflates B and C as one tier. Cap
 Build: daily gold rate, daily silver rate, stone-type config (once), per-metal making defaults. Do NOT build: daily platinum rate, copper rate maintenance, a unified materials dashboard, per-material reconciliation toggles surfaced to operators. Anything an operator won't touch monthly belongs in a setup area, not daily use.
 
 ## 8. Pilot reality (minimum viable)
-Pilot shops are 90–100% gold/silver. Must work fully: gold/silver (rate, vault, exchange, dhiran, repair, reconciliation, reporting), stones as a rupee value. Limited-support (no errors, quiet UX): platinum piece-priced, stone certificate fields stored-if-entered. Not in pilot: copper in retail flows, diamond live pricing, multi-karigar repair routing, platinum dhiran.
+Pilot shops are 90–100% gold/silver. Must work fully: gold/silver (rate, vault, exchange, repair, reconciliation, reporting), stones as a rupee value. Limited-support (no errors, quiet UX): platinum piece-priced, stone certificate fields stored-if-entered. Not in pilot: copper in retail flows, diamond live pricing, multi-karigar repair routing.
 
 ## 9. Final classification
 - **Required now:** gold/silver full support; stones as rupee value; platinum piece-priced; copper hidden from item picker.

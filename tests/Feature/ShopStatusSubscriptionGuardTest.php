@@ -59,11 +59,11 @@ class ShopStatusSubscriptionGuardTest extends TestCase
         ]);
     }
 
-    private function dhiranPlan(): Plan
+    private function manufacturerPlan(): Plan
     {
         return Plan::create([
-            'code' => 'dhiran_guard_' . fake()->unique()->numberBetween(1000, 999999),
-            'name' => 'Dhiran',
+            'code' => 'manufacturer_guard_' . fake()->unique()->numberBetween(1000, 999999),
+            'name' => 'Manufacturer',
             'price_monthly' => 2999,
             'price_yearly' => 30000,
             'grace_days' => 7,
@@ -274,9 +274,9 @@ class ShopStatusSubscriptionGuardTest extends TestCase
         $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
     }
 
-    // Point 2 + 3: a Dhiran subscription can never justify Retail ERP access,
+    // A subscription to another product can never justify Retail ERP access,
     // and the generic Restore action must not accept it as justification either.
-    public function test_expired_retail_with_active_dhiran_does_not_unlock_retail_erp(): void
+    public function test_expired_retail_with_active_other_product_does_not_unlock_retail_erp(): void
     {
         config(['platform.enforce_subscriptions' => true]);
         $admin = $this->verifiedAdmin();
@@ -289,10 +289,10 @@ class ShopStatusSubscriptionGuardTest extends TestCase
             'ends_at' => now()->subWeek()->toDateString(),
             'grace_ends_at' => now()->subWeek()->toDateString(),
         ]);
-        $this->makeSub($shop, $this->dhiranPlan()); // active, but a different product
+        $this->makeSub($shop, $this->manufacturerPlan()); // active, but a different product
 
         $this->assertFalse(ShopSubscription::entitlesAccessToday($shop),
-            'An active Dhiran subscription must never justify Retail ERP access.');
+            'An active subscription to another product must never justify Retail ERP access.');
 
         $response = $this->activate($admin, $shop);
         $response->assertSessionHasErrors('access_mode');
@@ -301,8 +301,8 @@ class ShopStatusSubscriptionGuardTest extends TestCase
     }
 
     // The reverse must also hold: Retail's own valid entitlement is judged on
-    // its own row, unaffected by an expired Dhiran subscription on the shop.
-    public function test_active_retail_with_expired_dhiran_remains_correctly_isolated(): void
+    // its own row, unaffected by an expired subscription to another product.
+    public function test_active_retail_with_expired_other_product_remains_correctly_isolated(): void
     {
         config(['platform.enforce_subscriptions' => true]);
         $admin = $this->verifiedAdmin();
@@ -310,7 +310,7 @@ class ShopStatusSubscriptionGuardTest extends TestCase
         $shop->forceFill(['access_mode' => 'read_only', 'is_active' => false])->save();
 
         $this->makeSub($shop, $this->retailPlan()); // active, entitling today
-        $this->makeSub($shop, $this->dhiranPlan(), [
+        $this->makeSub($shop, $this->manufacturerPlan(), [
             'status' => 'read_only',
             'starts_at' => now()->subMonth()->toDateString(),
             'ends_at' => now()->subWeek()->toDateString(),

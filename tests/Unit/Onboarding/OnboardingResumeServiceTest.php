@@ -105,16 +105,11 @@ class OnboardingResumeServiceTest extends TestCase
         $this->assertNull(Resume::findPendingSubscription($b->fresh()), 'must not see another user\'s pending subscription');
     }
 
-    // ── primaryEdition mapping (Retailer > Manufacturer > Dhiran) ──────────
+    // ── primaryEdition mapping (Retailer > Manufacturer) ──────────
 
     public function test_primary_edition_prefers_retailer(): void
     {
         $this->assertSame(ShopEdition::RETAILER, ShopController::primaryEdition([ShopEdition::MANUFACTURER, ShopEdition::RETAILER]));
-    }
-
-    public function test_primary_edition_manufacturer_over_dhiran(): void
-    {
-        $this->assertSame(ShopEdition::MANUFACTURER, ShopController::primaryEdition([ShopEdition::DHIRAN, ShopEdition::MANUFACTURER]));
     }
 
     public function test_primary_edition_single_value(): void

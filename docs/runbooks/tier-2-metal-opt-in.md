@@ -15,7 +15,6 @@ A Tier 2 metal **can**:
 A Tier 2 metal **cannot**:
 - Be auto-repriced by `RepriceRetailerInventoryJob` (item holds manual `selling_price`)
 - Be auto-fetched by `FetchLiveMetalRatesJob` (rate is manual)
-- Be used as dhiran (gold-loan) collateral
 - Be accepted as old-metal payment in POS exchange flow
 - Be pooled in weekly old-gold/old-silver lot aggregation
 
@@ -26,7 +25,6 @@ These restrictions are enforced at three layers: controller validators, service-
 Before any DB action:
 - Has the shop owner specifically requested platinum or copper transactions?
 - Is the rate-update flow understood (they must manually enter the rate, not expect API fetch)?
-- Is the dhiran-blocked restriction acceptable to the owner?
 - Has the request been recorded in the support log?
 
 If any answer is "no" — do not proceed.
@@ -40,7 +38,7 @@ INSERT INTO shop_enabled_metals
     (shop_id, metal_type, enabled, enabled_at, enabled_by_user_id, notes, created_at, updated_at)
 VALUES
     (<SHOP_ID>, '<METAL>', TRUE, NOW(), <OPERATOR_USER_ID>,
-     'Tier 2 opt-in — owner requested <DATE>. Acknowledged: no auto-reprice, no dhiran, no exchange payment, manual rate entry only.',
+     'Tier 2 opt-in — owner requested <DATE>. Acknowledged: no auto-reprice, no exchange payment, manual rate entry only.',
      NOW(), NOW());
 ```
 
@@ -50,7 +48,7 @@ INSERT INTO shop_enabled_metals
     (shop_id, metal_type, enabled, enabled_at, enabled_by_user_id, notes, created_at, updated_at)
 VALUES
     (4, 'platinum', TRUE, NOW(), 1,
-     'Tier 2 opt-in — shop owner requested 2026-06-15. Acknowledged: no auto-reprice, no dhiran, no exchange payment, manual rate entry only.',
+     'Tier 2 opt-in — shop owner requested 2026-06-15. Acknowledged: no auto-reprice, no exchange payment, manual rate entry only.',
      NOW(), NOW());
 ```
 

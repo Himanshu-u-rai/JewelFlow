@@ -34,7 +34,7 @@ MinMax M2.7 must **NOT** do any of the following while executing this plan:
 | F3 | Modify columns on `metal_lots`, `metal_movements`, `items`, `invoice_items`, `return_line_items`, `stone_components`, `stone_revaluation_events`, `credit_notes`, `invoices`, `audit_logs`, `shop_daily_metal_rates`, `shop_daily_metal_rate_entries`, `job_orders`, `job_order_items`, `karigar_invoices` | Constitutional ledger surface; frozen |
 | F4 | Add new constitutional articles or modify CONSTITUTION.md Articles I–XV | Reserved for founder sign-off |
 | F5 | Modify `MetalRegistry::TIER_1` / `TIER_2` / `allSupportedMetals()` semantics | Tier classification is constitutional |
-| F6 | Modify `isLiveRateEligible`, `isAutoRepricedEligible`, `isDhiranEligible`, `isExchangePaymentEligible`, `isReportingVisible`, `isReconciliationEligible` | These are constitutional capability flags; introduce new `ux*` methods alongside |
+| F6 | Modify `isLiveRateEligible`, `isAutoRepricedEligible`, `isExchangePaymentEligible`, `isReportingVisible`, `isReconciliationEligible` | These are constitutional capability flags; introduce new `ux*` methods alongside |
 | F7 | Run raw SQL UPDATE/DELETE on finalized records, settled returns, issued credit notes, or any MetalMovement | Article I + Article IX |
 | F8 | Use `forceFill()` outside designated backfill migrations | Article I |
 | F9 | Touch `app/Services/Returns/*`, `InvoiceAccountingService`, `JobOrderService`, `BullionVaultService` core accounting paths | Out of scope for this phase |

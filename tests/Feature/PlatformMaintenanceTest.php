@@ -80,7 +80,7 @@ class PlatformMaintenanceTest extends TestCase
         $this->asAdmin($admin)->get(route('admin.settings.index'))->assertOk()->assertSee('Maintenance Mode');
 
         $this->asAdmin($admin)->patch(route('admin.settings.update'), [
-            'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'dhiran_enabled' => '1', 'maintenance_mode' => '0',
+            'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'maintenance_mode' => '0',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertFalse(PlatformSetting::bool('maintenance_mode', false));
     }
@@ -134,7 +134,7 @@ class PlatformMaintenanceTest extends TestCase
         $fresh()->get(route('admin.dashboard'), $turbo)->assertOk()->assertDontSee(self::MESSAGE);
         $fresh()->get(route('admin.settings.index'))->assertOk();
         $fresh()->patch(route('admin.settings.update'), [
-            'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'dhiran_enabled' => '1', 'maintenance_mode' => '0',
+            'retailer_enabled' => '1', 'manufacturer_enabled' => '1', 'maintenance_mode' => '0',
         ])->assertRedirect();
         $this->assertFalse(PlatformSetting::bool('maintenance_mode', false));
     }

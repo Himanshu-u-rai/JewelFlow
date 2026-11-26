@@ -19,7 +19,7 @@ use Tests\TestCase;
  * A plan can only be billed on a cycle it prices.
  *
  * `plans` states "not sold on this cycle" by leaving the price column null —
- * the seeded `retailer_monthly`, `manufacturer_monthly` and `dhiran_monthly`
+ * the seeded `retailer_monthly` and `manufacturer_monthly`
  * have no `price_yearly` at all. Both write paths validated the cycle STRING
  * (`in:monthly,yearly`) and neither asked the plan whether it sells it:
  *

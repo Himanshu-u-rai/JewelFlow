@@ -2,7 +2,7 @@
 
 /**
  * Staging acceptance for the takeover release (navigation moves, Categories,
- * the landing page, product preferences) — synthetic tenants inside one
+ * the landing page) — synthetic tenants inside one
  * database transaction that is ROLLED BACK at the end.
  *
  *   cd /var/www/jewelflow-staging && sudo -u www-data php tests/Staging/verify_takeover_release.php
@@ -12,12 +12,6 @@
  * the queue are in-memory for this process only, so nothing is sent and
  * nothing is left in the session table or the cache directory. Requests go
  * through the deployed HTTP kernel, routes, middleware, config and schema.
- *
- * Retail realm only. Staging has no Dhiran host and must never be paired with
- * the production one, so the two-product steps (approve on the other product,
- * finish, revoke an established recognition) are NOT RUN here; they were run
- * between two local hosts (tests/js/product-promotion-live.browser.cjs, the
- * race and interleaving harnesses). This script prints them as NOT RUN.
  *
  * What a browser does with the page (Turbo Back, where the toast sits, the
  * touch area of the Historical Sales header action) cannot be exercised from PHP. This checks the page
@@ -34,8 +28,6 @@ use App\Models\Role;
 use App\Models\Shop;
 use App\Models\SubCategory;
 use App\Models\User;
-use App\Services\ProductPromotionService;
-use App\Support\Realm;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
@@ -184,7 +176,7 @@ try {
     $jarGuest = [];
     $shopA = (int) $a['shop']->id;
 
-    // ── the landing page: Retail front door, Dhiran destinations disabled ────
+    // ── the landing page: Retail front door ──────────────────────────────────
     $landing = http('GET', '/', [], null, $jarGuest);
     $html = (string) $landing->getContent();
     check($landing->getStatusCode() === 200 && str_contains($html, href('/login')) && str_contains($html, href('/register')),
@@ -192,14 +184,6 @@ try {
     check(str_contains($html, 'images/laptopview-960.webp') && str_contains($html, 'images/phoneview-480.webp')
         && is_file(public_path('images/laptopview-960.webp')) && is_file(public_path('images/phoneview-480.webp')),
         'landing: both device illustrations are in the page and on disk');
-    check(! str_contains($html, 'Dhiran login') && ! str_contains($html, 'Start with Dhiran') && str_contains($html, 'Ask about Dhiran')
-        && ! preg_match('~https?://dhiran\.~i', $html),
-        'landing: no Dhiran log-in or register destination is offered (an enquiry link instead); no dhiran.* address in the page');
-    $configured = config('platform.cross_promotion.dhiran_register_url');
-    check(Realm::dhiranRegisterUrl(request()) === null && ($onLocal || $configured === ''),
-        'config: the Dhiran destination resolves to none'.($onStaging ? ', by an explicit empty DHIRAN_REGISTER_URL' : ''), var_export($configured, true));
-    check(app(ProductPromotionService::class)->targetUrl(Request::create(url('/dashboard')), $a['owner']) === null,
-        'config: a Retail owner on this environment is given no other-product address (no pairing with another environment)');
 
     // ── navigation: what moved, where it is offered, who may open it ─────────
     $dash = http('GET', '/dashboard', [], $a['owner'], $jarA);
@@ -295,42 +279,6 @@ try {
         && str_contains($css, '--toast-space') && str_contains($js, '--toast-space') && (bool) preg_match('~invoices-historical-btn::?after\{[^}]*inset:-6px 0~', $css),
         'bundle: the page loads the built stylesheet on disk, including the toast strip and Historical Sales touch-area rule', 'css '.strlen($css).' bytes, js '.strlen($js).' bytes');
 
-    // ── product preferences (Retail realm) ──────────────────────────────────
-    $prefs = http('GET', '/product-preferences', [], $a['owner'], $jarA);
-    $codes = [http('GET', '/product-preferences', [], null, $jarGuest)->getStatusCode(), http('GET', '/product-preferences', [], $a['staff'])->getStatusCode(),
-        http('GET', '/dhiran/product-preferences', [], $a['owner'], $jarA)->getStatusCode()];
-    check($prefs->getStatusCode() === 200 && str_contains((string) $prefs->getContent(), 'Product preferences')
-        && $codes[0] === 302 && $codes[1] === 403 && in_array($codes[2], [302, 403, 404], true),
-        'preferences: the owner opens the page; a guest is sent to log in, staff are refused, the other product\'s path is not served here', $prefs->getStatusCode().' / '.implode('/', $codes));
-    $row = fn (User $u) => DB::table('product_promotion_preferences')->where(['environment' => $env, 'realm' => 'erp', 'shop_id' => $u->shop_id, 'user_id' => $u->id, 'target' => 'dhiran'])->value('choice');
-    // These routes share one budget of six posts a minute per owner; this script makes exactly six as owner A.
-    $before = $row($a['owner']);
-    $r = http('POST', '/product-preferences/preference', ['choice' => 'opt_out'], $a['owner'], $jarA);
-    check($before === null && $r->getStatusCode() === 302 && $row($a['owner']) === 'opt_out' && $row($b['owner']) === null,
-        'preferences: "Don\'t show again" is recorded for this owner only', var_export($row($a['owner']), true));
-    $requests = fn (User $u) => DB::table('product_recognition_requests')->where('source_user_id', $u->id);
-    http('POST', '/product-preferences/start', ['password' => 'not-the-password', 'consent' => '1'], $a['owner'], $jarA);
-    $wrong = $requests($a['owner'])->count();
-    http('POST', '/product-preferences/start', ['password' => $passwords['A:owner']], $a['owner'], $jarA);
-    $noConsent = $requests($a['owner'])->count();
-    $r = http('POST', '/product-preferences/start', ['password' => $passwords['A:owner'], 'consent' => '1'], $a['owner'], $jarA);
-    $shown = (string) http('GET', '/product-preferences', [], $a['owner'], $jarA)->getContent();
-    $request = $requests($a['owner'])->whereNull('consumed_at')->first();
-    check($wrong === 0 && $noConsent === 0 && $r->getStatusCode() === 302 && $request !== null && $request->environment === $env
-        && (bool) preg_match('~<code[^>]*>\s*[0-9A-F]{40}\s*</code>~', $shown) && ! str_contains($shown, (string) $request->code_hash),
-        'recognition: a request needs the owner\'s own password and consent; its code is shown once and only its hash is stored', "wrong {$wrong}, no consent {$noConsent}");
-    $foreign = http('POST', '/product-preferences/cancel', ['request_id' => $request->id], $b['owner'], $jarB)->getStatusCode();
-    $stillOpen = $requests($a['owner'])->whereNull('consumed_at')->count();
-    http('POST', '/product-preferences/cancel', ['request_id' => $request->id], $a['owner'], $jarA);
-    check(in_array($foreign, [403, 404], true) && $stillOpen === 1 && $requests($a['owner'])->whereNull('consumed_at')->count() === 0,
-        'tenant isolation: another shop\'s owner cannot cancel the request; its own owner can', "{$foreign}, open before/after {$stillOpen}/0");
-    http('POST', '/product-preferences/start', ['password' => $passwords['A:owner'], 'consent' => '1'], $a['owner'], $jarA);
-    $open = $requests($a['owner'])->whereNull('consumed_at')->count();
-    $owner = User::withoutGlobalScopes()->findOrFail($a['owner']->id);
-    TenantContext::runFor($shopA, fn () => $owner->forceFill(['password' => Hash::make(Str::random(24))])->save());
-    check($open === 1 && $requests($a['owner'])->whereNull('consumed_at')->count() === 0,
-        'lifecycle: changing the owner\'s password withdraws their pending request in the same save', "open before/after {$open}/".$requests($a['owner'])->whereNull('consumed_at')->count());
-    $notRun[] = 'two-product recognition on staging (approval by a Dhiran owner, finish, revoke, per-product cookies and logout): no Dhiran staging host exists and none is to be created; run between two local hosts instead';
     $notRun[] = 'Turbo Back, toast placement and the relocated Historical Sales touch area in a signed-in browser on staging: browser-only; requires renewed acceptance, not established by the bundle identity check above';
 } catch (Throwable $e) {
     $failures++;

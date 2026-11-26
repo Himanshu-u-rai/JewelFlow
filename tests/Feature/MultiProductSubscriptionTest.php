@@ -126,7 +126,6 @@ class MultiProductSubscriptionTest extends TestCase
     {
         $this->assertSame('retailer',     PlatformProduct::editionStringFor('retail'));
         $this->assertSame('manufacturer', PlatformProduct::editionStringFor('manufacturing'));
-        $this->assertSame('dhiran',       PlatformProduct::editionStringFor('dhiran'));
         $this->assertSame('crm',          PlatformProduct::editionStringFor('crm'));
 
         $this->assertSame('retail',        PlatformProduct::codeForEdition('retailer'));
@@ -158,7 +157,7 @@ class MultiProductSubscriptionTest extends TestCase
 
     // ── (A) Retail-only ─────────────────────────────────────────────
 
-    public function test_retail_only_grants_retail_edition_writable_no_dhiran(): void
+    public function test_retail_only_grants_retail_edition_writable_no_manufacturer(): void
     {
         $shop = $this->bareShop();
         $plan = $this->planForProduct('retail');
@@ -171,60 +170,60 @@ class MultiProductSubscriptionTest extends TestCase
         $this->assertSame(ShopEditionAssignment::SOURCE_SUBSCRIPTION, $row->source);
         $this->assertSame($sub->id, $row->product_subscription_id);
 
-        // No dhiran.
-        $this->assertNull($this->activeEdition($shop, ShopEdition::DHIRAN));
+        // No manufacturer.
+        $this->assertNull($this->activeEdition($shop, ShopEdition::MANUFACTURER));
 
         // ERP writable.
         TenantContext::runFor($shop->id, fn () => SubscriptionGateService::assertShopWritable($shop->id));
         $this->assertTrue(true);
     }
 
-    // ── (B) Dhiran-only (no retail) ─────────────────────────────────
+    // ── (B) Manufacturer-only (no retail) ─────────────────────────────────
 
-    public function test_dhiran_only_grants_dhiran_edition_and_is_writable_without_retail(): void
+    public function test_manufacturer_only_grants_manufacturer_edition_and_is_writable_without_retail(): void
     {
         $shop = $this->bareShop();
-        $plan = $this->planForProduct('dhiran');
+        $plan = $this->planForProduct('manufacturing');
         $sub  = $this->makeSubscription($shop, $plan, 'active');
 
         $this->grantViaSubscription($shop, $sub);
 
-        $row = $this->activeEdition($shop, ShopEdition::DHIRAN);
-        $this->assertNotNull($row, 'dhiran-only shop must hold the dhiran edition');
+        $row = $this->activeEdition($shop, ShopEdition::MANUFACTURER);
+        $this->assertNotNull($row, 'manufacturer-only shop must hold the manufacturer edition');
         $this->assertSame(ShopEditionAssignment::SOURCE_SUBSCRIPTION, $row->source);
 
         // No retail edition.
         $this->assertNull($this->activeEdition($shop, ShopEdition::RETAILER));
 
-        // A Dhiran-only shop must NOT be blocked from writes for lacking retail.
+        // A manufacturer-only shop must NOT be blocked from writes for lacking retail.
         TenantContext::runFor($shop->id, fn () => SubscriptionGateService::assertShopWritable($shop->id));
         $this->assertTrue(true);
     }
 
-    // ── (C) Retail + Dhiran ─────────────────────────────────────────
+    // ── (C) Retail + Manufacturer ─────────────────────────────────────────
 
-    public function test_retail_plus_dhiran_two_subscriptions_two_editions_both_subscription_sourced(): void
+    public function test_retail_plus_manufacturer_two_subscriptions_two_editions_both_subscription_sourced(): void
     {
         $shop = $this->bareShop();
 
         $retailSub = $this->makeSubscription($shop, $this->planForProduct('retail'), 'active');
         $this->grantViaSubscription($shop, $retailSub);
 
-        $dhiranSub = $this->makeSubscription($shop, $this->planForProduct('dhiran'), 'active');
-        $this->grantViaSubscription($shop, $dhiranSub);
+        $mfgSub = $this->makeSubscription($shop, $this->planForProduct('manufacturing'), 'active');
+        $this->grantViaSubscription($shop, $mfgSub);
 
         // Two distinct subscriptions.
         $this->assertSame(2, ShopSubscription::where('shop_id', $shop->id)->count());
 
         $retailRow = $this->activeEdition($shop, ShopEdition::RETAILER);
-        $dhiranRow = $this->activeEdition($shop, ShopEdition::DHIRAN);
+        $mfgRow = $this->activeEdition($shop, ShopEdition::MANUFACTURER);
 
         $this->assertNotNull($retailRow);
-        $this->assertNotNull($dhiranRow);
+        $this->assertNotNull($mfgRow);
         $this->assertSame(ShopEditionAssignment::SOURCE_SUBSCRIPTION, $retailRow->source);
-        $this->assertSame(ShopEditionAssignment::SOURCE_SUBSCRIPTION, $dhiranRow->source);
+        $this->assertSame(ShopEditionAssignment::SOURCE_SUBSCRIPTION, $mfgRow->source);
         $this->assertSame($retailSub->id, $retailRow->product_subscription_id);
-        $this->assertSame($dhiranSub->id, $dhiranRow->product_subscription_id);
+        $this->assertSame($mfgSub->id, $mfgRow->product_subscription_id);
     }
 
     // ── activation grants edition (via real createSubscription path) ─
@@ -254,21 +253,21 @@ class MultiProductSubscriptionTest extends TestCase
     public function test_full_lapse_revokes_subscription_sourced_edition(): void
     {
         $shop = $this->bareShop();
-        $plan = $this->planForProduct('dhiran', ['downgrade_to_read_only_on_due' => false]);
+        $plan = $this->planForProduct('manufacturing', ['downgrade_to_read_only_on_due' => false]);
         $sub  = $this->makeSubscription($shop, $plan, 'active', [
             'ends_at'       => now()->subDay()->toDateString(),
             'grace_ends_at' => now()->subDay()->toDateString(),
         ]);
         $this->grantViaSubscription($shop, $sub);
 
-        $this->assertNotNull($this->activeEdition($shop, ShopEdition::DHIRAN));
+        $this->assertNotNull($this->activeEdition($shop, ShopEdition::MANUFACTURER));
 
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
         $sub->refresh();
         $this->assertSame('expired', $sub->status);
         $this->assertNull(
-            $this->activeEdition($shop, ShopEdition::DHIRAN),
+            $this->activeEdition($shop, ShopEdition::MANUFACTURER),
             'A fully-lapsed subscription edition must be revoked when nothing else backs it.'
         );
     }
@@ -279,13 +278,13 @@ class MultiProductSubscriptionTest extends TestCase
     {
         $shop = $this->bareShop();
 
-        // Admin grant for dhiran (no payment).
+        // Admin grant for manufacturer (no payment).
         $admin = $this->createPlatformAdmin();
-        ShopEdition::grantTo($shop, ShopEdition::DHIRAN, null);
-        $grantRow = $this->activeEdition($shop, ShopEdition::DHIRAN);
+        ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER, null);
+        $grantRow = $this->activeEdition($shop, ShopEdition::MANUFACTURER);
         $this->assertSame(ShopEditionAssignment::SOURCE_ADMIN_GRANT, $grantRow->source);
 
-        // A separate (irrelevant) expired retail sub lapses — must not touch dhiran.
+        // A separate (irrelevant) expired retail sub lapses — must not touch manufacturer.
         $retailPlan = $this->planForProduct('retail', ['downgrade_to_read_only_on_due' => false]);
         $retailSub  = $this->makeSubscription($shop, $retailPlan, 'active', [
             'ends_at'       => now()->subDay()->toDateString(),
@@ -295,7 +294,7 @@ class MultiProductSubscriptionTest extends TestCase
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
         $this->assertNotNull(
-            $this->activeEdition($shop, ShopEdition::DHIRAN),
+            $this->activeEdition($shop, ShopEdition::MANUFACTURER),
             'An admin_grant edition must never be auto-revoked by a subscription lapse.'
         );
     }
@@ -314,8 +313,8 @@ class MultiProductSubscriptionTest extends TestCase
     {
         $shop = $this->bareShop();
 
-        // First a paid dhiran subscription grants the edition.
-        $plan = $this->planForProduct('dhiran', ['downgrade_to_read_only_on_due' => false]);
+        // First a paid manufacturer subscription grants the edition.
+        $plan = $this->planForProduct('manufacturing', ['downgrade_to_read_only_on_due' => false]);
         $sub  = $this->makeSubscription($shop, $plan, 'active', [
             'ends_at'       => now()->subDay()->toDateString(),
             'grace_ends_at' => now()->subDay()->toDateString(),
@@ -324,16 +323,16 @@ class MultiProductSubscriptionTest extends TestCase
 
         // Then an admin grant for the SAME edition — source upgrades to a
         // lapse-immune grant per the source-preservation rule.
-        ShopEdition::grantTo($shop, ShopEdition::DHIRAN, null);
+        ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER, null);
         $this->assertSame(
             ShopEditionAssignment::SOURCE_ADMIN_GRANT,
-            $this->activeEdition($shop, ShopEdition::DHIRAN)->source
+            $this->activeEdition($shop, ShopEdition::MANUFACTURER)->source
         );
 
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
         $this->assertNotNull(
-            $this->activeEdition($shop, ShopEdition::DHIRAN),
+            $this->activeEdition($shop, ShopEdition::MANUFACTURER),
             'Edition must stay active while an admin_grant backs it, even after the sub lapses.'
         );
     }
@@ -344,14 +343,14 @@ class MultiProductSubscriptionTest extends TestCase
     {
         $shop = $this->bareShop();
 
-        // Dhiran sub created FIRST (higher id later) with a different staff_limit.
+        // Manufacturer sub created FIRST (higher id later) with a different staff_limit.
         $retailSub = $this->makeSubscription($shop, $this->planForProduct('retail', ['features' => ['staff_limit' => 8]]), 'active');
         $this->grantViaSubscription($shop, $retailSub);
 
-        $dhiranSub = $this->makeSubscription($shop, $this->planForProduct('dhiran', ['features' => ['staff_limit' => 2]]), 'active');
-        $this->grantViaSubscription($shop, $dhiranSub);
+        $mfgSub = $this->makeSubscription($shop, $this->planForProduct('manufacturing', ['features' => ['staff_limit' => 2]]), 'active');
+        $this->grantViaSubscription($shop, $mfgSub);
 
-        // Latest sub is dhiran (staff_limit=2) but staffLimit() must use retail (8).
+        // Latest sub is manufacturer (staff_limit=2) but staffLimit() must use retail (8).
         $shop->refresh()->load('subscriptions');
         $this->assertSame(8, $shop->staffLimit(), 'staff_limit must come from the retail product subscription.');
     }
@@ -359,8 +358,8 @@ class MultiProductSubscriptionTest extends TestCase
     public function test_staff_limit_falls_back_to_latest_for_single_product_shop(): void
     {
         $shop = $this->bareShop();
-        $dhiranSub = $this->makeSubscription($shop, $this->planForProduct('dhiran', ['features' => ['staff_limit' => 3]]), 'active');
-        $this->grantViaSubscription($shop, $dhiranSub);
+        $mfgSub = $this->makeSubscription($shop, $this->planForProduct('manufacturing', ['features' => ['staff_limit' => 3]]), 'active');
+        $this->grantViaSubscription($shop, $mfgSub);
 
         $this->assertSame(3, $shop->fresh()->staffLimit());
     }
@@ -370,7 +369,7 @@ class MultiProductSubscriptionTest extends TestCase
     public function test_gate_blocks_shop_with_no_entitled_editions(): void
     {
         $shop = $this->bareShop();
-        $plan = $this->planForProduct('dhiran', ['downgrade_to_read_only_on_due' => false]);
+        $plan = $this->planForProduct('manufacturing', ['downgrade_to_read_only_on_due' => false]);
         $sub  = $this->makeSubscription($shop, $plan, 'active', [
             'ends_at'       => now()->subDay()->toDateString(),
             'grace_ends_at' => now()->subDay()->toDateString(),
@@ -394,13 +393,13 @@ class MultiProductSubscriptionTest extends TestCase
         $retailSub = $this->makeSubscription($shop, $this->planForProduct('retail'), 'active');
         $this->grantViaSubscription($shop, $retailSub);
 
-        // A lapsed dhiran sub on the same shop (read_only-disabled so it expires).
-        $dhiranPlan = $this->planForProduct('dhiran', ['downgrade_to_read_only_on_due' => false]);
-        $dhiranSub  = $this->makeSubscription($shop, $dhiranPlan, 'active', [
+        // A lapsed manufacturer sub on the same shop (read_only-disabled so it expires).
+        $mfgPlan = $this->planForProduct('manufacturing', ['downgrade_to_read_only_on_due' => false]);
+        $mfgSub  = $this->makeSubscription($shop, $mfgPlan, 'active', [
             'ends_at'       => now()->subDay()->toDateString(),
             'grace_ends_at' => now()->subDay()->toDateString(),
         ]);
-        $this->grantViaSubscription($shop, $dhiranSub);
+        $this->grantViaSubscription($shop, $mfgSub);
 
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
@@ -409,24 +408,24 @@ class MultiProductSubscriptionTest extends TestCase
         $this->assertTrue(true);
     }
 
-    // ── dhiran standalone purchase grants dhiran without retail ──────
+    // ── manufacturer standalone purchase grants manufacturer without retail ──────
 
-    public function test_dhiran_standalone_purchase_grants_dhiran_without_retail(): void
+    public function test_manufacturer_standalone_purchase_grants_manufacturer_without_retail(): void
     {
         $this->createPlatformAdmin();
         $shop = $this->bareShop();
         $user = User::factory()->create(['shop_id' => $shop->id, 'is_active' => true]);
         $this->actingAs($user);
 
-        $plan = $this->planForProduct('dhiran');
+        $plan = $this->planForProduct('manufacturing');
 
         $sub = app(SubscriptionPaymentService::class)->createSubscription(
-            $plan, 'monthly', 1499.00, 'pay_dh_' . uniqid(), 'order_dh_' . uniqid()
+            $plan, 'monthly', 1499.00, 'pay_mf_' . uniqid(), 'order_mf_' . uniqid()
         );
 
-        $this->assertNotNull($this->activeEdition($shop, ShopEdition::DHIRAN));
+        $this->assertNotNull($this->activeEdition($shop, ShopEdition::MANUFACTURER));
         $this->assertNull($this->activeEdition($shop, ShopEdition::RETAILER));
-        $this->assertSame($sub->id, $this->activeEdition($shop, ShopEdition::DHIRAN)->product_subscription_id);
+        $this->assertSame($sub->id, $this->activeEdition($shop, ShopEdition::MANUFACTURER)->product_subscription_id);
     }
 
     // ── renewal keeps edition ───────────────────────────────────────

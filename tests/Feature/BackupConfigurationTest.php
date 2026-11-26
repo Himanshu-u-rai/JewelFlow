@@ -41,13 +41,12 @@ class BackupConfigurationTest extends TestCase
         $exclude = config('backup.backup.source.files.exclude');
 
         // storage/app/private also holds real application data (KYC uploads,
-        // import files, dhiran records) that must remain backed up. The fix
+        // import files) that must remain backed up. The fix
         // must exclude only the two backup-destination subfolders, never the
         // whole storage/app/private tree.
         $genuineDataPaths = [
             storage_path('app/private/kyc'),
             storage_path('app/private/imports'),
-            storage_path('app/private/dhiran'),
             storage_path('app/private/invoice-parse-tmp'),
         ];
 

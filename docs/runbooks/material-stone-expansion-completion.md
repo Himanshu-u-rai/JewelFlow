@@ -49,7 +49,7 @@ Do not advance Stage B until item 2 is documented in the support log.
 - **Current opt-ins**: 0 (no pilot shop has requested Tier 2)
 - **Defense layers verified**:
   - Controller validators: `Rule::in(MetalRegistry::enabledMetalsForShop($shopId))`
-  - Service layer: `MetalRegistry::isDhiranEligible` blocks platinum/copper as collateral; `isAutoRepricedEligible` causes `RepriceRetailerInventoryJob` to skip; `isLiveRateEligible` blocks `FetchLiveMetalRatesJob`
+  - Service layer: `isAutoRepricedEligible` causes `RepriceRetailerInventoryJob` to skip; `isLiveRateEligible` blocks `FetchLiveMetalRatesJob`
   - DB: CHECK constraint accepts `gold|silver|platinum|copper|NULL`; rejects everything else
 
 ## Stone primitive operational state (Phase 2A)

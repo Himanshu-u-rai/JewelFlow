@@ -81,7 +81,6 @@ class DailyRateBusinessDateTest extends TestCase
         Bus::fake();
 
         [$user, $shop] = $this->createRetailerTenant();
-        $dhiranShop = $this->createShop('dhiran');
 
         $previousRate = ShopDailyMetalRate::withoutTenant()->create([
             'shop_id' => $shop->id,
@@ -122,7 +121,6 @@ class DailyRateBusinessDateTest extends TestCase
         $this->assertSame(5400.0, (float) $previousRate->fresh()->gold_24k_rate_per_gram);
         $this->assertSame(90.0, (float) $previousRate->fresh()->silver_999_rate_per_gram);
         $this->assertDatabaseCount('shop_daily_metal_rates', 2);
-        $this->assertDatabaseMissing('shop_daily_metal_rates', ['shop_id' => $dhiranShop->id]);
 
         foreach (range(1, 2) as $_) {
             $this->actingAs($user)

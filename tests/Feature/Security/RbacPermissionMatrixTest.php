@@ -52,10 +52,6 @@ class RbacPermissionMatrixTest extends TestCase
 
         $byAbility = [];
         foreach (Route::getRoutes() as $route) {
-            // Dhiran (pawn loans) is its own sign-in area; shop staff are sent back to theirs first.
-            if (in_array('realm:dhiran', $route->gatherMiddleware(), true)) {
-                continue;
-            }
             foreach ($route->gatherMiddleware() as $mw) {
                 if (is_string($mw) && preg_match('/^can:([a-z_]+\.[a-z_.]+)$/', $mw, $m)) {
                     foreach (array_diff($route->methods(), ['HEAD']) as $method) {

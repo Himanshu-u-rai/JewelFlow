@@ -212,7 +212,7 @@ try {
     // ── cookies: this environment's own names, host-only ────────────────────
     // Staging shares the parent domain with production; one set of names let a
     // staging page load replace production's session cookie in the browser.
-    $productionNames = ['jewelflows-session', 'jewelflows-platform-admin-session', 'jewelflows-dhiran-session'];
+    $productionNames = ['jewelflows-session', 'jewelflows-platform-admin-session'];
     $cookieProblems = function ($response) use ($productionNames, $onStaging): array {
         $bad = [];
         foreach ($response->headers->getCookies() as $c) {
@@ -236,9 +236,9 @@ try {
     // NAME is not observable here (RealmAuthHardeningTest and the real-HTTP
     // probe cover it); scope, and the absence of production's names, are.
     $names = array_unique(array_map(fn ($c) => $c->getName(), array_merge($login->headers->getCookies(), $in->headers->getCookies(), $out->headers->getCookies())));
-    $ownNames = [config('session.tenant_cookie'), config('session.platform_admin_cookie'), config('session.dhiran_cookie')];
+    $ownNames = [config('session.tenant_cookie'), config('session.platform_admin_cookie')];
     check($bad === [] && $names !== [] && $in->getStatusCode() === 302 && ! in_array(location($in), ['/login', ''], true) && $out->getStatusCode() === 302
-        && (! $onStaging || count(array_filter($ownNames, fn ($n) => str_ends_with($n, '-staging'))) === 3),
+        && (! $onStaging || count(array_filter($ownNames, fn ($n) => str_ends_with($n, '-staging'))) === 2),
         'cookies: tenant login/logout and admin login set no production cookie name and nothing scoped to a parent domain',
         $bad ? implode('; ', $bad) : implode(',', $names).' | login '.$in->getStatusCode().'->'.location($in).' | own: '.implode(',', $ownNames));
     $supers = PlatformAdmin::where('role', 'super_admin')->count();

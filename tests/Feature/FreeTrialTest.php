@@ -17,7 +17,7 @@ use Tests\TestCase;
 /**
  * Free trial: no payment, 1 month, fully writable, drops to read-only at end
  * (data preserved). One trial per family — retailer+manufacturer share the 'erp'
- * family, dhiran is separate.
+ * family.
  */
 class FreeTrialTest extends TestCase
 {
@@ -166,21 +166,6 @@ class FreeTrialTest extends TestCase
         $svc->startTrial(Plan::where('code', 'manufacturer_yearly')->firstOrFail());
     }
 
-    public function test_dhiran_is_a_separate_family_can_trial_after_erp(): void
-    {
-        [$shop, $user] = $this->shopAndUser('retailer');
-        $this->actingAs($user);
-        $svc = app(SubscriptionPaymentService::class);
-
-        $svc->startTrial(Plan::where('code', 'retailer_yearly')->firstOrFail());
-        // Dhiran is a different family → allowed.
-        $dhiran = $svc->startTrial(Plan::where('code', 'dhiran_yearly')->firstOrFail());
-
-        $this->assertSame('trial', $dhiran->status);
-        $this->assertTrue($shop->fresh()->hasEdition('dhiran'));
-        $this->assertTrue($shop->fresh()->hasEdition('retailer'), 'still has the erp trial edition too');
-    }
-
     public function test_http_blocks_a_second_trial_while_one_is_live(): void
     {
         // A shop with a LIVE trial is sent to its subscription status page if it
@@ -237,22 +222,6 @@ class FreeTrialTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('already used your free trial');
         $svc->startTrial(Plan::where('code', 'manufacturer_yearly')->firstOrFail());
-    }
-
-    public function test_pre_shop_user_can_still_trial_a_different_family(): void
-    {
-        $user = User::create([
-            'name' => 'PreShop2', 'mobile_number' => fake()->unique()->numerify('9########'),
-            'shop_id' => null, 'password' => bcrypt('x'), 'is_active' => true,
-        ]);
-        $this->actingAs($user);
-        $svc = app(SubscriptionPaymentService::class);
-
-        $svc->startTrial(Plan::where('code', 'retailer_yearly')->firstOrFail());
-        // Dhiran is a different family → allowed even pre-shop.
-        $dhiran = $svc->startTrial(Plan::where('code', 'dhiran_yearly')->firstOrFail());
-        $this->assertSame('trial', $dhiran->status);
-        $this->assertSame($user->id, $dhiran->user_id);
     }
 
     public function test_trial_cannot_un_suspend_an_admin_suspended_shop(): void

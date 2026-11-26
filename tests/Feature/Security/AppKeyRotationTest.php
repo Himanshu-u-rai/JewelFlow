@@ -3,13 +3,11 @@
 namespace Tests\Feature\Security;
 
 use App\Services\PricingEngine;
-use App\Services\ProductPromotionService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
-use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -70,19 +68,5 @@ class AppKeyRotationTest extends TestCase
         // PricingEngine signs with the current key only: previous keys do not help.
         $this->useKey($this->new, [$this->old]);
         $this->assertFalse(app(PricingEngine::class)->verify($json, $signature));
-    }
-
-    public function test_a_recognition_proof_stored_before_the_rotation_no_longer_matches(): void
-    {
-        $proof = new ReflectionMethod(ProductPromotionService::class, 'proof');
-        $identity = (object) ['id' => 1, 'shop_id' => 1, 'realm' => 'retail', 'role_id' => 1, 'password' => 'hash', 'created_at' => '2026-01-01 00:00:00'];
-
-        $stored = $proof->invoke(app(ProductPromotionService::class), $identity);
-
-        // The proof is an HMAC under the current key only. After a rotation an
-        // unchanged owner looks like a changed one, and every recognition
-        // between the two products would be treated as invalid.
-        $this->useKey($this->new, [$this->old]);
-        $this->assertNotSame($stored, $proof->invoke(app(ProductPromotionService::class), $identity));
     }
 }

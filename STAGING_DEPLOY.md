@@ -285,10 +285,10 @@ release: PHPUnit 11 only *warns* about docblock metadata (`@dataProvider`) that
 PHPUnit 12 removes outright, so those turn into hard errors on the next upgrade
 while the suite still looks green today. Currently zero.
 
-> This section used to list 11 "known non-blocking failures" — DhiranOnboardingTest,
+> This section used to list 11 "known non-blocking failures" — an onboarding test,
 > BusinessIdentifierArchitecture, ProfileTest, ServicesBuyNowTest — and told the
-> operator to deploy over them. All 11 have since been fixed (verified: those four
-> classes are 46/46 green), but the list stayed, so the runbook was training whoever
+> operator to deploy over them. All 11 have since been fixed (verified at the time:
+> those classes were all green), but the list stayed, so the runbook was training whoever
 > ran it to wave off red tests. A standing "ignore these failures" list is a place for
 > real regressions to hide: the next genuine break in one of those classes would have
 > been read as expected. Do not re-add one. If a test legitimately cannot pass in an
@@ -317,16 +317,7 @@ curl -sk -o /dev/null -w "%{http_code}\n" https://<staging-host>/dashboard   # e
 
 ---
 
-## 18. Do not touch Dhiran
-
-Dhiran (gold loans) is a separate product on the `dhiran.*` subdomain with its
-own layout, nav, and scheduled jobs (`dhiran:accrue-interest`,
-`dhiran:overdue-reminders`, `dhiran:forfeiture-check`). For an ERP pilot, do not
-enable, seed, test, or modify Dhiran. PilotDemoSeeder creates no Dhiran data.
-
----
-
-## 19. Production safety warnings
+## 18. Production safety warnings
 
 - `APP_DEBUG=false` in any shared environment — always.
 - Back up (Section 4) before every `migrate`; migrate forward only.

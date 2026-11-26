@@ -4,13 +4,11 @@ namespace Tests\Feature\Customer;
 
 use App\Models\Customer;
 use App\Models\CustomerProfilePhoto;
-use App\Models\Dhiran\DhiranSettings;
 use App\Models\Invoice;
 use App\Models\KycDocument;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\CustomerProfilePhotoService;
-use App\Services\DhiranService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -40,30 +38,23 @@ class CustomerProfilePhotoTest extends TestCase
         return $shopId ? TenantContext::runFor($shopId, $request) : $request();
     }
 
-    private function tenant(bool $dhiran = false): array
+    private function tenant(): array
     {
         [$user, $shop] = $this->createRetailerTenant();
-        if ($dhiran) {
-            $shop->forceFill(['shop_type' => 'dhiran'])->save();
-            $shop->editions()->delete();
-            $shop->editions()->create(['edition' => 'dhiran']);
-            $user->forceFill(['realm' => 'dhiran', 'email_verified_at' => now()])->save();
-            DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
-        }
         $customer = $this->createCustomer($shop->id, ['first_name' => 'Asha', 'last_name' => 'Example', 'pan' => 'ABCDE1234F']);
         TenantContext::set($shop->id);
 
         return [$user, $shop, $customer];
     }
 
-    private function url(Customer $customer, bool $dhiran = false): string
+    private function url(Customer $customer): string
     {
-        return ($dhiran ? 'https://dhiran.jewelflows.com/dhiran/borrowers/' : 'https://jewelflows.com/customers/').$customer->id.'/photo';
+        return 'https://jewelflows.com/customers/'.$customer->id.'/photo';
     }
 
-    private function upload(User $user, Customer $customer, string $version = '', bool $dhiran = false)
+    private function upload(User $user, Customer $customer, string $version = '')
     {
-        return TenantContext::runFor($customer->shop_id, fn () => $this->actingAs($user)->postJson($this->url($customer, $dhiran), [
+        return TenantContext::runFor($customer->shop_id, fn () => $this->actingAs($user)->postJson($this->url($customer), [
             'customer_photo' => ProfilePhotoFixtures::portrait(), 'customer_photo_version' => $version,
         ]));
     }
@@ -175,35 +166,6 @@ class CustomerProfilePhotoTest extends TestCase
         Storage::disk('local')->assertExists($this->row($customerB)->file_path);
     }
 
-    public function test_dhiran_uses_its_own_routes_and_mutation_permissions(): void
-    {
-        [$user, , $customer] = $this->tenant(true);
-        $first = $this->upload($user, $customer, '', true)->assertOk();
-        $this->actingAs($user)->get($first->json('photo.url'))->assertOk();
-        $this->assertStringContainsString('/dhiran/borrowers/', $first->json('photo.url'));
-        $this->grantOnlyPermissions($user, ['dhiran.view']);
-        $user = $user->fresh();
-        $this->actingAs($user)->get($first->json('photo.url'))->assertOk();
-        $this->upload($user, $customer, $first->json('photo.version'), true)->assertForbidden();
-        $this->actingAs($user)->deleteJson($this->url($customer, true), ['customer_photo_version' => $first->json('photo.version')])->assertForbidden();
-    }
-
-    public function test_dhiran_cannot_use_retail_routes_even_if_an_edition_is_forged(): void
-    {
-        [$user, $shop, $customer] = $this->tenant(true);
-        $shop->editions()->create(['edition' => 'retailer']);
-        $this->actingAs($user)->get($this->url($customer))->assertRedirect();
-        $this->upload($user, $customer)->assertRedirect();
-    }
-
-    public function test_erp_cannot_use_dhiran_photo_routes(): void
-    {
-        [$user, $shop, $customer] = $this->tenant();
-        DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
-        $this->upload($user, $customer, '', true)->assertRedirect();
-        $this->assertSame([], Storage::disk('local')->allFiles('customer-profile-photos'));
-    }
-
     public function test_photo_routes_do_not_bypass_enforced_subscription_recovery(): void
     {
         [$user, $shop, $customer] = $this->tenant();
@@ -213,23 +175,6 @@ class CustomerProfilePhotoTest extends TestCase
         $subscription->forceFill(['status' => 'expired', 'ends_at' => now()->subDays(10)->toDateString(), 'grace_ends_at' => now()->subDays(5)->toDateString()])->save();
         $this->actingAs($user)->getJson($first->json('photo.url'))->assertForbidden()->assertJsonPath('code', 'SUBSCRIPTION_REQUIRED');
         $this->upload($user, $customer, $first->json('photo.version'))->assertForbidden();
-        Storage::disk('local')->assertExists($this->row($customer)->file_path);
-    }
-
-    public function test_dhiran_photo_routes_retain_email_and_edition_gates(): void
-    {
-        [$user, $shop, $customer] = $this->tenant(true);
-        $first = $this->upload($user, $customer, '', true)->assertOk();
-        $user->forceFill(['email_verified_at' => null])->save();
-        $this->actingAs($user->fresh())->getJson($first->json('photo.url'))->assertStatus(409)->assertJsonPath('message', 'Verify your email to continue.');
-        $user->forceFill(['email_verified_at' => now()])->save();
-        // Plan ended (owner 2026-11-12, collect-only): the books stay readable, new uploads wait for renewal.
-        $shop->editions()->delete();
-        $this->actingAs($user->fresh())->get($first->json('photo.url'))->assertOk();
-        $this->upload($user->fresh(), $customer, $first->json('photo.version'), true)->assertRedirect(route('dhiran.dashboard'));
-        // Dhiran never set up for the shop: kept out entirely.
-        \Illuminate\Support\Facades\DB::table('dhiran_settings')->where('shop_id', $shop->id)->update(['is_enabled' => \Illuminate\Support\Facades\DB::raw('false')]);
-        $this->actingAs($user->fresh())->get($first->json('photo.url'))->assertRedirect();
         Storage::disk('local')->assertExists($this->row($customer)->file_path);
     }
 
@@ -394,22 +339,6 @@ class CustomerProfilePhotoTest extends TestCase
         Storage::disk('local')->assertMissing($current->file_path);
     }
 
-    public function test_dhiran_cross_shop_direct_reads_and_mutations_are_denied(): void
-    {
-        [$ownerA, $shopA] = $this->tenant(true);
-        [$ownerB, , $customerB] = $this->tenant(true);
-        $photo = $this->upload($ownerB, $customerB, '', true)->assertOk();
-        TenantContext::runFor($shopA->id, function () use ($ownerA, $customerB, $photo) {
-            $this->actingAs($ownerA)->get($photo->json('photo.url'))->assertNotFound();
-            $this->actingAs($ownerA)->getJson($this->url($customerB, true))->assertNotFound();
-            $this->actingAs($ownerA)->postJson($this->url($customerB, true), [
-                'customer_photo' => ProfilePhotoFixtures::portrait(), 'customer_photo_version' => $photo->json('photo.version'),
-            ])->assertNotFound();
-            $this->actingAs($ownerA)->deleteJson($this->url($customerB, true), ['customer_photo_version' => $photo->json('photo.version')])->assertNotFound();
-        });
-        Storage::disk('local')->assertExists($this->row($customerB)->file_path);
-    }
-
     public function test_prune_dry_run_and_real_run_only_remove_old_unreferenced_feature_files(): void
     {
         [$user, , $customer] = $this->tenant();
@@ -455,24 +384,20 @@ class CustomerProfilePhotoTest extends TestCase
         $this->assertSame($before, $customer->fresh()->getAttributes());
     }
 
-    public function test_photo_changes_preserve_populated_invoice_loan_kyc_and_balance_records(): void
+    public function test_photo_changes_preserve_populated_invoice_kyc_and_balance_records(): void
     {
-        [$user, $shop, $customer] = $this->tenant(true);
-        TenantContext::runFor($shop->id, function () use ($customer, $user, $shop) {
+        [$user, $shop, $customer] = $this->tenant();
+        TenantContext::runFor($shop->id, function () use ($customer, $shop) {
             (new Invoice)->forceFill(['shop_id' => $shop->id, 'customer_id' => $customer->id, 'status' => 'draft', 'gold_rate' => 6000, 'subtotal' => 1000, 'gst' => 30, 'total' => 1030])->save();
             KycDocument::create(['customer_id' => $customer->id, 'file_disk' => 'local', 'file_path' => 'kyc/keep.jpg', 'document_type' => 'pan_card']);
-            app(DhiranService::class)->createLoan($shop, $customer, [[
-                'description' => 'Synthetic Chain', 'metal_type' => 'gold', 'purity' => 22,
-                'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000,
-            ]], ['principal_amount' => 100000, 'gold_rate_on_date' => 6000, 'created_by' => $user->id, 'status' => 'pending_evidence']);
         });
         Storage::disk('local')->put('kyc/keep.jpg', 'private evidence unchanged');
-        $tables = ['customers', 'invoices', 'invoice_payments', 'customer_opening_balances', 'customer_gold_transactions', 'kyc_documents', 'dhiran_loans', 'dhiran_loan_items', 'dhiran_payments', 'dhiran_ledger_entries', 'dhiran_attachments'];
+        $tables = ['customers', 'invoices', 'invoice_payments', 'customer_opening_balances', 'customer_gold_transactions', 'kyc_documents'];
         $snapshot = fn () => collect($tables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->orderBy('id')->get()->toJson()])->all();
         $before = $snapshot();
-        $first = $this->upload($user, $customer, '', true)->assertOk();
-        $next = $this->upload($user, $customer, $first->json('photo.version'), true)->assertOk();
-        $this->actingAs($user)->deleteJson($this->url($customer, true), ['customer_photo_version' => $next->json('photo.version')])->assertOk();
+        $first = $this->upload($user, $customer)->assertOk();
+        $next = $this->upload($user, $customer, $first->json('photo.version'))->assertOk();
+        $this->actingAs($user)->deleteJson($this->url($customer), ['customer_photo_version' => $next->json('photo.version')])->assertOk();
         $this->assertSame($before, $snapshot());
         $this->assertSame('private evidence unchanged', Storage::disk('local')->get('kyc/keep.jpg'));
     }
@@ -488,22 +413,14 @@ class CustomerProfilePhotoTest extends TestCase
         }
     }
 
-    public function test_retail_and_dhiran_profiles_and_lists_render_private_avatars(): void
+    public function test_retail_profiles_and_lists_render_private_avatars(): void
     {
-        foreach ([false, true] as $dhiran) {
-            [$user, $shop, $customer] = $this->tenant($dhiran);
-            if ($dhiran) {
-                TenantContext::runFor($shop->id, fn () => app(DhiranService::class)->createLoan($shop, $customer, [[
-                    'description' => 'Synthetic Chain', 'metal_type' => 'gold', 'purity' => 22,
-                    'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000,
-                ]], ['principal_amount' => 100000, 'gold_rate_on_date' => 6000, 'created_by' => $user->id, 'status' => 'pending_evidence']));
-            }
-            $saved = $this->upload($user, $customer, '', $dhiran)->assertOk();
-            $base = $dhiran ? 'https://dhiran.jewelflows.com/dhiran/borrowers' : 'https://jewelflows.com/customers';
-            $this->actingAs($user)->get($base.'/'.$customer->id)->assertOk()
-                ->assertSee('data-photo-mode="profile"', false)->assertSee('Change photo')->assertSee('Remove photo');
-            $this->actingAs($user)->get($base)->assertOk()->assertSee('data-customer-avatar', false)
-                ->assertSee($saved->json('photo.version'))->assertDontSee($this->row($customer)->file_path);
-        }
+        [$user, , $customer] = $this->tenant();
+        $saved = $this->upload($user, $customer)->assertOk();
+        $base = 'https://jewelflows.com/customers';
+        $this->actingAs($user)->get($base.'/'.$customer->id)->assertOk()
+            ->assertSee('data-photo-mode="profile"', false)->assertSee('Change photo')->assertSee('Remove photo');
+        $this->actingAs($user)->get($base)->assertOk()->assertSee('data-customer-avatar', false)
+            ->assertSee($saved->json('photo.version'))->assertDontSee($this->row($customer)->file_path);
     }
 }

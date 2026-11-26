@@ -10,11 +10,10 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * Admin-editable banners + cross-promo override (platform announcements).
+ * Admin-editable banners (platform announcements).
  *
- * Platform admin creates/edits an offers/deals banner (type=banner) and a
- * cross-promo override (type=cross_promo); both render on tenant dashboards. The
- * admin CRUD is platform-admin only.
+ * Platform admin creates/edits an offers/deals banner (type=banner) that renders
+ * on tenant dashboards. The admin CRUD is platform-admin only.
  */
 class AdminMessagingTest extends TestCase
 {
@@ -44,7 +43,7 @@ class AdminMessagingTest extends TestCase
             ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->post('/admin/announcements', [
                 'title' => 'Deal', 'body' => 'Big sale', 'type' => 'banner',
-                'target' => 'all', 'realm' => 'dhiran',
+                'target' => 'all', 'realm' => 'erp',
                 'cta_label' => 'Shop', 'cta_url' => 'https://x.test/deal',
                 'send_email' => false,
             ])->assertRedirect();
@@ -52,7 +51,7 @@ class AdminMessagingTest extends TestCase
         $a = PlatformAnnouncement::where('title', 'Deal')->first();
         $this->assertNotNull($a);
         $this->assertSame('banner', $a->type);
-        $this->assertSame('dhiran', $a->realm);
+        $this->assertSame('erp', $a->realm);
         $this->assertSame('https://x.test/deal', $a->cta_url);
     }
 
@@ -72,7 +71,7 @@ class AdminMessagingTest extends TestCase
         $this->assertSame('Updated body', $banner->fresh()->body);
     }
 
-    public function test_admin_can_create_cross_promo_override(): void
+    public function test_cross_promo_type_is_no_longer_accepted(): void
     {
         $admin = $this->createPlatformAdmin();
 
@@ -80,11 +79,8 @@ class AdminMessagingTest extends TestCase
             ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->post('/admin/announcements', [
                 'title' => 'Custom heading', 'body' => 'Custom body', 'type' => 'cross_promo',
-                'target' => 'all', 'realm' => 'erp',
-                'cta_label' => 'Go', 'cta_url' => 'https://x.test/go', 'send_email' => false,
-            ])->assertRedirect();
-
-        $this->assertTrue(PlatformAnnouncement::where('type', 'cross_promo')->where('realm', 'erp')->exists());
+                'target' => 'all', 'realm' => 'erp', 'send_email' => false,
+            ])->assertSessionHasErrors('type');
     }
 
     public function test_invalid_type_is_rejected(): void
@@ -120,39 +116,6 @@ class AdminMessagingTest extends TestCase
             ->assertOk()
             ->assertSee('ERP Banner')
             ->assertSee('promo-banner', false);
-    }
-
-    public function test_banner_respects_realm_targeting(): void
-    {
-        // A Dhiran-only banner must NOT appear on the ERP dashboard.
-        $this->banner(['title' => 'Dhiran Only Banner', 'realm' => 'dhiran']);
-        [$owner] = $this->createRetailerTenant();
-
-        $this->actingAs($owner)->get('https://jewelflows.com/dashboard')
-            ->assertOk()
-            ->assertDontSee('Dhiran Only Banner');
-    }
-
-    public function test_cross_promo_override_replaces_default_toast_text(): void
-    {
-        // An ERP-surface cross_promo override changes the Dhiran-promo toast text.
-        // The toast only renders once Realm::dhiranRegisterUrl() resolves, and it
-        // derives from the request host only in production/local — so under
-        // `testing` the documented config override stands in for host derivation.
-        config(['platform.cross_promotion.dhiran_register_url' => 'https://dhiran.jewelflows.com/register']);
-
-        PlatformAnnouncement::create([
-            'title' => 'Special gold-loan launch', 'body' => 'Custom promo body',
-            'cta_label' => 'Try Dhiran now', 'cta_url' => 'https://dhiran.jewelflows.com/register',
-            'type' => 'cross_promo', 'target' => 'all', 'realm' => 'erp', 'send_email' => false,
-        ]);
-        [$owner] = $this->createRetailerTenant();
-
-        $response = $this->actingAs($owner)->get('https://jewelflows.com/dashboard');
-        $response->assertOk();
-        $response->assertSee('Special gold-loan launch');   // override heading
-        $response->assertSee('Try Dhiran now');             // override CTA
-        $response->assertDontSee('Offer gold-loan services?'); // default heading replaced
     }
 
     public function test_banner_type_does_not_render_as_system_notice(): void

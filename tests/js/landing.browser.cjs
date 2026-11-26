@@ -11,28 +11,23 @@ const root = path.resolve(__dirname, '../..');
 const out = process.env.JF_LANDING_EVIDENCE || path.join(root, '../landing-evidence');
 fs.mkdirSync(out, { recursive: true });
 const source = fs.readFileSync(path.join(root, 'resources/views/landing.blade.php'), 'utf8');
-function render(enabled = true, external = false) {
+function render(external = false) {
     const base = external ? 'https://jewelflows.com' : '';
     const logo = 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(root, 'public/favicon.svg')).toString('base64');
     let html = source.replace(/@php[\s\S]*?@endphp/, '')
         .replace(/@include\('partials.favicon'\)/, `<link rel="icon" href="${logo}">`)
-        .replace(/@if \(\$dhiran(?:Register|Login)Url\)([\s\S]*?)@endif/g, (_, body) => {
-            const parts = body.split('@else'); return enabled ? parts[0] : (parts[1] || '');
-        })
         .replace(/\{\{ route\('([^']+)'\) \}\}/g, (_, name) => base + ({ home: '/', login: '/login', register: '/register' })[name])
         .replace(/\{\{ asset\('favicon.svg'\) \}\}/g, logo)
         .replace(/\{\{ asset\('images\/([^']+)'\) \}\}/g, (_, name) => 'data:image/webp;base64,' + fs.readFileSync(path.join(process.env.JF_LANDING_ASSETS || path.join(root, 'public/images'), name)).toString('base64'))
-        .replace(/\{\{ \$dhiranRegisterUrl \}\}/g, 'https://dhiran.jewelflows.com/register')
-        .replace(/\{\{ \$dhiranLoginUrl \}\}/g, 'https://dhiran.jewelflows.com/login')
         .replace(/\{\{ config\('app.support_email'\) \}\}/g, 'jewelflows@gmail.com')
         .replace(/\{\{ date\('Y'\) \}\}/g, '2026');
     assert(!/\{\{|@(?:if|endif|php|include)/.test(html), 'Unhandled Blade expression');
     return html;
 }
-fs.writeFileSync(path.join(out, 'landing-preview.html'), render(true, true));
+fs.writeFileSync(path.join(out, 'landing-preview.html'), render(true));
 const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.end(req.url.startsWith('/login') || req.url.startsWith('/register') ? '<h1>Route target fixture</h1>' : render(!req.url.includes('disabled')));
+    res.end(req.url.startsWith('/login') || req.url.startsWith('/register') ? '<h1>Route target fixture</h1>' : render());
 });
 (async () => {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -88,23 +83,17 @@ const server = http.createServer((req, res) => {
         await page.goto(origin); await page.locator('.entry-register summary').click();
         await page.locator('.entry-register a').first().click(); await page.waitForURL(origin + '/register');
         await page.goto(origin); await page.locator('.entry-login summary').click();
-        assert.equal(await page.locator('.entry-login a').nth(1).getAttribute('href'),'https://dhiran.jewelflows.com/login');
         await page.locator('.entry-register summary').click(); await page.waitForTimeout(60);
         assert.equal(await page.locator('.entry-login').evaluate(el => el.open),false);
-        assert.equal(await page.locator('.entry-register a').nth(1).getAttribute('href'),'https://dhiran.jewelflows.com/register');
         // The open right-aligned menu overlays the hero on narrow screens; click a
         // guaranteed uncovered page margin to exercise real outside dismissal.
         await page.mouse.click(6, 500); assert.equal(await page.locator('.entry-register').evaluate(el => el.open),false);
-        checks++;console.log('PASS Retail clicks/keyboard, Dhiran link targets, one menu at a time, outside dismissal');
-        await page.locator('.hero a[href="#dhiran"]').click();
-        const section = await page.locator('#dhiran').boundingBox(); assert(section.y >= 74 && section.y < 150, 'Anchor hidden by header');
+        checks++;console.log('PASS Retail clicks/keyboard, one menu at a time, outside dismissal');
+        await page.locator('.hero a[href="#retail"]').first().click();
+        const section = await page.locator('#retail').boundingBox(); assert(section.y >= 74 && section.y < 150, 'Anchor hidden by header');
         await page.locator('.faq-list summary').first().click(); assert(await page.locator('.faq-list details').first().evaluate(el => el.open));
         assert.equal(await page.getByText(/manufacturer/i).count(),0);
         checks++;console.log('PASS section anchor, native FAQ, no Manufacturer promotion');
-        await page.goto(origin + '/disabled');
-        assert.equal(await page.locator('a[href*="dhiran.jewelflows.com"]').count(),0);
-        assert.equal(await page.locator('a').filter({hasText:'Ask about Dhiran'}).count(),1);
-        checks++;console.log('PASS disabled-Dhiran markup has no production account link (fixture, not PHP helper execution)');
         const nojs = await browser.newContext({javaScriptEnabled:false,viewport:{width:320,height:740}});
         const plain = await nojs.newPage(); await plain.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
         await plain.goto(origin); await plain.locator('.entry-register summary').click();

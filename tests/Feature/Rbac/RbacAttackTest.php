@@ -142,9 +142,6 @@ class RbacAttackTest extends TestCase
         $this->actingAs($this->owner);
         $this->assertContains($this->in(fn () => $this->patch("/settings/roles/{$foreign->id}", ['permissions' => $allIds]))->status(), [403, 404]);
         $this->assertSame(1, $foreign->permissions()->count(), 'another shop\'s role was rewritten');
-
-        $this->in(fn () => $this->patch("/settings/roles/{$cashierRole->id}", ['permissions' => $allIds]));
-        $this->assertSame(0, $cashierRole->permissions()->where('group', 'dhiran')->count(), 'hidden Dhiran permissions were attached');
     }
 
     // ── Another shop's records ───────────────────────────────────────────────────────────────────────────────────
@@ -225,7 +222,7 @@ class RbacAttackTest extends TestCase
         $mgr = $this->member($this->role('manager', ['sales.view']), '9810000010');
         [, $otherShop] = $this->createRetailerTenant();
         $this->actingAs($mgr);
-        $this->in(fn () => $this->patch('/profile', ['name' => 'M', 'role_id' => 1, 'shop_id' => $otherShop->id, 'is_active' => false, 'realm' => 'dhiran']));
+        $this->in(fn () => $this->patch('/profile', ['name' => 'M', 'role_id' => 1, 'shop_id' => $otherShop->id, 'is_active' => false, 'realm' => 'other']));
 
         $fresh = $mgr->fresh();
         $this->assertSame($this->shop->id, $fresh->shop_id);

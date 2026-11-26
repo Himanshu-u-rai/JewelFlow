@@ -7,10 +7,8 @@ use App\Services\Reporting\Definition\ColumnType as T;
 use App\Services\Reporting\Definition\ExportFormat as F;
 use App\Services\Reporting\Definition\FilterControl as Filter;
 use App\Services\Reporting\Definition\FilterKey as FK;
-use App\Services\Reporting\Definition\MaskingStrategy as Mask;
 use App\Services\Reporting\Definition\ReportClassification as Cls;
 use App\Services\Reporting\Definition\ReportDefinition as Def;
-use App\Services\Reporting\Definition\ReportFamily as Fam;
 use App\Services\Reporting\Definition\ReportPermissions as Perm;
 use App\Services\Reporting\Definition\ReportProfile as P;
 use InvalidArgumentException;
@@ -68,21 +66,6 @@ class ReportDefinitionContractTest extends TestCase
         $this->assertSame('reports.audit', $d->permissions->effectiveViewGate());
     }
 
-    public function test_dhiran_family_with_masking_bespoke_pdf_and_gates(): void
-    {
-        $d = new Def(
-            key: 'dhiran-forfeiture', version: 'dhiran-forfeiture@1', title: 'Forfeiture', classification: Cls::Audit,
-            columns: [Col::mandatory('loan', 'Loan no', T::String), Col::sensitive('aadhaar', 'Aadhaar', T::String, Mask::Mask), Col::sensitive('valuation', 'Valuation', T::Money)],
-            profiles: [P::Detailed], filters: [Filter::for(FK::Period, true)], formats: [F::Pdf, F::Excel, F::Csv],
-            permissions: Perm::default()->withFamilyGate('dhiran.reports')->withSurfaceGate('reports.audit'),
-            family: Fam::Dhiran, pdfTemplate: 'reporting.dhiran.forfeiture-record', watermarkBaseline: 'CONFIDENTIAL',
-        );
-        $this->assertSame(Fam::Dhiran, $d->family);
-        $this->assertTrue($d->hasMaskedColumns());
-        $this->assertSame('reporting.dhiran.forfeiture-record', $d->pdfTemplate);
-        $this->assertSame('dhiran.reports', $d->permissions->familyGate);
-    }
-
     public function test_pilot_sales_register_with_reserved_branch_hook(): void
     {
         $d = new Def(
@@ -119,12 +102,6 @@ class ReportDefinitionContractTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new Def('bad', 'bad@1', 'bad', Cls::Operational, [Col::mandatory('a', 'A', T::Money)], [P::Detailed, P::CaStandard], [], [F::Excel, F::Pdf], Perm::default());
-    }
-
-    public function test_dhiran_family_requires_family_gate(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        new Def('bad', 'bad@1', 'bad', Cls::Owner, [Col::mandatory('a', 'A', T::Money)], [P::Detailed], [], [F::Pdf, F::Excel], Perm::default(), family: Fam::Dhiran);
     }
 
     public function test_rejects_empty_columns(): void

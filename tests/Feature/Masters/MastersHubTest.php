@@ -30,20 +30,6 @@ class MastersHubTest extends TestCase
         parent::setUp();
     }
 
-    private function dhiranTenant(): array
-    {
-        $admin = $this->createPlatformAdmin();
-        $plan = $this->createPlan('dhiran');
-        $shop = $this->createShop('dhiran');
-        $role = $this->createOwnerRole($shop->id);
-        $user = $this->createOwnerUser($shop, $role);
-        $this->createSubscription($shop->id, $admin, $plan);
-        $this->createBillingSettings($shop->id);
-        $this->markShopOpeningSetupComplete($shop->id);
-
-        return [$user, $shop];
-    }
-
     private function syncPermissions(int $roleId, array $names): void
     {
         $role = Role::withoutTenant()->findOrFail($roleId);
@@ -71,16 +57,6 @@ class MastersHubTest extends TestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $this->get(route('masters.index'))->assertRedirect(route('login'));
-    }
-
-    public function test_dhiran_only_shop_is_blocked(): void
-    {
-        // realm defaults to ERP (unset), so realm:erp passes and the
-        // edition:retailer,manufacturer gate is what refuses a dhiran-only shop.
-        [$user] = $this->dhiranTenant();
-        $this->actingAs($user);
-
-        $this->get(route('masters.index'))->assertForbidden();
     }
 
     // ---- Edition visibility --------------------------------------------
@@ -350,19 +326,6 @@ class MastersHubTest extends TestCase
         $html = $this->get(route('masters.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('href="' . e(route('masters.index')) . '"', $html);
-    }
-
-    public function test_sidebar_hides_masters_for_dhiran_only_shop(): void
-    {
-        // Dhiran-only shops are 403'd from the hub, and the sidebar entry (gated
-        // on retailer/manufacturer editions) must be absent on pages they CAN
-        // reach — the dashboard renders the same sidebar.
-        [$user] = $this->dhiranTenant();
-        $this->actingAs($user);
-
-        $html = $this->get(route('dashboard'))->assertOk()->getContent();
-
-        $this->assertStringNotContainsString('href="' . e(route('masters.index')) . '"', $html);
     }
 
     public function test_sidebar_preserves_existing_navigation(): void

@@ -1,6 +1,6 @@
 # Editions & Identity Refactor — Spec
 
-Scope: make Retailer / Manufacturer / Dhiran first-class peer services (any combination allowed, Dhiran-only is valid), add admin and user-side edition management, and make the login mobile number safely changeable.
+Scope: make Retailer / Manufacturer first-class peer services (any combination allowed), add admin and user-side edition management, and make the login mobile number safely changeable.
 
 Status: **spec only — no code changes**. Reviewer must approve before Phase 1 begins.
 
@@ -11,20 +11,19 @@ Status: **spec only — no code changes**. Reviewer must approve before Phase 1 
 | Concept | Where | Shape |
 |---|---|---|
 | Shop edition | `shops.shop_type` | single string: `retailer` \| `manufacturer` |
-| Dhiran enablement | `dhiran_settings.is_enabled` | boolean, per shop |
 | Edition gate | `EnsureShopEdition` middleware + `ShopEdition` support class | equality check on `shop_type` |
 | Edition sign-up toggle | `platform_settings.retailer_enabled` / `manufacturer_enabled` | per-edition flags |
 | Login credential | `users.mobile_number` | not verified; no change flow |
 | Contact mobile | `shops.owner_mobile` | separate display field, not synced |
 | Email OTP infra | `EmailVerificationOtpController` + routes | already exists |
 
-Files that read `shop_type` / `dhiran_enabled` (15): `app/Http/Controllers/Api/Mobile/BootstrapController.php`, `app/Data/Mobile/ShopSummaryData.php`, `app/Http/Controllers/Admin/DashboardController.php`, `app/Http/Controllers/Admin/ShopManagementController.php`, `app/Http/Controllers/Api/Mobile/AuthController.php`, `app/Http/Controllers/ShopController.php`, `app/Http/Controllers/SubscriptionController.php`, `app/Http/Middleware/EnsureShopEdition.php`, `app/Models/Shop.php`, `app/Services/BulkImportService.php`, `app/Services/ItemManufacturingService.php`, `app/Services/OnboardingResumeService.php`, `app/Services/TenantActivityMonitorService.php`, `app/Services/TenantHealthService.php`, `app/Support/ShopEdition.php`.
+Files that read `shop_type` (15): `app/Http/Controllers/Api/Mobile/BootstrapController.php`, `app/Data/Mobile/ShopSummaryData.php`, `app/Http/Controllers/Admin/DashboardController.php`, `app/Http/Controllers/Admin/ShopManagementController.php`, `app/Http/Controllers/Api/Mobile/AuthController.php`, `app/Http/Controllers/ShopController.php`, `app/Http/Controllers/SubscriptionController.php`, `app/Http/Middleware/EnsureShopEdition.php`, `app/Models/Shop.php`, `app/Services/BulkImportService.php`, `app/Services/ItemManufacturingService.php`, `app/Services/OnboardingResumeService.php`, `app/Services/TenantActivityMonitorService.php`, `app/Services/TenantHealthService.php`, `app/Support/ShopEdition.php`.
 
 ---
 
 ## 2. Target model
 
-Editions are a **set** attached to a shop. Any non-empty subset of `{retailer, manufacturer, dhiran}` is valid.
+Editions are a **set** attached to a shop. Any non-empty subset of `{retailer, manufacturer}` is valid.
 
 ### 2.1 Schema
 
@@ -33,7 +32,7 @@ New table `shop_editions`:
 ```
 id            bigint PK
 shop_id       bigint FK shops.id ON DELETE CASCADE
-edition       varchar(16)  — 'retailer' | 'manufacturer' | 'dhiran'
+edition       varchar(16)  — 'retailer' | 'manufacturer'
 activated_at  timestamp
 activated_by  bigint FK users.id NULL (NULL if seeded/admin-granted)
 deactivated_at timestamp NULL
@@ -42,7 +41,7 @@ deactivation_reason text NULL
 created_at / updated_at
 
 UNIQUE (shop_id, edition)       -- prevent duplicates
-CHECK (edition IN ('retailer','manufacturer','dhiran'))
+CHECK (edition IN ('retailer','manufacturer'))
 INDEX (shop_id)
 ```
 
@@ -51,7 +50,6 @@ Active editions = rows where `deactivated_at IS NULL`. History is preserved (aud
 ### 2.2 Column lifecycle on `shops`
 
 - `shop_type` — **keep for one release** as a read-replica (backfilled by trigger or app-layer on write). Deprecate in a follow-up migration once all reads are migrated to `shop_editions`.
-- `dhiran_settings.is_enabled` — **keep as-is**; mirror into an `shop_editions` row where `edition='dhiran'`. Source of truth shifts to `shop_editions`; `is_enabled` becomes a derived convenience.
 
 Rationale: big-bang column drop on a live DB is unsafe. Dual-write for one release → verify → drop.
 
@@ -59,7 +57,6 @@ Rationale: big-bang column drop on a live DB is unsafe. Dual-write for one relea
 
 For every existing row in `shops`:
 - Insert `(shop_id, shop_type, activated_at=shops.created_at, activated_by=NULL)` into `shop_editions`.
-- If `dhiran_settings.is_enabled = true` for that shop, also insert `(shop_id, 'dhiran', ...)`.
 
 Idempotent (uses INSERT … ON CONFLICT DO NOTHING on `(shop_id, edition)`).
 
@@ -74,7 +71,7 @@ public function activeEditions(): HasMany  -- deactivated_at IS NULL
 public function hasEdition(string $edition): bool
 public function hasAnyEdition(string ...$editions): bool
 public function hasAllEditions(string ...$editions): bool
-public function editionList(): array   -- ['retailer','dhiran']
+public function editionList(): array   -- ['retailer','manufacturer']
 ```
 
 Backward-compat: `isRetailer()` / `isManufacturer()` now delegate to `hasEdition(...)`.
@@ -85,15 +82,13 @@ Backward-compat: `isRetailer()` / `isManufacturer()` now delegate to `hasEdition
 
 `EnsureShopEdition` already accepts variadic editions: change the inner check from `in_array($shopType, $editions)` to `$shop->hasAnyEdition(...$editions)`.
 
-`EnsureDhiranEnabled`: delegate to `$shop->hasEdition('dhiran')` instead of reading `dhiran_settings.is_enabled`. Keep `dhiran_settings` for per-shop configuration (interest rates, LTV, etc.) — that table is not about enablement any more.
-
 ---
 
 ## 3. UX: shop creation, upgrade, routing
 
 ### 3.1 Shop creation (onboarding)
 
-`/shops/choose-type` becomes a **multi-select**. Tiles for Retailer, Manufacturer, Dhiran. User must pick at least one. `PlatformSetting::retailerEnabled()` / `manufacturerEnabled()` gain a `dhiranEnabled()` sibling to gate tiles.
+`/shops/choose-type` becomes a **multi-select**. Tiles for Retailer and Manufacturer. User must pick at least one. `PlatformSetting::retailerEnabled()` / `manufacturerEnabled()` gate the tiles.
 
 Plan picker `/subscription/plans` receives chosen editions (session or query). Plans are filtered: show plans that match the exact edition set **or** combo plans that cover a superset.
 
@@ -101,28 +96,19 @@ Plan picker `/subscription/plans` receives chosen editions (session or query). P
 
 New page `/settings/services` (owner-only): shows active editions as cards with "Active" state, shows available editions as cards with "Add [edition]" button. Clicking "Add" → plan/price preview → payment → on webhook success, insert `shop_editions` row.
 
-Remove edition: soft-deactivates (sets `deactivated_at`, `deactivated_by`, `deactivation_reason`). Blocked if data still present (e.g. can't drop `dhiran` while any loan is active; can't drop `retailer` while any POS invoice exists in last 90 days). Shows guard message explaining what to clear first.
+Remove edition: soft-deactivates (sets `deactivated_at`, `deactivated_by`, `deactivation_reason`). Blocked if data still present (e.g. can't drop `retailer` while any POS invoice exists in last 90 days). Shows guard message explaining what to clear first.
 
 Never allow removing the **last** edition (would orphan the shop). Must cancel subscription instead.
 
 ### 3.3 Routing & layout switch
 
-Post-login routing (`AuthenticatedSessionController::store`):
+Post-login routing (`AuthenticatedSessionController::store`): a shop with retailer or manufacturer redirects to `/dashboard`.
 
-- If shop has `{dhiran}` only → redirect to `/dhiran` (Dhiran dashboard).
-- If shop has retailer or manufacturer (with or without dhiran) → redirect to `/dashboard`.
+Layout selection: all authenticated routes use `layouts/app.blade.php`, with the sidebar driven by `$shop->editionList()`:
 
-Layout selection:
-
-- Routes under `/dhiran/*` use `layouts/dhiran.blade.php` (new file, Dhiran-only sidebar, Dhiran branding header).
-- All other authenticated routes use existing `layouts/app.blade.php` but the sidebar is driven by `$shop->editionList()`:
-  - Retailer-only → retailer sidebar sections.
-  - Manufacturer-only → manufacturer sidebar sections.
-  - Both → merged.
-  - If `dhiran` is also in the set → "Dhiran" app-switcher tile at top of sidebar (full-page nav to `/dhiran`).
-  - If Dhiran is the only edition → JewelFlow chrome is never rendered.
-
-Subdomain `dhiran.jewelflow.com` (later phase): domain-routed group serving only `/dhiran/*` routes, strips JewelFlow chrome unconditionally. No code changes in controllers — only a route-file domain constraint and cookie-domain config (`.jewelflow.com`). Phase-7 scope.
+- Retailer-only → retailer sidebar sections.
+- Manufacturer-only → manufacturer sidebar sections.
+- Both → merged.
 
 ---
 
@@ -218,12 +204,12 @@ Each phase is independently shippable and reverts cleanly.
 |---|---|---|---|
 | 1 | `shop_editions` table + seeding migration + `ShopEdition` helper. Keep `shop_type` as dual-write. | Reversible (drop table) | 0.5 day |
 | 2 | Middleware + model accessors read new source. 15 call-sites switched. Tests added. | Reversible (revert reads) | 0.5 day |
-| 3 | Shop-creation multi-select + `PlatformSetting::dhiranEnabled()`. | Reversible | 0.5 day |
+| 3 | Shop-creation multi-select. | Reversible | 0.5 day |
 | 4 | Admin edition grant/revoke UI + audit log. | Reversible | 0.5 day |
 | 5 | User-side `/settings/services` upgrade + billing integration. | Reversible | 1 day |
 | 6 | Mobile-change OTP flow (user + admin paths). | Reversible | 1 day |
-| 7 | Routing/layout split + Dhiran-only dashboard + subdomain support. | Config change | 0.5–1 day |
-| 8 | Deprecation follow-up: drop `shops.shop_type`, drop `dhiran_settings.is_enabled`. | **One-way** | 0.25 day |
+| 7 | Routing/layout split by edition. | Config change | 0.5 day |
+| 8 | Deprecation follow-up: drop `shops.shop_type`. | **One-way** | 0.25 day |
 
 Total: ~5 days of focused work. Phase 8 waits a release cycle after Phase 2 has been live and verified.
 
@@ -231,11 +217,10 @@ Total: ~5 days of focused work. Phase 8 waits a release cycle after Phase 2 has 
 
 ## 7. Open questions for reviewer
 
-1. Billing: should adding Dhiran to an existing retailer/manufacturer subscription create a **new** subscription row or a line-item on the existing one? Current `ShopSubscription` model is one-active-per-shop — this needs confirmation before Phase 5.
-2. Mobile change OTP delivery: email-only OK, or also SMS to current mobile as secondary channel? (Email-only is simpler and works for Dhiran-only customers who may not have reliable SMS.)
-3. Subdomain: do we have DNS / TLS ready for `dhiran.jewelflow.com`, or should Phase 7 stop at path-based split (`/dhiran` with its own layout) and subdomain ship separately?
-4. Downgrade guards: is 90 days the right window for "recent retailer activity"? 30? None?
-5. "This wasn't me" revert link: 24h OK, or 48h for older demographic users?
+1. Billing: should adding an edition to an existing subscription create a **new** subscription row or a line-item on the existing one? Current `ShopSubscription` model is one-active-per-shop — this needs confirmation before Phase 5.
+2. Mobile change OTP delivery: email-only OK, or also SMS to current mobile as secondary channel? (Email-only is simpler and works for customers who may not have reliable SMS.)
+3. Downgrade guards: is 90 days the right window for "recent retailer activity"? 30? None?
+4. "This wasn't me" revert link: 24h OK, or 48h for older demographic users?
 
 ---
 
@@ -243,4 +228,3 @@ Total: ~5 days of focused work. Phase 8 waits a release cycle after Phase 2 has 
 
 - Per-edition staff permission scoping (existing `role` + `permissions` cover this).
 - Separating tenant data by edition (all still live in the same shop tenant).
-- Extracting Dhiran into its own Laravel repo (future work, post-demand).

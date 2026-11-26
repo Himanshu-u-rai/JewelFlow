@@ -621,17 +621,14 @@ class ConstitutionalInvariantsTest extends TestCase
         // Tier 1 — fully eligible
         $this->assertTrue(\App\Services\MetalRegistry::isLiveRateEligible('gold'));
         $this->assertTrue(\App\Services\MetalRegistry::isAutoRepricedEligible('gold'));
-        $this->assertTrue(\App\Services\MetalRegistry::isDhiranEligible('silver'));
         $this->assertTrue(\App\Services\MetalRegistry::isExchangePaymentEligible('silver'));
 
         // Tier 2 — explicitly blocked from these capabilities
         $this->assertFalse(\App\Services\MetalRegistry::isLiveRateEligible('platinum'));
         $this->assertFalse(\App\Services\MetalRegistry::isAutoRepricedEligible('platinum'));
-        $this->assertFalse(\App\Services\MetalRegistry::isDhiranEligible('platinum'));
         $this->assertFalse(\App\Services\MetalRegistry::isExchangePaymentEligible('platinum'));
         $this->assertFalse(\App\Services\MetalRegistry::isLiveRateEligible('copper'));
         $this->assertFalse(\App\Services\MetalRegistry::isAutoRepricedEligible('copper'));
-        $this->assertFalse(\App\Services\MetalRegistry::isDhiranEligible('copper'));
         $this->assertFalse(\App\Services\MetalRegistry::isExchangePaymentEligible('copper'));
 
         // Tier 1 + 2 — both visible in reports / reconciliation

@@ -253,42 +253,6 @@ class SeedEditionEnforcementTest extends TestCase
         $this->assertWritable($shop);
     }
 
-    // ── 6) Dhiran-only seed shop on dhiran sub lifecycle ────────────
-
-    public function test_dhiran_only_seed_shop_writable_on_active_dhiran_then_blocked_on_expiry(): void
-    {
-        $shop = $this->onboardedShop('dhiran');
-        $seed = $this->seedEdition($shop, ShopEdition::DHIRAN);
-        $this->assertNotNull($seed, 'dhiran onboarded shop must auto-hold a seed dhiran edition');
-        $this->assertSame(ShopEditionAssignment::SOURCE_SEED, $seed->source);
-        $this->assertNull($this->seedEdition($shop, ShopEdition::RETAILER));
-
-        // Writable on an active dhiran subscription.
-        $plan = $this->planForProduct('dhiran', ['downgrade_to_read_only_on_due' => false]);
-        $sub  = $this->makeSubscription($shop, $plan, 'active');
-        $this->assertWritable($shop);
-
-        // After the dhiran sub expires (lapse), the seed edition no longer has a
-        // writable sub backing it → blocked. The seed ROW survives the lapse
-        // (lapse-immunity) but does NOT grant free writes.
-        $sub->update([
-            'ends_at'       => now()->subMonth()->toDateString(),
-            'grace_ends_at' => now()->subMonth()->addDays(14)->toDateString(),
-        ]);
-        $this->artisan('subscription:check-expiry')->assertExitCode(0);
-        $sub->refresh();
-        $this->assertSame('expired', $sub->status);
-
-        // The seed row is intentionally NOT auto-revoked (orphan protection).
-        $this->assertNotNull(
-            $this->seedEdition($shop, ShopEdition::DHIRAN),
-            'seed edition row must survive the lapse (row-level immunity is intentional)'
-        );
-
-        // But the gate must block — seed alone does not grant writes.
-        $this->assertBlocked($shop);
-    }
-
     // ── 7) data-migration relabel behaviour ─────────────────────────
 
     public function test_migration_relabels_admin_grant_with_subscription_to_seed(): void
@@ -324,9 +288,9 @@ class SeedEditionEnforcementTest extends TestCase
             ->where('shop_id', $shopMismatch->id)
             ->where('edition', ShopEdition::RETAILER)
             ->update(['source' => DB::raw("'admin_grant'")]);
-        // Its only sub is dhiran, not retail.
-        $dhiranPlan = $this->planForProduct('dhiran');
-        $this->makeSubscription($shopMismatch, $dhiranPlan, 'active');
+        // Its only sub is manufacturing, not retail.
+        $otherPlan = $this->planForProduct('manufacturing');
+        $this->makeSubscription($shopMismatch, $otherPlan, 'active');
 
         // Run the data migration.
         $this->runResourceMigration();

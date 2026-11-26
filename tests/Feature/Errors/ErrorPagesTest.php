@@ -9,7 +9,6 @@ use Tests\TestCase;
 class ErrorPagesTest extends TestCase
 {
     private const RETAIL = 'https://jewelflows.com/missing';
-    private const DHIRAN = 'https://dhiran.jewelflows.com/dhiran/missing';
 
     /** @return array<string, array{0: string, 1: list<string>}> view => expected action keys */
     public static function pages(): array
@@ -47,26 +46,11 @@ class ErrorPagesTest extends TestCase
         $this->assertStringContainsString('width=device-width', $html);
     }
 
-    /** @dataProvider pages */
-    public function test_dhiran_host_says_dhiran_and_links_its_dashboard(string $view, array $actions): void
-    {
-        $this->on(self::DHIRAN);
-        $html = view($view)->render();
-
-        $this->assertStringContainsString('Dhiran', $html);
-        $this->assertDoesNotMatchRegularExpression('/jewel\s?flows/i', strip_tags($html), $view);
-        if (in_array('dashboard', $actions, true)) {
-            $this->assertMatchesRegularExpression('#data-error-action="dashboard"#', $html);
-            $this->assertMatchesRegularExpression('#href="[^"]*/dhiran"[^>]*data-error-action="dashboard"#', $html);
-        }
-    }
-
     public function test_retail_dashboard_action_goes_to_the_retail_dashboard(): void
     {
         $this->on(self::RETAIL);
         $html = view('errors.404')->render();
         $this->assertStringContainsString('href="' . route('dashboard') . '" class="ep-btn ep-btn-primary" data-error-action="dashboard"', $html);
-        $this->assertStringNotContainsString('/dhiran"', $html);
     }
 
     public function test_opening_setup_pages_use_the_shared_surface(): void
@@ -76,7 +60,6 @@ class ErrorPagesTest extends TestCase
             $this->assertStringContainsString('<x-error-page', $src, $name);
             $this->assertStringNotContainsString('font-size:72px', $src, $name);
         }
-        $this->assertStringContainsString('Realm::DHIRAN', file_get_contents(resource_path('views/errors/opening-setup-pending.blade.php')));
     }
 
     public function test_no_error_view_keeps_the_old_navy_or_inline_styling(): void
