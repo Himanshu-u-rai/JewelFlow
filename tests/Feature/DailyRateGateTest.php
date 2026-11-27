@@ -54,6 +54,61 @@ class DailyRateGateTest extends TestCase
             ->assertDontSee('ZZSecret');
     }
 
+    public function test_the_rate_form_shows_the_last_saved_rates_for_reference(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        \Illuminate\Support\Carbon::setTestNow(now()->subDays(2));
+        $this->seedRetailerPricing($shop, $owner, ['gold_24k_rate_per_gram' => 7250, 'silver_999_rate_per_gram' => 92.5]);
+        \Illuminate\Support\Carbon::setTestNow();
+
+        $this->actingAs($owner)->get(route('pricing.daily-rates.gate'))
+            ->assertOk()
+            ->assertSee('data-previous="7250"', false)
+            ->assertSee('data-previous="92500"', false)
+            ->assertSee('₹7,250')
+            ->assertSee('₹92,500')
+            // Reference only: the fields stay empty until the owner types today's rate.
+            ->assertDontSee('value="7250"', false);
+    }
+
+    public function test_a_wrong_field_is_marked_and_explained_beside_it(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $this->actingAs($owner)->post(route('settings.pricing.save-rates'), [
+            'context' => 'modal', 'gold_24k_rate_per_gram' => 'abc', 'silver_999_rate_per_kg' => '92000',
+        ]);
+
+        $this->actingAs($owner)->get(route('pricing.daily-rates.gate'))
+            ->assertOk()
+            ->assertSee('aria-invalid="true" aria-describedby="rm-gold-error"', false)
+            ->assertSee('id="rm-gold-error"', false)
+            ->assertSee('Enter a valid gold rate using digits and an optional decimal point.');
+    }
+
+    public function test_the_rate_form_drops_the_generic_badge_and_developer_date(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $date = app(ShopPricingService::class)->businessDate($shop);
+
+        $this->actingAs($owner)->get(route('pricing.daily-rates.gate'))
+            ->assertOk()
+            ->assertSee('aria-describedby="rate-modal-desc"', false)
+            ->assertSee($date->format('D, j M').'<span class="rate-modal__year"> '.$date->format('Y').'</span>', false)
+            ->assertDontSee('Retailer Pricing Required')
+            ->assertDontSee('class="rate-modal__badge"', false)
+            ->assertDontSee('<span class="tz">', false);
+    }
+
+    public function test_the_rate_form_offers_a_way_to_sign_out(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $this->actingAs($owner)->get(route('pricing.daily-rates.gate'))
+            ->assertOk()
+            ->assertSee('class="rate-modal__logout" method="POST" action="'.route('logout').'"', false);
+    }
+
     public function test_owner_without_todays_rates_cannot_write_anything(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
@@ -70,7 +125,7 @@ class DailyRateGateTest extends TestCase
 
         $this->actingAs($owner)->getJson(route('customers.index'))
             ->assertStatus(423)
-            ->assertJson(['reason' => 'daily_rates_required']);
+            ->assertJson(['error' => 'daily_rates_required']);
     }
 
     public function test_saving_todays_rates_opens_the_shop(): void

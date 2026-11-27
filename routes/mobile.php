@@ -27,7 +27,7 @@ Route::get('/repairs/{repair}/image', [RepairController::class, 'image'])
     ->middleware(['throttle:240,1'])->name('mobile.repairs.image');
 
 // --- Authenticated ---
-Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1', 'shopaccess.open'])
+Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1', 'shopaccess.open', 'daily.rates'])
     ->group(function () {
 
         // Auth — self-management for the authenticated user; no role/permission gate.
@@ -268,9 +268,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
 
         // Daily Pricing — pricing.update permission.
         Route::get('/pricing/today', [PricingController::class, 'today'])
-            ->middleware(['throttle:api-pos-read', 'can:pricing.update']);
+            ->middleware(['throttle:api-pos-read', 'can:pricing.update'])->name('mobile.pricing.today');
         Route::post('/pricing/today', [PricingController::class, 'saveToday'])
-            ->middleware(['throttle:api-pos-sale', 'can:pricing.update']);
+            ->middleware(['throttle:api-pos-sale', 'can:pricing.update'])->name('mobile.pricing.save-today');
         // Rates by purity + same-day override (web: settings.pricing.overrides.store) — owner only, checked in the controller.
         Route::get('/pricing/purity-rates', [PricingController::class, 'purityRates'])
             ->middleware(['throttle:api-pos-read', 'can:pricing.update']);

@@ -54,6 +54,8 @@ $authMiddleware = [
     'rate.shop:600,1',
     // Closing the shop blocks staff here too, as on the legacy routes and the web.
     'shopaccess.open',
+    // No business without today's metal rates, as on the legacy routes and the web.
+    'daily.rates',
 ];
 
 // ─── PUT /uploads/{token} — raw bytes, NO envelope, NO idempotency ─────────

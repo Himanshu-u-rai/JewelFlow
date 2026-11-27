@@ -97,6 +97,23 @@ class ShopPricingService
             ->first();
     }
 
+    /** The most recent rates saved before today: shown on the daily form as a typo check. */
+    public function previousDailyRate(Shop|int $shop, ?CarbonInterface $now = null): ?ShopDailyMetalRate
+    {
+        if (! $this->hasTable('shop_daily_metal_rates')) {
+            return null;
+        }
+
+        $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
+
+        return ShopDailyMetalRate::withoutTenant()
+            ->where('shop_id', $shopId)
+            ->where('business_date', '<', $this->businessDateString($shopId, $now))
+            ->orderByDesc('business_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     public function assertRetailerPricingReady(Shop $shop, ?CarbonInterface $now = null): void
     {
         if (! $shop->isRetailer()) {

@@ -58,27 +58,16 @@
                 max-height: calc(100svh - 1.5rem); overflow-y: auto; overflow-x: hidden;
                 animation: rm-rise .34s var(--rm-ease) forwards;
             }
-            .rate-modal__panel::before {
-                content: ''; position: sticky; top: 0; display: block; height: 3px;
-                background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 48%, #d97706 100%);
-            }
             .rate-modal__head { padding: 22px 24px 18px; border-bottom: 1px solid var(--rm-line); }
-            .rate-modal__badge {
-                display: inline-flex; align-items: center; gap: 7px;
-                font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-                color: var(--rm-gold-deep); background: #fdf6ec; border: 1px solid #f3dcb6;
-                border-radius: 999px; padding: 5px 11px;
-            }
-            .rate-modal__badge svg { width: 13px; height: 13px; }
-            .rate-modal__title { margin-top: 12px; font-size: 21px; font-weight: 700; color: var(--rm-ink); letter-spacing: 0; }
+            .rate-modal__title { margin: 0; font-size: 21px; font-weight: 700; color: var(--rm-ink); letter-spacing: 0; }
             .rate-modal__desc { margin-top: 7px; font-size: 13.5px; line-height: 1.5; color: var(--rm-muted); }
+            .rate-modal__titlerow { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
             .rate-modal__date {
-                margin-top: 14px; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
-                font-size: 12.5px; font-weight: 600; color: #4a4334;
+                display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; white-space: nowrap;
+                font-size: 13px; font-weight: 600; color: #4a4334;
                 background: #f7f8fa; border: 1px solid var(--rm-line); border-radius: 9px; padding: 7px 11px;
             }
             .rate-modal__date svg { width: 14px; height: 14px; color: var(--rm-gold); flex: 0 0 auto; }
-            .rate-modal__date .tz { color: var(--rm-muted); font-weight: 500; }
 
             .rate-modal__body { padding: 20px 24px 24px; }
             .rate-modal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -101,22 +90,45 @@
                 font: inherit; font-size: 16px; font-weight: 600; color: var(--rm-ink);
                 transition: border-color .16s ease, box-shadow .18s var(--rm-ease), background .16s ease;
             }
-            .rate-modal .rate-input-wrap input::placeholder { color: #b3a892; font-weight: 400; }
             @media (hover: hover) and (pointer: fine) {
                 .rate-modal .rate-input-wrap input:hover { border-color: #b8c0cc; }
             }
             .rate-modal .rate-input-wrap input:focus {
-                outline: none; border-color: #f59e0b; background: #fff;
-                box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
+                outline: none; border-color: #d97706; background: #fff;
+                box-shadow: 0 0 0 3px rgba(217,119,6,0.32);
             }
-            .rate-field .hint { margin-top: 7px; font-size: 11.5px; line-height: 1.4; color: var(--rm-muted); }
-
-            .rate-modal__note {
-                margin-top: 18px; display: flex; gap: 9px; align-items: flex-start;
-                font-size: 12px; line-height: 1.5; color: #6b5d44;
-                background: #fffaf0; border: 1px solid #f4dcae; border-radius: 11px; padding: 11px 13px;
+            .rate-modal .rate-input-wrap input[aria-invalid="true"] { border-color: #d92d20; background: #fffbfa; }
+            .rate-field__label { display: flex; align-items: center; gap: 4px; margin-bottom: 7px; }
+            .rate-field__label label { margin-bottom: 0; }
+            .rate-tip { position: relative; display: inline-flex; }
+            .rate-tip__btn {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 32px; height: 32px; margin: -8px 0; border: 0; border-radius: 999px;
+                background: transparent; color: var(--rm-muted); cursor: help;
             }
-            .rate-modal__note svg { width: 15px; height: 15px; color: var(--rm-gold); flex: 0 0 auto; margin-top: 1px; }
+            .rate-tip__btn:hover, .rate-tip__btn[aria-expanded="true"] { color: var(--rm-gold-deep); background: #fdf6ec; }
+            .rate-tip__btn:focus-visible { outline: 2px solid #f59e0b; outline-offset: 1px; }
+            .rate-tip__bubble {
+                /* Above the icon and click-through, so it never covers the input below. */
+                position: absolute; z-index: 2; bottom: calc(100% + 6px); right: -8px; width: max-content; max-width: 220px;
+                pointer-events: none;
+                padding: 8px 11px; border-radius: 9px; background: var(--rm-ink); color: #fff;
+                font-size: 13px; font-weight: 500; line-height: 1.4;
+                box-shadow: 0 8px 20px -8px rgba(16,24,40,0.45);
+                opacity: 0; visibility: hidden; transform: translateY(3px);
+                transition: opacity .14s ease, transform .14s var(--rm-ease), visibility 0s linear .14s;
+            }
+            .rate-tip:hover .rate-tip__bubble, .rate-tip__btn:focus-visible + .rate-tip__bubble, .rate-tip__btn[aria-expanded="true"] + .rate-tip__bubble {
+                opacity: 1; visibility: visible; transform: none; transition-delay: 0s;
+            }
+            @media (max-width: 560px) { .rate-tip__bubble { right: auto; left: -110px; } }
+            .rate-field .hint { margin-top: 7px; font-size: 13px; line-height: 1.45; color: var(--rm-muted); }
+            .rate-field__error { margin-top: 7px; font-size: 13px; line-height: 1.45; font-weight: 600; color: #b42318; }
+            .rate-field__warn {
+                margin-top: 8px; font-size: 13px; line-height: 1.45; font-weight: 600; color: #92400e;
+                background: #fffbeb; border: 1px solid #fcd34d; border-radius: 9px; padding: 8px 10px;
+            }
+            .rate-field__warn[hidden] { display: none; }
 
             .rate-modal__cta {
                 margin-top: 18px; width: 100%;
@@ -128,7 +140,22 @@
             }
             .rate-modal__cta:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 14px 28px -10px rgba(180,83,9,0.6); }
             .rate-modal__cta:active { transform: scale(0.985); }
+            .rate-modal__cta:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+            .rate-modal__cta[disabled] { opacity: .75; cursor: progress; }
             .rate-modal__cta svg { width: 16px; height: 16px; }
+            .rate-modal__logout {
+                display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+                margin: 0; padding: 12px 24px 18px; border-top: 1px solid #efe7d6;
+                font-size: 13px; color: var(--rm-muted);
+            }
+            .rate-modal__logout button {
+                display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 44px;
+                border: 1px solid #d3d8e0; border-radius: 10px; background: #fff; cursor: pointer;
+                font: inherit; font-size: 13px; font-weight: 600; color: var(--rm-ink);
+            }
+            .rate-modal__logout button:hover { border-color: #b8c0cc; background: #f8f9fb; }
+            .rate-modal__logout button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+            .rate-modal__logout svg { width: 15px; height: 15px; }
 
             .rate-modal__errors {
                 margin-bottom: 16px; border: 1px solid #fecdca; background: #fef3f2; color: #b42318;
@@ -150,15 +177,19 @@
                     animation: rm-sheet .34s var(--rm-ease) forwards;
                 }
                 .rate-modal__head { padding: 20px 18px 16px; }
-                .rate-modal__title { font-size: 19px; }
+                .rate-modal__title { font-size: 18px; }
+                .rate-modal__titlerow { gap: 6px 10px; }
+                .rate-modal__date { padding: 5px 9px; }
+                .rate-modal__date svg, .rate-modal__year { display: none; }
                 .rate-modal__body { padding: 18px 18px 22px; }
+                .rate-modal__logout { padding: 12px 18px calc(16px + env(safe-area-inset-bottom)); }
                 .rate-modal__grid { grid-template-columns: 1fr; gap: 16px; }
             }
             @keyframes rm-sheet { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
 
             @media (prefers-reduced-motion: reduce) {
                 .rate-modal__backdrop, .rate-modal__panel { animation: none; opacity: 1; transform: none; }
-                .rate-modal__cta, .rate-modal .rate-input-wrap input { transition: none; }
+                .rate-modal__cta, .rate-modal .rate-input-wrap input, .rate-tip__bubble { transition: none; }
             }
         </style>
     </head>
@@ -212,32 +243,50 @@
             $pricingTodayRate = $pricingShellState['today_rate'] ?? null;
         @endphp
         @if(($pricingShellState['show_owner_modal'] ?? false) === true)
-            <div class="pricing-shell-modal rate-modal" role="dialog" aria-modal="true" aria-labelledby="rate-modal-title">
+            @php
+                $pricingPreviousRate = $pricingShellState['previous_rate'] ?? null;
+                $pricingPrevGold = $pricingPreviousRate ? round((float) $pricingPreviousRate->gold_24k_rate_per_gram, 4) : null;
+                $pricingPrevSilverKg = $pricingPreviousRate ? round((float) $pricingPreviousRate->silver_999_rate_per_gram * 1000, 4) : null;
+                $pricingPrevDate = $pricingPreviousRate ? \Illuminate\Support\Carbon::parse($pricingPreviousRate->business_date)->format('j M') : null;
+                // Indian grouping (7,250 / 1,00,000) without needing the intl extension.
+                $rupees = function (float $v): string {
+                    [$int, $dec] = array_pad(explode('.', rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.')), 2, null);
+                    $rest = substr($int, 0, -3);
+
+                    return '₹'.($rest !== '' ? preg_replace('/\B(?=(\d{2})+$)/', ',', $rest).',' : '').substr($int, -3).($dec ? '.'.$dec : '');
+                };
+                $goldError = $pricingModalErrors->first('gold_24k_rate_per_gram');
+                $silverError = $pricingModalErrors->first('silver_999_rate_per_kg');
+                $otherErrors = collect($pricingModalErrors->getMessages())->except(['gold_24k_rate_per_gram', 'silver_999_rate_per_kg'])->flatten();
+            @endphp
+            <div class="pricing-shell-modal rate-modal" role="dialog" aria-modal="true" aria-labelledby="rate-modal-title" aria-describedby="rate-modal-desc">
                 <div class="rate-modal__backdrop"></div>
                 <div class="pricing-shell-modal__panel rate-modal__panel">
                     <div class="rate-modal__head">
-                        <span class="rate-modal__badge">
-                            <x-icon name="dollar-sign" />
-                            {{ __('Retailer Pricing Required') }}
-                        </span>
-                        <h2 id="rate-modal-title" class="rate-modal__title">{{ __('Enter Today\'s Metal Rates') }}</h2>
-                        <p class="rate-modal__desc">
-                            {{ __('Save today\'s rates so the team can price stock and bill at the counter.') }}
+                        <div class="rate-modal__titlerow">
+                            <h2 id="rate-modal-title" class="rate-modal__title">{{ __('Enter Today\'s Metal Rates') }}</h2>
+                            <span class="rate-modal__date">
+                                <x-icon name="calendar" stroke-width="1.9" />
+                                @isset($pricingShellState['business_date'])
+                                    @php $pricingDay = \Illuminate\Support\Carbon::parse($pricingShellState['business_date']); @endphp
+                                    {{ $pricingDay->format('D, j M') }}<span class="rate-modal__year"> {{ $pricingDay->format('Y') }}</span>
+                                @else
+                                    -
+                                @endisset
+                            </span>
+                        </div>
+                        <p id="rate-modal-desc" class="rate-modal__desc">
+                            {{ __('Saving updates your stock prices and gets the counter ready for billing.') }}
                         </p>
-                        <span class="rate-modal__date">
-                            <x-icon name="calendar" stroke-width="1.9" />
-                            {{ $pricingShellState['business_date'] ?? '-' }}
-                            <span class="tz">{{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }}</span>
-                        </span>
                     </div>
-                    <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="rate-modal__body">
+                    <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="rate-modal__body" data-rate-form>
                         @csrf
                         <input type="hidden" name="context" value="modal">
 
-                        @if($pricingModalErrors->any())
-                            <div class="rate-modal__errors">
+                        @if($otherErrors->isNotEmpty())
+                            <div class="rate-modal__errors" role="alert">
                                 <ul>
-                                    @foreach($pricingModalErrors->all() as $error)
+                                    @foreach($otherErrors as $error)
                                         <li>{{ $error }}</li>
                                     @endforeach
                                 </ul>
@@ -260,15 +309,33 @@
                                         type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
-                                        placeholder="0.00"
                                         name="gold_24k_rate_per_gram"
                                         value="{{ old('gold_24k_rate_per_gram', $pricingTodayRate ? (float) $pricingTodayRate->gold_24k_rate_per_gram : null) }}"
+                                        @if($pricingPrevGold !== null) data-previous="{{ $pricingPrevGold }}" data-previous-label="{{ $rupees($pricingPrevGold) }}" @endif
+                                        @if($goldError) aria-invalid="true" aria-describedby="rm-gold-error" @elseif($pricingPrevGold !== null) aria-describedby="rm-gold-hint" @endif
+                                        @if($goldError || ! $silverError) autofocus @endif
                                         required
                                     >
                                 </div>
+                                @if($goldError)
+                                    <p id="rm-gold-error" class="rate-field__error">{{ $goldError }}</p>
+                                @endif
+                                @if($pricingPrevGold !== null)
+                                    <p id="rm-gold-hint" class="hint">{{ __('Last saved :date: :rate', ['date' => $pricingPrevDate, 'rate' => $rupees($pricingPrevGold)]) }}</p>
+                                @endif
+                                <p class="rate-field__warn" data-rate-warn hidden></p>
                             </div>
                             <div class="rate-field">
-                                <label for="rm-silver">{{ __('Silver 999 Price / Kg') }}</label>
+                                <div class="rate-field__label">
+                                    <label for="rm-silver">{{ __('Silver 999 Price / Kg') }}</label>
+                                    {{-- Hover or keyboard focus shows it; a tap toggles it (touch has no hover). --}}
+                                    <span class="rate-tip">
+                                        <button type="button" class="rate-tip__btn" aria-label="{{ __('About the silver rate') }}" aria-describedby="rm-silver-tip" aria-expanded="false" data-rate-tip>
+                                            <x-icon name="info" size="16" stroke-width="2" />
+                                        </button>
+                                        <span id="rm-silver-tip" role="tooltip" class="rate-tip__bubble">{{ __('We convert silver to a per-gram rate for you.') }}</span>
+                                    </span>
+                                </div>
                                 <div class="rate-input-wrap">
                                     <span class="cur">₹</span>
                                     <input
@@ -276,28 +343,87 @@
                                         type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
-                                        placeholder="0.00"
                                         name="silver_999_rate_per_kg"
                                         value="{{ old('silver_999_rate_per_kg', $pricingTodayRate ? round((float) $pricingTodayRate->silver_999_rate_per_gram * 1000, 4) : null) }}"
+                                        @if($pricingPrevSilverKg !== null) data-previous="{{ $pricingPrevSilverKg }}" data-previous-label="{{ $rupees($pricingPrevSilverKg) }}" @endif
+                                        @if($silverError) aria-invalid="true" aria-describedby="rm-silver-error" @elseif($pricingPrevSilverKg !== null) aria-describedby="rm-silver-hint" @endif
+                                        @if($silverError && ! $goldError) autofocus @endif
                                         required
                                     >
                                 </div>
-                                <p class="hint">{{ __('We convert silver to a per-gram rate for you.') }}</p>
+                                @if($silverError)
+                                    <p id="rm-silver-error" class="rate-field__error">{{ $silverError }}</p>
+                                @endif
+                                @if($pricingPrevSilverKg !== null)
+                                    <p id="rm-silver-hint" class="hint">{{ __('Last saved :date: :rate per kg', ['date' => $pricingPrevDate, 'rate' => $rupees($pricingPrevSilverKg)]) }}</p>
+                                @endif
+                                <p class="rate-field__warn" data-rate-warn hidden></p>
                             </div>
                         </div>
 
-                        <div class="rate-modal__note">
-                            <x-icon name="info" stroke-width="1.9" />
-                            <span>{{ __('Saving updates your stock prices and gets the counter ready for billing.') }}</span>
-                        </div>
-
-                        <button type="submit" class="rate-modal__cta">
+                        <button type="submit" class="rate-modal__cta" data-turbo-submits-with="{{ __('Saving…') }}">
                             {{ __('Save Today\'s Rates') }}
                             <x-icon name="arrow-right" stroke-width="2.2" />
                         </button>
                     </form>
+                    {{-- The gate covers the sidebar, so sign-out (e.g. to switch account) lives here too. --}}
+                    <form class="rate-modal__logout" method="POST" action="{{ route('logout') }}" data-turbo="false">
+                        @csrf
+                        <span>{{ __('Switching account?') }}</span>
+                        <button type="submit">
+                            <x-icon name="log-out" stroke-width="2" />
+                            {{ __('Log Out') }}
+                        </button>
+                    </form>
                 </div>
             </div>
+            <script>
+                (() => {
+                    const modal = document.currentScript.previousElementSibling;
+                    // Keyboard focus stays in the gate: the page around it is inert until the next page renders
+                    // (restored before Turbo caches or swaps the page, so the permanent sidebar comes back live).
+                    const inerted = [];
+                    const hold = () => {
+                        for (let el = modal; el.parentElement && el !== document.body; el = el.parentElement) {
+                            for (const sib of el.parentElement.children) {
+                                if (sib !== el && sib.tagName !== 'SCRIPT' && sib.id !== 'global-toast' && !sib.inert) { sib.inert = true; inerted.push(sib); }
+                            }
+                        }
+                    };
+                    // On a full load this runs before the page behind is parsed; Turbo renders have it already.
+                    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', hold, { once: true }) : hold();
+                    const restore = () => inerted.forEach((sib) => { sib.inert = false; });
+                    document.addEventListener('turbo:before-cache', restore, { once: true });
+                    document.addEventListener('turbo:before-render', restore, { once: true });
+
+                    // Typo check, not a rule: a rate more than 10% away from the last saved one needs a second Save.
+                    modal.querySelectorAll('[data-rate-tip]').forEach((btn) => btn.addEventListener('click', () => {
+                        btn.setAttribute('aria-expanded', btn.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+                    }));
+                    modal.addEventListener('keydown', (event) => {
+                        if (event.key === 'Escape') modal.querySelectorAll('[data-rate-tip]').forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
+                    });
+
+                    const form = modal.querySelector('[data-rate-form]');
+                    form.addEventListener('submit', (event) => {
+                        let first = null;
+                        form.querySelectorAll('input[data-previous]').forEach((input) => {
+                            const warn = input.closest('.rate-field').querySelector('[data-rate-warn]');
+                            const prev = parseFloat(input.dataset.previous);
+                            const now = parseFloat(input.value.replace(/[,\s]/g, ''));
+                            const pct = prev > 0 && now > 0 ? Math.round(Math.abs(now - prev) / prev * 100) : 0;
+                            const show = pct > 10 && input.value !== input.dataset.checked;
+                            warn.hidden = ! show;
+                            if (show) {
+                                warn.textContent = `${pct}% ${now > prev ? 'higher' : 'lower'} than last saved (${input.dataset.previousLabel}). Check it, then press Save again.`;
+                                input.dataset.checked = input.value;
+                                first ??= input;
+                            }
+                        });
+                        if (first) { event.preventDefault(); first.focus(); }
+                    });
+                })();
+            </script>
         @elseif($pricingShellState['read_only_notice'] ?? null)
             <div role="status" style="margin:12px 16px 0;padding:13px 16px;border:1px solid rgba(190,24,93,0.35);border-left:4px solid #be123c;background:#fff1f2;color:#881337;border-radius:8px;font-size:13px;font-weight:600;line-height:1.45;">
                 {{ $pricingShellState['read_only_notice'] }}
