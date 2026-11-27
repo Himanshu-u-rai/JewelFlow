@@ -57,6 +57,26 @@ class ShopPricingService
         return $this->businessDate($shop, $now)->toDateString();
     }
 
+    /**
+     * Whether this user must save today's metal rates before using the shop: the
+     * owner of an active retail shop whose opening setup is done, with no rates for
+     * today. The layout shows the rate form for it and EnsureDailyRatesEntered
+     * refuses every other request on the server.
+     */
+    public function ownerMustEnterDailyRates(\App\Models\User $user): bool
+    {
+        $shop = $user->shop;
+        if (! $shop || ! $shop->isRetailer() || ! $user->isOwner()) {
+            return false;
+        }
+
+        $accessMode = $shop->access_mode ?: ($shop->is_active ? 'active' : 'suspended');
+
+        return $accessMode === 'active'
+            && ShopOpeningSetupState::forShop((int) $shop->id)->isLiveAllowed()
+            && ! $this->hasCurrentDailyRates($shop);
+    }
+
     public function hasCurrentDailyRates(Shop|int $shop, ?CarbonInterface $now = null): bool
     {
         return $this->currentDailyRate($shop, $now) !== null;

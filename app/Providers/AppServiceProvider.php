@@ -331,7 +331,8 @@ class AppServiceProvider extends ServiceProvider
                 $accessMode = $user->shop->access_mode ?: ($user->shop->is_active ? 'active' : 'suspended');
                 $ratesMissing = $liveAllowed && $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop);
                 $pricingShellState = [
-                    'show_owner_modal' => $ratesMissing && $accessMode === 'active',
+                    // Same rule the server-side gate (EnsureDailyRatesEntered) enforces.
+                    'show_owner_modal' => $pricing->ownerMustEnterDailyRates($user),
                     // Modal is suppressed once the shop can't act on it (read-only/suspended),
                     // but the owner still needs to know *why* rates are missing.
                     'read_only_notice' => $ratesMissing && $accessMode !== 'active'

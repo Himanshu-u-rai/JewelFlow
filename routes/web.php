@@ -141,7 +141,14 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
 | AUTHENTICATED + MUST HAVE A SHOP
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'shopaccess.open', 'opening.setup'])->group(function () {
+Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'shopaccess.open', 'opening.setup', 'daily.rates'])->group(function () {
+    // The daily metal-rate gate's own page (EnsureDailyRatesEntered sends the owner here).
+    Route::get('/daily-rates', function (\App\Services\ShopPricingService $pricing) {
+        return $pricing->ownerMustEnterDailyRates(auth()->user())
+            ? view('pricing.daily-rates-gate')
+            : redirect()->route('dashboard');
+    })->name('pricing.daily-rates.gate');
+
 
     Route::post('/announcements/{announcement}/dismiss', [\App\Http\Controllers\AnnouncementDismissController::class, 'dismiss'])->name('announcements.dismiss');
 
