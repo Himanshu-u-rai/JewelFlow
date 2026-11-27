@@ -130,4 +130,91 @@ class GoldLoanProductRemovedTest extends TestCase
 
         $this->assertTrue(DB::table('plans')->where('id', $planId)->exists());
     }
+
+    /**
+     * Production's only gold-loan shop was the owner's own test account (Goldlux, JF-2, created
+     * 2026-06-19; owner confirmed 2026-11-27). Its data may go; the owner chose to erase its
+     * billing too, so the retired plan disappears. Anything else still stops the migration.
+     */
+    public function test_in_production_the_owner_confirmed_test_shop_is_erased_and_retired(): void
+    {
+        [$shopId, $userId, $planId, $subId, $invoiceId] = $this->confirmedTestShopWithLoanData();
+
+        $this->app['env'] = 'production';
+        try {
+            (require base_path(self::MIGRATION))->up();
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+
+        $this->assertFalse(Schema::hasTable('dhiran_loans'));
+        $this->assertFalse(DB::table('subscription_events')->where('shop_subscription_id', $subId)->exists());
+        $this->assertFalse(DB::table('platform_invoices')->where('id', $invoiceId)->exists());
+        $this->assertFalse(DB::table('shop_subscriptions')->where('id', $subId)->exists());
+        $this->assertFalse(DB::table('plans')->where('id', $planId)->exists(), 'the retired plan must go once nothing bills on it');
+        $shop = DB::table('shops')->where('id', $shopId)->first();
+        $this->assertSame(['suspended', false], [$shop->access_mode, (bool) $shop->is_active]);
+        $user = DB::table('users')->where('id', $userId)->first();
+        $this->assertSame([false, 'suspended'], [(bool) $user->is_active, $user->employment_status]);
+    }
+
+    public function test_in_production_loan_data_of_any_other_shop_still_stops_it(): void
+    {
+        $other = $this->createShop('retailer');
+        [$testShopId, , $planId] = $this->confirmedTestShopWithLoanData();
+        DB::table('dhiran_loans')->insert(['id' => 2, 'shop_id' => $other->id]);
+
+        $this->app['env'] = 'production';
+        try {
+            (require base_path(self::MIGRATION))->up();
+            $this->fail('The migration ran over loan data of a shop the owner did not confirm.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('dhiran_loans', $e->getMessage());
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+
+        $this->assertTrue(DB::table('plans')->where('id', $planId)->exists());
+        $this->assertSame('active', DB::table('shops')->where('id', $testShopId)->value('access_mode'));
+    }
+
+    /** @return array{int, int, int, int, int} shop, user, plan, subscription, invoice ids */
+    private function confirmedTestShopWithLoanData(): array
+    {
+        $shop = $this->createShop('retailer');
+        DB::table('shops')->where('id', $shop->id)->update([
+            'shop_type' => 'dhiran', 'name' => 'Goldlux', 'shop_code' => 'JF-2', 'created_at' => '2026-06-19 10:00:00',
+            'access_mode' => 'active', 'is_active' => DB::raw('true'),
+        ]);
+        Schema::create('dhiran_loans', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('shop_id');
+        });
+        DB::table('dhiran_loans')->insert(['id' => 1, 'shop_id' => $shop->id]);
+        $userId = \App\Models\User::factory()->create(['shop_id' => $shop->id])->id;
+        DB::table('users')->where('id', $userId)->update(['realm' => 'dhiran']);
+        $planId = DB::table('plans')->insertGetId(['code' => 'dhiran_yearly', 'name' => 'Legacy', 'is_active' => DB::raw('true'), 'created_at' => now(), 'updated_at' => now()]);
+        $subId = DB::table('shop_subscriptions')->insertGetId([
+            'shop_id' => $shop->id, 'plan_id' => $planId, 'status' => 'active', 'billing_cycle' => 'yearly',
+            'starts_at' => '2026-06-19', 'ends_at' => '2027-06-19', 'grace_ends_at' => '2027-06-19',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $admin = \App\Models\Platform\PlatformAdmin::create([
+            'first_name' => 'Platform', 'last_name' => 'Admin', 'name' => 'Platform Admin',
+            'email' => 'goldlux-admin@example.com', 'mobile_number' => '9000000999',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'), 'role' => 'super_admin', 'is_active' => true,
+        ]);
+        DB::table('subscription_events')->insert([
+            'shop_subscription_id' => $subId, 'shop_id' => $shop->id, 'admin_id' => $admin->id, 'event_type' => 'created',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $invoiceId = DB::table('platform_invoices')->insertGetId([
+            'shop_id' => $shop->id, 'shop_subscription_id' => $subId, 'plan_id' => $planId,
+            'invoice_number' => 'JF-TEST-0001', 'invoice_sequence' => 1, 'billing_cycle' => 'yearly',
+            'billing_period_start' => '2026-06-19', 'billing_period_end' => '2027-06-19',
+            'amount_before_tax' => 0, 'total_amount' => 0, 'issued_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return [$shop->id, $userId, $planId, $subId, $invoiceId];
+    }
 }

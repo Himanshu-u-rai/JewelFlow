@@ -27,6 +27,14 @@ use Illuminate\Support\Facades\Schema;
  * expected to have none; if it does, nothing is changed (PostgreSQL runs the
  * whole migration in one transaction) and the deploy stops for a decision.
  *
+ * One exception, decided by the owner on 2026-11-27: production's only shop of
+ * that type was the owner's own test account (CONFIRMED_TEST_SHOP, matched on
+ * code, name, type and creation date, so no other database can match it by
+ * accident). Its data does not stop the migration; the shop is suspended, its
+ * account deactivated like the others, and its billing on the retired plans
+ * (subscription, its events and its invoice) erased so the plans go too. The
+ * pre-deploy backup keeps all of it.
+ *
  * Not reversible: down() refuses. Restore from the pre-deploy backup instead.
  */
 return new class extends Migration
@@ -49,9 +57,13 @@ return new class extends Migration
         'product_promotion_preferences',
     ];
 
+    /** Owner-confirmed test account (2026-11-27), see the header. */
+    private const CONFIRMED_TEST_SHOP = ['shop_code' => 'JF-2', 'name' => 'Goldlux', 'created_on' => '2026-06-19'];
+
     public function up(): void
     {
-        $this->refuseIfProductionHasData();
+        $testShopId = $this->confirmedTestShopId();
+        $this->refuseIfProductionHasData($testShopId);
 
         // Permissions and their role grants.
         if (Schema::hasTable('permissions')) {
@@ -88,6 +100,10 @@ return new class extends Migration
         // Per-shop loan-number counters.
         DB::table('shop_counters')->where('counter_key', 'dhiran')->delete();
 
+        if ($testShopId !== null) {
+            $this->retireConfirmedTestShop($testShopId);
+        }
+
         // Plans and the platform product: delete when nothing references them,
         // otherwise keep them inactive so billing history still renders.
         $planIds = DB::table('plans')->where('code', 'like', 'dhiran\_%')->pluck('id');
@@ -119,28 +135,57 @@ return new class extends Migration
         throw new RuntimeException('Not reversible: restore the pre-deploy backup to bring the removed product back.');
     }
 
-    private function refuseIfProductionHasData(): void
+    private function confirmedTestShopId(): ?int
+    {
+        $s = self::CONFIRMED_TEST_SHOP;
+        $id = DB::table('shops')->where('shop_code', $s['shop_code'])->where('name', $s['name'])
+            ->where('shop_type', 'dhiran')->whereDate('created_at', $s['created_on'])->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /** Suspend the test shop and erase its billing on the retired plans (owner's decision, see header). */
+    private function retireConfirmedTestShop(int $shopId): void
+    {
+        $planIds = DB::table('plans')->where('code', 'like', 'dhiran\_%')->pluck('id');
+        $subIds = DB::table('shop_subscriptions')->where('shop_id', $shopId)->whereIn('plan_id', $planIds)->pluck('id');
+
+        DB::table('shop_editions')->whereIn('product_subscription_id', $subIds)->delete();
+        DB::table('subscription_events')->whereIn('shop_subscription_id', $subIds)->delete();
+        DB::table('platform_invoices')->where('shop_id', $shopId)
+            ->where(fn ($q) => $q->whereIn('shop_subscription_id', $subIds)->orWhereIn('plan_id', $planIds))
+            ->delete();
+        DB::table('shop_subscriptions')->whereIn('id', $subIds)->delete();
+        DB::table('shops')->where('id', $shopId)
+            ->update(['access_mode' => 'suspended', 'is_active' => DB::raw('false')]);
+    }
+
+    private function refuseIfProductionHasData(?int $testShopId): void
     {
         if (! app()->environment('production')) {
             return;
         }
 
+        // Rows of the owner-confirmed test shop do not count (see header); everything else does.
+        $others = fn ($query, string $column = 'shop_id') => $testShopId === null ? $query
+            : $query->where(fn ($q) => $q->whereNull($column)->orWhere($column, '!=', $testShopId));
+
         $found = [];
         foreach (['dhiran_loans', 'dhiran_payments', 'dhiran_ledger_entries', 'dhiran_cash_entries', 'dhiran_attachments'] as $table) {
-            if (Schema::hasTable($table) && DB::table($table)->exists()) {
+            if (Schema::hasTable($table) && $others(DB::table($table))->exists()) {
                 $found[] = $table;
             }
         }
-        if (DB::table('users')->where('realm', 'dhiran')->exists()) {
+        if ($others(DB::table('users')->where('realm', 'dhiran'))->exists()) {
             $found[] = 'users.realm=dhiran';
         }
-        if (DB::table('shops')->where('shop_type', 'dhiran')->exists()) {
+        if ($others(DB::table('shops')->where('shop_type', 'dhiran'), 'id')->exists()) {
             $found[] = 'shops.shop_type=dhiran';
         }
         // Billing history on its plans would keep them (inactive) and visible to platform admins.
         $planIds = DB::table('plans')->where('code', 'like', 'dhiran\_%')->pluck('id');
-        if ($planIds->isNotEmpty() && (DB::table('shop_subscriptions')->whereIn('plan_id', $planIds)->exists()
-            || DB::table('platform_invoices')->whereIn('plan_id', $planIds)->exists())) {
+        if ($planIds->isNotEmpty() && ($others(DB::table('shop_subscriptions')->whereIn('plan_id', $planIds))->exists()
+            || $others(DB::table('platform_invoices')->whereIn('plan_id', $planIds))->exists())) {
             $found[] = 'subscriptions or invoices on its plans';
         }
 
