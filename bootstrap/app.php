@@ -18,7 +18,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands(class_exists(\Tests\Concurrency\PaymentRaceHarness::class) ? [\Tests\Concurrency\PaymentRaceHarness::class] : [])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {

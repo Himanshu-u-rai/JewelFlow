@@ -42,9 +42,9 @@ class PosSearchCacheService
 
         return TenantContext::runFor($shopId, function () use ($search) {
             // MASTERS PART 3: POS customer selection is a new-commitment surface,
-            // so archived customers must not be offered. Shared by both
-            // Api\PosController::customers and the mobile /customers/search
-            // endpoint, so this single filter covers every POS picker.
+            // so archived customers must not be offered. Shared by the app's
+            // /customers search and the cache warmer, so this single filter
+            // covers every POS picker that reads it.
             $query = Customer::query()->active();
 
             if ($search !== '') {

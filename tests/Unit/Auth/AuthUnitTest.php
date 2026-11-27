@@ -15,12 +15,9 @@ use Tests\TestCase;
  * ERP Auth — unit level (Module 1). Pure logic: realm resolution and login input
  * rules. No HTTP, no session.
  *
- * NOTE: App\Services\OtpService is intentionally NOT tested here — it is dead
- * code (referenced nowhere in the app) and its `otps` table is a stub (only
- * id + timestamps; the create_otps_table migration never added the mobile/code
- * columns it reads), so it would throw if ever called. Flagged in the module
- * report; the live ERP auth path is password-based, and email verification uses
- * EmailVerificationOtpController (its own hashed-OTP flow), not OtpService.
+ * The old OtpService (dead, over a stub `otps` table) was removed on 2026-11-27;
+ * the live ERP auth path is password-based, and email verification uses
+ * EmailVerificationOtpController (its own hashed-OTP flow).
  */
 class AuthUnitTest extends TestCase
 {
