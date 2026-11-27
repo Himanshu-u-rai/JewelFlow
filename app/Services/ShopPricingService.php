@@ -31,6 +31,25 @@ class ShopPricingService
 
     private array $schemaState = [];
 
+    /**
+     * Lookups every item shares while one run reprices a whole shop: today's rate, and each purity's
+     * profile and resolved rate. Set only inside repriceInStockItems() and cleared after it, so a
+     * long-lived queue worker never carries yesterday's rates into a later run.
+     */
+    private ?array $repriceMemo = null;
+
+    private function memoized(string $key, callable $lookup): mixed
+    {
+        if ($this->repriceMemo === null) {
+            return $lookup();
+        }
+        if (! array_key_exists($key, $this->repriceMemo)) {
+            $this->repriceMemo[$key] = $lookup();
+        }
+
+        return $this->repriceMemo[$key];
+    }
+
     public function pricingTimezone(Shop|int $shop): string
     {
         // India-only product: the pricing business-day is always IST. The
@@ -89,12 +108,13 @@ class ShopPricingService
         }
 
         $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
+        $businessDate = $this->businessDateString($shopId, $now);
 
-        return ShopDailyMetalRate::withoutTenant()
+        return $this->memoized("daily|$shopId|$businessDate", fn () => ShopDailyMetalRate::withoutTenant()
             ->where('shop_id', $shopId)
-            ->where('business_date', $this->businessDateString($shopId, $now))
+            ->where('business_date', $businessDate)
             ->orderByDesc('id')
-            ->first();
+            ->first());
     }
 
     /** The most recent rates saved before today: shown on the daily form as a typo check. */
@@ -280,14 +300,16 @@ class ShopPricingService
         }
 
         $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
+        $metal = $this->normalizeMetalType($metalType);
+        $purity = $this->normalizePurityValue($purityValue);
 
-        return ShopMetalPurityProfile::withoutTenant()
+        return $this->memoized("profile|$shopId|$metal|$purity", fn () => ShopMetalPurityProfile::withoutTenant()
             ->where('shop_id', $shopId)
-            ->where('metal_type', $this->normalizeMetalType($metalType))
-            ->where('purity_value', $this->normalizePurityValue($purityValue))
+            ->where('metal_type', $metal)
+            ->where('purity_value', $purity)
             ->whereRaw($this->booleanComparisonSql('is_active', true))
             ->orderBy('sort_order')
-            ->first();
+            ->first());
     }
 
     public function saveTodayBaseRates(Shop $shop, int $userId, array $attributes): ShopDailyMetalRate
@@ -478,24 +500,18 @@ class ShopPricingService
 
         $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
         $businessDate = $this->businessDateString($shopId, $now);
+        $metal = $this->normalizeMetalType($metalType);
+        $purity = $this->normalizePurityValue($purityValue);
 
-        $rate = MetalRate::latestResolvedForDay(
-            $shopId,
-            $businessDate,
-            $this->normalizeMetalType($metalType),
-            $this->normalizePurityValue($purityValue)
-        );
+        return $this->memoized("rate|$shopId|$businessDate|$metal|$purity", function () use ($shopId, $businessDate, $metal, $purity, $now): ?float {
+            $rate = MetalRate::latestResolvedForDay($shopId, $businessDate, $metal, $purity);
 
-        if ($rate) {
-            return round((float) $rate->rate_per_gram, 4);
-        }
+            if ($rate) {
+                return round((float) $rate->rate_per_gram, 4);
+            }
 
-        return $this->backfillMissingResolvedRateForToday(
-            $shopId,
-            $this->normalizeMetalType($metalType),
-            $this->normalizePurityValue($purityValue),
-            $now
-        );
+            return $this->backfillMissingResolvedRateForToday($shopId, $metal, $purity, $now);
+        });
     }
 
     public function costPriceFromResolvedRate(
@@ -644,7 +660,9 @@ class ShopPricingService
         }
 
         $updated = 0;
+        $this->repriceMemo = [];
 
+        try {
         // Include ALL in_stock items — even those flagged for review or missing
         // metal_type. Each reprice run is a fresh attempt: if the root cause was
         // fixed (e.g. a purity profile was added, metal_type was assigned) the item
@@ -696,6 +714,9 @@ class ShopPricingService
                     $updated++;
                 }
             });
+        } finally {
+            $this->repriceMemo = null;
+        }
 
         return $updated;
     }
